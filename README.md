@@ -19,6 +19,27 @@ The ingestion pipeline, the quality gate, the database schema, the web app and t
 tooling stay in the private repository. Nothing here contacts a provider: the adapters take an
 injected `fetch`, and the tests fail on any real network call.
 
+## What HEY looks like
+
+Captured from [heyresearch.xyz](https://heyresearch.xyz) on 11 September 2026.
+
+| Home | Project |
+| --- | --- |
+| ![Home](docs/screenshots/home.png) | ![Project](docs/screenshots/project.png) |
+
+| Radar | Scout |
+| --- | --- |
+| ![Radar](docs/screenshots/radar.png) | ![Scout](docs/screenshots/scout.png) |
+
+| Developers | Mobile |
+| --- | --- |
+| ![Developers](docs/screenshots/developers.png) | <img src="docs/screenshots/mobile-home.png" alt="Home on a phone" width="220"> |
+
+A project page shows three facts apart: development (from the project's own sources), the
+token's market status (active, low or no liquidity, trading inactive, liquidity removed, or
+insufficient data) and whether the token is verified as the project's own. Scores read the
+first and never the other two.
+
 ## Use
 
 ```bash

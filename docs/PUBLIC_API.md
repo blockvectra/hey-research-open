@@ -31,6 +31,7 @@ Base URL: `https://heyresearch.xyz`
 | Market data is context | It never ranks anything here, and the default order is activity. |
 | Paid placement is not in the data | The labelled *Sponsored* row on the home page is advertising. It has no field here, no feed entry, and no effect on any order, score or status. |
 | The caveat travels too | Every response carries `disclaimer`. |
+| The strict states carry their denominator | `GET /api/projects` carries `catalogue`: how many verified builders HEY has and how many meet Still Building and Under the Radar right now (2026-09-11). A handful out of thousands is the rule working, not the data failing. |
 
 Dates are ISO 8601 in UTC. Responses are cached for 60 seconds, allow cross-origin reads
 (`access-control-allow-origin: *`), and are rate limited to 120 requests a minute per client without a key.
@@ -87,6 +88,7 @@ echoes the request *as it was understood*, which is how you find out a filter wa
       "url": "https://heyresearch.xyz/project/agentos"
     }
   ],
+  "catalogue": { "verifiedBuilders": 1237, "stillBuilding": 3, "underTheRadar": 6 },
   "disclaimer": "Public, source-backed activity HEY recorded. …"
 }
 ```

@@ -9,7 +9,8 @@
     "apps/mcp",
     "docs/PUBLIC_API.md",
     "docs/MCP.md",
-    "docs/SOURCE_REGISTRY.md"
+    "docs/SOURCE_REGISTRY.md",
+    "docs/screenshots"
   ],
   "never": [
     "apps/web",
