@@ -64,3 +64,19 @@ describe('repository URL forms the registry stores', () => {
     expect(githubRepoFromNpmUrl(undefined)).toBeUndefined();
   });
 });
+
+describe('npm registry answers that are not what the schema expects (overnight audit 2026-09-12)', () => {
+  it('reports a body that is not JSON as an invalid response, never as data', async () => {
+    const stub = stubFetch({ status: 200, body: '<html>maintenance</html>' });
+    const result = await createNpmSearchAdapter().fetch({ text: 'pons', size: 20 }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(hasData(result)).toBe(false);
+    expect(result).toMatchObject({ status: 'error', errorCode: 'INVALID_RESPONSE' });
+  });
+
+  it('reports JSON of the wrong shape as an invalid response', async () => {
+    const stub = stubFetch({ status: 200, body: JSON.stringify({ objects: [{ package: { name: 42 } }] }) });
+    const result = await createNpmPackageAdapter().fetch({ name: 'robinhood-chain-kit' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(hasData(result)).toBe(false);
+    expect(result).toMatchObject({ status: 'error', errorCode: 'INVALID_RESPONSE' });
+  });
+});
