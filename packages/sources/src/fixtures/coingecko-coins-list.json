@@ -1,0 +1,47 @@
+[
+  {
+    "id": "1inch",
+    "symbol": "1inch",
+    "name": "1INCH",
+    "platforms": {
+      "ethereum": "0x111111111117dc0aa78b770fa6a738034120c302",
+      "base": "0xc5fecc3a29fb57b5024eec8a2239d4621e111cbe",
+      "optimistic-ethereum": "0xad42d013ac31486b73b6b059e748172994736426",
+      "arbitrum-one": "0x6314c31a7a1652ce482cffe247e9cb7c3f4bb9af",
+      "robinhood": "0x1755c2910c126ee1b0cf1e08a307dc9e787285a0",
+      "avalanche": "0xd501281565bf7789224523144fe5d98e8b28f267",
+      "unichain": "0xbe41cde1c5e75a7b6c2c70466629878aa9acd06e",
+      "linea": "0x10f04e61bd6019d6c9b0bf4907e805a64b92ee3e",
+      "zksync": "0x3f0b8b206a7fbdb3ecfc08c9407ca83f5ab1ce59",
+      "binance-smart-chain": "0x111111111117dc0aa78b770fa6a738034120c302"
+    }
+  },
+  {
+    "id": "agentos",
+    "symbol": "agentos",
+    "name": "AgentOS",
+    "platforms": {
+      "robinhood": "0x6eda83fc299c10d474068a7e69771c809bcbbba3"
+    }
+  },
+  {
+    "id": "adobe-inc-robinhood-token",
+    "symbol": "adbe",
+    "name": "Adobe Inc. • Robinhood Token",
+    "platforms": {
+      "robinhood": "0x232b8ed6377be97813853b0ac104c4cda8378d1b"
+    }
+  },
+  {
+    "id": "bitcoin",
+    "symbol": "btc",
+    "name": "Bitcoin",
+    "platforms": {}
+  },
+  {
+    "id": "1000bonk",
+    "symbol": "1000bonk",
+    "name": "1000BONK",
+    "platforms": {}
+  }
+]

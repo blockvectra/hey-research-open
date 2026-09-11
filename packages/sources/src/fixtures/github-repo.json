@@ -1,0 +1,15 @@
+{
+  "id": 987654,
+  "full_name": "agentos/core",
+  "description": "Autonomous agent infrastructure for Robinhood Chain.",
+  "html_url": "https://github.com/agentos/core",
+  "homepage": "https://agentos.xyz",
+  "default_branch": "main",
+  "created_at": "2026-05-02T08:00:00Z",
+  "pushed_at": "2026-08-30T14:22:10Z",
+  "updated_at": "2026-08-30T14:25:00Z",
+  "archived": false,
+  "fork": false,
+  "stargazers_count": 42,
+  "open_issues_count": 7
+}

@@ -1,0 +1,47 @@
+[
+  {
+    "sha": "aaa1111",
+    "commit": {
+      "message": "feat: autonomous execution\n\nbody",
+      "author": { "name": "Ada", "date": "2026-08-30T10:00:00Z" }
+    },
+    "author": { "login": "ada", "type": "User" }
+  },
+  {
+    "sha": "bbb2222",
+    "commit": {
+      "message": "fix: retry handling",
+      "author": { "name": "Ada", "date": "2026-08-30T12:00:00Z" }
+    },
+    "author": { "login": "ada", "type": "User" }
+  },
+  {
+    "sha": "ccc3333",
+    "commit": {
+      "message": "refactor: split runtime",
+      "author": { "name": "Lin", "date": "2026-08-29T09:00:00Z" }
+    },
+    "author": { "login": "lin", "type": "User" }
+  },
+  {
+    "sha": "ddd4444",
+    "commit": {
+      "message": "chore(deps): bump lodash from 1 to 2",
+      "author": { "name": "dependabot", "date": "2026-08-29T09:30:00Z" }
+    },
+    "author": { "login": "dependabot[bot]", "type": "Bot" }
+  },
+  {
+    "sha": "eee5555",
+    "commit": {
+      "message": "Merge pull request #12 from agentos/x",
+      "author": { "name": "Ada", "date": "2026-08-28T08:00:00Z" }
+    },
+    "author": { "login": "ada", "type": "User" }
+  },
+  {
+    "sha": "fff6666",
+    "commit": { "message": "docs: quickstart", "author": { "name": "Lin", "date": null } },
+    "author": { "login": "lin", "type": "User" }
+  }
+]

@@ -1,0 +1,51 @@
+{
+  "schemaVersion": "1.0.0",
+  "pairs": [
+    {
+      "chainId": "robinhoodchain",
+      "pairAddress": "0x1111111111111111111111111111111111111111",
+      "baseToken": {
+        "address": "0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa",
+        "name": "AgentOS",
+        "symbol": "AOS"
+      },
+      "pairCreatedAt": 1787100000000
+    },
+    {
+      "chainId": "robinhoodchain",
+      "pairAddress": "0x2222222222222222222222222222222222222222",
+      "baseToken": {
+        "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "AgentOS",
+        "symbol": "AOS"
+      },
+      "pairCreatedAt": 1787200000000
+    },
+    {
+      "chainId": "ethereum",
+      "pairAddress": "0x3333333333333333333333333333333333333333",
+      "baseToken": {
+        "address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "name": "Not Our Chain",
+        "symbol": "NOC"
+      },
+      "pairCreatedAt": 1787300000000
+    },
+    {
+      "chainId": "robinhoodchain",
+      "pairAddress": "0x4444444444444444444444444444444444444444",
+      "baseToken": { "address": "not-an-address", "name": "Broken", "symbol": "BRK" },
+      "pairCreatedAt": null
+    },
+    {
+      "chainId": "robinhoodchain",
+      "pairAddress": "0x5555555555555555555555555555555555555555",
+      "baseToken": {
+        "address": "0xcccccccccccccccccccccccccccccccccccccccc",
+        "name": "Doge Chain Pet",
+        "symbol": "DCP"
+      },
+      "pairCreatedAt": 1787400000000
+    }
+  ]
+}

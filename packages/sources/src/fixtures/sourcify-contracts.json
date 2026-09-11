@@ -1,0 +1,22 @@
+{
+  "results": [
+    {
+      "match": "exact_match",
+      "creationMatch": "exact_match",
+      "runtimeMatch": "exact_match",
+      "chainId": "4663",
+      "address": "0xf7a4Af51De7B3ccA9b48FC8c9180b48a6628624D",
+      "verifiedAt": "2026-09-02T11:38:49Z",
+      "matchId": "47034236"
+    },
+    {
+      "match": "exact_match",
+      "creationMatch": null,
+      "runtimeMatch": "exact_match",
+      "chainId": "4663",
+      "address": "0xfcB1AfaC053d4f8D4E5409E5605ea9a4a4994481",
+      "verifiedAt": "2026-09-02T11:38:48Z",
+      "matchId": "47034235"
+    }
+  ]
+}

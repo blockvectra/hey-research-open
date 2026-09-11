@@ -1,0 +1,74 @@
+{
+  "total_count": 2132,
+  "incomplete_results": false,
+  "items": [
+    {
+      "name": "chainid-4663.js",
+      "path": "constants/additionalChainRegistry/chainid-4663.js",
+      "sha": "2a567286f2e40fe4a0cada58444454a787e03c24",
+      "html_url": "https://github.com/DefiLlama/chainlist/blob/36819019bb52e2a39e23499c7880473c8f98cd32/constants/additionalChainRegistry/chainid-4663.js",
+      "repository": {
+        "id": 466682654,
+        "name": "chainlist",
+        "full_name": "DefiLlama/chainlist",
+        "owner": { "login": "DefiLlama", "type": "Organization" },
+        "private": false,
+        "html_url": "https://github.com/DefiLlama/chainlist",
+        "description": null,
+        "fork": false
+      },
+      "score": 1.0
+    },
+    {
+      "name": "foundry.toml",
+      "path": "foundry.toml",
+      "sha": "9d3f6c1e2b8a4f5d7c1b2a3e4d5f6a7b8c9d0e1f",
+      "html_url": "https://github.com/Meridian402/meridian/blob/main/foundry.toml",
+      "repository": {
+        "id": 1303038468,
+        "name": "meridian",
+        "full_name": "Meridian402/meridian",
+        "owner": { "login": "Meridian402", "type": "Organization" },
+        "private": false,
+        "html_url": "https://github.com/Meridian402/meridian",
+        "description": "Autonomous AI market-making agent platform for tokenized equities on Robinhood Chain.",
+        "fork": false
+      },
+      "score": 1.0
+    },
+    {
+      "name": "chains.ts",
+      "path": "src/chains.ts",
+      "sha": "1f2e3d4c5b6a79880716253443526170f1e2d3c4",
+      "html_url": "https://github.com/Meridian402/meridian/blob/main/src/chains.ts",
+      "repository": {
+        "id": 1303038468,
+        "name": "meridian",
+        "full_name": "Meridian402/meridian",
+        "owner": { "login": "Meridian402", "type": "Organization" },
+        "private": false,
+        "html_url": "https://github.com/Meridian402/meridian",
+        "description": "Autonomous AI market-making agent platform for tokenized equities on Robinhood Chain.",
+        "fork": false
+      },
+      "score": 0.9
+    },
+    {
+      "name": ".env.robinhoodchain.mainnet",
+      "path": "ethereum/env/.env.robinhoodchain.mainnet",
+      "sha": "3b1372ac2ee1fea576e2f9901e4935af1cc5a6d5",
+      "html_url": "https://github.com/someone/wormhole-fork/blob/7cd6da0a/ethereum/env/.env.robinhoodchain.mainnet",
+      "repository": {
+        "id": 900000001,
+        "name": "wormhole-fork",
+        "full_name": "someone/wormhole-fork",
+        "owner": { "login": "someone", "type": "User" },
+        "private": false,
+        "html_url": "https://github.com/someone/wormhole-fork",
+        "description": "A fork of wormhole",
+        "fork": true
+      },
+      "score": 0.8
+    }
+  ]
+}

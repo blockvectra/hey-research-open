@@ -1,0 +1,24 @@
+{
+  "_id": "robinhood-chain-kit",
+  "_rev": "12-abc",
+  "name": "robinhood-chain-kit",
+  "description": "ERC-8056 scaled-UI stock tokens, peer-to-peer settlement, transaction preflight, Oracle Guard, chain constants, and resilient RPC helpers for Robinhood Chain (chain id 4663).",
+  "dist-tags": { "latest": "0.9.0" },
+  "versions": {
+    "0.9.0": {
+      "name": "robinhood-chain-kit",
+      "version": "0.9.0",
+      "description": "ERC-8056 scaled-UI stock tokens for Robinhood Chain (chain id 4663).",
+      "main": "dist/index.js",
+      "dist": { "tarball": "https://registry.npmjs.org/robinhood-chain-kit/-/robinhood-chain-kit-0.9.0.tgz" }
+    }
+  },
+  "time": { "created": "2026-07-01T00:00:00.000Z", "modified": "2026-08-24T03:33:13.037Z", "0.9.0": "2026-08-24T03:33:13.037Z" },
+  "maintainers": [{ "name": "hey-fixture-dev" }],
+  "homepage": "https://github.com/hey-fixture-dev/robinhood-chain-kit#readme",
+  "keywords": ["robinhood-chain", "arbitrum-orbit", "4663", "tokenized-stocks"],
+  "repository": { "type": "git", "url": "git+https://github.com/hey-fixture-dev/robinhood-chain-kit.git" },
+  "license": "MIT",
+  "readme": "# robinhood-chain-kit\n\nChain constants and RPC helpers for Robinhood Chain.\n\n```ts\nimport { robinhoodChain } from 'robinhood-chain-kit';\n// rpc: https://rpc.mainnet.chain.robinhood.com, chainId: 4663\n```\n",
+  "readmeFilename": "README.md"
+}

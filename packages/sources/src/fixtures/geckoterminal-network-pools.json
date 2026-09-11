@@ -1,0 +1,280 @@
+{
+  "data": [
+    {
+      "id": "robinhood_0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "0.999428659273176",
+        "base_token_price_native_currency": "0.000408782623096104",
+        "quote_token_price_usd": "2444.63",
+        "quote_token_price_native_currency": "1.0",
+        "base_token_price_quote_token": "0.0004087826231",
+        "quote_token_price_base_token": "2446.287937648",
+        "address": "0x52e65b17fb6e5ba00ed806f37afcd2daa50271ca",
+        "name": "USDG / WETH 0.01%",
+        "pool_created_at": "2026-07-02T20:51:08Z",
+        "fdv_usd": "481840513.000513",
+        "market_cap_usd": "3311717233.44581",
+        "price_change_percentage": {
+          "m5": "0.003",
+          "m15": "-0.029",
+          "m30": "-0.067",
+          "h1": "-0.218",
+          "h6": "-0.043",
+          "h24": "0.133"
+        },
+        "transactions": {
+          "m5": {
+            "buys": 1224,
+            "sells": 1254,
+            "buyers": 676,
+            "sellers": 743
+          },
+          "m15": {
+            "buys": 3753,
+            "sells": 4210,
+            "buyers": 1802,
+            "sellers": 2094
+          },
+          "m30": {
+            "buys": 7449,
+            "sells": 8285,
+            "buyers": 3168,
+            "sellers": 3492
+          },
+          "h1": {
+            "buys": 17226,
+            "sells": 18825,
+            "buyers": 5869,
+            "sellers": 5955
+          },
+          "h6": {
+            "buys": 128983,
+            "sells": 138150,
+            "buyers": 21706,
+            "sellers": 20561
+          },
+          "h24": {
+            "buys": 647168,
+            "sells": 681070,
+            "buyers": 51965,
+            "sellers": 49143
+          }
+        },
+        "volume_usd": {
+          "m5": "1361374.09607796",
+          "m15": "4612087.96277383",
+          "m30": "9710703.95891903",
+          "h1": "22266616.7277135",
+          "h6": "108319880.13321",
+          "h24": "480835453.328565"
+        },
+        "reserve_in_usd": "10444776.5266"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "robinhood_0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "robinhood_0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "uniswap-v3-robinhood",
+            "type": "dex"
+          }
+        }
+      }
+    },
+    {
+      "id": "robinhood_0x8068ab043efd411b87506c41be1add38faaf18c0af0016c663ca92feff0b8159",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "2444.63",
+        "base_token_price_native_currency": "1.0",
+        "quote_token_price_usd": "0.999692198726856",
+        "quote_token_price_native_currency": "0.000408903527562482",
+        "base_token_price_quote_token": "2445.56462",
+        "quote_token_price_base_token": "0.0004089035276",
+        "address": "0x8068ab043efd411b87506c41be1add38faaf18c0af0016c663ca92feff0b8159",
+        "name": "WETH / USDG",
+        "pool_created_at": "2026-07-10T16:44:02Z",
+        "fdv_usd": "83384193.406809",
+        "market_cap_usd": "81055268.5727845",
+        "price_change_percentage": {
+          "m5": "-0.07",
+          "m15": "-0.165",
+          "m30": "-0.293",
+          "h1": "-0.838",
+          "h6": "-0.79",
+          "h24": "-0.059"
+        },
+        "transactions": {
+          "m5": {
+            "buys": 180,
+            "sells": 178,
+            "buyers": 39,
+            "sellers": 70
+          },
+          "m15": {
+            "buys": 531,
+            "sells": 509,
+            "buyers": 73,
+            "sellers": 127
+          },
+          "m30": {
+            "buys": 1162,
+            "sells": 957,
+            "buyers": 129,
+            "sellers": 183
+          },
+          "h1": {
+            "buys": 1917,
+            "sells": 1560,
+            "buyers": 218,
+            "sellers": 275
+          },
+          "h6": {
+            "buys": 15697,
+            "sells": 13311,
+            "buyers": 894,
+            "sellers": 1203
+          },
+          "h24": {
+            "buys": 72986,
+            "sells": 53910,
+            "buyers": 2566,
+            "sellers": 3407
+          }
+        },
+        "volume_usd": {
+          "m5": "56042.819953513",
+          "m15": "147278.458799385",
+          "m30": "279018.48084742",
+          "h1": "469556.058402494",
+          "h6": "3791293.78622331",
+          "h24": "15497925.8184356"
+        },
+        "reserve_in_usd": "74571.9714"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "robinhood_0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "robinhood_0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "orvex-v4",
+            "type": "dex"
+          }
+        }
+      }
+    },
+    {
+      "id": "robinhood_0xb2a6ad51b3ea3cdc8d3508cca147a43471382e53",
+      "type": "pool",
+      "attributes": {
+        "base_token_price_usd": "2444.63",
+        "base_token_price_native_currency": "1.0",
+        "quote_token_price_usd": "0.999346342966655",
+        "quote_token_price_native_currency": "0.000408841718374132",
+        "base_token_price_quote_token": "2445.934343434",
+        "quote_token_price_base_token": "0.0004088417184",
+        "address": "0xb2a6ad51b3ea3cdc8d3508cca147a43471382e53",
+        "name": "WETH / USDG 0.01%",
+        "pool_created_at": "2026-08-10T02:36:32Z",
+        "fdv_usd": "83384193.406809",
+        "market_cap_usd": "81055268.5727845",
+        "price_change_percentage": {
+          "m5": "-0.07",
+          "m15": "-0.165",
+          "m30": "-0.293",
+          "h1": "-0.838",
+          "h6": "-0.79",
+          "h24": "-0.059"
+        },
+        "transactions": {
+          "m5": {
+            "buys": 233,
+            "sells": 165,
+            "buyers": 104,
+            "sellers": 120
+          },
+          "m15": {
+            "buys": 486,
+            "sells": 397,
+            "buyers": 219,
+            "sellers": 251
+          },
+          "m30": {
+            "buys": 830,
+            "sells": 664,
+            "buyers": 337,
+            "sellers": 415
+          },
+          "h1": {
+            "buys": 1419,
+            "sells": 1197,
+            "buyers": 566,
+            "sellers": 672
+          },
+          "h6": {
+            "buys": 11276,
+            "sells": 10086,
+            "buyers": 2691,
+            "sellers": 3303
+          },
+          "h24": {
+            "buys": 55217,
+            "sells": 48325,
+            "buyers": 7190,
+            "sellers": 8451
+          }
+        },
+        "volume_usd": {
+          "m5": "92150.231809236",
+          "m15": "201632.983747423",
+          "m30": "361715.846804698",
+          "h1": "781995.919528548",
+          "h6": "5765070.39258385",
+          "h24": "21353018.1885615"
+        },
+        "reserve_in_usd": "353066.6656"
+      },
+      "relationships": {
+        "base_token": {
+          "data": {
+            "id": "robinhood_0x0bd7d308f8e1639fab988df18a8011f41eacad73",
+            "type": "token"
+          }
+        },
+        "quote_token": {
+          "data": {
+            "id": "robinhood_0x5fc5360d0400a0fd4f2af552add042d716f1d168",
+            "type": "token"
+          }
+        },
+        "dex": {
+          "data": {
+            "id": "giga-v3",
+            "type": "dex"
+          }
+        }
+      }
+    }
+  ]
+}

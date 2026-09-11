@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>AgentOS Blog</title>
+  <entry>
+    <title>Agent-to-agent settlement</title>
+    <id>tag:agentos.xyz,2026:post-11</id>
+    <link rel="alternate" href="https://agentos.xyz/blog/a2a-settlement" />
+    <summary>How agents settle onchain.</summary>
+    <updated>2026-08-28T16:00:00Z</updated>
+  </entry>
+</feed>

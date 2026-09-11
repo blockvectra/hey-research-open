@@ -1,0 +1,61 @@
+{
+  "$comment": "What HEY publishes (2026-09-11). Paths are copied verbatim into the staging tree; everything else in the private repository stays private. Forbidden patterns are regular expressions; write each one so that a plain search of this tree for the secret string finds nothing (a character class or a split does it).",
+  "publicName": "hey-research-open",
+  "include": [
+    "packages/config",
+    "packages/scoring",
+    "packages/sources",
+    "packages/ui",
+    "apps/mcp",
+    "docs/PUBLIC_API.md",
+    "docs/MCP.md",
+    "docs/SOURCE_REGISTRY.md"
+  ],
+  "never": [
+    "apps/web",
+    "apps/worker",
+    "packages/domain",
+    "packages/db",
+    "scripts",
+    "docker",
+    "docs/DEPLOYMENT.md",
+    "docs/RUNBOOK.md",
+    "docs/DEPENDENCY_RISK.md",
+    "docs/HEY_TREASURY_LEDGER.md",
+    ".env.production.example",
+    "docker-compose.yml",
+    "docker-compose.prod.yml",
+    "Dockerfile"
+  ],
+  "copyRoot": [
+    ".npmrc",
+    ".prettierrc.json",
+    "tsconfig.base.json",
+    "vitest.setup.ts"
+  ],
+  "rootDevDependencies": [
+    "@eslint/js",
+    "@types/node",
+    "eslint",
+    "eslint-config-prettier",
+    "prettier",
+    "typescript",
+    "typescript-eslint",
+    "vitest"
+  ],
+  "dbTypesFrom": "packages/db/src/schema/enums.ts",
+  "forbidden": [
+    "[redacted]",
+    "[redacted]",
+    "[redacted]",
+    "[redacted]",
+    "[redacted]",
+    "/Users/[a-z0-9_-]+/(hey-research|\\.claude)",
+    "hey@[0-9]{1,3}\\.[0-9]{1,3}",
+    "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY",
+    "ghp_[A-Za-z0-9]{20,}",
+    "github_pat_[A-Za-z0-9_]{20,}",
+    "sk-[A-Za-z0-9]{20,}",
+    "postgres(ql)?://(?!hey:hey@)(?![^\\s'\"]*(change|replace|example|password|<))[^\\s'\"]*:[^\\s'\"@]+@(?!localhost)"
+  ]
+}

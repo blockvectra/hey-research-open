@@ -1,0 +1,79 @@
+import { describe, expect, it } from 'vitest';
+
+import { plainText } from './format';
+
+/**
+ * Source text reaches the interface as words, never as markup (QA sweep
+ * 2026-09-04). Every case here was seen on a production card or page.
+ */
+describe('plainText', () => {
+  it('drops Markdown images, which were the first line of a homepage card', () => {
+    expect(
+      plainText(
+        '![Upload](https://s3.ap-southeast-1.amazonaws.com/virtualprotocolcdn/vex.png) ProjectVex is a launchpad.',
+      ),
+    ).toBe('ProjectVex is a launchpad.');
+    expect(plainText('**MERRYMEN**![🏹](https://abs.twimg.com/emoji/v2/svg/1f3f9.svg) Robin Hood')).toBe(
+      'MERRYMEN Robin Hood',
+    );
+  });
+
+  it('keeps the text of a link and the URL of a bare link', () => {
+    expect(plainText('𝕏 @aigen\\_io [https://aigenprotocol.com/](https://aigenprotocol.com/)')).toBe(
+      '𝕏 @aigen_io https://aigenprotocol.com/',
+    );
+    expect(plainText('🌐 **Website:** [hoods](https://hoods.gitlawb.org)')).toBe('🌐 Website: hoods');
+  });
+
+  it('strips headings, emphasis, code and rules', () => {
+    expect(plainText('### Introducing $CAPYHOOD: The Legendary Outlaw **We** are')).toBe(
+      'Introducing $CAPYHOOD: The Legendary Outlaw We are',
+    );
+    expect(plainText('## Initial production release\nA low-latency Go parser for `launchAndBuy`.')).toBe(
+      'Initial production release A low-latency Go parser for launchAndBuy.',
+    );
+    expect(plainText('01 **The fix.** A launch refused. --- ## 01 · pools.fun')).toBe(
+      '01 The fix. A launch refused. --- 01 · pools.fun',
+    );
+    expect(plainText('rules. **Sourced:** every claim')).toBe('rules. Sourced: every claim');
+  });
+
+  it('collapses runs of whitespace, carriage returns and non-breaking spaces', () => {
+    expect(plainText('Private swaps native to Robinhood Chain.  @Axol\\_io is the team')).toBe(
+      'Private swaps native to Robinhood Chain. @Axol_io is the team',
+    );
+    expect(plainText('line one\r\nline two three')).toBe('line one line two three');
+  });
+
+  it('leaves ordinary text, tickers and snake_case alone', () => {
+    expect(plainText('Agents can settle $AOS through StockFi (v0.4).')).toBe(
+      'Agents can settle $AOS through StockFi (v0.4).',
+    );
+    expect(plainText('token_select and 2*3=6')).toBe('token_select and 2*3=6');
+    expect(plainText('')).toBe('');
+    expect(plainText(undefined)).toBe('');
+    expect(plainText(null)).toBe('');
+  });
+
+  it('removes HTML tags a source pasted in', () => {
+    expect(plainText('Meet <b>BoneHood</b><br/>the dog')).toBe('Meet BoneHood the dog');
+  });
+});
+
+describe('a project description that arrived as Markdown', () => {
+  /*
+   * The detail page rendered `shortDescription` raw, so a launchpad blurb
+   * written in Markdown showed its escapes as literal characters — backticks
+   * and backslashes around `sparkleware-catalog` on production.
+   */
+  it('keeps the words and drops the escaping', () => {
+    expect(plainText('Run \\`sparkleware-catalog\\` to browse')).toBe(
+      'Run sparkleware-catalog to browse',
+    );
+  });
+
+  it('leaves a description that was never Markdown exactly as written', () => {
+    const plain = 'A protocol for onchain identity. 100% open source; see docs.';
+    expect(plainText(plain)).toBe(plain);
+  });
+});

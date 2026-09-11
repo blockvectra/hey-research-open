@@ -1,0 +1,16 @@
+{
+  "match": "match",
+  "creationMatch": "match",
+  "runtimeMatch": "match",
+  "chainId": "4663",
+  "address": "0x4C3B4CDd55b2E9e60eefcD93234A77D4AD53e365",
+  "verifiedAt": "2026-09-02T11:36:46Z",
+  "matchId": "47034163",
+  "compilation": {
+    "language": "Solidity",
+    "compiler": "solc",
+    "compilerVersion": "0.8.28+commit.7893614a",
+    "name": "StripVault",
+    "fullyQualifiedName": "StripVault.sol:StripVault"
+  }
+}

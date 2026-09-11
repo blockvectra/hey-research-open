@@ -1,0 +1,122 @@
+[
+  {
+    "chainId": "robinhood",
+    "dexId": "uniswap",
+    "url": "https://dexscreener.com/robinhood/0x4e74e19d16cd811cdb54b6f73930d3d7732546de77773dcb6bb592d88a157d3b",
+    "pairAddress": "0x4e74e19d16cd811cdb54b6f73930d3d7732546de77773dcb6bb592d88a157d3b",
+    "labels": ["v4"],
+    "baseToken": {
+      "address": "0x45C83b37C5BAF4dad26f3845C28295e2DE010962",
+      "name": "RobinHood",
+      "symbol": "HOOD"
+    },
+    "quoteToken": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "name": "Ether",
+      "symbol": "ETH"
+    },
+    "priceNative": "0.0000002397",
+    "priceUsd": "0.0005866",
+    "txns": {
+      "m5": { "buys": 1, "sells": 2 },
+      "h1": { "buys": 16, "sells": 18 },
+      "h6": { "buys": 145, "sells": 113 },
+      "h24": { "buys": 1378, "sells": 1191 }
+    },
+    "volume": { "h24": 424290.91, "h6": 44845.17, "h1": 5859.61, "m5": 440.89 },
+    "priceChange": { "m5": -1.07, "h1": 1.99, "h6": 65.93, "h24": 253 },
+    "liquidity": { "usd": 70152.9, "base": 59788096, "quote": 14.3363 },
+    "fdv": 586680,
+    "marketCap": 586680,
+    "pairCreatedAt": 1788100955000,
+    "info": {
+      "imageUrl": "https://cdn.dexscreener.com/cms/images/hnBGkED4_rXSYqYo?width=800&height=800&quality=95&format=auto",
+      "header": "https://cdn.dexscreener.com/cms/images/S57JW-Qamjc0bqEr?width=1500&height=500&quality=95&format=auto",
+      "openGraph": "https://cdn.dexscreener.com/token-images/og/robinhood/0x45c83b37c5baf4dad26f3845c28295e2de010962?timestamp=1788253800000",
+      "websites": [{ "url": "https://robinhoodmeme.io/", "label": "Website" }],
+      "socials": [{ "url": "https://x.com/_robinhoodmeme", "type": "twitter" }]
+    }
+  },
+  {
+    "chainId": "robinhood",
+    "dexId": "uniswap",
+    "url": "https://dexscreener.com/robinhood/0x309eb158c14eeaa0c6f153d856e5486ea8f0fa9d16d522c656332f29d1ffdbb0",
+    "pairAddress": "0x309eb158c14eeaa0c6f153d856e5486ea8f0fa9d16d522c656332f29d1ffdbb0",
+    "labels": ["v4"],
+    "baseToken": {
+      "address": "0x04cdeB247551C138EBaf5d90EA798885AFE3e6E4",
+      "name": "Robinhood",
+      "symbol": "ROBIN"
+    },
+    "quoteToken": {
+      "address": "0x32aC8C1D7672667D5EbdEa22935F7B06fC8D496f",
+      "name": "HOOD",
+      "symbol": "HOOD"
+    },
+    "priceNative": "0.000001648",
+    "priceUsd": "0.0001531",
+    "txns": {
+      "m5": { "buys": 0, "sells": 0 },
+      "h1": { "buys": 0, "sells": 5 },
+      "h6": { "buys": 28, "sells": 18 },
+      "h24": { "buys": 851, "sells": 351 }
+    },
+    "volume": { "h24": 86196.5, "h6": 18532.8, "h1": 1683.87, "m5": 0 },
+    "priceChange": { "h1": -14.74, "h6": -13.74, "h24": 5420 },
+    "liquidity": { "usd": 37880.24, "base": 132407832, "quote": 189.4203 },
+    "fdv": 153185,
+    "marketCap": 153185,
+    "pairCreatedAt": 1788134297000,
+    "info": {
+      "imageUrl": "https://cdn.dexscreener.com/cms/images/lyRCRMWQ4wDXqi0w?width=800&height=800&quality=95&format=auto",
+      "header": "https://cdn.dexscreener.com/cms/images/Jn7YRwHPGk-0AiMh?width=1500&height=500&quality=95&format=auto",
+      "openGraph": "https://cdn.dexscreener.com/token-images/og/robinhood/0x04cdeb247551c138ebaf5d90ea798885afe3e6e4?timestamp=1788253800000",
+      "websites": [{ "url": "https://robin.gives/", "label": "Website" }],
+      "socials": [
+        { "url": "https://x.com/RobinOnHood_", "type": "twitter" },
+        { "url": "https://t.me/RobinOnHood_Entry", "type": "telegram" }
+      ]
+    }
+  },
+  {
+    "chainId": "robinhood",
+    "dexId": "uniswap",
+    "url": "https://dexscreener.com/robinhood/0x8aac0c4c9236096aa79262b0a53a683979ed8c7a",
+    "pairAddress": "0x8AAc0c4c9236096AA79262b0A53a683979eD8C7A",
+    "labels": ["v3"],
+    "baseToken": {
+      "address": "0x79Fe86b963255Ce884bdcaC6388C50a599Ba277f",
+      "name": "Robinhood",
+      "symbol": "ROBINHOOD"
+    },
+    "quoteToken": {
+      "address": "0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73",
+      "name": "WETH",
+      "symbol": "WETH"
+    },
+    "priceNative": "0.00000003741",
+    "priceUsd": "0.00009151",
+    "txns": {
+      "m5": { "buys": 0, "sells": 0 },
+      "h1": { "buys": 8, "sells": 6 },
+      "h6": { "buys": 38, "sells": 30 },
+      "h24": { "buys": 254, "sells": 372 }
+    },
+    "volume": { "h24": 32107.24, "h6": 5788.67, "h1": 1270.97, "m5": 0 },
+    "priceChange": { "h1": -8.64, "h6": -6.91, "h24": -10.71 },
+    "liquidity": { "usd": 31631.69, "base": 191439645, "quote": 5.7696 },
+    "fdv": 76352,
+    "marketCap": 76352,
+    "pairCreatedAt": 1781878516000,
+    "info": {
+      "imageUrl": "https://cdn.dexscreener.com/cms/images/F61lzWgWForr5k8Q?width=800&height=800&quality=95&format=auto",
+      "header": "https://cdn.dexscreener.com/cms/images/JDwKkLcjqxDG16Sp?width=1500&height=500&quality=95&format=auto",
+      "openGraph": "https://cdn.dexscreener.com/token-images/og/robinhood/0x79fe86b963255ce884bdcac6388c50a599ba277f?timestamp=1788253800000",
+      "websites": [{ "url": "http://robinhoodmeme.com/", "label": "Website" }],
+      "socials": [
+        { "url": "https://x.com/robinhoodogmeme?s=21", "type": "twitter" },
+        { "url": "https://t.me/RobinHoodOG", "type": "telegram" }
+      ]
+    }
+  }
+]

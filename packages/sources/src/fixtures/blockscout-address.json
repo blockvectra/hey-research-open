@@ -1,0 +1,12 @@
+{
+  "hash": "0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa",
+  "is_contract": true,
+  "is_verified": true,
+  "name": "AgentOSToken",
+  "creation_transaction_hash": "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+  "creator_address_hash": "0x9999999999999999999999999999999999999999",
+  "implementations": [
+    { "address": "0x8888888888888888888888888888888888888888", "name": "AgentOSTokenV2" }
+  ],
+  "token": { "name": "AgentOS", "symbol": "AOS", "decimals": "18", "type": "ERC-20" }
+}

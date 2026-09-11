@@ -1,0 +1,87 @@
+[
+  {
+    "url": "https://dexscreener.com/robinhood/0x0e0d2c89a5a019fe1cf762e5e33187631dacc21b",
+    "chainId": "robinhood",
+    "tokenAddress": "0x0E0d2C89a5a019FE1cF762e5e33187631DACC21B",
+    "description": "CHUMP COIN 2 1 BILLY (CC21B) — hereby declared the most tremendous digital currency on Robinhood Chain, by order of a very powerful chicken in a suit. 0% tax, contract renounced, LP locked forever — key thrown in the Potomac. Playable arcade, executive orders, too much winning.",
+    "icon": "_bNkrynaHAamIH5s",
+    "header": "https://cdn.dexscreener.com/cms/images/76zfCpFVURt-_fow?width=900&height=300&fit=crop&quality=95&format=auto",
+    "openGraph": "https://cdn.dexscreener.com/token-images/og/robinhood/0x0e0d2c89a5a019fe1cf762e5e33187631dacc21b?timestamp=1788376200000",
+    "links": [
+      {
+        "url": "https://cc21b.meme"
+      },
+      {
+        "url": "https://x.com/i/communities/2020660935854014618/"
+      },
+      {
+        "url": "https://www.team.finance/view-coin/0x0e0d2c89a5a019fe1cf762e5e33187631dacc21b?name=Chump%20Coin&symbol=CHUMP&chainid=0x1237"
+      },
+      {
+        "type": "twitter",
+        "url": "https://x.com/ChumpCoinX"
+      },
+      {
+        "type": "telegram",
+        "url": "https://t.me/CHUMPCOIN21B"
+      },
+      {
+        "type": "tiktok",
+        "url": "https://www.tiktok.com/@chumpcoin?_r=1"
+      }
+    ],
+    "totalAmount": 500
+  },
+  {
+    "url": "https://dexscreener.com/solana/h76u9jttbmtef5jgmqxm2ww6xqmxpvtdvyer4rvkpump",
+    "chainId": "solana",
+    "tokenAddress": "H76u9jTTbMtEF5JGmqXM2wW6xqMXpvTdVyer4RvKpump",
+    "description": "Pumpooor is broke degen, still chasing the next life-changing pump",
+    "icon": "EGdylCtMaOBXvRFW",
+    "header": "https://cdn.dexscreener.com/cms/images/Hlvr4mLtf4kQNzo0?width=900&height=300&fit=crop&quality=95&format=auto",
+    "openGraph": "https://cdn.dexscreener.com/token-images/og/solana/H76u9jTTbMtEF5JGmqXM2wW6xqMXpvTdVyer4RvKpump?timestamp=1788376200000",
+    "links": [
+      {
+        "url": "https://pumpooor.fun"
+      },
+      {
+        "type": "twitter",
+        "url": "https://x.com/PumpooorX"
+      },
+      {
+        "type": "telegram",
+        "url": "https://t.me/pumpooorsol"
+      }
+    ],
+    "totalAmount": 500
+  },
+  {
+    "url": "https://dexscreener.com/robinhood/0x5f038759f6de38fd3a85c0440daff1240238bac8",
+    "chainId": "robinhood",
+    "tokenAddress": "0x5F038759F6DE38fD3A85C0440daff1240238BaC8",
+    "description": "Hybrid of OHM and the OG coreVault - better tech than NET NET.\n\nThe MU floor only goes up. Fees compound permanently locked liquidity into perpetuity.\n\nStake $SEMI to earn minted $SEMI. The Ratchet only mints when MU backing per token sets a new high, so yield comes from backing growth, not inflation. No rebase, 6h unlock.\n\nBring tokenized Micron, get $SEMI at a discount to market, vesting over 24 hours. Every bonded $MU goes into the locked floor. Gated so a bond can never lower backing per token.\n\nThe backing-per-token high-water mark: the highest MU-per-SEMI that has held across a full epoch in the locked pool. Up only. Emissions can't mint unless it sets a new high. In a hard sell-off spot backing can sit below the mark for a while; the locked, compounding LP is the support. When the stock market is closed, NAV marks to last close (STALE). Verify it yourself: one snapshot() on SemiLens.\n\nAll 9 contracts verified on Blockscout.",
+    "icon": "8rn2XYJD0Ncqf0Fb",
+    "header": "https://cdn.dexscreener.com/cms/images/-d2AALfzJISbaKyp?width=900&height=300&fit=crop&quality=95&format=auto",
+    "openGraph": "https://cdn.dexscreener.com/token-images/og/robinhood/0x5f038759f6de38fd3a85c0440daff1240238bac8?timestamp=1788376200000",
+    "links": [
+      {
+        "url": "https://www.semivault.xyz/v2"
+      },
+      {
+        "url": "https://robinhoodchain.blockscout.com/address/0x5f038759f6de38fd3a85c0440daff1240238bac8?tab=contract"
+      },
+      {
+        "url": "https://www.semivault.xyz/"
+      },
+      {
+        "type": "twitter",
+        "url": "https://x.com/Semivaultxyz"
+      },
+      {
+        "type": "telegram",
+        "url": "https://t.me/semivault"
+      }
+    ],
+    "totalAmount": 300
+  }
+]

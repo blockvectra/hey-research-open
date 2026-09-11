@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <title>AgentOS Changelog</title>
+    <link>https://agentos.xyz/changelog</link>
+    <item>
+      <title>v0.4.0 released: limit-order support</title>
+      <link>https://agentos.xyz/changelog/v0-4-0</link>
+      <guid>https://agentos.xyz/changelog/v0-4-0</guid>
+      <description>&lt;p&gt;Limit orders are live for all agents.&lt;/p&gt;</description>
+      <pubDate>Sat, 30 Aug 2026 12:00:00 GMT</pubDate>
+    </item>
+    <item>
+      <title>Docs refresh</title>
+      <link>https://agentos.xyz/changelog/docs-refresh</link>
+      <guid>changelog-docs-refresh</guid>
+      <description>Rewrote the quickstart.</description>
+      <pubDate>Wed, 20 Aug 2026 09:30:00 GMT</pubDate>
+    </item>
+  </channel>
+</rss>

@@ -1,0 +1,119 @@
+{
+  "data": {
+    "launcherStats_collection": [
+      {
+        "launchCount": 45
+      }
+    ],
+    "tokenLaunches": [
+      {
+        "id": "0x1f2f54d16b8671908d929530daea27570dedc0de",
+        "token": {
+          "id": "0x1f2f54d16b8671908d929530daea27570dedc0de",
+          "symbol": "GAPE",
+          "name": "Golden Ape"
+        },
+        "creator": {
+          "id": "0x80cc4b6c418fb08ef216aa0e64cd2c4144d258db"
+        },
+        "createdAt": "1787972325",
+        "image": "https://arweave.net/9_3aW4ewn8EWrB8VuHTrBvKliUN2-9bnW4ZfvlyQMyw",
+        "description": "Golden Apes!",
+        "socials": "",
+        "hasBonded": false,
+        "venue": 1,
+        "pool": "0x0eee115c2224cd75176e6538b640597d30abd965"
+      },
+      {
+        "id": "0x291ee1b72af996bf59e4e8d6ff6e177c65b62626",
+        "token": {
+          "id": "0x291ee1b72af996bf59e4e8d6ff6e177c65b62626",
+          "symbol": "VOID",
+          "name": "VOIDCOIN"
+        },
+        "creator": {
+          "id": "0x30ca25b5de6d9d8ed6df5a2392211d1f10b266b9"
+        },
+        "createdAt": "1787437674",
+        "image": "ipfs://QmSTzmwHa3NiHhEb6EsztuvYkScVnmuts9HkFobpVbbuJu",
+        "description": "VOIDCOIN is a fixed-supply Robinhood Chain token launched through hood.dev. Its website display skin can change only after an approved permanent burn; wallets and exchanges always show VOIDCOIN (VOID).",
+        "socials": "{\"website\":\"https://voidcoin.fun\"}",
+        "hasBonded": false,
+        "venue": 1,
+        "pool": "0x89904f49b926fb2af878a6a22fa11f2971d365f7"
+      },
+      {
+        "id": "0x93d069a4821bf352a119ea2acf7f1420df25c0de",
+        "token": {
+          "id": "0x93d069a4821bf352a119ea2acf7f1420df25c0de",
+          "symbol": "KROOKLY",
+          "name": "Krookly Wallet"
+        },
+        "creator": {
+          "id": "0x7712added79d2a780a312aa9cb5a0dffcfbb1454"
+        },
+        "createdAt": "1787354744",
+        "image": "https://arweave.net/KVJJE2WxABm2Gy93Z6EaG6JwCb8wrefrm5-MbUow-E4",
+        "description": "Krookly is the first Social-Fi Wallet Built for Robinhood Chain",
+        "socials": "{\"x\":\"@KrooklyWallet\",\"website\":\"https://www.krookly.com/\"}",
+        "hasBonded": false,
+        "venue": 1,
+        "pool": "0x4d87c658e28f6dbdfc831c6c7943eb39bf8e779f"
+      },
+      {
+        "id": "0x477828e28abb5bc5f56ae6eb8a2d4d2e329dc0de",
+        "token": {
+          "id": "0x477828e28abb5bc5f56ae6eb8a2d4d2e329dc0de",
+          "symbol": "42",
+          "name": "42"
+        },
+        "creator": {
+          "id": "0xbe44f51e3259990badcd514a670f68705f2003e4"
+        },
+        "createdAt": "1787105084",
+        "image": "https://arweave.net/X3SlwJAbAzudO7ddhP2ibSFT0ANrNiwJUbzgTKuI1yA",
+        "description": "42",
+        "socials": "{\"x\":\"https://x.com/MaxTheTrenchor/status/2089895757143003142?s=20\"}",
+        "hasBonded": false,
+        "venue": 1,
+        "pool": "0xa158fb0da1473a70e9c4c5ddb954d01b6c728937"
+      },
+      {
+        "id": "0xcd16487ff50a395dc9d5d147fd7fed49e073c0de",
+        "token": {
+          "id": "0xcd16487ff50a395dc9d5d147fd7fed49e073c0de",
+          "symbol": "PBHCBP",
+          "name": "Poop butt huge Chinese butt poop"
+        },
+        "creator": {
+          "id": "0x729bfa35c005e9a086d9bd9c2044914943335f72"
+        },
+        "createdAt": "1784614046",
+        "image": "",
+        "description": "",
+        "socials": "",
+        "hasBonded": false,
+        "venue": 1,
+        "pool": "0x02246a65553960cefe1c719a6fab41102b6cff8c"
+      },
+      {
+        "id": "0xfd036176739e03bab9e5ea881069ca2845e5c0de",
+        "token": {
+          "id": "0xfd036176739e03bab9e5ea881069ca2845e5c0de",
+          "symbol": "NOMO",
+          "name": "NoMore"
+        },
+        "creator": {
+          "id": "0x21867ef6d192a22ac9399f63f2bf7a98c8e82f57"
+        },
+        "createdAt": "1787016285",
+        "image": "https://arweave.net/tj8pvXgVx7S-6oAYUlhxrieJaJT9dWvrv-ipt65_WVQ",
+        "description": "NOMO IS THE FIRST OF ITS KIND ON RH. ONLY 10,000 TOTAL SUPPLY. EVERY TRANSACTION  BURNS NOMO.",
+        "socials": "{\"x\":\"https://x.com/NOMOonrobinhood\",\"website\":\"https://nomosupply.com/\"}",
+        "hasBonded": true,
+        "venue": 1,
+        "pool": "0x613479bae147e924b76fab0582a6b900f7d4c104"
+      }
+    ]
+  }
+}

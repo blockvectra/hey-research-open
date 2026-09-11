@@ -1,0 +1,132 @@
+{
+  "assets": [
+    {
+      "id": "0x00000000000000000000000000000000022015c295294037bfe416d3e45327b9",
+      "tokenSymbol": "CRM",
+      "tokenName": "Salesforce • Robinhood Token",
+      "deployments": [
+        {
+          "contractAddress": "0xd95B44124e475743a7589e68F3D74008A5536D44",
+          "chainId": 4663,
+          "networkName": "Robinhood Chain"
+        }
+      ],
+      "currentMultiplier": "1.000000000000000000",
+      "pendingMultiplier": "",
+      "status": "ASSET_STATUS_ACTIVE",
+      "logoUrl": "https://cdn.robinhood.com/ncw_assets/logos/0xd95b44124e475743a7589e68f3d74008a5536d44.png",
+      "tradingCapabilities": {
+        "market": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        },
+        "extended": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        },
+        "overnight": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        }
+      },
+      "tokenDecimals": 18,
+      "isin": "US79466L3024"
+    },
+    {
+      "id": "0x00000000000000000000000000000000c2425be3658540dd8e2424cbf3c5c649",
+      "tokenSymbol": "AAPL",
+      "tokenName": "Apple • Robinhood Token",
+      "deployments": [
+        {
+          "contractAddress": "0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9",
+          "chainId": 4663,
+          "networkName": "Robinhood Chain"
+        }
+      ],
+      "currentMultiplier": "1.000566080061092436",
+      "pendingMultiplier": "",
+      "status": "ASSET_STATUS_ACTIVE",
+      "logoUrl": "https://cdn.robinhood.com/ncw_assets/logos/0xaf3d76f1834a1d425780943c99ea8a608f8a93f9.png",
+      "tradingCapabilities": {
+        "market": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        },
+        "extended": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        },
+        "overnight": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        }
+      },
+      "tokenDecimals": 18,
+      "isin": "US0378331005"
+    },
+    {
+      "id": "0x00000000000000000000000000000000ffffffffffffffffffffffffffffffff",
+      "tokenSymbol": "SPLT",
+      "tokenName": "Split Co • Robinhood Token",
+      "deployments": [
+        {
+          "contractAddress": "0x5555555555555555555555555555555555555555",
+          "chainId": 4663,
+          "networkName": "Robinhood Chain"
+        }
+      ],
+      "currentMultiplier": "2.000000000000000000",
+      "pendingMultiplier": "4.000000000000000000",
+      "status": "ASSET_STATUS_ACTIVE",
+      "logoUrl": "",
+      "tradingCapabilities": {
+        "market": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        },
+        "extended": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        },
+        "overnight": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        }
+      },
+      "tokenDecimals": 18,
+      "isin": "US0378331005"
+    },
+    {
+      "id": "0x00000000000000000000000000000000eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "tokenSymbol": "OTHR",
+      "tokenName": "Other Chain • Robinhood Token",
+      "deployments": [
+        {
+          "contractAddress": "0x6666666666666666666666666666666666666666",
+          "chainId": 42161,
+          "networkName": "Arbitrum"
+        }
+      ],
+      "currentMultiplier": "1.000000000000000000",
+      "pendingMultiplier": "",
+      "status": "ASSET_STATUS_ACTIVE",
+      "logoUrl": "https://cdn.robinhood.com/ncw_assets/logos/0xd95b44124e475743a7589e68f3d74008a5536d44.png",
+      "tradingCapabilities": {
+        "market": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        },
+        "extended": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        },
+        "overnight": {
+          "whole": "TRADING_STATUS_TRADABLE",
+          "fractional": "TRADING_STATUS_TRADABLE"
+        }
+      },
+      "tokenDecimals": 18,
+      "isin": "US79466L3024"
+    }
+  ]
+}

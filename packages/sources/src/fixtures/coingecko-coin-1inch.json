@@ -1,0 +1,171 @@
+{
+  "id": "1inch",
+  "symbol": "1inch",
+  "name": "1INCH",
+  "web_slug": "1inch",
+  "asset_platform_id": "ethereum",
+  "platforms": {
+    "ethereum": "0x111111111117dc0aa78b770fa6a738034120c302",
+    "base": "0xc5fecc3a29fb57b5024eec8a2239d4621e111cbe",
+    "optimistic-ethereum": "0xad42d013ac31486b73b6b059e748172994736426",
+    "arbitrum-one": "0x6314c31a7a1652ce482cffe247e9cb7c3f4bb9af",
+    "robinhood": "0x1755c2910c126ee1b0cf1e08a307dc9e787285a0",
+    "avalanche": "0xd501281565bf7789224523144fe5d98e8b28f267",
+    "unichain": "0xbe41cde1c5e75a7b6c2c70466629878aa9acd06e",
+    "linea": "0x10f04e61bd6019d6c9b0bf4907e805a64b92ee3e",
+    "zksync": "0x3f0b8b206a7fbdb3ecfc08c9407ca83f5ab1ce59",
+    "binance-smart-chain": "0x111111111117dc0aa78b770fa6a738034120c302"
+  },
+  "detail_platforms": {
+    "ethereum": {
+      "decimal_place": 18,
+      "contract_address": "0x111111111117dc0aa78b770fa6a738034120c302",
+      "geckoterminal_url": "https://www.geckoterminal.com/eth/tokens/0x111111111117dc0aa78b770fa6a738034120c302"
+    },
+    "base": {
+      "decimal_place": 18,
+      "contract_address": "0xc5fecc3a29fb57b5024eec8a2239d4621e111cbe",
+      "geckoterminal_url": "https://www.geckoterminal.com/base/tokens/0xc5fecc3a29fb57b5024eec8a2239d4621e111cbe"
+    },
+    "optimistic-ethereum": {
+      "decimal_place": 18,
+      "contract_address": "0xad42d013ac31486b73b6b059e748172994736426",
+      "geckoterminal_url": "https://www.geckoterminal.com/optimism/tokens/0xad42d013ac31486b73b6b059e748172994736426"
+    },
+    "arbitrum-one": {
+      "decimal_place": 18,
+      "contract_address": "0x6314c31a7a1652ce482cffe247e9cb7c3f4bb9af",
+      "geckoterminal_url": "https://www.geckoterminal.com/arbitrum/tokens/0x6314c31a7a1652ce482cffe247e9cb7c3f4bb9af"
+    },
+    "robinhood": {
+      "decimal_place": 18,
+      "contract_address": "0x1755c2910c126ee1b0cf1e08a307dc9e787285a0",
+      "geckoterminal_url": "https://www.geckoterminal.com/robinhood/tokens/0x1755c2910c126ee1b0cf1e08a307dc9e787285a0"
+    },
+    "avalanche": {
+      "decimal_place": 18,
+      "contract_address": "0xd501281565bf7789224523144fe5d98e8b28f267",
+      "geckoterminal_url": "https://www.geckoterminal.com/avax/tokens/0xd501281565bf7789224523144fe5d98e8b28f267"
+    },
+    "unichain": {
+      "decimal_place": 18,
+      "contract_address": "0xbe41cde1c5e75a7b6c2c70466629878aa9acd06e",
+      "geckoterminal_url": "https://www.geckoterminal.com/unichain/tokens/0xbe41cde1c5e75a7b6c2c70466629878aa9acd06e"
+    },
+    "linea": {
+      "decimal_place": 18,
+      "contract_address": "0x10f04e61bd6019d6c9b0bf4907e805a64b92ee3e",
+      "geckoterminal_url": "https://www.geckoterminal.com/linea/tokens/0x10f04e61bd6019d6c9b0bf4907e805a64b92ee3e"
+    },
+    "zksync": {
+      "decimal_place": 18,
+      "contract_address": "0x3f0b8b206a7fbdb3ecfc08c9407ca83f5ab1ce59",
+      "geckoterminal_url": "https://www.geckoterminal.com/zksync/tokens/0x3f0b8b206a7fbdb3ecfc08c9407ca83f5ab1ce59"
+    },
+    "binance-smart-chain": {
+      "decimal_place": 18,
+      "contract_address": "0x111111111117dc0aa78b770fa6a738034120c302",
+      "geckoterminal_url": "https://www.geckoterminal.com/bsc/tokens/0x111111111117dc0aa78b770fa6a738034120c302"
+    }
+  },
+  "block_time_in_minutes": 0,
+  "hashing_algorithm": null,
+  "categories": [
+    "Decentralized Exchange (DEX)",
+    "Exchange-based Tokens",
+    "Decentralized Finance (DeFi)",
+    "Automated Market Maker (AMM)",
+    "BNB Chain Ecosystem",
+    "Avalanche Ecosystem",
+    "Arbitrum Ecosystem",
+    "Ethereum Ecosystem",
+    "Optimism Ecosystem",
+    "ZkSync Ecosystem",
+    "Linea Ecosystem",
+    "Base Ecosystem",
+    "FTX Holdings",
+    "Alameda Research Portfolio",
+    "DragonFly Capital Portfolio",
+    "Pantera Capital Portfolio",
+    "YZi Labs (Prev. Binance Labs) Portfolio",
+    "GMCI DeFi Index",
+    "Galaxy Digital Portfolio",
+    "Blockchain Capital Portfolio",
+    "Dex Aggregator",
+    "GMCI Index",
+    "Unichain Ecosystem",
+    "Coinbase 50 Index",
+    "Governance",
+    "Base Native",
+    "Robinhood Ecosystem"
+  ],
+  "preview_listing": false,
+  "public_notice": null,
+  "additional_notices": [],
+  "description": {
+    "en": "1inch is the DeFi ecosystem building financial freedom for everyone.\n\nWe research and develop cutting edge technology that allows our users and partners to realise the potential of decentralized finance, without workarounds or security risks.\n\nAnd we bring the sector together to advocate for compliant DeFi as the future of global finance.\n\nOur products:\n\nWe serve users and builders with products built on open-source, on-chain protocols.  \n\nAccess efficient, secure trading at the best rates through the 1inch dApp and self-custodial 1inch Wallet app, track your crypto with 1inch Portfolio, or spend and borrow against your digital assets with 1inch Card (powered by CryptoLife).\n\nBuilders and enterprise partners can access the core technologies powering 1inch to connect with an ecosystem that offers millions of tokens and tokenized RWAs, integrates 13+ networks and includes the first native swaps between Solana and the EVM"
+  },
+  "links": {
+    "homepage": [
+      "https://1inch.com/",
+      "https://1inch.network/"
+    ],
+    "whitepaper": "",
+    "blockchain_site": [
+      "https://etherscan.io/token/0x111111111117dc0aa78b770fa6a738034120c302",
+      "https://ethplorer.io/address/0x111111111117dc0aa78b770fa6a738034120c302",
+      "https://bscscan.com/token/0x111111111117dc0aa78b770fa6a738034120c302",
+      "https://polygonscan.com/token/0x9c2c5fd7b07e95ee044ddeba0e97a665f142394f",
+      "https://snowtrace.io/token/0xd501281565bf7789224523144fe5d98e8b28f267",
+      "https://avascan.info/blockchain/c/address/0xd501281565bf7789224523144fe5d98e8b28f267/token",
+      "https://explorer.energi.network/token/0xdda6205dc3f47e5280eb726613b27374eee9d130",
+      "https://nearblocks.io/token/111111111117dc0aa78b770fa6a738034120c302.factory.bridge.near",
+      "https://binplorer.com/address/0x111111111117dc0aa78b770fa6a738034120c302",
+      "https://explorer.harmony.one/token/0x58f1b044d8308812881a1433d9bbeff99975e70c"
+    ],
+    "official_forum_url": [
+      "https://www.youtube.com/channel/UCk0nvK4bHpteQXZKv7lkq5w",
+      "https://www.instagram.com/1inch/"
+    ],
+    "chat_url": [
+      "https://discord.com/invite/1inch",
+      "https://www.youtube.com/@1inch_swap"
+    ],
+    "announcement_url": [
+      "https://blog.1inch.com/"
+    ],
+    "snapshot_url": null,
+    "twitter_screen_name": "1inch",
+    "facebook_username": "",
+    "bitcointalk_thread_identifier": null,
+    "telegram_channel_identifier": "OneInchNetwork",
+    "subreddit_url": "https://www.reddit.com/r/1inch/",
+    "repos_url": {
+      "github": [
+        "https://github.com/1inch"
+      ],
+      "bitbucket": []
+    }
+  },
+  "image": {
+    "thumb": "https://coin-images.coingecko.com/coins/images/13469/thumb/0x111111111117dc0aa78b770fa6a738034120c302_0x2b2c127f11a6604d4319c936334506b86c339a3773b6f2731db0ed4a4fb7fb72.jpg?1787890016",
+    "small": "https://coin-images.coingecko.com/coins/images/13469/small/0x111111111117dc0aa78b770fa6a738034120c302_0x2b2c127f11a6604d4319c936334506b86c339a3773b6f2731db0ed4a4fb7fb72.jpg?1787890016",
+    "large": "https://coin-images.coingecko.com/coins/images/13469/large/0x111111111117dc0aa78b770fa6a738034120c302_0x2b2c127f11a6604d4319c936334506b86c339a3773b6f2731db0ed4a4fb7fb72.jpg?1787890016"
+  },
+  "country_origin": "",
+  "genesis_date": null,
+  "listing_price": null,
+  "listing_currency": "",
+  "listing_timestamp": null,
+  "listing_source": "",
+  "listing_source_url": "",
+  "contract_address": "0x111111111117dc0aa78b770fa6a738034120c302",
+  "has_supply_breakdown": false,
+  "sentiment_votes_up_percentage": 66.67,
+  "sentiment_votes_down_percentage": 33.33,
+  "watchlist_portfolio_users": 118374,
+  "market_cap_rank": 230,
+  "market_cap_rank_with_rehypothecated": 328,
+  "status_updates": [],
+  "last_updated": "2026-09-02T19:08:40.000Z"
+}

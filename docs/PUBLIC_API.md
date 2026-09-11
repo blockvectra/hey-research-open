@@ -1,0 +1,160 @@
+# Public read API (2026-09-05)
+
+HEY answers one question — **which projects are still building, what have they shipped, and
+which of them are not yet getting much market attention?** Until now the only way to ask it
+was to read the pages. These three endpoints are that answer as JSON.
+
+Quote every URL in your shell: `?` and `&` are glob and job control in zsh and bash, so an unquoted
+URL fails before curl runs.
+
+No key, no account, no wallet. Browsing HEY has never required one, and reading it as JSON
+does not either.
+
+```
+GET /api/projects        the catalogue
+GET /api/projects/{slug} one project's dossier
+GET /api/ships           what projects shipped
+```
+
+Base URL: `https://heyresearch.xyz`
+
+## What every payload promises
+
+| Rule | What it means in the JSON |
+|---|---|
+| Identity is `(chainId, contractAddress)` | `token` is the pair, never the ticker alone. `symbol` is shown, but it is not the identity. |
+| Absent means unknown | A field HEY has no answer for is **left out**, never sent as `null` or `0`. Nothing downstream can average a fact that was never claimed. |
+| Provenance travels with the fact | A ship carries `sourceUrl` and `verification`; a market figure carries the `source` that reported it. A market value with no provenance is not published at all. |
+| Self-reported ≠ verified | `verification` distinguishes them, always. |
+| Research depth is stated | `researchLevel` and `catalogStatus` say whether HEY merely indexed a record or actually researched it, so an `INDEXED` row is not read as a claim. |
+| No wallet or holder data | HEY does not build it and does not store it. There is nothing to expose. |
+| Market data is context | It never ranks anything here, and the default order is activity. |
+| Paid placement is not in the data | The labelled *Sponsored* row on the home page is advertising. It has no field here, no feed entry, and no effect on any order, score or status. |
+| The caveat travels too | Every response carries `disclaimer`. |
+
+Dates are ISO 8601 in UTC. Responses are cached for 60 seconds, allow cross-origin reads
+(`access-control-allow-origin: *`), and are rate limited to 120 requests a minute per client without a key.
+
+**API keys (M13-E).** A signed-in reader with a linked wallet can create a key on `/account`. Send it as
+`authorization: Bearer hey_…` (or `x-api-key`). A key reads exactly the same data; it carries the account's
+holder tier, which sets a monthly allowance and a per-minute limit (`x-hey-tier`, `x-hey-monthly-remaining`
+on every keyed answer). Keyed answers are `private, no-store`. A bad key is `401 unauthorized`; a spent
+allowance is `429 quota` with `retry-after`. The routes answer `OPTIONS` with the allowed headers.
+
+## `GET /api/projects`
+
+The catalogue, with the same filters and order the browse pages use.
+
+| Parameter | Values | Default |
+|---|---|---|
+| `limit` | 1–48 | 24 |
+| `offset` | ≥ 0 | 0 |
+| `sort` | `activity`, `marketCap`, `newest` | `activity` |
+| `tab` | `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes` | — |
+| `kind` | `UTILITY`, `MEME`, `HYBRID`, `INFRASTRUCTURE`, `RWA`, `APPLICATION`, `OTHER` | — |
+| `status` | `SHIPPING`, `ACTIVE`, `QUIET`, `DORMANT`, `RESUMED`, `UNKNOWN` | — |
+| `narrative` | a narrative slug | — |
+| `has` | any of `token`, `x`, `marketCap`, `launchpad`, `liveMarket` (no token, or a token whose market is not gone), comma-separated; **all** must hold | — |
+| `launchpad` | `pons`, `virtuals`, `hoodfun`, `clanker`, `pairfund`, `bankr`, `hooddev`, `poolstrade`, `easya-kickstart`, `hoodit`, … | — |
+| `q` | free text — name, ticker or contract prefix; under two characters is no query | — |
+
+**An unrecognised value is dropped, not refused.** A caller who invents a filter gets the
+unfiltered listing rather than a 400 to handle — and the `query` object in every response
+echoes the request *as it was understood*, which is how you find out a filter was ignored.
+
+```json
+{
+  "query": { "limit": 24, "offset": 0, "sort": "activity", "launchpad": "pons" },
+  "total": 382,
+  "nextOffset": 24,
+  "items": [
+    {
+      "slug": "agentos",
+      "name": "AgentOS",
+      "symbol": "AOS",
+      "shortDescription": "Autonomous agent infrastructure for Robinhood Chain.",
+      "projectKind": "UTILITY",
+      "activityStatus": "SHIPPING",
+      "researchLevel": "VERIFIED_BUILDER",
+      "catalogStatus": "VERIFIED_BUILDER",
+      "stillBuilding": false,
+      "lastShippedAt": "2026-09-03T10:00:00.000Z",
+      "primaryNarrative": { "slug": "ai-agents", "name": "AI Agents" },
+      "token": { "chainId": 4663, "contractAddress": "0xa000…" },
+      "launchedVia": { "name": "Pons", "url": "https://ponsfamily.com/launchpad/0xa000…" },
+      "officialX": { "handle": "agentos", "url": "https://x.com/agentos" },
+      "marketCap": { "usd": 24000, "source": "coingecko" },
+      "url": "https://heyresearch.xyz/project/agentos"
+    }
+  ],
+  "disclaimer": "Public, source-backed activity HEY recorded. …"
+}
+```
+
+Paging: follow `nextOffset` until it is absent. It is absent at the end of a listing rather
+than pointing past it.
+
+Project detail (`/api/projects/<slug>`) also carries two facts about the tracked token, kept apart
+from `activityStatus` (2026-09-11): `tokenVerification` (`status` VERIFIED, UNVERIFIED or MISMATCH,
+with a `reason` key) says whether the project itself ties the contract to the project; `tokenMarket`
+(`status` ACTIVE_MARKET, LOW_LIQUIDITY, NO_LIQUIDITY, TRADING_INACTIVE, LIQUIDITY_REMOVED,
+MARKET_ABANDONED or INSUFFICIENT_DATA, with `liquidityUsd`, `volume24hUsd`, `peakLiquidityUsd`,
+`pairCreatedAt`, `evaluatedAt`) describes the market HEY observed. Neither feeds a score; both are
+observations, never a verdict on the team.
+
+`launchedVia` is present only when HEY observed the launch. "Unknown" and "Independent" are
+how the *card* says provenance is missing; the API omits the field instead, so nothing reads
+them as the names of launchpads.
+
+## `GET /api/projects/{slug}`
+
+One project in full: everything in the listing, plus the long description, every registered
+source with how it was established, the market reading with its provider, and the momentum
+figures with the scoring version that produced them.
+
+A project HEY has not measured carries **no `score` key at all** — a zero would read as
+"measured, nothing found", which is a different answer from "not measured".
+
+A slug that is not published answers `404` with `{ "error": "not_found" }`. It looks
+identical to a slug that never existed, which is what the pages do too.
+
+## `GET /api/ships`
+
+A record of ships, not of projects: a project that shipped three times this week appears
+three times, each with its own source.
+
+| Parameter | Values | Default |
+|---|---|---|
+| `limit` / `offset` | 1–48 / ≥ 0 | 24 / 0 |
+| `sort` | `latest`, `marketCap`, `activity` | `latest` |
+| `project` | a project slug | — |
+| `type` | a ship event type, e.g. `GITHUB_RELEASE`, `PRODUCT_LAUNCH` | — |
+| `has` | the card facts, as above | — |
+| `q` | the shipping project's name, ticker or contract prefix | — |
+| `since` | an ISO 8601 instant — the window you are reporting on | — |
+
+An unreadable `since` is treated as **no window** rather than a silently shifted one, and the
+echo shows the instant it was actually read as.
+
+## Feeds
+
+The same material is also published as RSS, for a reader rather than a script:
+
+```
+/feed/ships.xml       every ship
+/feed/this-week.xml   the weekly rollup
+/api/this-week        the weekly rollup as JSON
+/api/status           HEY's own freshness and health
+```
+
+## Implementation
+
+- Routes: `apps/web/src/app/api/projects/`, `apps/web/src/app/api/ships/`
+- Serialisers: `apps/web/src/lib/public-api-view.ts` (pure, unit-tested)
+- Query vocabulary: `apps/web/src/lib/public-api-query.ts` (pure, unit-tested)
+- Shared response rules: `apps/web/src/lib/public-api.ts`
+- Contract tests: `apps/web/e2e/public-api.spec.ts`
+
+Every route reads HEY's own database and makes no third-party call (CLAUDE.md architecture
+rules 13–14), and every filter goes through the same query layer the pages use, so a count
+returned here and a count shown on a page cannot disagree.

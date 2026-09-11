@@ -1,0 +1,60 @@
+{
+  "data": [
+    {
+      "id": 40112,
+      "uid": "a1f0c0f2-9b2f-4d3a-8b5e-000000000001",
+      "name": "Sherwood Scout",
+      "symbol": "SCOUT",
+      "description": "An agent that watches Robinhood Chain deployments and writes up what shipped.",
+      "chain": "ROBINHOOD",
+      "status": "UNDERGRAD",
+      "category": "PRODUCTIVITY",
+      "role": "INFORMATION",
+      "createdAt": "2026-08-30T09:12:44.000Z",
+      "tokenAddress": null,
+      "preToken": "0x1111111111111111111111111111111111111111",
+      "socials": {
+        "VERIFIED_LINKS": {
+          "WEBSITE": "https://sherwoodscout.example",
+          "TWITTER": "https://x.com/sherwoodscout"
+        }
+      },
+      "acpAgentId": 9021,
+      "v3AcpAgentId": null,
+      "image": { "url": "https://s3.ap-southeast-1.amazonaws.com/virtualprotocolcdn/scout.png" }
+    },
+    {
+      "id": 40113,
+      "uid": "a1f0c0f2-9b2f-4d3a-8b5e-000000000002",
+      "name": "Graduated Fox",
+      "symbol": "GFOX",
+      "description": "",
+      "chain": "ROBINHOOD",
+      "status": "AVAILABLE",
+      "createdAt": "2026-07-01T00:00:00.000Z",
+      "tokenAddress": "0x2222222222222222222222222222222222222222",
+      "preToken": "0x2222222222222222222222222222222222222220",
+      "socials": { "VERIFIED_LINKS": { "WEBSITE": "", "TWITTER": "not a url" } },
+      "image": { "url": "" }
+    },
+    {
+      "id": 40114,
+      "uid": "a1f0c0f2-9b2f-4d3a-8b5e-000000000003",
+      "name": "Base Drifter",
+      "symbol": "DRIFT",
+      "chain": "BASE",
+      "createdAt": "2026-08-01T00:00:00.000Z",
+      "preToken": "0x3333333333333333333333333333333333333333"
+    },
+    {
+      "id": 40115,
+      "uid": "a1f0c0f2-9b2f-4d3a-8b5e-000000000004",
+      "name": "Broken Address",
+      "symbol": "BRK",
+      "chain": "ROBINHOOD",
+      "createdAt": "not-a-date",
+      "preToken": "0xnotanaddress"
+    }
+  ],
+  "meta": { "pagination": { "page": 1, "pageSize": 100, "pageCount": 253, "total": 25253 } }
+}

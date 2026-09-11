@@ -1,0 +1,77 @@
+{
+  "id": "adobe-inc-robinhood-token",
+  "symbol": "adbe",
+  "name": "Adobe Inc. • Robinhood Token",
+  "web_slug": "adobe-inc-robinhood-token",
+  "asset_platform_id": "robinhood",
+  "platforms": {
+    "robinhood": "0x232b8ed6377be97813853b0ac104c4cda8378d1b"
+  },
+  "detail_platforms": {
+    "robinhood": {
+      "decimal_place": 18,
+      "contract_address": "0x232b8ed6377be97813853b0ac104c4cda8378d1b",
+      "geckoterminal_url": "https://www.geckoterminal.com/robinhood/tokens/0x232b8ed6377be97813853b0ac104c4cda8378d1b"
+    }
+  },
+  "block_time_in_minutes": 0,
+  "hashing_algorithm": null,
+  "categories": [
+    "Tokenized Assets",
+    "Tokenized Stocks",
+    "Real World Assets (RWA)",
+    "Robinhood Chain Stocks Ecosystem",
+    "Robinhood Ecosystem"
+  ],
+  "preview_listing": false,
+  "public_notice": null,
+  "additional_notices": [
+    "Kindly be aware of <a href='https://www.coingecko.com/en/glossary/rug-pulled' target='_blank'>liquidity-related risks</a>. This notice is not directed at any project in particular, and is more of a cautionary reminder."
+  ],
+  "description": {
+    "en": "Robinhood ADBE is a tokenized representation of Adobe Inc. (ADBE) common stock, issued on Robinhood Chain, Robinhood's own blockchain built to bring tokenized real-world assets on-chain. Each token is designed to track the price of the underlying ADBE share, giving holders on-chain price exposure to Adobe Inc.'s stock. The token is freely transferable and composable across the Robinhood Chain ecosystem. It's part of Robinhood's broader initiative to expand access to tokenized U.S. equities via blockchain technology, alongside a wider lineup of tokenized stock tokens launching on the same network."
+  },
+  "links": {
+    "homepage": [
+      "https://docs.robinhood.com/rhj"
+    ],
+    "whitepaper": "",
+    "blockchain_site": [
+      "https://robinhoodchain.blockscout.com/token/0x232B8ed6377BE97813853B0Ac104c4Cda8378d1B"
+    ],
+    "official_forum_url": [],
+    "chat_url": [],
+    "announcement_url": [],
+    "snapshot_url": null,
+    "twitter_screen_name": "RobinhoodCrypto",
+    "facebook_username": "",
+    "bitcointalk_thread_identifier": null,
+    "telegram_channel_identifier": "",
+    "subreddit_url": null,
+    "repos_url": {
+      "github": [],
+      "bitbucket": []
+    }
+  },
+  "image": {
+    "thumb": "https://coin-images.coingecko.com/coins/images/102175287/thumb/ADBE.png?1786070056",
+    "small": "https://coin-images.coingecko.com/coins/images/102175287/small/ADBE.png?1786070056",
+    "large": "https://coin-images.coingecko.com/coins/images/102175287/large/ADBE.png?1786070056"
+  },
+  "country_origin": "",
+  "genesis_date": null,
+  "listing_price": null,
+  "listing_currency": null,
+  "listing_timestamp": null,
+  "listing_source": null,
+  "listing_source_url": null,
+  "contract_address": "0x232b8ed6377be97813853b0ac104c4cda8378d1b",
+  "has_supply_breakdown": false,
+  "sentiment_votes_up_percentage": null,
+  "sentiment_votes_down_percentage": null,
+  "watchlist_portfolio_users": 0,
+  "market_cap_rank": 6171,
+  "market_cap_rank_with_rehypothecated": 6867,
+  "status_updates": [],
+  "last_updated": "2026-09-02T19:09:50.000Z"
+}

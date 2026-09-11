@@ -1,0 +1,41 @@
+{
+  "schemaVersion": "1.0.0",
+  "pairs": [
+    {
+      "chainId": "robinhoodchain",
+      "dexId": "ponsswap",
+      "url": "https://dexscreener.com/robinhoodchain/0xshallow",
+      "pairAddress": "0x1111111111111111111111111111111111111111",
+      "baseToken": {
+        "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "AgentOS",
+        "symbol": "AOS"
+      },
+      "quoteToken": { "address": "0xbbbb", "name": "Wrapped", "symbol": "WRH" },
+      "priceUsd": "0.0000241",
+      "liquidity": { "usd": 2100.5, "base": 1000, "quote": 2 },
+      "volume": { "h24": 900.25 },
+      "fdv": 24100,
+      "marketCap": 24000,
+      "pairCreatedAt": 1787000000000
+    },
+    {
+      "chainId": "robinhoodchain",
+      "dexId": "ponsswap",
+      "url": "https://dexscreener.com/robinhoodchain/0xdeep",
+      "pairAddress": "0x2222222222222222222222222222222222222222",
+      "baseToken": {
+        "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "name": "AgentOS",
+        "symbol": "AOS"
+      },
+      "quoteToken": { "address": "0xcccc", "name": "USD Coin", "symbol": "USDC" },
+      "priceUsd": "0.0000239",
+      "liquidity": { "usd": 8250.75, "base": 4000, "quote": 8 },
+      "volume": { "h24": 4300.1 },
+      "fdv": 23900,
+      "marketCap": null,
+      "pairCreatedAt": 1787100000000
+    }
+  ]
+}

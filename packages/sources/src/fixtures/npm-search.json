@@ -1,0 +1,93 @@
+{
+  "objects": [
+    {
+      "downloads": { "monthly": 943, "weekly": 189 },
+      "dependents": 0,
+      "updated": "2026-08-31T03:36:09.638Z",
+      "searchScore": 303.1135,
+      "package": {
+        "name": "robinhood-chain-kit",
+        "keywords": ["robinhood-chain", "arbitrum-orbit", "4663", "tokenized-stocks", "evm", "viem"],
+        "version": "0.9.0",
+        "description": "ERC-8056 scaled-UI stock tokens, peer-to-peer settlement, transaction preflight, Oracle Guard, chain constants, and resilient RPC helpers for Robinhood Chain (chain id 4663).",
+        "sanitized_name": "robinhood-chain-kit",
+        "publisher": { "username": "hey-fixture-dev" },
+        "license": "MIT",
+        "date": "2026-08-24T03:33:13.037Z",
+        "links": {
+          "homepage": "https://github.com/hey-fixture-dev/robinhood-chain-kit#readme",
+          "repository": "git+https://github.com/hey-fixture-dev/robinhood-chain-kit.git",
+          "bugs": "https://github.com/hey-fixture-dev/robinhood-chain-kit/issues",
+          "npm": "https://www.npmjs.com/package/robinhood-chain-kit"
+        }
+      },
+      "score": { "final": 303.1135, "detail": { "popularity": 1, "quality": 1, "maintenance": 1 } },
+      "flags": { "insecure": 0 }
+    },
+    {
+      "downloads": { "monthly": 12, "weekly": 3 },
+      "dependents": 0,
+      "updated": "2026-08-01T00:00:00.000Z",
+      "searchScore": 120.5,
+      "package": {
+        "name": "ponscli",
+        "keywords": ["pons", "launchpad", "cli"],
+        "version": "0.3.1",
+        "description": "Unofficial command-line interface for the Pons launchpad on Robinhood Chain.",
+        "sanitized_name": "ponscli",
+        "publisher": { "username": "mesutgulecen" },
+        "license": "MIT",
+        "date": "2026-08-01T00:00:00.000Z",
+        "links": {
+          "homepage": "https://github.com/mesutgulecen/ponscli#readme",
+          "repository": "git+https://github.com/mesutgulecen/ponscli.git",
+          "npm": "https://www.npmjs.com/package/ponscli"
+        }
+      },
+      "score": { "final": 120.5, "detail": { "popularity": 0.5, "quality": 1, "maintenance": 1 } },
+      "flags": { "insecure": 0 }
+    },
+    {
+      "downloads": { "monthly": 5000, "weekly": 1200 },
+      "dependents": 3,
+      "updated": "2026-07-01T00:00:00.000Z",
+      "searchScore": 90.0,
+      "package": {
+        "name": "robinhood-api",
+        "keywords": ["robinhood", "stocks", "trading"],
+        "version": "2.0.0",
+        "description": "Unofficial Robinhood trading API client for stocks and options.",
+        "sanitized_name": "robinhood-api",
+        "publisher": { "username": "someone" },
+        "license": "MIT",
+        "date": "2026-07-01T00:00:00.000Z",
+        "links": {
+          "repository": "git+https://github.com/someone/robinhood-api.git",
+          "npm": "https://www.npmjs.com/package/robinhood-api"
+        }
+      },
+      "score": { "final": 90.0, "detail": { "popularity": 1, "quality": 1, "maintenance": 1 } },
+      "flags": { "insecure": 0 }
+    },
+    {
+      "downloads": { "monthly": 1, "weekly": 0 },
+      "dependents": 0,
+      "updated": "2026-06-01T00:00:00.000Z",
+      "searchScore": 10.0,
+      "package": {
+        "name": "rh-launcher-mcp",
+        "keywords": ["robinhood chain", "mcp"],
+        "version": "0.1.0",
+        "description": "Launch and buy tokens on Robinhood Chain from your own Claude.",
+        "sanitized_name": "rh-launcher-mcp",
+        "publisher": { "username": "anon" },
+        "date": "2026-06-01T00:00:00.000Z",
+        "links": { "npm": "https://www.npmjs.com/package/rh-launcher-mcp" }
+      },
+      "score": { "final": 10.0, "detail": { "popularity": 0, "quality": 0.5, "maintenance": 0.5 } },
+      "flags": { "insecure": 0 }
+    }
+  ],
+  "total": 37322,
+  "time": "Fri Sep 04 2026 10:00:00 GMT+0000 (Coordinated Universal Time)"
+}

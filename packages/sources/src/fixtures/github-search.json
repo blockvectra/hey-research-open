@@ -1,0 +1,54 @@
+{
+  "total_count": 206,
+  "incomplete_results": false,
+  "items": [
+    {
+      "id": 1350616911,
+      "full_name": "eurotropica01-spec/squeeze",
+      "name": "squeeze",
+      "html_url": "https://github.com/eurotropica01-spec/squeeze",
+      "description": "The borrow desk and short interest tape for Robinhood Chain. Collateralised shorting of Pons tokens using Uniswap V3 TWAP oracles.",
+      "fork": false,
+      "archived": false,
+      "homepage": null,
+      "topics": ["defi", "lending-protocol", "memecoin", "pons", "robinhood-chain", "short-selling", "solidity", "twap-oracle", "uniswap-v3"],
+      "default_branch": "main",
+      "pushed_at": "2026-09-02T11:16:25Z",
+      "created_at": "2026-08-29T13:42:47Z",
+      "stargazers_count": 0,
+      "owner": { "login": "eurotropica01-spec", "type": "User" }
+    },
+    {
+      "id": 1303038468,
+      "full_name": "Meridian402/meridian",
+      "name": "meridian",
+      "html_url": "https://github.com/Meridian402/meridian",
+      "description": "Autonomous AI market-making agent platform for tokenized equities on Robinhood Chain, built on OpenHermit and metered with x402.",
+      "fork": false,
+      "archived": false,
+      "homepage": "https://meridian402.xyz",
+      "topics": ["ai-agents", "defi", "market-making", "mcp", "openhermit", "robinhood-chain", "rwa", "tokenized-stocks", "uniswap-v4", "x402"],
+      "default_branch": "main",
+      "pushed_at": "2026-09-02T10:53:36Z",
+      "created_at": "2026-07-16T17:01:53Z",
+      "stargazers_count": 3,
+      "owner": { "login": "Meridian402", "type": "Organization" }
+    },
+    {
+      "id": 1142195867,
+      "full_name": "AUMZero/aum0",
+      "name": "aum0",
+      "html_url": "https://github.com/AUMZero/aum0",
+      "description": "AUM Zero. An asset manager with no employees, no fees, and no ability to steal.",
+      "fork": true,
+      "archived": false,
+      "homepage": "https://aumzero.com",
+      "topics": ["asset-management", "defi", "foundry", "hood-chain", "onchain", "rebalancing", "robinhood-chain", "robo-advisor", "solidity"],
+      "default_branch": "main",
+      "pushed_at": "2026-09-02T10:04:00Z",
+      "created_at": "2026-01-26T04:32:03Z",
+      "stargazers_count": 0,
+      "owner": { "login": "AUMZero", "type": "User" }
+    }
+  ]
+}
