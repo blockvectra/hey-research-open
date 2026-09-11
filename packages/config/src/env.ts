@@ -62,6 +62,9 @@ const evmAddress = z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'expected a 0x-prefix
  * - AI is disabled by default and must never be required (CLAUDE.md cost rules 13-15);
  * - Redis is intentionally absent from the schema (architecture rule 11).
  */
+/** Signing secrets shorter than this are refused in production; `openssl rand -hex 32` gives 64. */
+export const MIN_SESSION_SECRET_LENGTH = 32;
+
 export const serverEnvSchema = z.object({
   nodeEnv: optionalString.pipe(
     z.enum(['development', 'test', 'production']).default('development'),
@@ -354,6 +357,15 @@ export const serverEnvSchema = z.object({
      */
     stockTokenPricesEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
   }),
+}).superRefine((env, context) => {
+  // A short signing secret in production is a deployment mistake, not a choice (audit M10, 2026-09-11).
+  if (env.nodeEnv === 'production' && env.sessionSecret !== undefined && env.sessionSecret.length < MIN_SESSION_SECRET_LENGTH) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['sessionSecret'],
+      message: `SESSION_SECRET must be at least ${MIN_SESSION_SECRET_LENGTH} characters in production; generate one with: openssl rand -hex 32`,
+    });
+  }
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;

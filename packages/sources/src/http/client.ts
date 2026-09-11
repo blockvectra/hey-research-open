@@ -6,6 +6,8 @@ import {
   type SourceContext,
 } from '../adapter';
 import { errorCodeForStatus, SourceError } from '../errors';
+import { Agent } from 'undici';
+
 import { assertResolvesPublic, assertSafeUrl, systemLookup } from './url-safety';
 
 /** 5 MB ceiling on any single response body (PRD V4 section 27). */
@@ -50,6 +52,33 @@ export type HttpOutcome = { kind: 'ok'; response: HttpResponse } | { kind: 'not_
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
+const isIpLiteralHost = (url: string): boolean => {
+  try {
+    const host = new URL(url).hostname.replace(/^\[|\]$/g, '');
+    return /^\d{1,3}(\.\d{1,3}){3}$/.test(host) || host.includes(':');
+  } catch {
+    return false;
+  }
+};
+
+/** Close the pinned dispatcher once the body has been consumed or discarded. */
+function withDispatcherClose(response: Response, dispatcher: Agent): Response {
+  const close = () => void dispatcher.close().catch(() => undefined);
+  const body = response.body;
+  if (!body || typeof (body as { getReader?: unknown }).getReader !== 'function') {
+    close();
+    return response;
+  }
+  const original = body.getReader;
+  // Closing after the reader finishes keeps the socket alive exactly as long as the read.
+  body.getReader = function patched(this: ReadableStream<Uint8Array>, ...args: unknown[]) {
+    const reader = (original as (...a: unknown[]) => ReadableStreamDefaultReader<Uint8Array>).apply(this, args);
+    reader.closed.then(close, close);
+    return reader;
+  } as typeof body.getReader;
+  return response;
+}
+
 const isRedirect = (status: number): boolean => REDIRECT_STATUSES.has(status);
 
 const jitter = (value: number): number => value / 2 + Math.random() * (value / 2);
@@ -71,18 +100,67 @@ const parseRetryAfter = (header: string | null): number | undefined => {
   return Math.max(0, Math.round((date - Date.now()) / 1000));
 };
 
+/**
+ * Read a body up to the cap and no further (audit H04, 2026-09-11). The old
+ * version called `response.text()` and checked the length afterwards, so a
+ * site that lied about `Content-Length` (or sent chunked) was buffered whole
+ * before it was refused. Now the stream is counted chunk by chunk and
+ * cancelled the moment it passes the cap.
+ */
 async function readBodyCapped(response: Response, maxBytes: number): Promise<string> {
   const declared = Number(response.headers.get('content-length') ?? Number.NaN);
   if (Number.isFinite(declared) && declared > maxBytes) {
     throw new SourceError('TOO_LARGE', `response declares ${declared} bytes (cap ${maxBytes})`);
   }
 
-  const text = await response.text();
-  // Byte length, not character count: multi-byte content must not slip past the cap.
-  if (Buffer.byteLength(text, 'utf8') > maxBytes) {
-    throw new SourceError('TOO_LARGE', `response exceeded ${maxBytes} bytes`);
+  const body = response.body;
+  // A test stub may carry a string body; only a real stream is read chunk by chunk.
+  if (!body || typeof (body as { getReader?: unknown }).getReader !== 'function') {
+    const text = await response.text();
+    if (Buffer.byteLength(text, 'utf8') > maxBytes) throw new SourceError('TOO_LARGE', `response exceeded ${maxBytes} bytes`);
+    return text;
   }
-  return text;
+
+  const reader = body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (!value) continue;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw new SourceError('TOO_LARGE', `response exceeded ${maxBytes} bytes`);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength))).toString('utf8');
+}
+
+/**
+ * A dispatcher that connects only to the addresses the SSRF check just
+ * validated (audit H05, 2026-09-11). Without it the runtime resolved the
+ * hostname a second time at connect, and a record that flipped in between
+ * (DNS rebinding) could point the crawler at a private address the check had
+ * never seen. TLS still verifies against the hostname; only the socket's
+ * destination is pinned.
+ */
+function pinnedDispatcher(addresses: readonly string[]): Agent {
+  const family = (address: string): 4 | 6 => (address.includes(':') ? 6 : 4);
+  return new Agent({
+    connect: {
+      lookup: (_hostname, options, callback) => {
+        const all = options && typeof options === 'object' && 'all' in options && options.all;
+        if (all) callback(null, addresses.map((address) => ({ address, family: family(address) })));
+        else callback(null, addresses[0] as string, family(addresses[0] as string));
+      },
+    },
+  });
 }
 
 async function attemptOnce(
@@ -114,9 +192,12 @@ async function attemptOnce(
   // follow them would hide every hop, so a public URL could redirect into a
   // private address and bypass the SSRF guard entirely.
   for (;;) {
+    let dispatcher: Agent | undefined;
     if (request.enforceUrlSafety === true) {
       const resolved = await assertResolvesPublic(currentUrl, ctx.lookupImpl ?? systemLookup);
       if (!resolved.ok) throw new SourceError('BLOCKED_URL', resolved.detail);
+      // Pin the connection to what was checked; an IP literal needs no pin.
+      if (!isIpLiteralHost(currentUrl)) dispatcher = pinnedDispatcher(resolved.addresses);
     }
 
     try {
@@ -126,6 +207,8 @@ async function attemptOnce(
         redirect: 'manual',
         signal,
         ...(body === undefined ? {} : { body }),
+        // Node's fetch is undici's: `dispatcher` is honoured, and a test stub ignores it.
+        ...(dispatcher ? ({ dispatcher } as Record<string, unknown>) : {}),
       });
     } catch (error) {
       if (error instanceof SourceError) throw error;
@@ -139,7 +222,11 @@ async function attemptOnce(
       );
     }
 
-    if (!isRedirect(response.status)) break;
+    if (!isRedirect(response.status)) {
+      if (dispatcher) response = withDispatcherClose(response, dispatcher);
+      break;
+    }
+    await dispatcher?.close().catch(() => undefined);
 
     const location = response.headers.get('location');
     if (!location) break; // A 3xx without Location is handled as a normal response.

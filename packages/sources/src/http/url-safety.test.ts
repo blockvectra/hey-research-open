@@ -66,6 +66,15 @@ describe('assertResolvesPublic', () => {
     if (result.ok) expect(result.addresses).toHaveLength(2);
   });
 
+  it('refuses every link-local and site-local IPv6 address, not only the fe80 spelling (audit H05)', async () => {
+    for (const address of ['fe80::1', 'fe81::1', 'febf::1', 'fec0::1', 'fd12::1', '::1']) {
+      const result = await assertResolvesPublic('https://v6.example/', resolving({ 'v6.example': [address] }));
+      expect(result.ok, address).toBe(false);
+    }
+    const fine = await assertResolvesPublic('https://v6.example/', resolving({ 'v6.example': ['2606:2800:220:1:248:1893:25c8:1946'] }));
+    expect(fine.ok).toBe(true);
+  });
+
   it('refuses a public-looking hostname that resolves to a private address', async () => {
     for (const address of ['169.254.169.254', '10.0.0.7', '127.0.0.1', '::1', 'fd00::1']) {
       const result = await assertResolvesPublic(

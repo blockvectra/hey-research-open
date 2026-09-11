@@ -33,6 +33,8 @@ Never used to index the chain from genesis (PRD V4 public-data rule 9, CLAUDE.md
 
 ### PonsPad public API
 
+**Retired 2026-09-11 (audit M07):** `ponspad.app` answers 404 on `/`, `/api/v1/tokens` and `/api/v1/launches`. The hourly sync and the freshness expectation were removed so the status page stops reporting a source HEY cannot read; the adapter and its fixtures remain in case the API returns. PonsPad launches on Pons V1 factories are still discovered through the on-chain factory registry below.
+
 | | |
 | --- | --- |
 | Base URL | `https://ponspad.app/api/v1` |

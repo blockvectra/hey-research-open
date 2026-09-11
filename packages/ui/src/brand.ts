@@ -7,6 +7,8 @@
  * gain (section 63).
  */
 export const BRAND = {
+  /** HEY's own X account (2026-09-11); the footer links it and the project page reads it as an official source. */
+  xUrl: 'https://x.com/HeyResearch',
   name: 'HEY Research Lab',
   shortName: 'HEY',
   tokenTicker: 'HEY',

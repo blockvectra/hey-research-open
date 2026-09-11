@@ -67,8 +67,10 @@ const mappedIpv4 = (groups: string[]): string | undefined => {
 const isPrivateIpv6 = (host: string): boolean => {
   const normalized = host.replace(/^\[|\]$/g, '').toLowerCase();
   if (normalized === '::1' || normalized === '::') return true;
-  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true; // unique local
-  if (normalized.startsWith('fe80')) return true; // link-local
+  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true; // unique local fc00::/7
+  // Link-local is fe80::/10: the first ten bits, so fe80 through febf (audit H05).
+  if (/^fe[89ab]/.test(normalized)) return true;
+  if (/^fec/.test(normalized) || /^fed/.test(normalized) || /^fee/.test(normalized) || /^fef/.test(normalized)) return true; // site-local fec0::/10, deprecated but routable
 
   const mapped = mappedIpv4(normalized.split(':'));
   if (mapped) return isPrivateIpv4(mapped);

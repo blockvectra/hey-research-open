@@ -122,6 +122,40 @@ describe('response limits', () => {
     ).rejects.toMatchObject({ code: 'TOO_LARGE' });
   });
 
+  it('stops reading a chunked body the moment it passes the cap (audit H04)', async () => {
+    let pulled = 0;
+    const chunk = new TextEncoder().encode('x'.repeat(64));
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled += 1;
+        if (pulled > 1_000) controller.close();
+        else controller.enqueue(chunk);
+      },
+    });
+    const response = new Response(stream, { status: 200, headers: { 'content-type': 'application/json' } });
+    const fetchImpl = (async () => response) as unknown as typeof fetch;
+    await expect(
+      httpRequest({ url: 'https://api.example.com/x', maxBytes: 200 }, testContext({ fetchImpl })),
+    ).rejects.toMatchObject({ code: 'TOO_LARGE' });
+    // Four chunks cross 200 bytes; nothing like the thousand the stream would offer.
+    expect(pulled).toBeLessThan(10);
+  });
+
+  it('pins the connection to the addresses the SSRF check validated (audit H05)', async () => {
+    const seen: unknown[] = [];
+    const fetchImpl = (async (_url: unknown, init?: RequestInit) => {
+      seen.push(init);
+      return new Response('{}', { status: 200, headers: { 'content-type': 'application/json' } });
+    }) as unknown as typeof fetch;
+    await httpRequest(
+      { url: 'https://public.example/x', enforceUrlSafety: true },
+      testContext({ fetchImpl, lookupImpl: async () => ['93.184.216.34'] }),
+    );
+    const init = seen[0] as { dispatcher?: { close?: unknown } };
+    expect(init.dispatcher).toBeDefined();
+    expect(typeof init.dispatcher?.close).toBe('function');
+  });
+
   it('rejects on a declared content-length over the cap without reading', async () => {
     const stub = stubFetch(ok('small', { 'content-length': String(MAX_RESPONSE_BYTES + 1) }));
     await expect(

@@ -13,6 +13,16 @@ const minimalEnv = {
   DATABASE_URL: 'postgresql://hey:hey@localhost:5432/hey_research',
 };
 
+describe('production secrets', () => {
+  it('refuses a short SESSION_SECRET in production and accepts a generated one', () => {
+    const base = { NODE_ENV: 'production', DATABASE_URL: 'postgresql://hey:hey@localhost:5432/hey', APP_URL: 'https://hey.example' };
+    expect(() => parseServerEnv({ ...base, SESSION_SECRET: 'short' })).toThrow(/at least 32/);
+    expect(() => parseServerEnv({ ...base, SESSION_SECRET: 'a'.repeat(64) })).not.toThrow();
+    // Development keeps working with whatever is set.
+    expect(() => parseServerEnv({ ...base, NODE_ENV: 'development', SESSION_SECRET: 'short' })).not.toThrow();
+  });
+});
+
 describe('parseServerEnv', () => {
   it('accepts the minimal local development environment', () => {
     const env = parseServerEnv(minimalEnv);
