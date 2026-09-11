@@ -82,6 +82,10 @@ export function renderProjects(page: HeyPage<HeyProject>, now?: Date): string {
 /** One project in full — the dossier, with every source HEY registered. */
 export function renderProject(project: HeyProjectDetail, now?: Date): string {
   const lines: string[] = [];
+  if (project.catalogStatus === 'HIDDEN_CANDIDATE') {
+    // Said first (overnight audit 2026-09-12): the site wraps such a record in an unreviewed notice; an agent gets the same.
+    lines.push('HEY has not published this record: it is an unreviewed launch record, not a project page. Treat everything below as unconfirmed.', '');
+  }
   lines.push(project.symbol ? `${project.name} ($${project.symbol})` : project.name);
   lines.push(project.url);
   if (project.shortDescription) lines.push('', project.shortDescription);
@@ -101,7 +105,16 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
     lines.push(`- Narratives: ${project.narratives.map((n) => n.name).join(', ')}`);
   }
   if (project.token) {
-    lines.push(`- Token: chain ${project.token.chainId}, contract ${project.token.contractAddress}`);
+    const verification = project.tokenVerification?.status;
+    const stance =
+      verification === 'MISMATCH'
+        ? ' — MISMATCH: the project’s own site names a different contract; do not treat this as the project’s token'
+        : verification === 'VERIFIED'
+          ? ' — verified: the project stands behind this contract'
+          : verification === 'UNVERIFIED'
+            ? ' — unverified: HEY has not seen the project name this contract'
+            : '';
+    lines.push(`- Token: chain ${project.token.chainId}, contract ${project.token.contractAddress}${stance}`);
   } else {
     lines.push('- Token: none recorded — this is a project page, not a token.');
   }
@@ -143,7 +156,11 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
   if (project.sources.length > 0) {
     lines.push('', 'Sources HEY registered:');
     for (const source of project.sources) {
-      const state = source.isVerified ? 'verified' : source.confidence.toLowerCase();
+      const state = source.contextOnly
+        ? `context only${source.contextReason === 'owner_disowned' ? ', the owner says it is not theirs' : ''} — not this project’s own evidence`
+        : source.isVerified
+          ? 'verified'
+          : source.confidence.toLowerCase();
       lines.push(`- ${source.sourceType}: ${source.url} (${state})`);
     }
   }

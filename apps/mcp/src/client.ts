@@ -121,7 +121,9 @@ export type HeyProjectDetail = HeyProject & {
   isClaimed: boolean;
   submitted: boolean;
   narratives: { slug: string; name: string; isPrimary: boolean }[];
-  sources: { url: string; sourceType: string; isVerified: boolean; confidence: string }[];
+  sources: { url: string; sourceType: string; isVerified: boolean; confidence: string; contextOnly?: boolean; contextReason?: string }[];
+  /** Whether the project stands behind the tracked contract (2026-09-11): VERIFIED, UNVERIFIED or MISMATCH. */
+  tokenVerification?: { status: string; reason?: string };
   market?: {
     marketCapUsd?: number;
     fdvUsd?: number;
