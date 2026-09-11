@@ -131,6 +131,14 @@ export function ProjectCard({
   // Source text as words: launchpad descriptions arrive with Markdown in them (QA sweep 2026-09-04).
   const description = plainText(project.shortDescription);
   const shipTitle = ship ? plainText(ship.title) : '';
+  // "Infrastructure · Infrastructure" says it once: the kind is dropped when
+  // the narrative already names it. "Uncategorised" (kind OTHER) is a data
+  // state, not a fact about the project; it is shown only when the line
+  // would otherwise be empty, never beside a ticker or a narrative.
+  const kindLabel = formatProjectKind(project.projectKind);
+  const showKind =
+    project.primaryNarrative?.name.toLowerCase() !== kindLabel.toLowerCase() &&
+    (project.projectKind !== 'OTHER' || (!project.symbol && !project.primaryNarrative));
 
   return (
     <article
@@ -210,8 +218,10 @@ export function ProjectCard({
             {project.primaryNarrative ? (
               <span data-testid="card-narrative" className="normal-case">{project.primaryNarrative.name}</span>
             ) : null}
-            {project.symbol || project.primaryNarrative ? <span aria-hidden="true"> · </span> : null}
-            <span data-testid="project-kind" className="normal-case">{formatProjectKind(project.projectKind)}</span>
+            {showKind && (project.symbol || project.primaryNarrative) ? <span aria-hidden="true"> · </span> : null}
+            {showKind ? (
+              <span data-testid="project-kind" className="normal-case">{kindLabel}</span>
+            ) : null}
           </p>
         </div>
       </div>

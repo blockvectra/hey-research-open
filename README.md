@@ -40,6 +40,16 @@ token's market status (active, low or no liquidity, trading inactive, liquidity 
 insufficient data) and whether the token is verified as the project's own. Scores read the
 first and never the other two.
 
+## The token, briefly
+
+`$HEY` (contract `0xB33eb16782776b4D738c0Fd643577cb0284Db610` on Robinhood Chain) pays for
+evidence. Bounties are set in dollars ($10 / $25 / $50 by tier) and paid in HEY at a figure
+quoted once from HEY's own price reading, half at approval and half ninety days later if the
+evidence still stands; a new bounty opens to holders first for 24 hours. Holding changes what a
+reader pays, when they read new research and how much the API serves them. It never changes a
+ranking, a status or a score: the rules in `packages/scoring` read no price and no balance, and
+that is tested. Nothing on HEY is a buy signal.
+
 ## Use
 
 ```bash

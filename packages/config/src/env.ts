@@ -329,6 +329,34 @@ export const serverEnvSchema = z.object({
       }
     }),
 
+  /**
+   * Ops alerts to a Telegram chat (2026-09-11). Both values or neither: a
+   * token without a chat, or a chat without a token, is a deployment mistake
+   * and is refused at boot rather than silently never alerting.
+   */
+  alerts: z
+    .object({
+      telegramBotToken: optionalString,
+      telegramChatId: optionalString,
+    })
+    .superRefine((alerts, context) => {
+      if (Boolean(alerts.telegramBotToken) !== Boolean(alerts.telegramChatId)) {
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['telegramChatId'],
+          message: 'HEY_TELEGRAM_BOT_TOKEN and HEY_TELEGRAM_CHAT_ID must be set together',
+        });
+      }
+      if (alerts.telegramBotToken && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(alerts.telegramBotToken)) {
+        // Never echo the value: the message says the shape, not the secret.
+        context.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ['telegramBotToken'],
+          message: 'HEY_TELEGRAM_BOT_TOKEN does not look like a bot token (`<digits>:<key>`)',
+        });
+      }
+    }),
+
   worker: z.object({
     heartbeatMs: numberWithDefault(DEFAULT_WORKER_HEARTBEAT_MS).pipe(z.number().int().positive()),
     /** How often the worker polls the job table. */
@@ -438,6 +466,10 @@ function shapeEnv(raw: RawEnv) {
       apiKey: raw.RESEND_API_KEY,
       from: raw.HEY_MAIL_FROM,
     },
+    alerts: {
+      telegramBotToken: raw.HEY_TELEGRAM_BOT_TOKEN,
+      telegramChatId: raw.HEY_TELEGRAM_CHAT_ID,
+    },
     worker: {
       heartbeatMs: raw.WORKER_HEARTBEAT_MS,
       pollIntervalMs: raw.WORKER_POLL_INTERVAL_MS,
@@ -501,6 +533,8 @@ const ENV_KEY_BY_PATH: Record<string, string> = {
   'mail.enabled': 'HEY_MAIL_ENABLED',
   'mail.apiKey': 'RESEND_API_KEY',
   'mail.from': 'HEY_MAIL_FROM',
+  'alerts.telegramBotToken': 'HEY_TELEGRAM_BOT_TOKEN',
+  'alerts.telegramChatId': 'HEY_TELEGRAM_CHAT_ID',
   'worker.heartbeatMs': 'WORKER_HEARTBEAT_MS',
   'worker.pollIntervalMs': 'WORKER_POLL_INTERVAL_MS',
   'worker.jobConcurrency': 'WORKER_JOB_CONCURRENCY',
@@ -604,4 +638,9 @@ export function isBondsOpen(env: ServerEnv): boolean {
 
 export function isMailEnabled(env: ServerEnv): boolean {
   return env.mail.enabled && Boolean(env.mail.apiKey) && Boolean(env.mail.from);
+}
+
+/** Telegram ops alerts are on when both the bot token and the chat id are set. */
+export function isTelegramAlertsEnabled(env: ServerEnv): boolean {
+  return Boolean(env.alerts.telegramBotToken) && Boolean(env.alerts.telegramChatId);
 }
