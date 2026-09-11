@@ -119,7 +119,7 @@ describe('ProjectCard — with a ship (ships feed)', () => {
   const renderWithShip = (override: Partial<typeof ship> = {}) =>
     renderToStaticMarkup(createElement(ProjectCard, { project: tokenBacked, ship: { ...ship, ...override }, now }));
 
-  it('shows the ship as a block between the identity and the facts, keeping the eight facts', () => {
+  it('shows the ship as a block under the identity and stops there: no market cap, address or description', () => {
     const html = renderWithShip();
     expect(html).toContain('data-testid="latest-ship"');
     expect(html).toContain('data-ship-id="ship-1"');
@@ -135,15 +135,19 @@ describe('ProjectCard — with a ship (ships feed)', () => {
     expect(html).toContain('2d ago');
     expect(html).toContain('Source verified');
 
-    // Order: identity header, then the ship, then market cap and the address.
+    // Order: identity header, then the ship, then the footer (UI/UX audit U11).
     const identity = html.indexOf('$AOS');
     const block = html.indexOf('data-testid="latest-ship"');
-    const marketCap = html.indexOf('data-testid="market-cap"');
+    const footer = html.indexOf('data-testid="launched-via"');
     expect(identity).toBeLessThan(block);
-    expect(block).toBeLessThan(marketCap);
+    expect(block).toBeLessThan(footer);
 
-    for (const fact of ['AgentOS', '$AOS', 'Market cap', '$1.2M', '0x82aE…91bF', 'Shipping', '>Pons<', '@agentos']) {
+    for (const fact of ['AgentOS', '$AOS', 'Shipping', '>Pons<', '@agentos']) {
       expect(html).toContain(fact);
+    }
+    // The token facts live on the project page, one click away, not on every event.
+    for (const absent of ['data-testid="market-cap"', 'data-testid="contract-address"', 'data-testid="description"']) {
+      expect(html).not.toContain(absent);
     }
   });
 

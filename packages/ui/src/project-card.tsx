@@ -11,7 +11,7 @@ import {
   plainText,
 } from './format';
 import { ProjectLogo } from './project-logo';
-import { ActivityChip, type ActivityStatusValue } from './status';
+import { ActivityChip, type ActivityStatusValue, StillBuildingBadge } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
 
 /**
@@ -102,12 +102,19 @@ export function ProjectCard({
   project,
   ship,
   now,
+  showStillBuilding = false,
   className,
 }: {
   project: ProjectCardData;
   /** When set, the card is one ship event of this project (the ships feed). */
   ship?: ProjectCardShip;
   now?: Date;
+  /**
+   * Say why the project is on a Still Building surface (Radar). Off
+   * elsewhere: the card carries one status, and a second badge on every
+   * card is the badge wall the design contract rules out.
+   */
+  showStillBuilding?: boolean;
   className?: string;
 }) {
   const marketCap = formatUsdCompact(project.marketCapUsd);
@@ -153,10 +160,14 @@ export function ProjectCard({
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h3 className="min-w-0 text-[16px] font-semibold leading-tight tracking-tight">
-              {/* The whole card is the target; the link stays the accessible one. */}
+              {/*
+               * The whole card is the target; the link stays the accessible one.
+               * Two lines, not one: a name is the identity, and a single
+               * truncated line lost it (UI/UX audit U19).
+               */}
               <a
                 href={`/project/${project.slug}`}
-                className="block truncate after:absolute after:inset-0 after:rounded-[12px] after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-hey-ink/30"
+                className="line-clamp-2 [overflow-wrap:anywhere] after:absolute after:inset-0 after:rounded-[12px] after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-hey-ink/30"
               >
                 {project.name}
               </a>
@@ -170,11 +181,13 @@ export function ProjectCard({
              * telemetry face, and read as a code fragment rather than a fact.
              *
              * Suppressed when the card carries a ship block, which prints the
-             * same date in full.
+             * same date in full, and on a tokenless card, whose "Last ship"
+             * row below already says it (UI/UX audit U19: the date was
+             * printed twice on those cards).
              */}
             <span className="flex shrink-0 flex-col items-end gap-1">
               <ActivityChip status={project.activityStatus} variant="surface" />
-              {!ship && project.lastMeaningfulShipAt ? (
+              {!ship && hasToken && project.lastMeaningfulShipAt ? (
                 <time
                   dateTime={project.lastMeaningfulShipAt.toISOString()}
                   data-testid="card-last-ship"
@@ -185,15 +198,30 @@ export function ProjectCard({
               ) : null}
             </span>
           </div>
+          {/*
+           * Ticker, narrative, kind (UI/UX audit U02, 2026-09-11). The card
+           * used to say "$AOS" and nothing about what the project is; the
+           * design contract puts the narrative or kind on every card. One
+           * line, secondary tone, so the identity still leads.
+           */}
           <p className="hey-telemetry mt-1 truncate text-hey-secondary">
-            {project.symbol ? (
-              <span data-testid="ticker">${project.symbol}</span>
-            ) : (
-              <span data-testid="project-kind" className="normal-case">{formatProjectKind(project.projectKind)}</span>
-            )}
+            {project.symbol ? <span data-testid="ticker">${project.symbol}</span> : null}
+            {project.symbol && project.primaryNarrative ? <span aria-hidden="true"> · </span> : null}
+            {project.primaryNarrative ? (
+              <span data-testid="card-narrative" className="normal-case">{project.primaryNarrative.name}</span>
+            ) : null}
+            {project.symbol || project.primaryNarrative ? <span aria-hidden="true"> · </span> : null}
+            <span data-testid="project-kind" className="normal-case">{formatProjectKind(project.projectKind)}</span>
           </p>
         </div>
       </div>
+
+      {showStillBuilding && project.stillBuilding ? (
+        <p className="flex items-center gap-2 text-[13px] text-hey-secondary" data-testid="card-still-building">
+          <StillBuildingBadge />
+          <span>Kept shipping through a market drawdown.</span>
+        </p>
+      ) : null}
 
       {ship ? (
         /*
@@ -252,7 +280,14 @@ export function ProjectCard({
         </div>
       ) : null}
 
-      {hasToken ? (
+      {/*
+       * A ship card stops at the ship (UI/UX audit U11, 2026-09-11). On the
+       * feed the same project's market cap, contract and description were
+       * printed for every event, so 48 events read as 48 token cards. The
+       * facts live one click away on the project page; here the identity,
+       * the ship and the footer are the card.
+       */}
+      {ship ? null : hasToken ? (
         <>
           {/* 4: market cap, from stored snapshots only */}
           <p className="flex items-baseline justify-between gap-3 text-[14px]" data-testid="market-cap">
