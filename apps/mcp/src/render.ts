@@ -154,6 +154,10 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
     lines.push('', `On-chain usage (read from the chain ${a.observedAt.slice(0, 10)}): ${a.events24h}${a.truncated ? '+' : ''} events in 24 h${a.daysCovered > 1 ? `, ${a.events7d}${a.truncated ? '+' : ''} over ${a.daysCovered} days` : ''}. Context only: usage says the contract is used, not that anyone is building.`);
   }
 
+  if (project.defiTvl) {
+    lines.push('', `Value locked on Robinhood Chain (DefiLlama, ${project.defiTvl.observedAt.slice(0, 10)}): $${Math.round(project.defiTvl.tvlUsd).toLocaleString('en-US')} in ${project.defiTvl.protocolName}, matched by ${project.defiTvl.matchedBy}. Context only: money in the contracts says the product is used, not that anyone is building.`);
+  }
+
   if (project.sources.length > 0) {
     lines.push('', 'Sources HEY registered:');
     for (const source of project.sources) {

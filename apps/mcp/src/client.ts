@@ -126,6 +126,8 @@ export type HeyProjectDetail = HeyProject & {
   tokenVerification?: { status: string; reason?: string };
   /** Events the token contract emitted, as HEY last read them from the chain. Context only. */
   onchainActivity?: { events24h: number; events7d: number; daysCovered: number; truncated: boolean; observedAt: string };
+  /** TVL DefiLlama reports for the project's protocol on this chain. Context only. */
+  defiTvl?: { tvlUsd: number; protocol: string; protocolName: string; matchedBy: string; source: string; observedAt: string };
   market?: {
     marketCapUsd?: number;
     fdvUsd?: number;
