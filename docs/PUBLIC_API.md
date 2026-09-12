@@ -68,8 +68,8 @@ reading *after* those with it, in activity order — it never ranks them, and it
 figure. Whenever a request names a market field (a market sort, `stage`, `minLiquidity`,
 `maxMarketCap`, or `has=marketCap|liveMarket|verifiedToken`) the response carries
 `catalogue.marketCoverage`: `base` (rows under the non-market filters), and how many of them have a
-`marketCap`, `liquidity`, `volume24h` reading, a `liveMarket`, a `verifiedToken`, and each launch
-`stage` — the denominators a sorted list needs to be read honestly. List items gain `liquidity` and
+`marketCap`, `liquidity`, `volume24h` reading, a `liveMarket` (market not gone), an `activeMarket`
+(traded in the last day), a `verifiedToken`, and each launch `stage` — the denominators a sorted list needs to be read honestly. List items gain `liquidity` and
 `volume24h` (`{usd, source, observedAt}`, from the same snapshot as `marketCap`) and `launchStage`
 only when present. A token priced only by its launchpad's curve has no liquidity figure by design.
 

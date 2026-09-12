@@ -94,7 +94,7 @@ export function renderProjects(page: HeyPage<HeyProject>, now?: Date): string {
         ? `\n${coverage.volume24h} of ${coverage.base} matching projects have a 24h volume reading; the rest follow in activity order.`
         : sort === 'marketCap'
           ? `\n${coverage.marketCap} of ${coverage.base} matching projects have a market-cap reading; the rest follow in activity order.`
-          : `\nOf ${coverage.base} matching projects: ${coverage.liveMarket} with a live market, ${coverage.verifiedToken} with a verified token, ${coverage.marketCap} with a market-cap reading.`
+          : `\nOf ${coverage.base} matching projects: ${coverage.activeMarket} traded in the last day, ${coverage.liveMarket} whose market is not gone, ${coverage.verifiedToken} with a verified token, ${coverage.marketCap} with a market-cap reading.`
     : '';
 
   return `${shown}${denominator}\nQuery as HEY read it: ${JSON.stringify(page.query)}\n\n${lines.join('\n')}${more}${stillBuilding}\n\n${page.disclaimer}`;

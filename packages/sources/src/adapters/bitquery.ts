@@ -17,6 +17,12 @@ import { toNumber } from '../market';
  * protocol it happened on. Nothing about holders or balances is asked for,
  * ever (CLAUDE.md product rule 1).
  *
+ * The `realtime` dataset is the one the Pro plan allows (`combined` spans the
+ * archive and is refused with a 403 on that plan — verified 2026-09-12); it
+ * holds recent history, which is all a 24 h window needs. The token is an
+ * OAuth access token (`ory_…`), sent as a bearer; the old `X-API-KEY` header
+ * answers 402 on the v2 endpoint.
+ *
  * `DEXTradeByTokens` groups by token and protocol, so a token trading on two
  * venues comes back as two rows; the normaliser sums volume and trades across
  * them and takes the price from the most recent trade. Aggregates arrive as
@@ -36,7 +42,7 @@ const CACHE_TTL_SECONDS = 60 * 60;
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
 export const BITQUERY_TRADES_QUERY = `query HeyTokenTrades($addresses: [String!], $since: DateTime) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: combined) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
     DEXTradeByTokens(
       where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
       limit: { count: 1000 }
