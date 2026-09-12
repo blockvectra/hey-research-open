@@ -12,6 +12,7 @@ import {
 const minimalEnv = {
   DATABASE_URL: 'postgresql://hey:hey@localhost:5432/hey_research',
 };
+import { explorerApiFor } from './env';
 
 describe('production secrets', () => {
   it('refuses a short SESSION_SECRET in production and accepts a generated one', () => {
@@ -245,5 +246,14 @@ describe('$HEY canonical token config (M13)', () => {
     expect(preview.hey.walletConnectProjectId).toBe('0123456789abcdef0123456789abcdef');
     expect(preview.hey.walletPreviewEnabled).toBe(true);
     expect(preview.hey.status).toBe('prelaunch');
+  });
+});
+
+
+describe('explorer API routing (Blockscout PRO, 2026-09-12)', () => {
+  it('reads the instance without a key and the PRO API with chain and key', () => {
+    expect(explorerApiFor({ chainId: 4663, blockscoutBaseUrl: 'https://robinhoodchain.blockscout.com' })).toEqual({ baseUrl: 'https://robinhoodchain.blockscout.com' });
+    expect(explorerApiFor({ chainId: 4663, blockscoutBaseUrl: 'https://robinhoodchain.blockscout.com', blockscoutApiKey: 'proapi_k' })).toEqual({ baseUrl: 'https://api.blockscout.com', chainId: 4663, apiKey: 'proapi_k' });
+    expect(explorerApiFor({ chainId: 4663 })).toBeUndefined();
   });
 });

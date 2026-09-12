@@ -91,3 +91,17 @@ describe('RPC contract adapter', () => {
     expect(headers['if-none-match']).toBeUndefined();
   });
 });
+
+
+describe('blockscout PRO API routing (2026-09-12)', () => {
+  it('sends chain_id and the key as query parameters and never echoes the key back', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('blockscout-address.json') });
+    const result = await createBlockscoutAdapter().fetch(
+      { baseUrl: 'https://api.blockscout.com', address: '0x1111111111111111111111111111111111111111', chainId: 4663, apiKey: 'proapi_secret' },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+    expect(stub.requests[0]?.url).toBe('https://api.blockscout.com/api/v2/addresses/0x1111111111111111111111111111111111111111?chain_id=4663&apikey=proapi_secret');
+    expect(JSON.stringify(result)).not.toContain('proapi_secret');
+    expect(result.sourceUrl).toContain('apikey=REDACTED');
+  });
+});

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
+import { explorerApiUrl, redactResultUrl } from '../http/explorer-api';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
 
@@ -78,6 +79,9 @@ export type VerifiedContractPage = {
 export type BlockscoutVerifiedInput = {
   baseUrl: string;
   nextPage?: Record<string, string | number>;
+  /** PRO API routing (2026-09-12): sent as `chain_id` / `apikey`; absent for an instance. */
+  chainId?: number | undefined;
+  apiKey?: string | undefined;
 };
 
 const toDate = (value: string | null | undefined): Date | undefined => {
@@ -97,19 +101,13 @@ export function createBlockscoutVerifiedAdapter(): SourceAdapter<
       return /^https?:\/\//.test(input.baseUrl);
     },
 
-    fetch(input, ctx: SourceContext): Promise<SourceResult<VerifiedContractPage>> {
-      const base = input.baseUrl.replace(/\/$/, '');
-      const query = input.nextPage
-        ? '?' +
-          Object.entries(input.nextPage)
-            .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(String(v))}`)
-            .join('&')
-        : '';
+    async fetch(input, ctx: SourceContext): Promise<SourceResult<VerifiedContractPage>> {
+      const url = explorerApiUrl({ baseUrl: input.baseUrl, chainId: input.chainId, apiKey: input.apiKey }, '/api/v2/smart-contracts', input.nextPage ?? {});
 
-      return performSourceFetch(
+      const result = await performSourceFetch(
         ctx,
         {
-          url: `${base}/api/v2/smart-contracts${query}`,
+          url,
           headers: { accept: 'application/json', 'user-agent': BLOCKSCOUT_USER_AGENT },
         },
         {
@@ -138,6 +136,7 @@ export function createBlockscoutVerifiedAdapter(): SourceAdapter<
           }),
         },
       );
+      return redactResultUrl(result);
     },
   };
 }

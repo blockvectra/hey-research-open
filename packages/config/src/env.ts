@@ -117,6 +117,13 @@ export const serverEnvSchema = z.object({
     rpcUrl: optionalUrl,
     rpcFallbackUrl: optionalUrl,
     blockscoutBaseUrl: optionalUrl,
+    /**
+     * A Blockscout PRO API key (2026-09-12). When set, explorer reads go to
+     * api.blockscout.com with `chain_id` and `apikey`; the instance URL above
+     * keeps serving explorer links. The instance's own API sits behind a bot
+     * challenge for non-browser clients, so without a key those reads degrade.
+     */
+    blockscoutApiKey: optionalString,
   }),
 
   market: z.object({
@@ -417,6 +424,7 @@ function shapeEnv(raw: RawEnv) {
       rpcUrl: raw.RH_RPC_URL,
       rpcFallbackUrl: raw.RH_RPC_FALLBACK_URL,
       blockscoutBaseUrl: raw.RH_BLOCKSCOUT_BASE_URL,
+      blockscoutApiKey: raw.RH_BLOCKSCOUT_API_KEY,
     },
     market: {
       dexscreenerBaseUrl: raw.DEXSCREENER_BASE_URL,
@@ -497,6 +505,7 @@ const ENV_KEY_BY_PATH: Record<string, string> = {
   'chain.rpcUrl': 'RH_RPC_URL',
   'chain.rpcFallbackUrl': 'RH_RPC_FALLBACK_URL',
   'chain.blockscoutBaseUrl': 'RH_BLOCKSCOUT_BASE_URL',
+  'chain.blockscoutApiKey': 'RH_BLOCKSCOUT_API_KEY',
   'market.dexscreenerBaseUrl': 'DEXSCREENER_BASE_URL',
   'market.geckoterminalBaseUrl': 'GECKOTERMINAL_BASE_URL',
   'github.clientId': 'GITHUB_CLIENT_ID',
@@ -643,4 +652,15 @@ export function isMailEnabled(env: ServerEnv): boolean {
 /** Telegram ops alerts are on when both the bot token and the chat id are set. */
 export function isTelegramAlertsEnabled(env: ServerEnv): boolean {
   return Boolean(env.alerts.telegramBotToken) && Boolean(env.alerts.telegramChatId);
+}
+
+/**
+ * Where explorer reads go (2026-09-12): the PRO API with the chain and key
+ * when a key is configured, else the instance itself; undefined when neither
+ * is configured. Explorer links for people always use `chain.blockscoutBaseUrl`.
+ */
+export function explorerApiFor(chain: { chainId: number; blockscoutBaseUrl?: string | undefined; blockscoutApiKey?: string | undefined }): { baseUrl: string; chainId?: number; apiKey?: string } | undefined {
+  if (chain.blockscoutApiKey) return { baseUrl: 'https://api.blockscout.com', chainId: chain.chainId, apiKey: chain.blockscoutApiKey };
+  if (chain.blockscoutBaseUrl) return { baseUrl: chain.blockscoutBaseUrl };
+  return undefined;
 }

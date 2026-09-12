@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
+import { explorerApiUrl, redactResultUrl } from '../http/explorer-api';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
 
@@ -14,6 +15,9 @@ import { opt } from '../optional';
 export type BlockscoutInput = {
   baseUrl: string;
   address: string;
+  /** PRO API routing (2026-09-12): sent as `chain_id` / `apikey`; absent for an instance. */
+  chainId?: number | undefined;
+  apiKey?: string | undefined;
 };
 
 export const blockscoutAddressSchema = z.object({
@@ -65,11 +69,11 @@ export function createBlockscoutAdapter(): SourceAdapter<BlockscoutInput, Contra
       return Boolean(input.baseUrl) && /^0x[a-fA-F0-9]{40}$/.test(input.address);
     },
 
-    fetch(input, ctx: SourceContext): Promise<SourceResult<ContractEvidence>> {
+    async fetch(input, ctx: SourceContext): Promise<SourceResult<ContractEvidence>> {
       const base = input.baseUrl.replace(/\/$/, '');
-      const url = `${base}/api/v2/addresses/${input.address}`;
+      const url = explorerApiUrl({ baseUrl: base, chainId: input.chainId, apiKey: input.apiKey }, `/api/v2/addresses/${input.address}`);
 
-      return performSourceFetch(
+      const result = await performSourceFetch(
         ctx,
         { url },
         {
@@ -102,6 +106,7 @@ export function createBlockscoutAdapter(): SourceAdapter<BlockscoutInput, Contra
           },
         },
       );
+      return redactResultUrl(result);
     },
   };
 }
