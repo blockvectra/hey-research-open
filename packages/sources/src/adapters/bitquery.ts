@@ -41,10 +41,30 @@ const CACHE_TTL_SECONDS = 60 * 60;
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
-export const BITQUERY_TRADES_QUERY = `query HeyTokenTrades($addresses: [String!], $since: DateTime) {
+/*
+ * Two windows in one request (2026-09-12, after the first production pass):
+ * the day's trades give the volume and the trade count the market status
+ * reads; the week's give the last trade's price for a token that traded
+ * recently but not today — 4 of 100 unpriced launches had a trade in the
+ * week, 1 in the day. A token absent from both traded in neither.
+ */
+export const BITQUERY_TRADES_QUERY = `query HeyTokenTrades($addresses: [String!], $since: DateTime, $lookback: DateTime) {
   EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
-    DEXTradeByTokens(
+    day: DEXTradeByTokens(
       where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
+      limit: { count: 1000 }
+    ) {
+      Trade {
+        Currency { SmartContract Symbol Name Decimals }
+        Dex { ProtocolName ProtocolFamily }
+        last_price: PriceInUSD(maximum: Block_Number)
+      }
+      Block { last_time: Time(maximum: Block_Number) }
+      trades: count
+      volume_usd: sum(of: Trade_Side_AmountInUSD)
+    }
+    week: DEXTradeByTokens(
+      where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $lookback } } }
       limit: { count: 1000 }
     ) {
       Trade {
@@ -78,15 +98,17 @@ const rowSchema = z.object({
 });
 
 const responseSchema = z.object({
-  data: z.object({ EVM: z.object({ DEXTradeByTokens: z.array(rowSchema).nullish() }).nullish() }).nullish(),
+  data: z.object({ EVM: z.object({ day: z.array(rowSchema).nullish(), week: z.array(rowSchema).nullish() }).nullish() }).nullish(),
   errors: z.array(z.object({ message: z.string() })).nullish(),
 });
 
 export type BitqueryTradesInput = {
   /** Contract addresses, at most `BITQUERY_BATCH_SIZE`; the caller chunks. */
   addresses: readonly string[];
-  /** Trades at or after this moment are counted (the day's window). */
+  /** Trades at or after this moment are counted as the day's volume and trade count. */
   since: Date;
+  /** Trades at or after this moment may carry the last price (the week's window). */
+  lookback: Date;
   apiKey: string;
   baseUrl?: string;
 };
@@ -99,9 +121,11 @@ export type BitqueryTokenTrades = {
   /** The most recent trade's USD price across venues. */
   lastPriceUsd?: number;
   lastTradeAt?: Date;
-  /** Trades and USD volume since `since`, summed across venues. */
+  /** Trades and USD volume since `since` (the day), summed across venues; 0 when the token traded only earlier in the week. */
   trades: number;
   volumeUsd: number;
+  /** True when the price comes from a trade older than the day's window. */
+  priceFromLookback: boolean;
   /** The protocol most of the trades happened on, e.g. `pons`, `uniswap_v4`. */
   venue?: string;
   venueFamily?: string;
@@ -132,7 +156,7 @@ export function normalizeBitqueryTrades(rows: readonly Row[]): BitqueryTokenTrad
     const price = positive(row.Trade.last_price);
 
     const current = byToken.get(address) ?? {
-      reading: { contractAddress: address, trades: 0, volumeUsd: 0 },
+      reading: { contractAddress: address, trades: 0, volumeUsd: 0, priceFromLookback: false },
       venueTrades: new Map<string, number>(),
       lastAt: Number.NEGATIVE_INFINITY,
     };
@@ -163,6 +187,30 @@ export function normalizeBitqueryTrades(rows: readonly Row[]): BitqueryTokenTrad
   return readings;
 }
 
+/**
+ * The day's rows give volume and trades; the week's rows give the price and
+ * the venue for a token the day did not see. A token in neither window has
+ * no reading.
+ */
+export function mergeBitqueryWindows(day: readonly Row[], week: readonly Row[]): BitqueryTokenTrades[] {
+  const daily = new Map(normalizeBitqueryTrades(day).map((reading) => [reading.contractAddress, reading]));
+  const weekly = normalizeBitqueryTrades(week);
+  const out: BitqueryTokenTrades[] = [];
+  const seen = new Set<string>();
+  for (const w of weekly) {
+    seen.add(w.contractAddress);
+    const d = daily.get(w.contractAddress);
+    if (d && (d.trades > 0 || d.lastPriceUsd !== undefined)) {
+      out.push({ ...d, ...(d.lastPriceUsd === undefined && w.lastPriceUsd !== undefined ? { lastPriceUsd: w.lastPriceUsd, lastTradeAt: w.lastTradeAt, priceFromLookback: true } : {}) });
+      continue;
+    }
+    if (w.trades === 0 && w.lastPriceUsd === undefined) continue;
+    out.push({ ...w, trades: 0, volumeUsd: 0, priceFromLookback: true });
+  }
+  for (const d of daily.values()) if (!seen.has(d.contractAddress) && (d.trades > 0 || d.lastPriceUsd !== undefined)) out.push(d);
+  return out;
+}
+
 export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput, BitqueryTokenTrades[]> {
   return {
     name: 'bitquery',
@@ -183,7 +231,7 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
             'content-type': 'application/json',
             authorization: `Bearer ${input.apiKey}`,
           },
-          body: JSON.stringify({ query: BITQUERY_TRADES_QUERY, variables: { addresses, since: input.since.toISOString() } }),
+          body: JSON.stringify({ query: BITQUERY_TRADES_QUERY, variables: { addresses, since: input.since.toISOString(), lookback: input.lookback.toISOString() } }),
           allowedContentTypes: ['application/json'],
         },
         {
@@ -195,7 +243,7 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
             if (raw.errors && raw.errors.length > 0) {
               throw new Error(`bitquery: ${raw.errors.map((error) => error.message).join('; ').slice(0, 300)}`);
             }
-            return normalizeBitqueryTrades(raw.data?.EVM?.DEXTradeByTokens ?? []);
+            return mergeBitqueryWindows(raw.data?.EVM?.day ?? [], raw.data?.EVM?.week ?? []);
           },
         },
       );

@@ -11,7 +11,7 @@ import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, createBitqueryTradesAda
  * first live run replaces it with a recorded body, keys redacted.
  */
 const hey = '0xb33eb16782776b4d738c0fd643577cb0284db610';
-const input = { addresses: [hey, '0x1740a3c5b6fb21044df973490b8095439dbb1b07', '0x44b7d533b21d9f6f00e61798db55ca4dda3d9b07'], since: new Date('2026-09-11T10:00:00Z'), apiKey: 'test-token' };
+const input = { addresses: [hey, '0x1740a3c5b6fb21044df973490b8095439dbb1b07', '0x44b7d533b21d9f6f00e61798db55ca4dda3d9b07'], since: new Date('2026-09-11T10:00:00Z'), lookback: new Date('2026-09-05T10:00:00Z'), apiKey: 'test-token' };
 const trades = () => ({ status: 200, body: readFixture('bitquery-trades.json'), headers: { 'content-type': 'application/json' } });
 
 describe('Bitquery trades adapter', () => {
@@ -33,8 +33,9 @@ describe('Bitquery trades adapter', () => {
     expect(request?.init?.method).toBe('POST');
     const headers = request?.init?.headers as Record<string, string>;
     expect(headers['authorization']).toBe('Bearer test-token');
-    const body = JSON.parse(String(request?.init?.body)) as { query: string; variables: { addresses: string[]; since: string } };
+    const body = JSON.parse(String(request?.init?.body)) as { query: string; variables: { addresses: string[]; since: string; lookback: string } };
     expect(body.query).toContain('DEXTradeByTokens');
+    expect(body.variables.lookback).toBe('2026-09-05T10:00:00.000Z');
     expect(body.query).not.toMatch(/Balance|Holder/);
     expect(body.variables.addresses).toEqual(input.addresses);
     expect(body.variables.since).toBe('2026-09-11T10:00:00.000Z');
@@ -45,12 +46,13 @@ describe('Bitquery trades adapter', () => {
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
     expect(hasData(result)).toBe(true);
     const byAddress = Object.fromEntries((result.data ?? []).map((reading) => [reading.contractAddress, reading]));
-    expect(byAddress[hey]).toMatchObject({ symbol: 'HEY', decimals: 18, trades: 41, lastPriceUsd: 0.0000835, venue: 'pons_v2', venueFamily: 'Uniswap' });
+    expect(byAddress[hey]).toMatchObject({ symbol: 'HEY', decimals: 18, trades: 41, lastPriceUsd: 0.0000835, venue: 'pons_v2', venueFamily: 'Uniswap', priceFromLookback: false });
+    // A token that traded in the week but not the day keeps the week's price, and the day's zero volume.
+    expect(byAddress['0x1740a3c5b6fb21044df973490b8095439dbb1b07']).toMatchObject({ trades: 0, volumeUsd: 0, lastPriceUsd: 0.00000412, venue: 'clanker', priceFromLookback: true });
     expect(byAddress[hey]?.volumeUsd).toBeCloseTo(2046.701, 3);
     expect(byAddress[hey]?.lastTradeAt?.toISOString()).toBe('2026-09-12T10:02:55.000Z');
-    // A venue row with no trades in the window carries no price and no time; nothing is invented.
-    expect(byAddress['0x44b7d533b21d9f6f00e61798db55ca4dda3d9b07']).toMatchObject({ trades: 0, volumeUsd: 0 });
-    expect(byAddress['0x44b7d533b21d9f6f00e61798db55ca4dda3d9b07']?.lastPriceUsd).toBeUndefined();
+    // A venue row with no trades in either window is no reading at all; nothing is invented.
+    expect(byAddress['0x44b7d533b21d9f6f00e61798db55ca4dda3d9b07']).toBeUndefined();
   });
 
   it('reports a GraphQL error as an unusable answer that names the field', async () => {
@@ -62,7 +64,7 @@ describe('Bitquery trades adapter', () => {
   });
 
   it('refuses a body that is not the documented shape', async () => {
-    const stub = stubFetch({ status: 200, body: JSON.stringify({ data: { EVM: { DEXTradeByTokens: [{ Trade: {} }] } } }), headers: { 'content-type': 'application/json' } });
+    const stub = stubFetch({ status: 200, body: JSON.stringify({ data: { EVM: { day: [{ Trade: {} }] } } }), headers: { 'content-type': 'application/json' } });
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.status).toBe('error');
     expect(result.errorCode).toBe('INVALID_RESPONSE');
