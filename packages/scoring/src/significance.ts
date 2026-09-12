@@ -19,6 +19,8 @@ const STRONG: readonly ShipEventType[] = [
   'FEATURE_RELEASE',
   'GITHUB_RELEASE',
   'CONTRACT_UPGRADE',
+  // A contract the project's deployer put up after the launch (2026-09-12): work on a live system.
+  'CONTRACT_DEPLOY_FOLLOWUP',
   'INTEGRATION',
   'API_RELEASE',
   'SDK_RELEASE',

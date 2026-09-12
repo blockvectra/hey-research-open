@@ -8,6 +8,7 @@ describe('significance classification', () => {
       'PRODUCT_LAUNCH',
       'GITHUB_RELEASE',
       'CONTRACT_UPGRADE',
+      'CONTRACT_DEPLOY_FOLLOWUP',
       'SDK_RELEASE',
       'INTEGRATION',
       'GAME_RELEASE',

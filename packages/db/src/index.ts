@@ -35,6 +35,8 @@ export const SHIP_EVENT_TYPES = [
   'CODE_ACTIVITY',
   'CONTRACT_DEPLOY',
   'CONTRACT_UPGRADE',
+  /** A contract the project's own deployer put up after the launch (2026-09-12): building, unlike the launch deploy. */
+  'CONTRACT_DEPLOY_FOLLOWUP',
   'INTEGRATION',
   'DOCS_UPDATE',
   'ROADMAP_MILESTONE',
