@@ -82,10 +82,6 @@ export function renderProjects(page: HeyPage<HeyProject>, now?: Date): string {
 /** One project in full — the dossier, with every source HEY registered. */
 export function renderProject(project: HeyProjectDetail, now?: Date): string {
   const lines: string[] = [];
-  if (project.catalogStatus === 'HIDDEN_CANDIDATE') {
-    // Said first (overnight audit 2026-09-12): the site wraps such a record in an unreviewed notice; an agent gets the same.
-    lines.push('HEY has not published this record: it is an unreviewed launch record, not a project page. Treat everything below as unconfirmed.', '');
-  }
   lines.push(project.symbol ? `${project.name} ($${project.symbol})` : project.name);
   lines.push(project.url);
   if (project.shortDescription) lines.push('', project.shortDescription);
