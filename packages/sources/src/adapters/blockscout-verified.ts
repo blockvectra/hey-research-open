@@ -82,7 +82,21 @@ export type BlockscoutVerifiedInput = {
   /** PRO API routing (2026-09-12): sent as `chain_id` / `apikey`; absent for an instance. */
   chainId?: number | undefined;
   apiKey?: string | undefined;
+  /**
+   * PRO API only: list contracts verified at or after this moment. The PRO
+   * listing (`module=contract&action=listcontracts`) carries no timestamps
+   * and pages by address, so the caller keeps time in this filter.
+   */
+  since?: Date | undefined;
 };
+
+/** One page of the PRO API's `listcontracts`: name and compiler only, no timestamps, no proxy flag. */
+const proPageSchema = z.object({
+  status: z.string().nullish(),
+  message: z.string().nullish(),
+  result: z.union([z.array(z.object({ Address: z.string(), ContractName: z.string().nullish(), CompilerVersion: z.string().nullish() })), z.string()]).nullish(),
+});
+export const PRO_PAGE_SIZE = 100;
 
 const toDate = (value: string | null | undefined): Date | undefined => {
   if (!value) return undefined;
@@ -102,6 +116,7 @@ export function createBlockscoutVerifiedAdapter(): SourceAdapter<
     },
 
     async fetch(input, ctx: SourceContext): Promise<SourceResult<VerifiedContractPage>> {
+      if (input.apiKey) return fetchPro(input, ctx);
       const url = explorerApiUrl({ baseUrl: input.baseUrl, chainId: input.chainId, apiKey: input.apiKey }, '/api/v2/smart-contracts', input.nextPage ?? {});
 
       const result = await performSourceFetch(
@@ -139,4 +154,45 @@ export function createBlockscoutVerifiedAdapter(): SourceAdapter<
       return redactResultUrl(result);
     },
   };
+}
+
+/**
+ * The PRO API's Etherscan-style listing: `page`/`offset` paging, a
+ * `verified_at_start_timestamp` floor, and only a name and compiler per row.
+ * Proxy and scam flags are unknown here (false); the upgrade watcher reads
+ * proxies from the chain itself.
+ */
+async function fetchPro(input: BlockscoutVerifiedInput, ctx: SourceContext): Promise<SourceResult<VerifiedContractPage>> {
+  const page = Number(input.nextPage?.page ?? 1);
+  const url = explorerApiUrl({ baseUrl: input.baseUrl, chainId: input.chainId, apiKey: input.apiKey }, '/v2/api', {
+    module: 'contract',
+    action: 'listcontracts',
+    filter: 'verified',
+    page,
+    offset: PRO_PAGE_SIZE,
+    ...(input.since ? { verified_at_start_timestamp: Math.floor(input.since.getTime() / 1000) } : {}),
+  });
+  const result = await performSourceFetch(
+    ctx,
+    { url, headers: { accept: 'application/json' } },
+    {
+      schema: proPageSchema,
+      parse: (body) => JSON.parse(body) as unknown,
+      cacheTtlSeconds: CACHE_TTL_SECONDS,
+      normalize: (raw): VerifiedContractPage => {
+        const rows = Array.isArray(raw.result) ? raw.result : [];
+        return {
+          contracts: rows.map((row) => ({
+            address: row.Address,
+            flaggedScam: false,
+            isProxy: false,
+            ...opt('name', row.ContractName?.trim() || undefined),
+            ...opt('compilerVersion', row.CompilerVersion ?? undefined),
+          })),
+          ...(rows.length >= PRO_PAGE_SIZE ? { nextPage: { page: page + 1 } } : {}),
+        };
+      },
+    },
+  );
+  return redactResultUrl(result);
 }
