@@ -66,6 +66,7 @@ describe('the HEY MCP server', () => {
 
     expect(tools.map((tool) => tool.name).sort()).toEqual([
       'get_project',
+      'list_bounties',
       'list_projects',
       'list_ships',
       'search_projects',

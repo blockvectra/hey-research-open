@@ -90,6 +90,7 @@ export function createDexscreenerAdapter(): SourceAdapter<DexscreenerInput, Mark
               ...opt('volume24hUsd', toNumber(pair.volume?.h24)),
               ...opt('pairAddress', pair.pairAddress),
               ...opt('pairUrl', pair.url),
+              ...opt('venue', pair.dexId),
               ...opt('imageUrl', pair.info?.imageUrl?.trim() || undefined),
               ...opt(
                 'pairCreatedAt',

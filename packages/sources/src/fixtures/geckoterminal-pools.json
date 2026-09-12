@@ -10,8 +10,18 @@
         "reserve_in_usd": "7900.0",
         "fdv_usd": "23850.0",
         "market_cap_usd": null,
-        "volume_usd": { "h24": "3100.5" },
+        "volume_usd": {
+          "h24": "3100.5"
+        },
         "pool_created_at": "2026-07-14T10:12:00Z"
+      },
+      "relationships": {
+        "dex": {
+          "data": {
+            "id": "uniswap-v4-robinhood-chain",
+            "type": "dex"
+          }
+        }
       }
     }
   ]

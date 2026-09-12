@@ -21,6 +21,8 @@ export type MarketContext = {
   /** Identifier of the pool/pair the figures came from. */
   pairAddress?: string;
   pairUrl?: string;
+  /** The pool's protocol as the provider names it (`uniswap`, `uniswap-v4-robinhood-chain`); context, never identity. */
+  venue?: string;
   /** Token artwork the provider serves — identity the project uploaded, never HEY's. */
   imageUrl?: string;
 };

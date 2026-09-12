@@ -25,6 +25,8 @@ const poolSchema = z.object({
     volume_usd: z.object({ h24: numericish }).nullish(),
     pool_created_at: z.string().nullish(),
   }),
+  /** The DEX the pool belongs to, when the listing names it. */
+  relationships: z.object({ dex: z.object({ data: z.object({ id: z.string().optional() }).nullish() }).nullish() }).nullish(),
 });
 
 export const geckoterminalResponseSchema = z.object({
@@ -88,6 +90,7 @@ export function createGeckoterminalAdapter(): SourceAdapter<GeckoterminalInput, 
               ...opt('liquidityUsd', best.liquidityUsd),
               ...opt('volume24hUsd', toNumber(attrs.volume_usd?.h24)),
               ...opt('pairAddress', attrs.address),
+              ...opt('venue', best.pool.relationships?.dex?.data?.id),
               ...opt(
                 'pairCreatedAt',
                 createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : undefined,

@@ -8,8 +8,9 @@ import {
   type HeyProject,
   type HeyProjectDetail,
   type HeyShip,
+  type HeyBountyPage,
 } from './client';
-import { renderProject, renderProjects, renderShips } from './render';
+import { renderProject, renderProjects, renderShips, renderBounties } from './render';
 
 /**
  * HEY Research as MCP tools (2026-09-05).
@@ -184,6 +185,28 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
           `/api/projects/${encodeURIComponent(slug)}`,
         );
         return text(renderProject(project, at()));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'list_bounties',
+    [
+      'Research bounties HEY pays in HEY for evidence work — mapping a project\'s owned sources, tracing a migration, documenting a release.',
+      'Use this when asked what bounties are open, what they pay, or whether one is already claimed.',
+      'Reading is open to everyone. Claiming is NOT something this tool or the API can do: a person signs in with a wallet on the site,',
+      'claims on the bounty page (holders of a HEY tier first, then anyone), submits public evidence, and a HEY moderator reviews it.',
+    ].join(' '),
+    {
+      status: z.enum(['open', 'awarded', 'all']).optional().describe('Default: open and awarded.'),
+      limit: z.number().int().min(1).max(50).optional(),
+    },
+    async ({ status, limit }) => {
+      try {
+        const page = await client.get<HeyBountyPage>('/api/bounties', { status, limit: limit ?? 50 });
+        return text(renderBounties(page, at()));
       } catch (error) {
         return failure(error);
       }

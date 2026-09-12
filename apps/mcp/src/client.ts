@@ -117,6 +117,10 @@ export type HeyProject = {
   volume24h?: { usd: number; source: string };
   /** Where the launch stands: on its curve, graduated, or in a DEX pool. */
   launchStage?: 'CURVE' | 'GRADUATED' | 'DEX';
+  /** Where the token trades, in words, when a pool reading exists (2026-09-13). */
+  venue?: string;
+  /** Whether HEY holds a repository, org, changelog or feed to read building from. */
+  hasBuilderSource?: boolean;
   url: string;
 };
 
@@ -172,3 +176,30 @@ export type HeyPage<T> = {
   catalogue?: { marketCoverage?: { base: number; marketCap: number; liquidity: number; volume24h: number; liveMarket: number; activeMarket: number; verifiedToken: number; github: number } };
   disclaimer: string;
 };
+
+/** A research bounty as `/api/bounties` returns it (2026-09-13). Read-only: claiming is a wallet sign-in on the site. */
+export type HeyBounty = {
+  id: string;
+  url: string;
+  title: string;
+  description: string;
+  kind: string;
+  scope: string;
+  evidence: string;
+  status: string;
+  taskStatus: string;
+  project?: { slug: string; name: string; url: string };
+  reward: { hey: string; heyBaseUnits: string; tier?: string; targetUsd?: string; quote?: { priceUsd: string; at: string; source: string } };
+  claim: { holdersOnlyUntil?: string; openToAll: boolean; claimed: boolean; claimedBy?: string; expiresAt?: string };
+  createdAt: string;
+  awardedAt?: string;
+};
+
+export type HeyBountyPage = {
+  open: boolean;
+  summary?: { openBounties: number; committedHey: string; paidHey: string };
+  items: HeyBounty[];
+  rules: Record<string, string>;
+  disclaimer: string;
+};
+

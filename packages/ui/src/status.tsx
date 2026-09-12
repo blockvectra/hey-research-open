@@ -76,18 +76,34 @@ const STATUS_PRESENTATION: Record<
   },
 };
 
+/**
+ * UNKNOWN with nothing to read (2026-09-13). Most token projects HEY found
+ * through trades hold no repository, changelog or feed, so "Activity unknown"
+ * on them read as HEY not having looked. It looked; there is nothing to read
+ * building from yet, and trading is not building.
+ */
+export const NO_BUILDER_SIGNAL = {
+  label: 'No builder signal yet',
+  help: 'No repository, changelog or feed for HEY to read building from. Trading is not building.',
+} as const;
+
 export function ActivityChip({
   status,
   variant = 'text',
+  noBuilderSource = false,
   className,
 }: {
   status: ActivityStatusValue;
   /** `surface` gives the chip its own tinted pill, for hero and card headers. */
   variant?: 'text' | 'surface';
+  /** UNKNOWN because HEY holds no source it can read building from: the chip says so instead of "unknown". */
+  noBuilderSource?: boolean;
   className?: string;
 }) {
   const presentation = STATUS_PRESENTATION[status] ?? STATUS_PRESENTATION.UNKNOWN;
   const { Icon } = presentation;
+  const label = status === 'UNKNOWN' && noBuilderSource ? NO_BUILDER_SIGNAL.label : presentation.label;
+  const help = status === 'UNKNOWN' && noBuilderSource ? NO_BUILDER_SIGNAL.help : presentation.help;
 
   return (
     <span
@@ -98,10 +114,10 @@ export function ActivityChip({
           : presentation.text,
         className,
       )}
-      title={presentation.help}
+      title={help}
     >
       <Icon aria-hidden="true" size={15} strokeWidth={1.9} />
-      {presentation.label}
+      {label}
     </span>
   );
 }

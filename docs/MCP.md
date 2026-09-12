@@ -55,6 +55,7 @@ It defaults to `https://heyresearch.xyz`.
 | `get_project` | "Tell me everything about this project." |
 | `list_ships` | "What shipped this week?" · "Is this project alive?" |
 | `this_week` | "What happened on Robinhood Chain this week?" |
+| `list_bounties` | "Which research bounties are open, what do they pay, is this one claimed?" (read-only; claiming is a wallet sign-in on the site) |
 
 `list_projects` takes HEY's own discovery surfaces as `surface`:
 
@@ -66,7 +67,7 @@ plus `kind`, `status`, `narrative`, `launchpad`, `has` (now including `liveMarke
 `trading` and `github`), `stage` (`curve`, `graduated`, `dex`), `minLiquidity`, `minMarketCap`, `maxMarketCap` and `sort` (`liquidity` and
 `volume24h` joined the orders on 2026-09-12). A market order is context the caller asked for; the
 rendering says how many of the matching projects carry the figure and that the rest follow in
-activity order, and each line names the launch stage and the provider behind every figure.
+activity order, and each line names the launch stage and the provider behind every figure. A project with no repository, changelog or feed reads "no builder signal yet" instead of "unknown" (2026-09-13), and a line ends with "trades on Uniswap v4" when the reading names its pool.
 
 ## What the server will not let an assistant say
 

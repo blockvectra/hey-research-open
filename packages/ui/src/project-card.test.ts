@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { explorerTokenUrl } from './brand';
 import { shortenAddress } from './format';
-import { ProjectCard, type ProjectCardData } from './project-card';
+import { ProjectCard, type ProjectCardData, marketLensLine, tradeContextLine } from './project-card';
 
 const ADDRESS = '0x82aE0000000000000000000000000000000091bF';
 
@@ -103,6 +103,37 @@ describe('ProjectCard — fallbacks', () => {
     const html = render({ ...tokenBacked, activityStatus: 'UNKNOWN' });
     expect(html).toContain('Activity unknown');
     expect(html).not.toContain('Shipping');
+  });
+
+  it('says "No builder signal yet" only for UNKNOWN with nothing to read building from', () => {
+    const html = render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false });
+    expect(html).toContain('No builder signal yet');
+    expect(html).not.toContain('Activity unknown');
+    // A source HEY can read keeps the plain word; a known status never changes.
+    expect(render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: true })).toContain('Activity unknown');
+    expect(render({ ...tokenBacked, activityStatus: 'SHIPPING', hasBuilderSource: false })).not.toContain('No builder signal');
+  });
+
+  it('prints what it knows under an UNKNOWN token card: trades and on-chain events, and nothing when it knows neither', () => {
+    const html = render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false, tokenMarketStatus: 'ACTIVE_MARKET', onchainEvents24h: 1204 });
+    expect(html).toContain('data-testid="card-context-line"');
+    expect(html).toContain('Traded today · 1,204 on-chain events / 24 h');
+    expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'launch_pool_no_trades' })).toBe('Launch pool, no trades yet');
+    expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', onchainEvents24h: 1 })).toBe('No trades today · 1 on-chain event / 24 h');
+    expect(tradeContextLine({ ...tokenBacked })).toBeUndefined();
+    // Not under a status HEY could read, and never on a tokenless card.
+    expect(render({ ...tokenBacked, activityStatus: 'ACTIVE', tokenMarketStatus: 'ACTIVE_MARKET', onchainEvents24h: 5 })).not.toContain('card-context-line');
+    expect(render({ ...tokenBacked, token: undefined, activityStatus: 'UNKNOWN', onchainEvents24h: 5 })).not.toContain('card-context-line');
+  });
+
+  it('names the pool a token trades in when no launch record names a launchpad', () => {
+    const html = render({ ...tokenBacked, launchedVia: { name: 'Unknown' }, marketVenue: 'Uniswap v4' });
+    expect(html).toContain('DEX (Uniswap v4)');
+    expect(html).not.toContain('>Unknown<');
+    expect(html).not.toContain('launch page');
+    // A launch record wins: the venue is where it trades, not where it launched.
+    expect(render({ ...tokenBacked, launchedVia: { name: 'Pons' }, marketVenue: 'Uniswap v4' })).not.toContain('DEX (');
+    expect(marketLensLine({ ...tokenBacked, liquidityUsd: 12_000, launchStage: 'DEX', marketVenue: 'Uniswap v4', onchainEvents24h: 40 })).toBe('Liquidity $12K · in a Uniswap v4 pool · 40 on-chain events / 24 h');
   });
 });
 

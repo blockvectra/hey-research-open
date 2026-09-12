@@ -73,6 +73,12 @@ figure. Whenever a request names a market field (a market sort, `stage`, `minLiq
 (traded in the last day), a `verifiedToken`, and each launch `stage` — the denominators a sorted list needs to be read honestly. List items gain `liquidity` and
 `volume24h` (`{usd, source, observedAt}`, from the same snapshot as `marketCap`) and `launchStage`
 only when present. A token priced only by its launchpad's curve has no liquidity figure by design.
+Two more fields since 2026-09-13: `venue`, the pool the current reading came from in words
+("Uniswap v4", "Pons") — where the token trades, never where it launched, so `launchedVia` stays
+absent for a token whose launch HEY did not observe — and `hasBuilderSource`, whether HEY holds
+a repository, org, changelog or feed to read building from. `activityStatus: "UNKNOWN"` with
+`hasBuilderSource: false` means there is nothing to read, not that HEY has not looked; trading
+is not building.
 
 **An unrecognised value is dropped, not refused.** A caller who invents a filter gets the
 unfiltered listing rather than a 400 to handle — and the `query` object in every response
@@ -152,6 +158,17 @@ three times, each with its own source.
 
 An unreadable `since` is treated as **no window** rather than a silently shifted one, and the
 echo shows the instant it was actually read as.
+
+## `GET /api/bounties` and `GET /api/bounties/{id}` (2026-09-13)
+
+Open and awarded research bounties, read-only. `status=open|awarded|all`, `limit` ≤ 50. Each
+item carries the title, kind, scope and the evidence a submission must show, the project it is
+about, the reward (`hey`, `heyBaseUnits`, `tier`, `targetUsd`, and the `quote` it was fixed at),
+and `claim` (`holdersOnlyUntil`, `openToAll`, `claimed`, `claimedBy`, `expiresAt`). The response also carries
+`rules`: reading is open to anyone; claiming is a wallet sign-in and a click on the bounty page
+(holders of a HEY tier first, then anyone); evidence is public links; a HEY moderator reviews; the
+reward is paid to the claimant's linked wallet. **There is no claim, submit or pay endpoint**, on
+purpose. When the research economy is closed the list answers `open: false` and no items.
 
 ## Feeds
 

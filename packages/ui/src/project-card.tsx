@@ -62,6 +62,12 @@ export type ProjectCardData = {
   liquidityUsd?: number;
   volume24hUsd?: number;
   launchStage?: 'CURVE' | 'GRADUATED' | 'DEX';
+  /** The pool the current reading came from, in words; names where the token trades when no launch record says where it launched (2026-09-13). */
+  marketVenue?: string;
+  /** False when HEY holds no repository, changelog or feed: the status chip then says "No builder signal yet". */
+  hasBuilderSource?: boolean;
+  /** The token contract's events in its latest watched day: on-chain context, never a status input. */
+  onchainEvents24h?: number;
   /** Canonical token identity. Absent for a project without a token. */
   token?: { chainId: number; contractAddress: string };
   launchedVia?: { name: string; url?: string };
@@ -143,6 +149,8 @@ export function ProjectCard({
     project.tokenMarketStatus === 'MARKET_ABANDONED' ||
     (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades');
   const hasToken = Boolean(project.token);
+  // What HEY does know about a token it cannot read building from (2026-09-13): trades and on-chain events, as context under the cap.
+  const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
   const shipVerified = ship ? VERIFIED_STATES.has(ship.verificationStatus) : false;
   // Source text as words: launchpad descriptions arrive with Markdown in them (QA sweep 2026-09-04).
   const description = plainText(project.shortDescription);
@@ -210,7 +218,7 @@ export function ProjectCard({
              * printed twice on those cards).
              */}
             <span className="flex shrink-0 flex-col items-end gap-1">
-              <ActivityChip status={project.activityStatus} variant="surface" />
+              <ActivityChip status={project.activityStatus} variant="surface" noBuilderSource={project.hasBuilderSource === false} />
               {!ship && hasToken && project.lastMeaningfulShipAt ? (
                 <time
                   dateTime={project.lastMeaningfulShipAt.toISOString()}
@@ -338,6 +346,10 @@ export function ProjectCard({
             <p className="-mt-1 text-[12.5px] leading-[1.5] text-hey-muted" data-testid="market-lens-line">
               {marketLensLine(project)}
             </p>
+          ) : contextLine ? (
+            <p className="-mt-1 text-[12.5px] leading-[1.5] text-hey-muted" data-testid="card-context-line">
+              {contextLine}
+            </p>
           ) : null}
 
           {/* 5: contract address — identity, never a ticker */}
@@ -393,6 +405,11 @@ export function ProjectCard({
             <ExternalRef href={project.launchedVia.url} label={`Open ${project.launchedVia.name} launch page`}>
               {project.launchedVia.name}
             </ExternalRef>
+          ) : (project.launchedVia?.name ?? 'Unknown') === 'Unknown' && project.marketVenue ? (
+            // No launch record, but a pool: say where the token trades, never where it launched.
+            <span className="truncate text-hey-secondary" title={`HEY did not observe the launch; the token trades on ${project.marketVenue}.`}>
+              DEX ({project.marketVenue})
+            </span>
           ) : (
             <span className="truncate text-hey-secondary">{project.launchedVia?.name ?? 'Unknown'}</span>
           )}
@@ -511,8 +528,27 @@ export function marketLensLine(project: ProjectCardData): string {
     if (liquidity) parts.push(`Liquidity ${liquidity}`);
     if (volume) parts.push(`24 h volume ${volume}`);
   }
-  if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
+  if (project.launchStage === 'DEX' && project.marketVenue) parts.push(`in a ${project.marketVenue} pool`);
+  else if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
+  if (project.onchainEvents24h !== undefined) parts.push(eventsPhrase(project.onchainEvents24h));
   if (parts.length === 0) return project.marketCapUsd === undefined ? 'No market reading yet' : 'No liquidity figure from this source';
   return parts.join(' · ');
+}
+
+const eventsPhrase = (count: number): string => `${count.toLocaleString('en-US')} on-chain event${count === 1 ? '' : 's'} / 24 h`;
+
+/**
+ * The context line under an UNKNOWN token card (2026-09-13): what HEY does
+ * know when it has nothing to read building from — whether the token traded
+ * today and how many events its contract emitted. Context, never a status;
+ * nothing invented, so a card with neither fact gets no line.
+ */
+export function tradeContextLine(project: ProjectCardData): string | undefined {
+  const parts: string[] = [];
+  if (project.tokenMarketStatus === 'ACTIVE_MARKET') parts.push('Traded today');
+  else if (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') parts.push('Launch pool, no trades yet');
+  else if (project.tokenMarketStatus === 'TRADING_INACTIVE') parts.push('No trades today');
+  if (project.onchainEvents24h !== undefined) parts.push(eventsPhrase(project.onchainEvents24h));
+  return parts.length > 0 ? parts.join(' · ') : undefined;
 }
 

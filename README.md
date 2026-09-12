@@ -40,7 +40,7 @@ token's market status (active, low or no liquidity, trading inactive, liquidity 
 insufficient data) and whether the token is verified as the project's own. Scores read the
 first and never the other two.
 
-Explore has two views (2026-09-12): **Projects**, everything HEY tracks, and **With a token**, only the projects with a token, with a Market Lens — live market, verified token, launch stage (on the curve, graduated, in a DEX pool), a liquidity floor, liquidity and 24 h volume orders — and one line under every market sort saying how many rows actually carry the figure. Market figures stay context; nothing ranks by them, and tokenless builders are never hidden from the first view.
+Explore has two views (2026-09-12): **Projects**, everything HEY tracks, and **With a token**, only the projects with a token, with a Market Lens — live market, verified token, launch stage (on the curve, graduated, in a DEX pool), a liquidity floor, liquidity and 24 h volume orders — and one line under every market sort saying how many rows actually carry the figure. Market figures stay context; nothing ranks by them, and tokenless builders are never hidden from the first view. A token card HEY cannot read building from says "No builder signal yet" and prints what HEY does know — traded today, on-chain events, the pool it trades in — as context (2026-09-13); trading is not building.
 
 ## The token, briefly
 

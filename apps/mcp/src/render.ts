@@ -1,3 +1,4 @@
+import type { HeyBountyPage } from './client';
 import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from './client';
 
 /**
@@ -52,9 +53,11 @@ export function projectLine(project: HeyProject, now?: Date): string {
 
   // What HEY is actually claiming about activity comes before anything else.
   parts.push(
-    project.researchLevel === 'INDEXED'
-      ? 'activity not researched yet'
-      : project.activityStatus.toLowerCase(),
+    project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false
+      ? 'no builder signal yet (no repository, changelog or feed to read; trading is not building)'
+      : project.researchLevel === 'INDEXED'
+        ? 'activity not researched yet'
+        : project.activityStatus.toLowerCase(),
   );
   if (project.stillBuilding) parts.push('STILL BUILDING');
   if (project.lastShippedAt) parts.push(`last shipped ${ago(project.lastShippedAt, now)}`);
@@ -65,6 +68,7 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.liquidity) parts.push(`${money(project.liquidity.usd)} liquidity (${project.liquidity.source})`);
   if (project.volume24h) parts.push(`${money(project.volume24h.usd)} 24h volume (${project.volume24h.source})`);
   if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
+  if (project.venue) parts.push(`trades on ${project.venue}`);
 
   return `- ${parts.join(' · ')}\n  ${project.url}`;
 }
@@ -223,3 +227,24 @@ export function renderShips(page: HeyPage<HeyShip>, now?: Date): string {
     .filter((line) => line !== '')
     .join('\n');
 }
+
+/** Open and awarded bounties, with the rules an assistant must repeat: reading is open, claiming is not an API. */
+export function renderBounties(page: HeyBountyPage, now?: Date): string {
+  if (!page.open) return `Research bounties are closed right now on HEY. Nothing can be claimed.\n\n${page.disclaimer}`;
+  if (page.items.length === 0) return `No open or recently awarded bounties. Rules: ${page.rules.claim}\n\n${page.disclaimer}`;
+  const lines = page.items.map((bounty) => {
+    const parts = [`${bounty.title} [${bounty.status}]`];
+    if (bounty.project) parts.push(`project ${bounty.project.name}`);
+    parts.push(`reward ${bounty.reward.hey} HEY${bounty.reward.targetUsd ? ` (≈ $${bounty.reward.targetUsd} at quote)` : ''}`);
+    if (bounty.status === 'OPEN') {
+      if (bounty.claim.claimed) parts.push(`already claimed${bounty.claim.claimedBy ? ` by ${bounty.claim.claimedBy}` : ''}${bounty.claim.expiresAt ? `, claim expires ${ago(bounty.claim.expiresAt, now)}` : ''}`);
+      else if (bounty.claim.openToAll) parts.push('unclaimed, open to any wallet sign-in');
+      else parts.push(`unclaimed, holders only until ${bounty.claim.holdersOnlyUntil ?? 'later'}`);
+    }
+    if (bounty.awardedAt) parts.push(`awarded ${ago(bounty.awardedAt, now)}`);
+    return `- ${parts.join(' · ')}\n  ${bounty.url}`;
+  });
+  const summary = page.summary ? `${page.summary.openBounties} open bounties, ${page.summary.committedHey} HEY committed, ${page.summary.paidHey} HEY paid so far.` : '';
+  return `${summary}\n\n${lines.join('\n')}\n\nHow claiming works: ${page.rules.claim} ${page.rules.review}\n\n${page.disclaimer}`;
+}
+
