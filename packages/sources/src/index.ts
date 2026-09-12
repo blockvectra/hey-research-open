@@ -27,6 +27,7 @@ export * from './adapters/launchpad';
 export * from './adapters/ponspad';
 export * from './adapters/rpc';
 export * from './adapters/rpc-storage';
+export * from './adapters/rpc-logs';
 export * from './adapters/sourcify';
 export * from './adapters/virtuals';
 export * from './adapters/website';

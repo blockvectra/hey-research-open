@@ -149,6 +149,11 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
     lines.push('', 'HEY has not run its activity measures on this project, so it reports none. That is different from measuring and finding nothing.');
   }
 
+  if (project.onchainActivity) {
+    const a = project.onchainActivity;
+    lines.push('', `On-chain usage (read from the chain ${a.observedAt.slice(0, 10)}): ${a.events24h}${a.truncated ? '+' : ''} events in 24 h${a.daysCovered > 1 ? `, ${a.events7d}${a.truncated ? '+' : ''} over ${a.daysCovered} days` : ''}. Context only: usage says the contract is used, not that anyone is building.`);
+  }
+
   if (project.sources.length > 0) {
     lines.push('', 'Sources HEY registered:');
     for (const source of project.sources) {

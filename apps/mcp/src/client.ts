@@ -124,6 +124,8 @@ export type HeyProjectDetail = HeyProject & {
   sources: { url: string; sourceType: string; isVerified: boolean; confidence: string; contextOnly?: boolean; contextReason?: string }[];
   /** Whether the project stands behind the tracked contract (2026-09-11): VERIFIED, UNVERIFIED or MISMATCH. */
   tokenVerification?: { status: string; reason?: string };
+  /** Events the token contract emitted, as HEY last read them from the chain. Context only. */
+  onchainActivity?: { events24h: number; events7d: number; daysCovered: number; truncated: boolean; observedAt: string };
   market?: {
     marketCapUsd?: number;
     fdvUsd?: number;
