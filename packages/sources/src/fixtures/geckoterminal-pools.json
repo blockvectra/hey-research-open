@@ -13,7 +13,20 @@
         "volume_usd": {
           "h24": "3100.5"
         },
-        "pool_created_at": "2026-07-14T10:12:00Z"
+        "pool_created_at": "2026-07-14T10:12:00Z",
+        "transactions": {
+          "h24": {
+            "buys": 96,
+            "sells": 92,
+            "buyers": 37,
+            "sellers": 39
+          }
+        },
+        "price_change_percentage": {
+          "h1": "-1.63",
+          "h6": "-0.62",
+          "h24": "-1.5"
+        }
       },
       "relationships": {
         "dex": {

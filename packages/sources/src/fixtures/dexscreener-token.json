@@ -11,13 +11,39 @@
         "name": "AgentOS",
         "symbol": "AOS"
       },
-      "quoteToken": { "address": "0xbbbb", "name": "Wrapped", "symbol": "WRH" },
+      "quoteToken": {
+        "address": "0xbbbb",
+        "name": "Wrapped",
+        "symbol": "WRH"
+      },
       "priceUsd": "0.0000241",
-      "liquidity": { "usd": 2100.5, "base": 1000, "quote": 2 },
-      "volume": { "h24": 900.25 },
+      "liquidity": {
+        "usd": 2100.5,
+        "base": 1000,
+        "quote": 2
+      },
+      "volume": {
+        "h24": 900.25
+      },
       "fdv": 24100,
       "marketCap": 24000,
-      "pairCreatedAt": 1787000000000
+      "pairCreatedAt": 1787000000000,
+      "txns": {
+        "m5": {
+          "buys": 1,
+          "sells": 0
+        },
+        "h24": {
+          "buys": 40,
+          "sells": 35
+        }
+      },
+      "priceChange": {
+        "m5": 0.1,
+        "h1": 0.7,
+        "h6": -2.4,
+        "h24": -1.0
+      }
     },
     {
       "chainId": "robinhoodchain",
@@ -29,13 +55,39 @@
         "name": "AgentOS",
         "symbol": "AOS"
       },
-      "quoteToken": { "address": "0xcccc", "name": "USD Coin", "symbol": "USDC" },
+      "quoteToken": {
+        "address": "0xcccc",
+        "name": "USD Coin",
+        "symbol": "USDC"
+      },
       "priceUsd": "0.0000239",
-      "liquidity": { "usd": 8250.75, "base": 4000, "quote": 8 },
-      "volume": { "h24": 4300.1 },
+      "liquidity": {
+        "usd": 8250.75,
+        "base": 4000,
+        "quote": 8
+      },
+      "volume": {
+        "h24": 4300.1
+      },
       "fdv": 23900,
       "marketCap": null,
-      "pairCreatedAt": 1787100000000
+      "pairCreatedAt": 1787100000000,
+      "txns": {
+        "m5": {
+          "buys": 1,
+          "sells": 0
+        },
+        "h24": {
+          "buys": 312,
+          "sells": 288
+        }
+      },
+      "priceChange": {
+        "m5": 0.1,
+        "h1": 0.7,
+        "h6": -2.4,
+        "h24": 4.2
+      }
     }
   ]
 }

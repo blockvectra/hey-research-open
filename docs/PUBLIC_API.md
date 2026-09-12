@@ -170,6 +170,34 @@ and `claim` (`holdersOnlyUntil`, `openToAll`, `claimed`, `claimedBy`, `expiresAt
 reward is paid to the claimant's linked wallet. **There is no claim, submit or pay endpoint**, on
 purpose. When the research economy is closed the list answers `open: false` and no items.
 
+## `GET /api/projects/{slug}/market` (2026-09-13)
+
+One token's market in depth, from HEY's own daily index. `days` (1–400, default 30). `current` is
+the same reading the card shows (price, market cap, liquidity, 24 h volume, `buys24h`/`sells24h`,
+`priceChange24hPct`, `venue`, `pairAddress`, provider, observed time). `days[]` is one row per UTC
+day: `priceOpenUsd`/`priceCloseUsd`/`priceHighUsd`/`priceLowUsd`, `liquidityCloseUsd`,
+`volume24hUsd`, `marketCapCloseUsd` and the `source` that won the day, rolled up from HEY's
+readings; and, where Bitquery decoded them, `trades`, `buys`, `sells`, `buyVolumeUsd`,
+`sellVolumeUsd`, `tradeCloseUsd`, `transfers` (`tradesSource: "bitquery"`). `lifecycle` carries
+when HEY recorded the launch, when the pool was created, the launch stage and since when, the
+first and last indexed trade day, the highest liquidity HEY saw and how far below it liquidity
+sits (`liquidityBelowPeakPct`), and the 7- and 30-day price moves from HEY's own closes.
+`checks[]` is what HEY checked on the contract — on chain, upgradeable proxy, deployer (and how
+many other projects' tokens it deployed), whether the project's own sources name the contract,
+the launch record, liquidity against its high, trades on the latest day — each a `finding` in
+words with `provenance` and a `tone` of `plain` or `noted`. Never a score, never "safe" or
+"risky". `onchainDays[]` are the contract's events per day; `tvlDays[]` DefiLlama's value locked
+per day. Absent means HEY holds no such figure. Counts of trades, transfers and events, never of
+accounts. A project without a token is `404`.
+
+## `GET /api/chain` (2026-09-13)
+
+Robinhood Chain day by day, aggregates only. `days` (1–400, default 14). Each row: `dexTrades`,
+`dexVolumeUsd` (trades against USDG, WETH and ETH only — unpriced pairs are left out rather than
+guessed), `tokensTraded`, `poolsTraded`, `transactions`, `transfers` (from Bitquery, when the key
+is set), and what HEY saw: `launches` recorded, `projectsPublished`, `ships`, `buildersShipping`.
+`today` names the partial day in progress and `lastFullDay` the last complete one.
+
 ## Feeds
 
 The same material is also published as RSS, for a reader rather than a script:

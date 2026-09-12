@@ -39,6 +39,8 @@ describe('DEX Screener adapter', () => {
     expect(result.data?.pairAddress).toBe('0x2222222222222222222222222222222222222222');
     // The pool's protocol travels with the reading, as the provider names it (2026-09-13).
     expect(result.data?.venue).toBe('ponsswap');
+    // Trade counts and the price move come from the same chosen pair (2026-09-13).
+    expect(result.data).toMatchObject({ buys24h: 312, sells24h: 288, priceChange1hPct: 0.7, priceChange6hPct: -2.4, priceChange24hPct: 4.2 });
     // The shallow pair reported a market cap; the deep pair did not. It must not be borrowed.
     expect(result.data?.marketCapUsd).toBeUndefined();
   });
@@ -116,6 +118,7 @@ describe('GeckoTerminal adapter', () => {
     });
     expect(result.data?.pairCreatedAt?.toISOString()).toBe('2026-07-14T10:12:00.000Z');
     expect(result.data?.venue).toBe('uniswap-v4-robinhood-chain');
+    expect(result.data).toMatchObject({ buys24h: 96, sells24h: 92, priceChange24hPct: -1.5 });
   });
 
   it('does not invent a market cap when the provider reports null', async () => {

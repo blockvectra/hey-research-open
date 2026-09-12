@@ -23,6 +23,17 @@ export type MarketContext = {
   pairUrl?: string;
   /** The pool's protocol as the provider names it (`uniswap`, `uniswap-v4-robinhood-chain`); context, never identity. */
   venue?: string;
+  /*
+   * Trade counts and price moves the aggregators already report for the same
+   * pool (2026-09-13): buys and sells in the last day, and the price change
+   * over one, six and twenty-four hours in percent. Counts of trades, never
+   * of the accounts behind them; context, never a ranking input.
+   */
+  buys24h?: number;
+  sells24h?: number;
+  priceChange1hPct?: number;
+  priceChange6hPct?: number;
+  priceChange24hPct?: number;
   /** Token artwork the provider serves — identity the project uploaded, never HEY's. */
   imageUrl?: string;
 };

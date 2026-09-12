@@ -64,6 +64,10 @@ export type ProjectCardData = {
   launchStage?: 'CURVE' | 'GRADUATED' | 'DEX';
   /** The pool the current reading came from, in words; names where the token trades when no launch record says where it launched (2026-09-13). */
   marketVenue?: string;
+  /** Trades in the reading's last day and the price move over it, in percent (2026-09-13): counts and context, never a rank. */
+  buys24h?: number;
+  sells24h?: number;
+  priceChange24hPct?: number;
   /** False when HEY holds no repository, changelog or feed: the status chip then says "No builder signal yet". */
   hasBuilderSource?: boolean;
   /** The token contract's events in its latest watched day: on-chain context, never a status input. */
@@ -527,12 +531,22 @@ export function marketLensLine(project: ProjectCardData): string {
   } else {
     if (liquidity) parts.push(`Liquidity ${liquidity}`);
     if (volume) parts.push(`24 h volume ${volume}`);
+    if (project.buys24h !== undefined && project.sells24h !== undefined) parts.push(`${project.buys24h.toLocaleString('en-US')} buys · ${project.sells24h.toLocaleString('en-US')} sells`);
+    const move = formatPercentChange(project.priceChange24hPct);
+    if (move) parts.push(`${move} / 24 h`);
   }
   if (project.launchStage === 'DEX' && project.marketVenue) parts.push(`in a ${project.marketVenue} pool`);
   else if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
   if (project.onchainEvents24h !== undefined) parts.push(eventsPhrase(project.onchainEvents24h));
   if (parts.length === 0) return project.marketCapUsd === undefined ? 'No market reading yet' : 'No liquidity figure from this source';
   return parts.join(' · ');
+}
+
+/** A price move as "+4.2%" / "−12.0%"; nothing for an absent figure. */
+export function formatPercentChange(pct: number | undefined): string | undefined {
+  if (pct === undefined || !Number.isFinite(pct)) return undefined;
+  const rounded = Math.abs(pct) >= 100 ? Math.round(Math.abs(pct)).toLocaleString('en-US') : Math.abs(pct).toFixed(1);
+  return `${pct < 0 ? '−' : '+'}${rounded}%`;
 }
 
 const eventsPhrase = (count: number): string => `${count.toLocaleString('en-US')} on-chain event${count === 1 ? '' : 's'} / 24 h`;

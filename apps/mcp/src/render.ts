@@ -1,4 +1,4 @@
-import type { HeyBountyPage } from './client';
+import type { HeyBountyPage, HeyChain, HeyTokenMarket } from './client';
 import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from './client';
 
 /**
@@ -68,6 +68,8 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.liquidity) parts.push(`${money(project.liquidity.usd)} liquidity (${project.liquidity.source})`);
   if (project.volume24h) parts.push(`${money(project.volume24h.usd)} 24h volume (${project.volume24h.source})`);
   if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
+  if (project.trades24h) parts.push(`${project.trades24h.buys} buys / ${project.trades24h.sells} sells in 24h (${project.trades24h.source})`);
+  if (project.priceChange24hPct !== undefined) parts.push(`${project.priceChange24hPct >= 0 ? '+' : ''}${project.priceChange24hPct.toFixed(1)}% 24h`);
   if (project.venue) parts.push(`trades on ${project.venue}`);
 
   return `- ${parts.join(' · ')}\n  ${project.url}`;
@@ -154,6 +156,9 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
       m.fdvUsd === undefined ? undefined : `FDV ${money(m.fdvUsd)}`,
       m.liquidityUsd === undefined ? undefined : `liquidity ${money(m.liquidityUsd)}`,
       m.volume24hUsd === undefined ? undefined : `24h volume ${money(m.volume24hUsd)}`,
+      m.buys24h === undefined || m.sells24h === undefined ? undefined : `${m.buys24h} buys / ${m.sells24h} sells in 24h`,
+      m.priceChange24hPct === undefined ? undefined : `${m.priceChange24hPct >= 0 ? '+' : ''}${m.priceChange24hPct.toFixed(1)}% in 24h`,
+      m.venue === undefined ? undefined : `pool on ${m.venue}`,
     ].filter((value): value is string => value !== undefined);
     if (figures.length > 0) {
       lines.push('', `Market context (${m.source}, ${m.observedAt.slice(0, 10)}): ${figures.join(', ')}`);
@@ -248,3 +253,76 @@ export function renderBounties(page: HeyBountyPage, now?: Date): string {
   return `${summary}\n\n${lines.join('\n')}\n\nHow claiming works: ${page.rules.claim} ${page.rules.review}\n\n${page.disclaimer}`;
 }
 
+
+const signed = (value: number | undefined) => (value === undefined ? undefined : `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`);
+
+/** One token's market in depth, as prose an agent can quote with its sources. */
+export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
+  const lines: string[] = [`# ${market.name}${market.symbol ? ` ($${market.symbol})` : ''} — market, from HEY's own daily index`, `Contract ${market.token.contractAddress} on chain ${market.token.chainId}. Market status: ${market.marketStatus.toLowerCase().replace(/_/g, ' ')}; verification: ${market.verification.toLowerCase()}.`, ''];
+  if (market.current) {
+    const c = market.current;
+    const parts = [
+      c.priceUsd === undefined ? undefined : `price $${c.priceUsd >= 1 ? c.priceUsd.toFixed(2) : c.priceUsd.toPrecision(3)}`,
+      c.marketCapUsd === undefined ? undefined : `market cap ${money(c.marketCapUsd)}`,
+      c.liquidityUsd === undefined ? undefined : `liquidity ${money(c.liquidityUsd)}`,
+      c.volume24hUsd === undefined ? undefined : `24h volume ${money(c.volume24hUsd)}`,
+      c.buys24h === undefined || c.sells24h === undefined ? undefined : `${c.buys24h} buys / ${c.sells24h} sells in 24h`,
+      signed(c.priceChange24hPct) === undefined ? undefined : `${signed(c.priceChange24hPct)} in 24h`,
+      c.venue ? `pool on ${c.venue}` : undefined,
+    ].filter((v): v is string => v !== undefined);
+    lines.push(`Now (${c.source}, ${ago(c.observedAt, now)}): ${parts.join(', ')}.`);
+  } else {
+    lines.push('No market reading in the last week.');
+  }
+  const l = market.lifecycle;
+  const life = [
+    l.launchSeenAt ? `launch recorded ${l.launchSeenAt.slice(0, 10)}` : undefined,
+    l.pairCreatedAt ? `pool created ${l.pairCreatedAt.slice(0, 10)}` : undefined,
+    l.launchStage ? `stage ${l.launchStage.toLowerCase()}${l.launchStageAt ? ` since ${l.launchStageAt.slice(0, 10)}` : ''}` : undefined,
+    l.firstTradeDay ? `first indexed trade ${l.firstTradeDay}` : undefined,
+    l.lastTradeDay ? `last indexed trade ${l.lastTradeDay}` : undefined,
+    l.peakLiquidityUsd === undefined ? undefined : `highest liquidity HEY saw ${money(l.peakLiquidityUsd)}${l.liquidityBelowPeakPct === undefined ? '' : ` (now ${Math.round(100 - l.liquidityBelowPeakPct)}% of it)`}`,
+    signed(l.priceChange7dPct) === undefined ? undefined : `${signed(l.priceChange7dPct)} over 7 days`,
+    signed(l.priceChange30dPct) === undefined ? undefined : `${signed(l.priceChange30dPct)} over 30 days`,
+  ].filter((v): v is string => v !== undefined);
+  if (life.length > 0) lines.push(`Lifecycle: ${life.join('; ')}.`);
+  lines.push('', `Days indexed: ${market.days.length}. Latest first:`);
+  for (const d of [...market.days].reverse().slice(0, 14)) {
+    const parts = [
+      d.priceCloseUsd === undefined ? undefined : `close $${d.priceCloseUsd >= 1 ? d.priceCloseUsd.toFixed(2) : d.priceCloseUsd.toPrecision(3)}`,
+      d.liquidityCloseUsd === undefined ? undefined : `liquidity ${money(d.liquidityCloseUsd)}`,
+      d.trades === undefined ? undefined : `${d.trades} trades (${d.buys ?? 0} buys / ${d.sells ?? 0} sells)`,
+      d.buyVolumeUsd === undefined && d.sellVolumeUsd === undefined ? (d.volume24hUsd === undefined ? undefined : `24h volume ${money(d.volume24hUsd)}`) : `traded ${money((d.buyVolumeUsd ?? 0) + (d.sellVolumeUsd ?? 0))}`,
+      d.transfers === undefined ? undefined : `${d.transfers} transfers`,
+    ].filter((v): v is string => v !== undefined);
+    lines.push(`- ${d.day}: ${parts.length > 0 ? parts.join(', ') : 'no figures'}${d.source ? ` (${d.source})` : ''}`);
+  }
+  if (market.checks.length > 0) {
+    lines.push('', 'What HEY checked on the contract (facts, never verdicts):');
+    for (const check of market.checks) lines.push(`- ${check.label}: ${check.finding}${check.tone === 'noted' ? ' [noted]' : ''}${check.provenance ? ` — ${check.provenance}` : ''}`);
+  }
+  if (market.onchainDays.length > 0) lines.push('', `Contract events by day: ${market.onchainDays.map((d) => `${d.day} ${d.events}${d.truncated ? '+' : ''}`).join(', ')}.`);
+  if (market.tvlDays.length > 0) lines.push(`Value locked (DefiLlama, ${market.tvlDays[0]!.protocolName}): latest ${money(market.tvlDays[market.tvlDays.length - 1]!.tvlUsd)}.`);
+  lines.push('', 'Counts of trades, transfers and events, never of accounts. Context only: nothing here reaches activity status or any HEY score, and none of it is a buy signal.', market.url);
+  return lines.join('\n');
+}
+
+/** Robinhood Chain day by day, as prose. */
+export function renderChain(chain: HeyChain): string {
+  const lines: string[] = [`# Robinhood Chain (chain ${chain.chainId}), day by day`, chain.lastFullDay ? `Last full day: ${chain.lastFullDay}.${chain.today ? ` ${chain.today} is still being indexed.` : ''}` : 'No full day indexed yet.', ''];
+  for (const d of [...chain.days].reverse()) {
+    const parts = [
+      d.dexTrades === undefined ? undefined : `${d.dexTrades.toLocaleString('en-US')} DEX trades`,
+      d.dexVolumeUsd === undefined ? undefined : `${money(d.dexVolumeUsd)} volume`,
+      d.tokensTraded === undefined ? undefined : `${d.tokensTraded.toLocaleString('en-US')} tokens traded`,
+      d.poolsTraded === undefined ? undefined : `${d.poolsTraded.toLocaleString('en-US')} pools`,
+      d.transactions === undefined ? undefined : `${d.transactions.toLocaleString('en-US')} transactions`,
+      d.launches === undefined ? undefined : `${d.launches.toLocaleString('en-US')} launches recorded by HEY`,
+      d.projectsPublished === undefined ? undefined : `${d.projectsPublished} projects published`,
+      d.ships === undefined ? undefined : `${d.ships} verified ships${d.buildersShipping === undefined ? '' : ` from ${d.buildersShipping} builders`}`,
+    ].filter((v): v is string => v !== undefined);
+    lines.push(`- ${d.day}: ${parts.join(', ')}`);
+  }
+  lines.push('', chain.volumeNote, 'Aggregates only; nobody is named. Context, never a ranking input.');
+  return lines.join('\n');
+}

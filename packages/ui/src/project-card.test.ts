@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { explorerTokenUrl } from './brand';
 import { shortenAddress } from './format';
-import { ProjectCard, type ProjectCardData, marketLensLine, tradeContextLine } from './project-card';
+import { ProjectCard, type ProjectCardData, formatPercentChange, marketLensLine, tradeContextLine } from './project-card';
 
 const ADDRESS = '0x82aE0000000000000000000000000000000091bF';
 
@@ -134,6 +134,11 @@ describe('ProjectCard — fallbacks', () => {
     // A launch record wins: the venue is where it trades, not where it launched.
     expect(render({ ...tokenBacked, launchedVia: { name: 'Pons' }, marketVenue: 'Uniswap v4' })).not.toContain('DEX (');
     expect(marketLensLine({ ...tokenBacked, liquidityUsd: 12_000, launchStage: 'DEX', marketVenue: 'Uniswap v4', onchainEvents24h: 40 })).toBe('Liquidity $12K · in a Uniswap v4 pool · 40 on-chain events / 24 h');
+    // Trades and the day's move join the line when the reading carries them (2026-09-13).
+    expect(marketLensLine({ ...tokenBacked, liquidityUsd: 12_000, buys24h: 312, sells24h: 288, priceChange24hPct: 4.2 })).toBe('Liquidity $12K · 312 buys · 288 sells · +4.2% / 24 h');
+    expect(formatPercentChange(-12.04)).toBe('−12.0%');
+    expect(formatPercentChange(1234.5)).toBe('+1,235%');
+    expect(formatPercentChange(undefined)).toBeUndefined();
   });
 });
 

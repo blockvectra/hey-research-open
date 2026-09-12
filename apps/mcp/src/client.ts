@@ -119,6 +119,8 @@ export type HeyProject = {
   launchStage?: 'CURVE' | 'GRADUATED' | 'DEX';
   /** Where the token trades, in words, when a pool reading exists (2026-09-13). */
   venue?: string;
+  trades24h?: { buys: number; sells: number; source: string };
+  priceChange24hPct?: number;
   /** Whether HEY holds a repository, org, changelog or feed to read building from. */
   hasBuilderSource?: boolean;
   url: string;
@@ -142,6 +144,13 @@ export type HeyProjectDetail = HeyProject & {
     fdvUsd?: number;
     liquidityUsd?: number;
     volume24hUsd?: number;
+    priceUsd?: number;
+    buys24h?: number;
+    sells24h?: number;
+    priceChange1hPct?: number;
+    priceChange6hPct?: number;
+    priceChange24hPct?: number;
+    venue?: string;
     observedAt: string;
     source: string;
   };
@@ -203,3 +212,29 @@ export type HeyBountyPage = {
   disclaimer: string;
 };
 
+
+/** `GET /api/projects/{slug}/market` (2026-09-13). */
+export type HeyTokenMarket = {
+  slug: string;
+  name: string;
+  symbol?: string;
+  token: { chainId: number; contractAddress: string };
+  marketStatus: string;
+  verification: string;
+  current?: { priceUsd?: number; marketCapUsd?: number; liquidityUsd?: number; volume24hUsd?: number; buys24h?: number; sells24h?: number; priceChange24hPct?: number; venue?: string; source: string; observedAt: string };
+  days: { day: string; priceCloseUsd?: number; liquidityCloseUsd?: number; volume24hUsd?: number; marketCapCloseUsd?: number; source?: string; trades?: number; buys?: number; sells?: number; buyVolumeUsd?: number; sellVolumeUsd?: number; tradeCloseUsd?: number; transfers?: number }[];
+  lifecycle: { launchSeenAt?: string; publishedAt?: string; pairCreatedAt?: string; launchStage?: string; launchStageAt?: string; firstTradeDay?: string; lastTradeDay?: string; peakLiquidityUsd?: number; liquidityBelowPeakPct?: number; priceChange7dPct?: number; priceChange30dPct?: number };
+  checks: { key: string; label: string; finding: string; provenance?: string; checkedAt?: string; tone: 'plain' | 'noted' }[];
+  onchainDays: { day: string; events: number; truncated: boolean }[];
+  tvlDays: { day: string; tvlUsd: number; protocolName: string }[];
+  url: string;
+};
+
+/** `GET /api/chain` (2026-09-13). */
+export type HeyChain = {
+  chainId: number;
+  days: { day: string; dexTrades?: number; dexVolumeUsd?: number; tokensTraded?: number; poolsTraded?: number; transactions?: number; transfers?: number; launches?: number; projectsPublished?: number; ships?: number; buildersShipping?: number }[];
+  today?: string;
+  lastFullDay?: string;
+  volumeNote: string;
+};

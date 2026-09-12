@@ -3,14 +3,16 @@ import { z } from 'zod';
 
 import {
   HeyApiError,
+  type HeyBountyPage,
+  type HeyChain,
   type HeyClient,
   type HeyPage,
   type HeyProject,
   type HeyProjectDetail,
   type HeyShip,
-  type HeyBountyPage,
+  type HeyTokenMarket,
 } from './client';
-import { renderProject, renderProjects, renderShips, renderBounties } from './render';
+import { renderBounties, renderChain, renderProject, renderProjects, renderShips, renderTokenMarket } from './render';
 
 /**
  * HEY Research as MCP tools (2026-09-05).
@@ -185,6 +187,45 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
           `/api/projects/${encodeURIComponent(slug)}`,
         );
         return text(renderProject(project, at()));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'get_token_market',
+    [
+      'One token\'s market in depth, from HEY\'s own daily index: price, liquidity and volume by day, trades by day split by direction (decoded from the chain),',
+      'the token\'s lifecycle (launch recorded, pool created, launch stage, first and last indexed trade, highest liquidity), what HEY checked on the contract',
+      '(proxy, deployer, whether the project names the contract, liquidity against its high), contract events by day and value locked.',
+      'Use this after get_project when asked whether a token still trades, how its liquidity has moved, or what HEY checked. Counts, never accounts; context, never a recommendation.',
+    ].join(' '),
+    {
+      slug: z.string().min(1).describe('The project slug (e.g. "agentos").'),
+      days: z.number().int().min(1).max(400).optional().describe('Days of history to read; default 30.'),
+    },
+    async ({ slug, days }) => {
+      try {
+        const market = await client.get<HeyTokenMarket>(`/api/projects/${encodeURIComponent(slug)}/market`, { days });
+        return text(renderTokenMarket(market, at() ?? new Date()));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'chain_activity',
+    [
+      'Robinhood Chain day by day: decoded DEX trades, USD volume against the known quote assets, tokens and pools that traded, transactions,',
+      'and what HEY saw on the chain — launches recorded, projects published, verified ships. Use this for "how active is the chain" questions. Aggregates only.',
+    ].join(' '),
+    { days: z.number().int().min(1).max(400).optional().describe('Days to read; default 14.') },
+    async ({ days }) => {
+      try {
+        const chain = await client.get<HeyChain>('/api/chain', { days });
+        return text(renderChain(chain));
       } catch (error) {
         return failure(error);
       }

@@ -16,3 +16,4 @@ export * from './sections';
 export * from './status';
 export * from './timeline';
 export * from './token-identity';
+export * from './market-charts';

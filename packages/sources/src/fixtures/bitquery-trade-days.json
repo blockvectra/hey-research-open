@@ -1,0 +1,17 @@
+{
+  "data": {
+    "EVM": {
+      "trades": [
+        { "Block": { "Date": "2026-09-12" }, "Trade": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" }, "Side": { "Type": "buy" }, "close": "0.0125" }, "trades": "231", "volume_usd": "18250.5" },
+        { "Block": { "Date": "2026-09-12" }, "Trade": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" }, "Side": { "Type": "sell" }, "close": "0.0124" }, "trades": "216", "volume_usd": "17100.25" },
+        { "Block": { "Date": "2026-09-11" }, "Trade": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" }, "Side": { "Type": "buy" }, "close": "0.0119" }, "trades": "120", "volume_usd": "9000" },
+        { "Block": { "Date": "2026-09-12" }, "Trade": { "Currency": { "SmartContract": "0x1740A3C5B6FB21044DF973490B8095439DBB1B07" }, "Side": { "Type": "buy" }, "close": "3.5" }, "trades": "4", "volume_usd": "40" },
+        { "Block": { "Date": "not-a-day" }, "Trade": { "Currency": { "SmartContract": "0x1740a3c5b6fb21044df973490b8095439dbb1b07" }, "Side": { "Type": "buy" }, "close": "3.5" }, "trades": "9", "volume_usd": "90" }
+      ],
+      "transfers": [
+        { "Block": { "Date": "2026-09-12" }, "Transfer": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" } }, "transfers": "1204" },
+        { "Block": { "Date": "2026-09-10" }, "Transfer": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" } }, "transfers": "7" }
+      ]
+    }
+  }
+}
