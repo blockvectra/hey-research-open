@@ -360,7 +360,7 @@ run, a full pass of the detail trickle takes ~23 daily runs.
 | Fields used | `id`, `current_price`, `market_cap`, `fully_diluted_valuation`, `total_volume`, `last_updated`, `image` |
 | **Not used** | `/simple/token_price/robinhood` — one address per free call; `market_cap_rank`, `ath*`, `price_change_*` — not context HEY shows |
 | Mapping | registry `platforms.robinhood` address → HEY token by `(4663, lower(contract_address))`, never by symbol; the id → address map is kept in `api_cache` (`coingecko:platforms:robinhood`, 24h) so the 3.4 MB list is read once a day |
-| Rate limit | Free tier ~5–15 req/min, shared with the detail trickle. Budget `coingecko` **200/day** through `ProviderTelemetry`; a 429 sets the shared cool-off (`withBudget`) and the job defers to it |
+| Rate limit | Free tier ~5–15 req/min, shared with the detail trickle. Budget `coingecko` **300/day** (raised from 200 on 2026-09-12 for the demo key) through `ProviderTelemetry`; a 429 sets the shared cool-off (`withBudget`) and the job defers to it |
 | Cache policy | Markets 1h; one snapshot per token per run, none within 30 min |
 | Reliability | **Medium** (aggregator over exchanges and DEX pools). Source `coingecko`, ranked after the DEX aggregators |
 | Verified | 2026-09-03: **701** coins carry a `robinhood` address (158 ids end `-robinhood-token`); `ids=pons,1inch,agentos,…` answered with `market_cap` (Pons 343 M, 1inch 122 M, AgentOS 441 k), `cache-control: max-age=30`, ETag. A `0` market cap means "unknown" and is stored as absent. **44 of 2,214 published HEY tokens** are among the 701 (74 of all 25,449 tokens; none of the stock tokens is published) |

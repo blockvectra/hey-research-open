@@ -250,3 +250,128 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
     },
   };
 }
+
+/*
+ * Network-wide discovery (2026-09-12): every token that traded on Robinhood
+ * Chain in a window, by USD volume, a page at a time. HEY had 1,657 tokens
+ * with twenty or more traders in the week that no launchpad, registry or
+ * aggregator had ever shown it, and 2,260 Pons launches it held without a
+ * name; this page is how both are found and named. Symbol and name are the
+ * chain's own token metadata as Bitquery decoded it.
+ */
+export const BITQUERY_DISCOVERY_QUERY = `query HeyTradedTokens($since: DateTime, $count: Int, $offset: Int) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
+    DEXTradeByTokens(
+      where: { Block: { Time: { since: $since } } }
+      orderBy: { descendingByField: "volume_usd" }
+      limit: { count: $count, offset: $offset }
+    ) {
+      Trade {
+        Currency { SmartContract Symbol Name Decimals }
+        Dex { ProtocolName ProtocolFamily }
+      }
+      trades: count
+      volume_usd: sum(of: Trade_Side_AmountInUSD)
+      traders: count(distinct: Transaction_From)
+    }
+  }
+}`;
+
+const discoveryRowSchema = z.object({
+  Trade: z.object({
+    Currency: z.object({ SmartContract: z.string(), Symbol: z.string().nullish(), Name: z.string().nullish(), Decimals: numberish }),
+    Dex: z.object({ ProtocolName: z.string().nullish(), ProtocolFamily: z.string().nullish() }).nullish(),
+  }),
+  trades: numberish,
+  volume_usd: numberish,
+  traders: numberish,
+});
+
+const discoveryResponseSchema = z.object({
+  data: z.object({ EVM: z.object({ DEXTradeByTokens: z.array(discoveryRowSchema).nullish() }).nullish() }).nullish(),
+  errors: z.array(z.object({ message: z.string() })).nullish(),
+});
+
+export type BitqueryDiscoveryInput = {
+  since: Date;
+  /** Rows per page (token × venue), at most 1,000. */
+  count: number;
+  offset: number;
+  apiKey: string;
+  baseUrl?: string;
+};
+
+export type BitqueryTradedToken = {
+  contractAddress: string;
+  symbol?: string;
+  name?: string;
+  decimals?: number;
+  /** Summed across venues in the window. */
+  trades: number;
+  volumeUsd: number;
+  /** Distinct sending addresses on the busiest venue; a count, never a list (CLAUDE.md product rule 1). */
+  traders: number;
+  venue?: string;
+  venueFamily?: string;
+};
+
+/** Rows grouped per token; venue = the busiest; the trader count is the largest single-venue count, never summed. */
+export function normalizeBitqueryTradedTokens(rows: readonly z.infer<typeof discoveryRowSchema>[]): BitqueryTradedToken[] {
+  const byToken = new Map<string, { reading: BitqueryTradedToken; venueTrades: Map<string, number> }>();
+  for (const row of rows) {
+    const address = row.Trade.Currency.SmartContract.toLowerCase();
+    if (!ADDRESS.test(address)) continue;
+    const current = byToken.get(address) ?? { reading: { contractAddress: address, trades: 0, volumeUsd: 0, traders: 0 }, venueTrades: new Map<string, number>() };
+    const trades = whole(row.trades);
+    current.reading.trades += trades;
+    current.reading.volumeUsd += Math.max(0, toNumber(row.volume_usd) ?? 0);
+    current.reading.traders = Math.max(current.reading.traders, whole(row.traders));
+    if (row.Trade.Currency.Symbol && !current.reading.symbol) current.reading.symbol = row.Trade.Currency.Symbol;
+    if (row.Trade.Currency.Name && !current.reading.name) current.reading.name = row.Trade.Currency.Name;
+    const decimals = toNumber(row.Trade.Currency.Decimals);
+    if (decimals !== undefined && current.reading.decimals === undefined) current.reading.decimals = Math.round(decimals);
+    const venue = row.Trade.Dex?.ProtocolName;
+    if (venue) {
+      current.venueTrades.set(venue, (current.venueTrades.get(venue) ?? 0) + trades);
+      if (!current.reading.venueFamily && row.Trade.Dex?.ProtocolFamily) current.reading.venueFamily = row.Trade.Dex.ProtocolFamily;
+    }
+    byToken.set(address, current);
+  }
+  const out: BitqueryTradedToken[] = [];
+  for (const entry of byToken.values()) {
+    const busiest = [...entry.venueTrades.entries()].sort((a, b) => b[1] - a[1])[0];
+    if (busiest) entry.reading.venue = busiest[0];
+    out.push(entry.reading);
+  }
+  return out;
+}
+
+export function createBitqueryDiscoveryAdapter(): SourceAdapter<BitqueryDiscoveryInput, BitqueryTradedToken[]> {
+  return {
+    name: 'bitquery-discovery',
+    canHandle: (input) => input.count > 0 && input.count <= 1000 && input.offset >= 0 && input.apiKey.length > 0,
+    async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryTradedToken[]>> {
+      return performSourceFetch(
+        ctx,
+        {
+          url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
+          method: 'POST',
+          headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${input.apiKey}` },
+          body: JSON.stringify({ query: BITQUERY_DISCOVERY_QUERY, variables: { since: input.since.toISOString(), count: input.count, offset: input.offset } }),
+          allowedContentTypes: ['application/json'],
+        },
+        {
+          schema: discoveryResponseSchema,
+          parse: (body) => JSON.parse(body),
+          cacheTtlSeconds: CACHE_TTL_SECONDS,
+          normalize: (raw) => {
+            if (raw.errors && raw.errors.length > 0) {
+              throw new Error(`bitquery: ${raw.errors.map((error) => error.message).join('; ').slice(0, 300)}`);
+            }
+            return normalizeBitqueryTradedTokens(raw.data?.EVM?.DEXTradeByTokens ?? []);
+          },
+        },
+      );
+    },
+  };
+}

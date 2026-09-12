@@ -1,0 +1,12 @@
+{
+  "data": {
+    "EVM": {
+      "DEXTradeByTokens": [
+        { "Trade": { "Currency": { "SmartContract": "0x1937cad42b17d43bb2b347ce16d5288887c46c33", "Symbol": "ANTHROPICx1L", "Name": "Anthropic x1 Long", "Decimals": 18 }, "Dex": { "ProtocolName": "uniswap_v4", "ProtocolFamily": "Uniswap" } }, "trades": "400000", "volume_usd": "60000000.5", "traders": "15534" },
+        { "Trade": { "Currency": { "SmartContract": "0x1937cad42b17d43bb2b347ce16d5288887c46c33", "Symbol": "ANTHROPICx1L", "Name": "Anthropic x1 Long", "Decimals": 18 }, "Dex": { "ProtocolName": "uniswap_v3", "ProtocolFamily": "Uniswap" } }, "trades": "72991", "volume_usd": "15026176", "traders": "9000" },
+        { "Trade": { "Currency": { "SmartContract": "0x6b09c294ecc9fbe3285f0421eb76ebb6222ade64", "Symbol": "Maple", "Name": "Maple", "Decimals": 18 }, "Dex": { "ProtocolName": "pons_v2", "ProtocolFamily": "Pons" } }, "trades": 6699, "volume_usd": 6471057, "traders": 3643 },
+        { "Trade": { "Currency": { "SmartContract": "not-an-address", "Symbol": "BAD", "Name": null, "Decimals": null }, "Dex": null }, "trades": "1", "volume_usd": "-5", "traders": "1" }
+      ]
+    }
+  }
+}

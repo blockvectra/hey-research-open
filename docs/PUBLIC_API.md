@@ -55,10 +55,11 @@ The catalogue, with the same filters and order the browse pages use.
 | `kind` | `UTILITY`, `MEME`, `HYBRID`, `INFRASTRUCTURE`, `RWA`, `APPLICATION`, `OTHER` | — |
 | `status` | `SHIPPING`, `ACTIVE`, `QUIET`, `DORMANT`, `RESUMED`, `UNKNOWN` | — |
 | `narrative` | a narrative slug | — |
-| `has` | any of `token`, `x`, `marketCap`, `launchpad`, `liveMarket` (no token, or a token whose market is not gone), `verifiedToken` (the project itself ties the contract to the project), comma-separated; **all** must hold | — |
+| `has` | any of `token`, `x`, `marketCap`, `launchpad`, `liveMarket` (no token, or a token whose market is not gone), `verifiedToken` (the project itself ties the contract to the project), `trading` (the token traded in the last day), comma-separated; **all** must hold | — |
 | `stage` | `curve`, `graduated`, `dex` — where the launch stands: still on its bonding curve, graduated off it, or trading in a DEX pool | — |
 | `minLiquidity` | a positive dollar figure; only tokens whose card reading shows at least this much liquidity. Unknown liquidity is excluded, never read as zero | — |
 | `maxMarketCap` | a positive dollar figure; only tokens whose card reading shows a market cap at or under it | — |
+| `minMarketCap` | a positive dollar figure; only tokens whose card reading shows a market cap at or above it (with `maxMarketCap`, a band) | — |
 | `launchpad` | `pons`, `virtuals`, `hoodfun`, `clanker`, `pairfund`, `bankr`, `hooddev`, `poolstrade`, `easya-kickstart`, `hoodit`, … | — |
 | `q` | free text — name, ticker or contract prefix; under two characters is no query | — |
 
