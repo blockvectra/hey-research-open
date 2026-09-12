@@ -51,7 +51,7 @@ The catalogue, with the same filters and order the browse pages use.
 | `limit` | 1–48 | 24 |
 | `offset` | ≥ 0 | 0 |
 | `sort` | `activity`, `marketCap`, `newest`, `liquidity`, `volume24h` | `activity` |
-| `tab` | `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes` | — |
+| `tab` | `building-with-token`, `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes` | — |
 | `kind` | `UTILITY`, `MEME`, `HYBRID`, `INFRASTRUCTURE`, `RWA`, `APPLICATION`, `OTHER` | — |
 | `status` | `SHIPPING`, `ACTIVE`, `QUIET`, `DORMANT`, `RESUMED`, `UNKNOWN` | — |
 | `narrative` | a narrative slug | — |

@@ -19,6 +19,11 @@
  * significance credit, and one same-day multi-repository commit no longer
  * satisfies the "two meaningful updates" activity rule by itself. Nine
  * builder pages in production were affected on 2026-09-04.
+ *
+ * hbm-v5 (2026-09-13): Under the Radar's HBM floor moves from 45 to 30
+ * (`UNDER_THE_RADAR.minHbm`). Weights, HBM and Discovery Gap formulas are
+ * unchanged; only eligibility for the surface widens — measured on
+ * production: 16 → 29 projects with a live market and verified building.
  */
-export const SCORING_VERSION = 'hbm-v4' as const;
+export const SCORING_VERSION = 'hbm-v5' as const;
 export type ScoringVersion = typeof SCORING_VERSION;

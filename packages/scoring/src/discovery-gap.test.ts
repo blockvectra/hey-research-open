@@ -99,6 +99,9 @@ describe('under the radar eligibility', () => {
 
   it('rejects a low Build Momentum score', () => {
     expect(isUnderTheRadarEligible({ ...base, hbm: 20 })).toBe(false);
+    // hbm-v5 (2026-09-13): the floor is 30, not 45.
+    expect(isUnderTheRadarEligible({ ...base, hbm: 35 })).toBe(true);
+    expect(isUnderTheRadarEligible({ ...base, hbm: 29 })).toBe(false);
   });
 
   it('requires at least two meaningful updates in 30 days', () => {

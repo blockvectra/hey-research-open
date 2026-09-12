@@ -109,7 +109,8 @@ export const ACTIVITY = {
 
 /** PRD V4 section 13.2. */
 export const UNDER_THE_RADAR = {
-  minHbm: 45,
+  /** 45 until hbm-v5 (2026-09-13): on the honest published cohort only 16 projects cleared 45 with a live market; 30 admits 29 and still demands verified building. */
+  minHbm: 30,
   minMeaningfulEvents30d: 2,
 } as const;
 

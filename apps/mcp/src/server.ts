@@ -36,6 +36,7 @@ const NOT_ADVICE =
 
 /** The activity surfaces the site itself offers. */
 const SURFACES = [
+  'building-with-token',
   'still-building',
   'under-the-radar',
   'shipping-now',

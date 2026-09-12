@@ -63,6 +63,7 @@ It defaults to `https://heyresearch.xyz`.
 
 - `still-building` — kept shipping through a market drawdown HEY tracked
 - `under-the-radar` — real activity, little market attention
+- `building-with-token` — verified building this month and a token with a live market read this week (2026-09-13; Radar's default)
 - `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes`
 
 plus `kind`, `status`, `narrative`, `launchpad`, `has` (now including `liveMarket`, `verifiedToken`,
