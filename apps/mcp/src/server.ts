@@ -45,7 +45,7 @@ const SURFACES = [
 
 const KINDS = ['UTILITY', 'MEME', 'HYBRID', 'INFRASTRUCTURE', 'RWA', 'APPLICATION', 'OTHER'] as const;
 const STATUSES = ['SHIPPING', 'ACTIVE', 'QUIET', 'DORMANT', 'RESUMED', 'UNKNOWN'] as const;
-const FACTS = ['token', 'x', 'marketCap', 'launchpad', 'liveMarket', 'verifiedToken', 'trading'] as const;
+const FACTS = ['token', 'x', 'marketCap', 'launchpad', 'liveMarket', 'verifiedToken', 'trading', 'github'] as const;
 const STAGES = ['curve', 'graduated', 'dex'] as const;
 
 const text = (body: string) => ({ content: [{ type: 'text' as const, text: body }] });

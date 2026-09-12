@@ -169,6 +169,6 @@ export type HeyPage<T> = {
   nextOffset?: number;
   items: T[];
   /** Denominators the route adds when a market field was asked for (Market Lens, 2026-09-12). */
-  catalogue?: { marketCoverage?: { base: number; marketCap: number; liquidity: number; volume24h: number; liveMarket: number; activeMarket: number; verifiedToken: number } };
+  catalogue?: { marketCoverage?: { base: number; marketCap: number; liquidity: number; volume24h: number; liveMarket: number; activeMarket: number; verifiedToken: number; github: number } };
   disclaimer: string;
 };
