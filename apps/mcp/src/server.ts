@@ -45,7 +45,8 @@ const SURFACES = [
 
 const KINDS = ['UTILITY', 'MEME', 'HYBRID', 'INFRASTRUCTURE', 'RWA', 'APPLICATION', 'OTHER'] as const;
 const STATUSES = ['SHIPPING', 'ACTIVE', 'QUIET', 'DORMANT', 'RESUMED', 'UNKNOWN'] as const;
-const FACTS = ['token', 'x', 'marketCap', 'launchpad'] as const;
+const FACTS = ['token', 'x', 'marketCap', 'launchpad', 'liveMarket', 'verifiedToken'] as const;
+const STAGES = ['curve', 'graduated', 'dex'] as const;
 
 const text = (body: string) => ({ content: [{ type: 'text' as const, text: body }] });
 
@@ -130,15 +131,18 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
       has: z
         .array(z.enum(FACTS))
         .optional()
-        .describe('Facts every result must carry: token contract, official X, market reading, launch record.'),
+        .describe('Facts every result must carry: token contract, official X, market reading, launch record, a live token market, a token the project itself verified.'),
+      stage: z.enum(STAGES).optional().describe('Launch stage of the token: still on its bonding curve, graduated, or trading in a DEX pool.'),
+      minLiquidity: z.number().positive().optional().describe('Only tokens whose card reading shows at least this much liquidity, in USD. Unknown liquidity is excluded, never treated as zero.'),
+      maxMarketCap: z.number().positive().optional().describe('Only tokens whose card reading shows a market cap at or under this, in USD.'),
       sort: z
-        .enum(['activity', 'marketCap', 'newest'])
+        .enum(['activity', 'marketCap', 'liquidity', 'volume24h', 'newest'])
         .optional()
-        .describe('Order. Default is activity — most recently shipped first.'),
+        .describe('Order. Default is activity — most recently shipped first. A market order is context the caller asked for; rows without that figure follow in activity order.'),
       limit: z.number().int().min(1).max(48).optional().describe('How many, up to 48. Default 24.'),
       offset: z.number().int().min(0).optional().describe('Skip this many; use the offset a previous call returned.'),
     },
-    async ({ surface, kind, status, narrative, launchpad, has, sort, limit, offset }) => {
+    async ({ surface, kind, status, narrative, launchpad, has, stage, minLiquidity, maxMarketCap, sort, limit, offset }) => {
       try {
         const page = await client.get<HeyPage<HeyProject>>('/api/projects', {
           tab: surface,
@@ -147,6 +151,9 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
           narrative,
           launchpad,
           has: has?.join(','),
+          stage,
+          minLiquidity,
+          maxMarketCap,
           sort,
           limit: limit ?? 24,
           offset,

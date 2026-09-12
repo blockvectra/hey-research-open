@@ -41,6 +41,12 @@ export function ago(iso: string, now: Date = new Date()): string {
 }
 
 /** One project on one line: identity, what HEY claims, and the context behind it. */
+const STAGE_WORDS: Record<'CURVE' | 'GRADUATED' | 'DEX', string> = {
+  CURVE: 'on its launch curve',
+  GRADUATED: 'graduated from its curve',
+  DEX: 'trading in a DEX pool',
+};
+
 export function projectLine(project: HeyProject, now?: Date): string {
   const parts = [project.symbol ? `${project.name} ($${project.symbol})` : project.name];
 
@@ -56,6 +62,9 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.launchedVia) parts.push(`via ${project.launchedVia.name}`);
   // Context, and only ever with the provider that reported it.
   if (project.marketCap) parts.push(`${money(project.marketCap.usd)} mcap (${project.marketCap.source})`);
+  if (project.liquidity) parts.push(`${money(project.liquidity.usd)} liquidity (${project.liquidity.source})`);
+  if (project.volume24h) parts.push(`${money(project.volume24h.usd)} 24h volume (${project.volume24h.source})`);
+  if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
 
   return `- ${parts.join(' · ')}\n  ${project.url}`;
 }
@@ -75,8 +84,20 @@ export function renderProjects(page: HeyPage<HeyProject>, now?: Date): string {
   const stillBuilding = page.items.some((project) => project.stillBuilding)
     ? `\n\n${STILL_BUILDING_MEANING}`
     : '';
+  // A market order over rows that mostly lack the figure must say so (Market Lens, 2026-09-12).
+  const coverage = page.catalogue?.marketCoverage;
+  const sort = page.query.sort;
+  const denominator = coverage
+    ? sort === 'liquidity'
+      ? `\n${coverage.liquidity} of ${coverage.base} matching projects have a liquidity reading; the rest follow in activity order, not by liquidity.`
+      : sort === 'volume24h'
+        ? `\n${coverage.volume24h} of ${coverage.base} matching projects have a 24h volume reading; the rest follow in activity order.`
+        : sort === 'marketCap'
+          ? `\n${coverage.marketCap} of ${coverage.base} matching projects have a market-cap reading; the rest follow in activity order.`
+          : `\nOf ${coverage.base} matching projects: ${coverage.liveMarket} with a live market, ${coverage.verifiedToken} with a verified token, ${coverage.marketCap} with a market-cap reading.`
+    : '';
 
-  return `${shown}\nQuery as HEY read it: ${JSON.stringify(page.query)}\n\n${lines.join('\n')}${more}${stillBuilding}\n\n${page.disclaimer}`;
+  return `${shown}${denominator}\nQuery as HEY read it: ${JSON.stringify(page.query)}\n\n${lines.join('\n')}${more}${stillBuilding}\n\n${page.disclaimer}`;
 }
 
 /** One project in full — the dossier, with every source HEY registered. */

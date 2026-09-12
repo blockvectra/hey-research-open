@@ -50,14 +50,28 @@ The catalogue, with the same filters and order the browse pages use.
 |---|---|---|
 | `limit` | 1–48 | 24 |
 | `offset` | ≥ 0 | 0 |
-| `sort` | `activity`, `marketCap`, `newest` | `activity` |
+| `sort` | `activity`, `marketCap`, `newest`, `liquidity`, `volume24h` | `activity` |
 | `tab` | `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes` | — |
 | `kind` | `UTILITY`, `MEME`, `HYBRID`, `INFRASTRUCTURE`, `RWA`, `APPLICATION`, `OTHER` | — |
 | `status` | `SHIPPING`, `ACTIVE`, `QUIET`, `DORMANT`, `RESUMED`, `UNKNOWN` | — |
 | `narrative` | a narrative slug | — |
-| `has` | any of `token`, `x`, `marketCap`, `launchpad`, `liveMarket` (no token, or a token whose market is not gone), comma-separated; **all** must hold | — |
+| `has` | any of `token`, `x`, `marketCap`, `launchpad`, `liveMarket` (no token, or a token whose market is not gone), `verifiedToken` (the project itself ties the contract to the project), comma-separated; **all** must hold | — |
+| `stage` | `curve`, `graduated`, `dex` — where the launch stands: still on its bonding curve, graduated off it, or trading in a DEX pool | — |
+| `minLiquidity` | a positive dollar figure; only tokens whose card reading shows at least this much liquidity. Unknown liquidity is excluded, never read as zero | — |
+| `maxMarketCap` | a positive dollar figure; only tokens whose card reading shows a market cap at or under it | — |
 | `launchpad` | `pons`, `virtuals`, `hoodfun`, `clanker`, `pairfund`, `bankr`, `hooddev`, `poolstrade`, `easya-kickstart`, `hoodit`, … | — |
 | `q` | free text — name, ticker or contract prefix; under two characters is no query | — |
+
+**The Token Projects view, in API terms (2026-09-12).** Explore's `?view=tokens` is spelled here as
+`has=token`. A market order (`sort=marketCap`, `liquidity`, `volume24h`) puts projects without that
+reading *after* those with it, in activity order — it never ranks them, and it never invents a
+figure. Whenever a request names a market field (a market sort, `stage`, `minLiquidity`,
+`maxMarketCap`, or `has=marketCap|liveMarket|verifiedToken`) the response carries
+`catalogue.marketCoverage`: `base` (rows under the non-market filters), and how many of them have a
+`marketCap`, `liquidity`, `volume24h` reading, a `liveMarket`, a `verifiedToken`, and each launch
+`stage` — the denominators a sorted list needs to be read honestly. List items gain `liquidity` and
+`volume24h` (`{usd, source, observedAt}`, from the same snapshot as `marketCap`) and `launchStage`
+only when present. A token priced only by its launchpad's curve has no liquidity figure by design.
 
 **An unrecognised value is dropped, not refused.** A caller who invents a filter gets the
 unfiltered listing rather than a 400 to handle — and the `query` object in every response

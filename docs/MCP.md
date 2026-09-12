@@ -62,7 +62,11 @@ It defaults to `https://heyresearch.xyz`.
 - `under-the-radar` — real activity, little market attention
 - `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes`
 
-plus `kind`, `status`, `narrative`, `launchpad`, `has` and `sort`.
+plus `kind`, `status`, `narrative`, `launchpad`, `has` (now including `liveMarket` and `verifiedToken`),
+`stage` (`curve`, `graduated`, `dex`), `minLiquidity`, `maxMarketCap` and `sort` (`liquidity` and
+`volume24h` joined the orders on 2026-09-12). A market order is context the caller asked for; the
+rendering says how many of the matching projects carry the figure and that the rest follow in
+activity order, and each line names the launch stage and the provider behind every figure.
 
 ## What the server will not let an assistant say
 

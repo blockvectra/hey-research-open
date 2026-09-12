@@ -72,11 +72,16 @@ const coinSchema = z.object({
     .nullish(),
 });
 
+/** CoinGecko's demo plan sends its key as a header; absent, the keyless public limits apply. */
+export const COINGECKO_DEMO_KEY_HEADER = 'x-cg-demo-api-key';
+export const coingeckoHeaders = (apiKey: string | undefined): Record<string, string> => (apiKey ? { [COINGECKO_DEMO_KEY_HEADER]: apiKey } : {});
+
 export type CoingeckoListInput = {
   chainId: number;
   /** CoinGecko's asset platform id, `robinhood` for 4663. */
   platform: string;
   baseUrl?: string;
+  apiKey?: string;
 };
 
 export type CoingeckoListing = {
@@ -97,6 +102,7 @@ export type CoingeckoCoinInput = {
   platform: string;
   id: string;
   baseUrl?: string;
+  apiKey?: string;
 };
 
 export type CoingeckoCoinDetail = {
@@ -147,7 +153,7 @@ export function createCoingeckoListAdapter(): SourceAdapter<
 
       return performSourceFetch(
         ctx,
-        { url: `${base}/coins/list?include_platform=true`, maxBytes: LIST_MAX_BYTES },
+        { url: `${base}/coins/list?include_platform=true`, maxBytes: LIST_MAX_BYTES, headers: coingeckoHeaders(input.apiKey) },
         {
           schema: listSchema,
           parse: (body) => JSON.parse(body) as unknown,
@@ -196,7 +202,7 @@ export function createCoingeckoCoinAdapter(): SourceAdapter<
 
       return performSourceFetch(
         ctx,
-        { url },
+        { url, headers: coingeckoHeaders(input.apiKey) },
         {
           schema: coinSchema,
           parse: (body) => JSON.parse(body) as unknown,

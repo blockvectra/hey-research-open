@@ -54,6 +54,14 @@ export type ProjectCardData = {
   tokenMarketReason?: string;
   /** Which provider the reading came from; shown as a title, never as layout. */
   marketCapSource?: string;
+  /*
+   * Market Lens (2026-09-12): the same reading's liquidity and 24 h volume,
+   * and the token's launch stage. Drawn only when the reader chose the Token
+   * Projects view (`marketLens`); the eight facts of Card V7 do not change.
+   */
+  liquidityUsd?: number;
+  volume24hUsd?: number;
+  launchStage?: 'CURVE' | 'GRADUATED' | 'DEX';
   /** Canonical token identity. Absent for a project without a token. */
   token?: { chainId: number; contractAddress: string };
   launchedVia?: { name: string; url?: string };
@@ -103,6 +111,7 @@ export function ProjectCard({
   ship,
   now,
   showStillBuilding = false,
+  marketLens = false,
   className,
 }: {
   project: ProjectCardData;
@@ -115,6 +124,13 @@ export function ProjectCard({
    * card is the badge wall the design contract rules out.
    */
   showStillBuilding?: boolean;
+  /**
+   * The Token Projects view (Market Lens, 2026-09-12): one extra muted line
+   * under the market cap with the reading's liquidity, 24 h volume and the
+   * launch stage — the reader asked for market context, so the card gives
+   * it. Off on Home, Radar and the Builders view (docs/PROJECT_CARD_V7.md §8).
+   */
+  marketLens?: boolean;
   className?: string;
 }) {
   const marketCap = formatUsdCompact(project.marketCapUsd);
@@ -318,6 +334,12 @@ export function ProjectCard({
             )}
           </p>
 
+          {marketLens ? (
+            <p className="-mt-1 text-[12.5px] leading-[1.5] text-hey-muted" data-testid="market-lens-line">
+              {marketLensLine(project)}
+            </p>
+          ) : null}
+
           {/* 5: contract address — identity, never a ticker */}
           <ContractAddress
             address={project.token!.contractAddress}
@@ -466,3 +488,31 @@ export function ProjectCardSkeleton() {
 }
 
 export { ProjectCardSkeleton as CardSkeleton };
+
+const STAGE_WORDS: Record<NonNullable<ProjectCardData['launchStage']>, string> = {
+  CURVE: 'on the launch curve',
+  GRADUATED: 'graduated from its curve',
+  DEX: 'in a DEX pool',
+};
+
+/**
+ * The Market Lens line: what the reading says about the pool, in words, with
+ * nothing invented. A launch pool nobody traded says so; a reading without a
+ * liquidity figure says which stage the token is in instead of printing a
+ * dash; no reading at all names the stage or says the market is unread.
+ */
+export function marketLensLine(project: ProjectCardData): string {
+  const parts: string[] = [];
+  const liquidity = formatUsdCompact(project.liquidityUsd);
+  const volume = formatUsdCompact(project.volume24hUsd);
+  if (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') {
+    parts.push('Launch pool, no trades yet');
+  } else {
+    if (liquidity) parts.push(`Liquidity ${liquidity}`);
+    if (volume) parts.push(`24 h volume ${volume}`);
+  }
+  if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
+  if (parts.length === 0) return project.marketCapUsd === undefined ? 'No market reading yet' : 'No liquidity figure from this source';
+  return parts.join(' · ');
+}
+

@@ -112,6 +112,11 @@ export type HeyProject = {
   websiteUrl?: string;
   officialX?: { handle: string; url: string };
   marketCap?: { usd: number; source: string };
+  /** The same reading's liquidity and 24 h volume (Market Lens, 2026-09-12), with the provider; absent means the source reports none. */
+  liquidity?: { usd: number; source: string };
+  volume24h?: { usd: number; source: string };
+  /** Where the launch stands: on its curve, graduated, or in a DEX pool. */
+  launchStage?: 'CURVE' | 'GRADUATED' | 'DEX';
   url: string;
 };
 
@@ -163,5 +168,7 @@ export type HeyPage<T> = {
   total: number;
   nextOffset?: number;
   items: T[];
+  /** Denominators the route adds when a market field was asked for (Market Lens, 2026-09-12). */
+  catalogue?: { marketCoverage?: { base: number; marketCap: number; liquidity: number; volume24h: number; liveMarket: number; verifiedToken: number } };
   disclaimer: string;
 };

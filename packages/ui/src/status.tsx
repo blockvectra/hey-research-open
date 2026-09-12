@@ -292,3 +292,33 @@ export function tokenVerificationLabel(verification: TokenVerificationValue): st
 export function tokenVerificationHelp(verification: TokenVerificationValue): string {
   return (TOKEN_VERIFICATION_PRESENTATION[verification] ?? TOKEN_VERIFICATION_PRESENTATION.UNVERIFIED).help;
 }
+
+/** Where a launch stands (Market Lens, 2026-09-12): plain words for the page. */
+export const LAUNCH_STAGE_LABEL: Record<'CURVE' | 'GRADUATED' | 'DEX', string> = {
+  CURVE: 'On the launch curve',
+  GRADUATED: 'Graduated from its launch curve',
+  DEX: 'Trading in a DEX pool',
+};
+
+/**
+ * Why there is no market data, in one sentence (Market Lens, 2026-09-12):
+ * what the last refresh found and when. A refusal or an outage is never
+ * read as "no pool", and an unchecked token says so.
+ */
+export function marketCheckSentence(input: { result?: 'READING' | 'NO_POOL' | 'PROVIDER_DOWN' | 'BUDGET' | 'PACED' | undefined; checkedAt?: Date | undefined; ago: (date: Date) => string }): string | undefined {
+  const when = input.checkedAt ? ` ${input.ago(input.checkedAt)}` : '';
+  switch (input.result) {
+    case 'NO_POOL':
+      return `Checked${when}: no pool listed on DEX Screener or GeckoTerminal for this contract. A launch that has not graduated has none yet.`;
+    case 'PROVIDER_DOWN':
+      return `The market providers could not be read at the last check${when}; HEY will ask again. This says nothing about the token.`;
+    case 'BUDGET':
+    case 'PACED':
+      return `HEY held its own market reads at the last check${when} to stay inside the providers' limits; it will ask again.`;
+    case 'READING':
+      return undefined;
+    default:
+      return input.checkedAt ? undefined : 'HEY has not asked the market providers about this contract yet.';
+  }
+}
+

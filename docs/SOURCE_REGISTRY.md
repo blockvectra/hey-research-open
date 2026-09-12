@@ -491,7 +491,9 @@ read the same reading through `marketReadingOrder` (`packages/domain/src/market-
 1. among readings that carry a value (market cap, or FDV when there is no circulating figure),
 2. readings younger than 24 h before older ones,
 3. among fresh readings, the most direct source first: `dexscreener` → `geckoterminal` →
-   `coingecko` → `virtuals` → `robinhood-stock-api`,
+   `bitquery` (decoded trades, 2026-09-12) → `coingecko` → `virtuals` → `robinhood-stock-api` →
+   `hoodfun` → `pairfund` (the issuing launchpads' own curve valuations, ranked last since
+   2026-09-12; before that they carried the unknown-source rank),
 4. then the newest.
 
 So a fresh DEX figure beats a fresh CoinGecko figure, and a fresh launchpad figure beats a
@@ -499,6 +501,17 @@ day-old DEX one. When nothing is fresh, the newest reading is shown whatever pro
 The card exposes the source (`marketCapSource`) and shows it as a `title` ("via CoinGecko").
 Still Building's tracked high is taken from the same source as the reading it compares
 against, never across providers. None of this touches ranking (CLAUDE.md rules 3, 6).
+
+## hood.fun curve (`hoodfun-curve`, source `hoodfun`) and launch stages (2026-09-12)
+
+Three raw `eth_call`s per token on the hood.fun launchpads (`curves`, `currentPrice`,
+`totalSupply`), every three hours in bounded batches, converted with the same-run ETH/USD rate;
+a graduated or migrated curve writes nothing and leaves the token to the DEX adapters. Since
+2026-09-12 the same read records the token's **launch stage** (`tokens.launch_stage`: CURVE,
+GRADUATED, DEX; forward-only), as do the Virtuals and pair.fund refreshes from their own
+`graduated` flag, the daily status sweep (a DEX-aggregator pool reading ⇒ DEX), the Pons V2
+factory reader (`REFRESH_LAUNCH_STAGE`, `getLaunchedToken(token).phase`, daily, budget
+`rpc-launch-stage`) and Bitquery's venue. Context on the card and the page; never a score input.
 
 ## Sources deliberately not used
 

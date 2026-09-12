@@ -170,3 +170,11 @@ export const TOKEN_MARKET_STATUSES = [
 ] as const;
 
 export type TokenMarketStatus = (typeof TOKEN_MARKET_STATUSES)[number];
+
+export const LAUNCH_STAGES = ['CURVE', 'GRADUATED', 'DEX'] as const;
+
+export type LaunchStage = (typeof LAUNCH_STAGES)[number];
+
+export const MARKET_CHECK_RESULTS = ['READING', 'NO_POOL', 'PROVIDER_DOWN', 'BUDGET', 'PACED'] as const;
+
+export type MarketCheckResult = (typeof MARKET_CHECK_RESULTS)[number];

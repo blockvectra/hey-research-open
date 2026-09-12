@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
+import { coingeckoHeaders } from './coingecko';
 import { cleanHttpUrl } from '../links';
 import { toNumber } from '../market';
 import { opt } from '../optional';
@@ -53,6 +54,7 @@ export type CoingeckoMarketsInput = {
   /** CoinGecko coin ids, at most `COINGECKO_MARKETS_BATCH_SIZE`; the caller chunks. */
   ids: readonly string[];
   baseUrl?: string;
+  apiKey?: string;
 };
 
 export type CoingeckoMarketQuote = {
@@ -106,7 +108,7 @@ export function createCoingeckoMarketsAdapter(): SourceAdapter<
 
       return performSourceFetch(
         ctx,
-        { url, conditional: true },
+        { url, conditional: true, headers: coingeckoHeaders(input.apiKey) },
         {
           schema: responseSchema,
           parse: (body) => JSON.parse(body) as unknown,

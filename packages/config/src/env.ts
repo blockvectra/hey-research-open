@@ -129,6 +129,14 @@ export const serverEnvSchema = z.object({
   market: z.object({
     dexscreenerBaseUrl: requiredUrlWithDefault(DEFAULT_DEXSCREENER_BASE_URL),
     geckoterminalBaseUrl: requiredUrlWithDefault(DEFAULT_GECKOTERMINAL_BASE_URL),
+    /** CoinGecko demo API key (2026-09-12): raises the keyless limits; sent as a header. */
+    coingeckoApiKey: optionalString,
+    /**
+     * Bitquery API token (Market Lens, 2026-09-12). When set, the worker reads
+     * DEX and launchpad trades for tokens no aggregator lists a pool for;
+     * without it that job never runs. Worker only; a page never sees it.
+     */
+    bitqueryApiKey: optionalString,
   }),
 
   /** Signs builder session cookies. Required only for write flows. */
@@ -428,6 +436,8 @@ function shapeEnv(raw: RawEnv) {
     },
     market: {
       dexscreenerBaseUrl: raw.DEXSCREENER_BASE_URL,
+      coingeckoApiKey: raw.COINGECKO_API_KEY,
+      bitqueryApiKey: raw.BITQUERY_API_KEY,
       geckoterminalBaseUrl: raw.GECKOTERMINAL_BASE_URL,
     },
     github: {
@@ -507,6 +517,8 @@ const ENV_KEY_BY_PATH: Record<string, string> = {
   'chain.blockscoutBaseUrl': 'RH_BLOCKSCOUT_BASE_URL',
   'chain.blockscoutApiKey': 'RH_BLOCKSCOUT_API_KEY',
   'market.dexscreenerBaseUrl': 'DEXSCREENER_BASE_URL',
+  'market.coingeckoApiKey': 'COINGECKO_API_KEY',
+  'market.bitqueryApiKey': 'BITQUERY_API_KEY',
   'market.geckoterminalBaseUrl': 'GECKOTERMINAL_BASE_URL',
   'github.clientId': 'GITHUB_CLIENT_ID',
   'github.clientSecret': 'GITHUB_CLIENT_SECRET',

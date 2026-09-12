@@ -54,6 +54,15 @@ export type TokenMarketEvidence = {
   /** The highest liquidity HEY ever recorded for this token. */
   peakLiquidityUsd?: number;
   now: Date;
+  /**
+   * The newest trade reading (Market Lens, 2026-09-12): a decoded on-chain
+   * trade record carries a day's volume but no pool depth, so it cannot
+   * feed the liquidity rules above. It can still say whether anyone traded:
+   * with no depth reading at all, trades in the last day make the market
+   * active and none make it inactive. Never a substitute for a depth figure
+   * when one exists.
+   */
+  trades?: { observedAt: Date; volume24hUsd: number };
 };
 
 export type TokenMarketClassification = {
@@ -70,6 +79,12 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
   const stale = (at: Date) => now.getTime() - at.getTime() > TOKEN_MARKET.staleDays * DAY_MS;
 
   if (!latest) {
+    const trades = evidence.trades;
+    if (trades && now.getTime() - trades.observedAt.getTime() <= DAY_MS) {
+      return trades.volume24hUsd > TOKEN_MARKET.inactiveVolumeUsd
+        ? { status: 'ACTIVE_MARKET', reason: 'trades_observed' }
+        : { status: 'TRADING_INACTIVE', reason: 'no_trades_24h' };
+    }
     if (evidence.latestObservedAt && !stale(evidence.latestObservedAt)) {
       return { status: 'INSUFFICIENT_DATA', reason: 'no_liquidity_reading' };
     }
