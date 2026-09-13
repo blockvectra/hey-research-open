@@ -43,6 +43,7 @@ export * from './adapters/coingecko';
 export * from './adapters/coingecko-markets';
 export * from './adapters/bitquery';
 export * from './adapters/bitquery-days';
+export * from './adapters/bitquery-contracts';
 export * from './adapters/virtuals-market';
 export * from './adapters/robinhood-stock-tokens';
 export * from './adapters/github-code-search';

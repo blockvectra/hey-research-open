@@ -190,6 +190,13 @@ words with `provenance` and a `tone` of `plain` or `noted`. Never a score, never
 per day. Absent means HEY holds no such figure. Counts of trades, transfers and events, never of
 accounts. A project without a token is `404`.
 
+A project's `onchainActivity` in `GET /api/projects/{slug}` gained four optional fields on
+2026-09-14, present only on days a decoding source filled: `calls24h`, `transactions24h`,
+`methods` and `eventKinds`. The last two are how many *different* method names were called and
+event names emitted over the days read — the cheapest honest separation between an ERC-20 being
+traded and a contract with functions people call. All four are counts and context, never an input
+to any score. Still no accounts, anywhere.
+
 ## `GET /api/signals` and `GET /api/signals/{id}` (2026-09-13)
 
 HEY Signal: measured changes about published projects. `group` (`development`, `contract`,
