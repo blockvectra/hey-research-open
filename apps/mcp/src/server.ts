@@ -4,15 +4,18 @@ import { z } from 'zod';
 import {
   HeyApiError,
   type HeyBountyPage,
+  type HeyBuildersPage,
   type HeyChain,
   type HeyClient,
   type HeyPage,
   type HeyProject,
   type HeyProjectDetail,
   type HeyShip,
+  type HeySignalPage,
   type HeyTokenMarket,
+  type HeyWeeklyReport,
 } from './client';
-import { renderBounties, renderChain, renderProject, renderProjects, renderShips, renderTokenMarket } from './render';
+import { renderBounties, renderBuilders, renderChain, renderProject, renderProjects, renderShips, renderSignals, renderTokenMarket, renderWeeklyReport } from './render';
 
 /**
  * HEY Research as MCP tools (2026-09-05).
@@ -227,6 +230,69 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
       try {
         const chain = await client.get<HeyChain>('/api/chain', { days });
         return text(renderChain(chain));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'list_signals',
+    [
+      'HEY Signal: measured changes on Robinhood Chain — development spikes and slowdowns, releases, contracts deployed or upgraded, liquidity moving, launches graduating,',
+      'pages published and verified — each with its figures before and after, source and confidence. Use this for "what changed", "what happened this week", "any news on X".',
+      'Filter by group (development, contract, market, launch, research), kind, or a project slug. Counts only, never accounts; context, never a recommendation.',
+    ].join(' '),
+    {
+      group: z.enum(['development', 'contract', 'market', 'launch', 'research']).optional(),
+      kind: z.string().optional().describe('One signal kind, e.g. development_spike, liquidity_drop, release_published.'),
+      slug: z.string().optional().describe("A project slug, to read one project's signals."),
+      days: z.number().int().min(1).max(365).optional().describe('Window in days; default 30.'),
+      order: z.enum(['newest', 'importance']).optional(),
+      limit: z.number().int().min(1).max(100).optional(),
+    },
+    async ({ group, kind, slug, days, order, limit }) => {
+      try {
+        const page = await client.get<HeySignalPage>('/api/signals', { group, kind, slug, days, order, limit: limit ?? 30 });
+        return text(renderSignals(page, at() ?? new Date()));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'list_builders',
+    [
+      'The Builder Radar: who is actually building on Robinhood Chain, ranked by verified development, on-chain use of their own contracts and research standing —',
+      "never by price — with each project's rank seven and thirty days ago. Use this for \"top builders\", \"most improved\", \"who is building on Pons\".",
+      'Filters: all, pons, virtuals, other-launch, no-token, new, established, most-improved, development, onchain, resumed.',
+    ].join(' '),
+    { filter: z.string().optional(), q: z.string().optional().describe('Find a builder by name or symbol.'), limit: z.number().int().min(1).max(200).optional() },
+    async ({ filter, q, limit }) => {
+      try {
+        const page = await client.get<HeyBuildersPage>('/api/builders', { filter, q, limit: limit ?? 25 });
+        return text(renderBuilders(page, at() ?? new Date()));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'weekly_report',
+    ["The archived weekly Robinhood Chain report: ships, new builders, movers, top builders, chain totals and the week's signals. Pass an ISO week like 2026-W37, or nothing for the latest."].join(' '),
+    { week: z.string().regex(/^\d{4}-W\d{2}$/).optional() },
+    async ({ week }) => {
+      try {
+        let key = week;
+        if (!key) {
+          const index = await client.get<{ items: { week: string }[] }>('/api/reports/weekly');
+          key = index.items[0]?.week;
+          if (!key) return text('No weekly report has been archived yet.');
+        }
+        const report = await client.get<HeyWeeklyReport>(`/api/reports/weekly/${encodeURIComponent(key)}`);
+        return text(renderWeeklyReport(report));
       } catch (error) {
         return failure(error);
       }

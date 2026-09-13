@@ -238,3 +238,63 @@ export type HeyChain = {
   lastFullDay?: string;
   volumeNote: string;
 };
+
+/** `GET /api/signals` (2026-09-13). */
+export type HeySignal = {
+  id: string;
+  kind: string;
+  group: string;
+  label: string;
+  meaning: string;
+  severity: string;
+  confidence: number;
+  importance: number;
+  observedAt: string;
+  title: string;
+  summary: string;
+  before?: number;
+  after?: number;
+  changePct?: number;
+  unit?: string;
+  evidence: { label: string; url?: string; value?: string }[];
+  source: string;
+  project: { slug: string; name: string; symbol?: string; activityStatus: string; url: string };
+  url: string;
+};
+export type HeySignalPage = { query: Record<string, unknown>; total: number; items: HeySignal[] };
+
+/** `GET /api/builders` (2026-09-13). */
+export type HeyBuilder = {
+  rank: number;
+  rank7d?: number;
+  rank30d?: number;
+  slug: string;
+  name: string;
+  symbol?: string;
+  activityStatus: string;
+  catalogStatus: string;
+  launchpad?: string;
+  lastShippedAt?: string;
+  scores: { overall: number; development: number; onchain: number; research: number };
+  liquidityHealth?: number;
+  url: string;
+};
+export type HeyBuildersPage = { day: string; ranked: number; total: number; method: string; items: HeyBuilder[] };
+
+/** `GET /api/reports/weekly/{week}` (2026-09-13). */
+export type HeyWeeklyReport = {
+  week: string;
+  window: { start: string; end: string };
+  final: boolean;
+  headline: string;
+  overview: { published: number; verifiedBuilders: number; ships: number; projectsShipping: number; newBuilders: number; backToShipping: number; stillBuilding: number; underTheRadar: number };
+  chain: { days: number; dexTrades?: number; dexVolumeUsd?: number; tokensTraded?: number; launches?: number; projectsPublished?: number };
+  shipped: { slug: string; name: string; ships: number; latest: string }[];
+  newBuilders: { slug: string; name: string }[];
+  backToShipping: { slug: string; name: string; from: string; to: string }[];
+  topBuilders: { slug: string; name: string; rank: number; overall: number }[];
+  movers: { slug: string; name: string; rank: number; rank7d: number; gained: number }[];
+  signals: { id: string; kind: string; label: string; title: string; name: string }[];
+  url: string;
+};
+export type HeyWeeklyIndex = { items: { week: string; headline: string; final: boolean; url: string }[] };

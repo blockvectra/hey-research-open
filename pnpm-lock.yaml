@@ -91,7 +91,7 @@ importers:
         version: 7.29.1
       viem:
         specifier: '2'
-        version: 2.56.3(typescript@5.9.3)(zod@3.25.76)
+        version: 2.56.5(typescript@5.9.3)(zod@3.25.76)
       zod:
         specifier: ^3.24.1
         version: 3.25.76
@@ -1879,8 +1879,8 @@ packages:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
     engines: {node: '>= 0.8'}
 
-  viem@2.56.3:
-    resolution: {integrity: sha512-vUObq3GO7D3lz9gPNEE/xd5jIUnMbeVDWewh252o54pDEDlW4pDe6FEd/qTGL5RyK52cGHMM7kQ3wjxhilEvkQ==}
+  viem@2.56.5:
+    resolution: {integrity: sha512-GuEf/oee0PHgy4D6JIA8u0rY1g+sM5nF+p7HyMHO3vjlHC5G/ljfrgnUOnrES9m5Ny/P3RwWCHjDuN2T6HUWzQ==}
     peerDependencies:
       typescript: '>=5.0.4'
     peerDependenciesMeta:
@@ -3586,7 +3586,7 @@ snapshots:
 
   vary@1.1.2: {}
 
-  viem@2.56.3(typescript@5.9.3)(zod@3.25.76):
+  viem@2.56.5(typescript@5.9.3)(zod@3.25.76):
     dependencies:
       '@noble/curves': 1.9.1
       '@noble/hashes': 1.8.0

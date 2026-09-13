@@ -190,6 +190,41 @@ words with `provenance` and a `tone` of `plain` or `noted`. Never a score, never
 per day. Absent means HEY holds no such figure. Counts of trades, transfers and events, never of
 accounts. A project without a token is `404`.
 
+## `GET /api/signals` and `GET /api/signals/{id}` (2026-09-13)
+
+HEY Signal: measured changes about published projects. `group` (`development`, `contract`,
+`market`, `launch`, `research`), `kind` (e.g. `development_spike`, `development_slowing`,
+`development_dormant`, `development_resumed`, `release_published`, `contract_deployed`,
+`contract_upgraded`, `liquidity_drop`, `liquidity_rise`, `liquidity_removed`, `market_active`,
+`volume_spike`, `launch_graduated`, `project_published`, `builder_verified`, `token_verified`),
+`slug`, `days` (default 30), `order=newest|importance`, `limit` ≤ 100, `offset`. Each item carries
+`before`, `after`, `changePct` and `unit` where the rule measured figures, `evidence[]` (labels and
+URLs a reader can open), `source` (the HEY table the figures came from), `confidence` (0–1) and
+`importance` (0–100). Every rule needs an absolute floor and a relative change, fires once per
+project per window, and honours a cooldown; a moderator can mark a false positive, which leaves
+the feed. Counts of trades, transfers and events only, never accounts. Never a verdict.
+
+## `GET /api/builders` (2026-09-13)
+
+The Builder Radar. `filter` (`all`, `pons`, `virtuals`, `other-launch`, `no-token`, `new`,
+`established`, `most-improved`, `development`, `onchain`, `resumed`), `q`, `limit` ≤ 200,
+`offset`. Each item carries today's `rank`, `rank7d`, `rank30d`, `scores` (`overall`,
+`development`, `onchain`, `research`), `liquidityHealth` (context, never in the rank) and the
+`inputs` the scores were read from. `method` states the formula: overall = 0.65 × development
+(HEY Build Momentum) + 0.20 × on-chain use + 0.15 × research standing; market cap, price and
+volume take no part. Ranks are recomputed daily and kept.
+
+## `GET /api/reports/weekly` and `GET /api/reports/weekly/{week}` (2026-09-13)
+
+The archived weekly reports, one per ISO week (`2026-W37`): overview counts, chain totals,
+most active builders, movers, top builders, new verified builders, back to shipping, Still
+Building, Under the Radar, the week's signals. `final` is true once the week has closed.
+
+## `GET /api/projects/{slug}/intelligence` (2026-09-13)
+
+One project's intelligence in one answer: the card, its signals (90 days), its Builder Radar
+rank and 30-day history, and — for a token project — the market summary with the contract checks.
+
 ## `GET /api/chain` (2026-09-13)
 
 Robinhood Chain day by day, aggregates only. `days` (1–400, default 14). Each row: `dexTrades`,

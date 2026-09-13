@@ -1,4 +1,4 @@
-import type { HeyBountyPage, HeyChain, HeyTokenMarket } from './client';
+import type { HeyBountyPage, HeyBuildersPage, HeyChain, HeySignalPage, HeyTokenMarket, HeyWeeklyReport } from './client';
 import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from './client';
 
 /**
@@ -324,5 +324,50 @@ export function renderChain(chain: HeyChain): string {
     lines.push(`- ${d.day}: ${parts.join(', ')}`);
   }
   lines.push('', chain.volumeNote, 'Aggregates only; nobody is named. Context, never a ranking input.');
+  return lines.join('\n');
+}
+
+const fig = (value: number | undefined, unit: string | undefined) => (value === undefined ? undefined : unit === 'usd' || unit === 'usd/day' ? money(value) : value.toLocaleString('en-US'));
+
+/** HEY Signal as prose: what changed, before and after, source, confidence. Never a verdict. */
+export function renderSignals(page: HeySignalPage, now: Date): string {
+  const lines: string[] = [`# HEY Signal — ${page.total} measured ${page.total === 1 ? 'change' : 'changes'} match`, ''];
+  if (page.items.length === 0) lines.push('No signals in this window. A signal fires only when a measured change clears its threshold; quiet is a finding too.');
+  for (const s of page.items) {
+    const change = [fig(s.before, s.unit), fig(s.after, s.unit)].filter((v) => v !== undefined).join(' → ');
+    const parts = [s.label, `${s.severity} · confidence ${Math.round(s.confidence * 100)}%`, change ? `${change}${s.changePct !== undefined ? ` (${s.changePct > 0 ? '+' : ''}${Math.round(s.changePct)}%)` : ''}` : undefined, `source ${s.source.replace(/_/g, ' ')}`, ago(s.observedAt, now)].filter((v): v is string => Boolean(v));
+    lines.push(`- ${s.project.name}${s.project.symbol ? ` ($${s.project.symbol})` : ''}: ${s.title}`, `  ${parts.join(' · ')}`, `  ${s.summary}`, `  ${s.url}`);
+  }
+  lines.push('', 'Counts of trades, transfers and events only, never accounts. Context, never a recommendation.');
+  return lines.join('\n');
+}
+
+/** The Builder Radar as prose, with the method stated. */
+export function renderBuilders(page: HeyBuildersPage, now: Date): string {
+  const lines: string[] = [`# Builder Radar — ${page.ranked} projects ranked${page.day ? ` for ${page.day}` : ''}`, page.method, ''];
+  if (page.items.length === 0) lines.push('No builders match this view.');
+  for (const b of page.items) {
+    const move = b.rank7d === undefined ? 'new' : b.rank7d === b.rank ? 'unchanged' : `${b.rank7d > b.rank ? '▲' : '▼'} ${Math.abs(b.rank7d - b.rank)} in 7d`;
+    lines.push(`- #${b.rank} ${b.name}${b.symbol ? ` ($${b.symbol})` : ''} · overall ${Math.round(b.scores.overall)} (dev ${Math.round(b.scores.development)}, on-chain ${Math.round(b.scores.onchain)}, research ${Math.round(b.scores.research)}) · ${move} · ${b.activityStatus.toLowerCase()}${b.lastShippedAt ? ` · shipped ${ago(b.lastShippedAt, now)}` : ''}${b.liquidityHealth === undefined ? '' : ` · liquidity health ${Math.round(b.liquidityHealth)} (context)`}`, `  ${b.url}`);
+  }
+  lines.push('', 'Market cap, price and volume take no part in the rank.');
+  return lines.join('\n');
+}
+
+/** One weekly report as prose. */
+export function renderWeeklyReport(report: HeyWeeklyReport): string {
+  const o = report.overview;
+  const lines: string[] = [`# Robinhood Chain, ${report.week} (${report.window.start.slice(0, 10)} → ${report.window.end.slice(0, 10)}${report.final ? '' : ', in progress'})`, report.headline, ''];
+  lines.push(`Overview: ${o.ships} verified ships from ${o.projectsShipping} projects · ${o.newBuilders} new verified builders · ${o.backToShipping} back to shipping · ${o.stillBuilding} Still Building · ${o.underTheRadar} Under the Radar · ${o.published} pages published in total, ${o.verifiedBuilders} verified builders.`);
+  const c = report.chain;
+  const chain = [c.dexTrades === undefined ? undefined : `${c.dexTrades.toLocaleString('en-US')} DEX trades`, c.dexVolumeUsd === undefined ? undefined : `${money(c.dexVolumeUsd)} volume (USDG/WETH/ETH pairs)`, c.launches === undefined ? undefined : `${c.launches.toLocaleString('en-US')} launches recorded`, c.projectsPublished === undefined ? undefined : `${c.projectsPublished} pages published`].filter((v): v is string => Boolean(v));
+  if (chain.length > 0) lines.push(`Chain (${c.days} days): ${chain.join(' · ')}.`);
+  if (report.shipped.length > 0) lines.push('', 'Most active builders:', ...report.shipped.map((g) => `- ${g.name}: ${g.ships} ${g.ships === 1 ? 'ship' : 'ships'} · ${g.latest}`));
+  if (report.movers.length > 0) lines.push('', 'Biggest movers (Builder Radar, 7 days):', ...report.movers.map((m) => `- ${m.name}: #${m.rank7d} → #${m.rank} (▲ ${m.gained})`));
+  if (report.topBuilders.length > 0) lines.push('', 'Top builders:', ...report.topBuilders.map((b) => `- #${b.rank} ${b.name} (overall ${Math.round(b.overall)})`));
+  if (report.newBuilders.length > 0) lines.push('', `New verified builders: ${report.newBuilders.map((b) => b.name).join(', ')}.`);
+  if (report.backToShipping.length > 0) lines.push(`Back to shipping: ${report.backToShipping.map((b) => b.name).join(', ')}.`);
+  if (report.signals.length > 0) lines.push('', 'Signals of the week:', ...report.signals.map((s) => `- ${s.name}: ${s.label} — ${s.title}`));
+  lines.push('', "Every figure was measured from HEY's tables at generation time. Not a recommendation.", report.url);
   return lines.join('\n');
 }
