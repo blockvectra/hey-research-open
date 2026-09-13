@@ -197,7 +197,9 @@ HEY Signal: measured changes about published projects. `group` (`development`, `
 `development_dormant`, `development_resumed`, `release_published`, `contract_deployed`,
 `contract_upgraded`, `liquidity_drop`, `liquidity_rise`, `liquidity_removed`, `market_active`,
 `volume_spike`, `launch_graduated`, `project_published`, `builder_verified`, `token_verified`),
-`slug`, `days` (default 30), `order=newest|importance`, `limit` ≤ 100, `offset`. Each item carries
+`slug`, `days` (default 30), `order=newest|importance`, `limit` ≤ 100, `offset`. The unfiltered feed leaves out
+`project_published` (a launch record, thousands after a promotion pass); pass `group=launch`,
+`kind=project_published` or `include=published` to see them. Each item carries
 `before`, `after`, `changePct` and `unit` where the rule measured figures, `evidence[]` (labels and
 URLs a reader can open), `source` (the HEY table the figures came from), `confidence` (0–1) and
 `importance` (0–100). Every rule needs an absolute floor and a relative change, fires once per
