@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { pickDeepestLiquidity, toNumber } from '../market';
+import { pickDeepestLiquidity, sumAcrossPools, toNumber } from '../market';
 
 /**
  * DEX Screener batch token lookup — the screening step.
@@ -131,8 +131,10 @@ export function createDexscreenerTokensAdapter(): SourceAdapter<
           normalize: (raw): TokenScreening[] => {
             const pairs = Array.isArray(raw) ? raw : (raw.pairs ?? []);
 
-            // Several pairs can share one token; keep the deepest-liquidity pair
-            // per token rather than merging figures across pools.
+            // Several pairs can share one token. Price, valuation and venue
+            // come from the deepest pair; depth, volume and trade counts are
+            // summed across them all, because those are properties of the
+            // token's market rather than of one pool (2026-09-14).
             const byToken = new Map<string, typeof pairs>();
             for (const pair of pairs) {
               // The chain is in the path, but a provider echoing a different one
@@ -180,8 +182,8 @@ export function createDexscreenerTokensAdapter(): SourceAdapter<
                 ...opt('imageUrl', cleanUrl(info.imageUrl)),
                 ...opt('marketCapUsd', toNumber(pair.marketCap)),
                 ...opt('fdvUsd', toNumber(pair.fdv)),
-                ...opt('liquidityUsd', best.liquidityUsd),
-                ...opt('volume24hUsd', toNumber(pair.volume?.h24)),
+                ...opt('liquidityUsd', sumAcrossPools(tokenPairs, (row) => toNumber(row.liquidity?.usd))),
+                ...opt('volume24hUsd', sumAcrossPools(tokenPairs, (row) => toNumber(row.volume?.h24))),
                 ...opt('priceUsd', toNumber(pair.priceUsd)),
                 ...opt('pairAddress', pair.pairAddress),
                 ...opt('pairUrl', pair.url),

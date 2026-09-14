@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireData, type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { pickDeepestLiquidity, toNumber, type MarketContext } from '../market';
+import { pickDeepestLiquidity, sumAcrossPools, toNumber, type MarketContext } from '../market';
 
 /**
  * GeckoTerminal — secondary/fallback market source (PRD V4 sections 20.1, 21).
@@ -89,12 +89,14 @@ export function createGeckoterminalAdapter(): SourceAdapter<GeckoterminalInput, 
               ...opt('priceUsd', toNumber(attrs.base_token_price_usd)),
               ...opt('marketCapUsd', toNumber(attrs.market_cap_usd)),
               ...opt('fdvUsd', toNumber(attrs.fdv_usd)),
-              ...opt('liquidityUsd', best.liquidityUsd),
-              ...opt('volume24hUsd', toNumber(attrs.volume_usd?.h24)),
+              // Depth and volume across every pool the token trades in, not
+              // the deepest one's alone (2026-09-14).
+              ...opt('liquidityUsd', sumAcrossPools(list, (pool) => toNumber(pool.attributes.reserve_in_usd))),
+              ...opt('volume24hUsd', sumAcrossPools(list, (pool) => toNumber(pool.attributes.volume_usd?.h24))),
               ...opt('pairAddress', attrs.address),
               ...opt('venue', best.pool.relationships?.dex?.data?.id),
-              ...opt('buys24h', toNumber(attrs.transactions?.h24?.buys)),
-              ...opt('sells24h', toNumber(attrs.transactions?.h24?.sells)),
+              ...opt('buys24h', sumAcrossPools(list, (pool) => toNumber(pool.attributes.transactions?.h24?.buys))),
+              ...opt('sells24h', sumAcrossPools(list, (pool) => toNumber(pool.attributes.transactions?.h24?.sells))),
               ...opt('priceChange1hPct', toNumber(attrs.price_change_percentage?.h1)),
               ...opt('priceChange6hPct', toNumber(attrs.price_change_percentage?.h6)),
               ...opt('priceChange24hPct', toNumber(attrs.price_change_percentage?.h24)),

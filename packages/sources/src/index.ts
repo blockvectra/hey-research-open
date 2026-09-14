@@ -27,6 +27,7 @@ export * from './adapters/launchpad';
 export * from './adapters/ponspad';
 export * from './adapters/rpc';
 export * from './adapters/rpc-storage';
+export * from './adapters/erc20-supply';
 export * from './adapters/rpc-logs';
 export * from './http/explorer-api';
 export * from './adapters/explorer-etherscan';

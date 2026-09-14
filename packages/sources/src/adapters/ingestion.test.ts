@@ -100,7 +100,7 @@ describe('DEX Screener batch token adapter', () => {
     expect(result.data).toEqual([]);
   });
 
-  it('keeps only the deepest-liquidity pair per token, never merging pools', async () => {
+  it('values a token from its deepest pair and counts depth across all of them', async () => {
     const stub = stubFetch({
       status: 200,
       body: JSON.stringify([
@@ -121,7 +121,8 @@ describe('DEX Screener batch token adapter', () => {
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
 
     expect(result.data).toHaveLength(1);
-    expect(result.data?.[0]?.liquidityUsd).toBe(900);
+    // The valuation is the deepest pair's; the depth is both pools (2026-09-14).
+    expect(result.data?.[0]?.liquidityUsd).toBe(910);
     expect(result.data?.[0]?.marketCapUsd).toBe(2000);
   });
 });

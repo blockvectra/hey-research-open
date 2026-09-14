@@ -25,22 +25,25 @@ describe('DEX Screener adapter', () => {
       source: 'dexscreener',
       chainId: 4663,
       symbol: 'AOS',
-      liquidityUsd: 8250.75,
-      volume24hUsd: 4300.1,
+      // Depth and volume across both of the token's pools, not the deepest
+      // alone (2026-09-14): 2,100.50 + 8,250.75 and 900.25 + 4,300.10.
+      liquidityUsd: 10_351.25,
+      volume24hUsd: 5_200.35,
       fdvUsd: 23900,
     });
     expect(result.data?.priceUsd).toBeCloseTo(0.0000239, 10);
   });
 
-  it('picks the pair with the deepest liquidity, never merging pairs', async () => {
+  it('quotes from the deepest pair and counts depth across them all', async () => {
     const stub = stubFetch({ status: 200, body: readFixture('dexscreener-token.json') });
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
 
     expect(result.data?.pairAddress).toBe('0x2222222222222222222222222222222222222222');
     // The pool's protocol travels with the reading, as the provider names it (2026-09-13).
     expect(result.data?.venue).toBe('ponsswap');
-    // Trade counts and the price move come from the same chosen pair (2026-09-13).
-    expect(result.data).toMatchObject({ buys24h: 312, sells24h: 288, priceChange1hPct: 0.7, priceChange6hPct: -2.4, priceChange24hPct: 4.2 });
+    // The price move is the chosen pair's; the trade counts are the token's
+    // whole market, 40 + 312 and 35 + 288 (2026-09-14).
+    expect(result.data).toMatchObject({ buys24h: 352, sells24h: 323, priceChange1hPct: 0.7, priceChange6hPct: -2.4, priceChange24hPct: 4.2 });
     // The shallow pair reported a market cap; the deep pair did not. It must not be borrowed.
     expect(result.data?.marketCapUsd).toBeUndefined();
   });

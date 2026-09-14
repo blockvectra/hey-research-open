@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireData, type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { pickDeepestLiquidity, toNumber, type MarketContext } from '../market';
+import { pickDeepestLiquidity, sumAcrossPools, toNumber, type MarketContext } from '../market';
 
 /**
  * DEX Screener — primary market-context source (PRD V4 sections 20.1, 21).
@@ -71,7 +71,17 @@ export function createDexscreenerAdapter(): SourceAdapter<DexscreenerInput, Mark
           parse: (body) => JSON.parse(body) as unknown,
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (raw): MarketContext | undefined => {
-            const pairs = (raw.pairs ?? []).map((pair) => ({
+            /*
+             * The endpoint answers with every pair the token appears in,
+             * including ones where it is the quote asset rather than the thing
+             * being priced. Only the pairs it is the base of are this token's
+             * market; if the provider omits the base token entirely, take what
+             * it gave rather than dropping the reading.
+             */
+            const all = raw.pairs ?? [];
+            const ours = all.filter((pair) => pair.baseToken?.address?.toLowerCase() === input.tokenAddress.toLowerCase());
+            const mine = ours.length > 0 ? ours : all;
+            const pairs = mine.map((pair) => ({
               pair,
               liquidityUsd: toNumber(pair.liquidity?.usd),
             }));
@@ -88,13 +98,15 @@ export function createDexscreenerAdapter(): SourceAdapter<DexscreenerInput, Mark
               ...opt('priceUsd', toNumber(pair.priceUsd)),
               ...opt('marketCapUsd', toNumber(pair.marketCap)),
               ...opt('fdvUsd', toNumber(pair.fdv)),
-              ...opt('liquidityUsd', best.liquidityUsd),
-              ...opt('volume24hUsd', toNumber(pair.volume?.h24)),
+              // Depth, volume and trade counts belong to the token's whole
+              // market; price, valuation and venue to the pool that quotes it.
+              ...opt('liquidityUsd', sumAcrossPools(mine, (row) => toNumber(row.liquidity?.usd))),
+              ...opt('volume24hUsd', sumAcrossPools(mine, (row) => toNumber(row.volume?.h24))),
               ...opt('pairAddress', pair.pairAddress),
               ...opt('pairUrl', pair.url),
               ...opt('venue', pair.dexId),
-              ...opt('buys24h', toNumber(pair.txns?.h24?.buys)),
-              ...opt('sells24h', toNumber(pair.txns?.h24?.sells)),
+              ...opt('buys24h', sumAcrossPools(mine, (row) => toNumber(row.txns?.h24?.buys))),
+              ...opt('sells24h', sumAcrossPools(mine, (row) => toNumber(row.txns?.h24?.sells))),
               ...opt('priceChange1hPct', toNumber(pair.priceChange?.h1)),
               ...opt('priceChange6hPct', toNumber(pair.priceChange?.h6)),
               ...opt('priceChange24hPct', toNumber(pair.priceChange?.h24)),
