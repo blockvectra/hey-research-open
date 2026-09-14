@@ -25,7 +25,16 @@ describe('Bitquery trade days adapter', () => {
     const body = JSON.parse(String(request?.init?.body)) as { query: string; variables: { addresses: string[]; since: string } };
     expect(body.query).toContain('DEXTradeByTokens');
     expect(body.query).toContain('Transfers');
-    expect(body.query).not.toMatch(/Balance|Holder|distinct: Transaction_From|Sender|Receiver/);
+    /*
+     * A count of distinct senders is a count; selecting one is an account
+     * (2026-09-15). `count(distinct: Transaction_From)` is how the day learns
+     * how many addresses traded, and it returns a number. What must never
+     * appear is the field on its own — a selection would put an address in the
+     * response (CLAUDE.md product rule 1).
+     */
+    expect(body.query).not.toMatch(/Balance|Holder|Sender|Receiver/);
+    expect(body.query).toContain('count(distinct: Transaction_From)');
+    expect(body.query.replace(/count\(distinct: Transaction_From[^)]*\)/g, '')).not.toContain('Transaction_From');
     expect(body.variables.addresses).toEqual([hey, other]);
     expect(body.variables.since).toBe('2026-09-10T00:00:00.000Z');
   });

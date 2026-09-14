@@ -21,7 +21,7 @@ depends on a live API.
 | `coingecko-markets` | Price, market cap, FDV, volume for up to 250 CoinGecko ids per call | 1 h | Matched to tokens by `(chain, address)` from the registry; a `0` figure is absent; source `coingecko` |
 | `virtuals-market` | The launchpad's curve/pool valuation for a batch of 25 agents, in VIRTUAL | 1 h | Holder fields never leave the payload; converted with a same-run CoinGecko rate; source `virtuals` |
 | `bitquery` | Decoded DEX and launchpad trades for up to 100 contracts per GraphQL request: last price, day's volume and trade count, venue (Market Lens, 2026-09-12) | 1 h |
-| `bitquery-discovery` | The week's traded tokens network-wide, by volume, 1,000 token×venue rows a page: symbol, name, decimals, venue, trades, volume, distinct-trader count (2026-09-12) | 1 h | Paid (Pro plan, points-metered), `BITQUERY_API_KEY` on the worker only; `Balances`/`Holders` cubes never queried; FDV = price × ERC-20 supply read from the chain; source `bitquery`; budget `bitquery` 400 req/day |
+| `bitquery-discovery` | The week's traded tokens network-wide, by volume, 1,000 token×venue rows a page: symbol, name, decimals, venue, trades, volume, distinct-trader count (2026-09-12) | 1 h | Paid (Pro plan, points-metered), `BITQUERY_API_KEY` on the worker only; `Holders` is queried for the token-distribution map rule 1 allows (2026-09-14), `Balances` is not; FDV = price × the ERC-20 supply stored on `tokens`; source `bitquery`; budget `bitquery` 4,000 req/day, paced at 60/min against the plan's documented 90 |
 | `robinhood-stock-assets` / `robinhood-stock-price` | Tokenized-equity assets, multipliers and raw underlying bid/ask | 1 h / 60 s | Off by default (`HEY_STOCK_TOKEN_PRICES_ENABLED`); price only, no market cap; source `robinhood-stock-api` |
 | launchpad | Interface + registry only | — | No provider ships until its access is public, documented and permitted |
 
@@ -116,7 +116,7 @@ asked: holders, balances, wallets (CLAUDE.md product rule 1). Discovery (`DISCOV
 daily, ≤ 12 pages): every token that traded this week with twenty or more traders becomes a named
 `token_candidates` row and is chain-verified by the trade; promotion and the quality gate decide
 what becomes a page, exactly as for every other source. The market job (`REFRESH_MARKET_BITQUERY`,
-every 6 h, ≤ 400 tokens a run) targets tokens with no pool at the last check or a launch-pool
+every 6 h, ≤ 5,000 tokens a run) targets tokens with no pool at the last check or a launch-pool
 status, and is skipped entirely without the key. A trade reading carries no pool depth, so the
 market status reads it as `trades_observed` / `no_trades_24h`, never as liquidity.
 
@@ -126,9 +126,17 @@ what it reads: `REFRESH_TRADE_DAYS` (daily; every published token, a hundred a r
 four UTC days — trades by direction, USD volume, the day's last price, transfers; ~60 requests a
 day) writes the trade columns of `token_market_days`, and `REFRESH_CHAIN_DAYS` (every 6 h) writes
 the chain half of `chain_activity_days` (DEX trades, pools, tokens traded, volume against USDG /
-WETH / ETH only, transactions, transfers). The budget is 2,000 requests a day. What is still never
-asked: holders, balances, wallets, or any per-account figure — distinct-account counts are not
-persisted either (the schema guard forbids the words, on purpose).
+WETH / ETH only, transactions, transfers). The budget is 4,000 requests a day and the steady state
+is about a thousand, roughly 9,500 of the plan's ~33,000 daily points.
+
+What is still never asked: balances across tokens, wallets, or anything that names an account.
+Counts of distinct accounts **are** asked for and stored, from 2026-09-15: how many addresses
+called a contract, and how many traded a token, bought or sold it, on a given day. They are
+aggregates the provider computes and returns as numbers — `count(distinct: Transaction_From)` —
+and no address reaches HEY. The adapter tests enforce the shape: the sender field may appear
+inside a count and nowhere else. The columns are named `callers`, `distinct_addresses`,
+`distinct_buyers` and `distinct_sellers`, because the schema guard forbids the word `trader` and
+the neutral name is the more honest one anyway.
 
 Since 2026-09-14 Bitquery also answers "is this contract being used", in batches.
 `REFRESH_CONTRACT_ACTIVITY` (every 6 h, a no-op without the key) asks three cubes in one document

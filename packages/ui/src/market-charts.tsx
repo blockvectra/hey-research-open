@@ -20,7 +20,7 @@ import { formatUsdCompact } from './format';
 export type DailyPoint = { day: string; value: number };
 
 /** Which measure a chart is drawing; it picks the hue, nothing else. */
-export type ChartTone = 'price' | 'liquidity' | 'volume' | 'trades' | 'transfers' | 'events' | 'tvl' | 'neutral';
+export type ChartTone = 'price' | 'liquidity' | 'volume' | 'trades' | 'transfers' | 'events' | 'callers' | 'tvl' | 'neutral';
 
 const TONES: Record<ChartTone, { stroke: string; fill: string; bar: string; barTo: string }> = {
   price: { stroke: 'var(--color-blue-500)', fill: 'var(--color-blue-500)', bar: 'var(--color-blue-500)', barTo: 'var(--color-blue-400)' },
@@ -29,6 +29,8 @@ const TONES: Record<ChartTone, { stroke: string; fill: string; bar: string; barT
   trades: { stroke: 'var(--color-status-shipping)', fill: 'var(--color-status-shipping)', bar: 'var(--color-status-shipping)', barTo: 'var(--color-status-shipping)' },
   transfers: { stroke: 'var(--color-narrative-infra)', fill: 'var(--color-narrative-infra)', bar: 'var(--color-narrative-infra)', barTo: 'var(--color-narrative-infra)' },
   events: { stroke: 'var(--color-narrative-trading)', fill: 'var(--color-narrative-trading)', bar: 'var(--color-narrative-trading)', barTo: 'var(--color-narrative-trading)' },
+  /** Addresses using the contract (2026-09-15): the builder-side colour, because that is what it measures. */
+  callers: { stroke: 'var(--color-status-shipping)', fill: 'var(--color-status-shipping)', bar: 'var(--color-status-shipping)', barTo: 'var(--color-status-shipping)' },
   tvl: { stroke: 'var(--color-narrative-defi)', fill: 'var(--color-narrative-defi)', bar: 'var(--color-narrative-defi)', barTo: 'var(--color-narrative-defi)' },
   neutral: { stroke: 'var(--color-hey-border-strong)', fill: 'var(--color-hey-border-strong)', bar: 'var(--color-hey-border-strong)', barTo: 'var(--color-hey-border-strong)' },
 };

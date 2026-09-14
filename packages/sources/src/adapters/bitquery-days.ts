@@ -14,7 +14,8 @@ import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from
  *   last price — and every (token, day) transfer count. Counts of trades and
  *   transfers, never of accounts.
  * - `createBitqueryChainDaysAdapter`: the chain's own days — DEX trades,
- *   pools and tokens that traded, USD volume against the known quote assets,
+ *   pools and tokens that traded, USD volume against the known quote assets
+ *   (a conditional sum on the tokens cube rather than a cube of its own),
  *   transactions and transfers.
  *
  * The realtime dataset holds four or five days, so the callers run daily and
@@ -35,6 +36,20 @@ export const ROBINHOOD_QUOTE_ASSETS = [
   '0x0000000000000000000000000000000000000000',
 ] as const;
 
+/**
+ * The `breadth:` cube is a second alias of the same table, deliberately not
+ * grouped by trade side (2026-09-15).
+ *
+ * `trades:` groups by `Side.Type`, which is what gives buys and sells their own
+ * counts and volumes — but it means a distinct-address count there is a count
+ * per side, and the two cannot be added: an address that bought and sold would
+ * be counted twice. Asking again without the grouping is the only way to get
+ * the honest union, and it also gives an exact pool count per token-day rather
+ * than a per-side one. Five more points a request, sixty requests a day.
+ *
+ * Every figure here is a count. No address is selected, stored or named
+ * (CLAUDE.md product rule 1).
+ */
 export const BITQUERY_TRADE_DAYS_QUERY = `query HeyTradeDays($addresses: [String!], $since: DateTime) {
   EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
     trades: DEXTradeByTokens(
@@ -45,6 +60,17 @@ export const BITQUERY_TRADE_DAYS_QUERY = `query HeyTradeDays($addresses: [String
       Trade { Currency { SmartContract } Side { Type } close: PriceInUSD(maximum: Block_Number) }
       trades: count
       volume_usd: sum(of: Trade_Side_AmountInUSD)
+    }
+    breadth: DEXTradeByTokens(
+      where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
+      limit: { count: 5000 }
+    ) {
+      Block { Date }
+      Trade { Currency { SmartContract } }
+      addresses: count(distinct: Transaction_From)
+      buyers: count(distinct: Transaction_From, if: { Trade: { Side: { Type: { is: buy } } } })
+      sellers: count(distinct: Transaction_From, if: { Trade: { Side: { Type: { is: sell } } } })
+      pools: count(distinct: Trade_Dex_SmartContract)
     }
     transfers: Transfers(
       where: { Transfer: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
@@ -67,13 +93,7 @@ export const BITQUERY_CHAIN_DAYS_QUERY = `query HeyChainDays($since: DateTime, $
     tokens: DEXTradeByTokens(where: { Block: { Time: { since: $since } } }, limit: { count: 100 }) {
       Block { Date }
       tokens: count(distinct: Trade_Currency_SmartContract)
-    }
-    volume: DEXTradeByTokens(
-      where: { Block: { Time: { since: $since } }, Trade: { Side: { Currency: { SmartContract: { in: $quotes } } } } }
-      limit: { count: 100 }
-    ) {
-      Block { Date }
-      volume_usd: sum(of: Trade_Side_AmountInUSD)
+      volume_usd: sum(of: Trade_Side_AmountInUSD, if: { Trade: { Side: { Currency: { SmartContract: { in: $quotes } } } } })
     }
     transactions: Transactions(where: { Block: { Time: { since: $since } } }, limit: { count: 100 }) {
       Block { Date }
@@ -95,10 +115,28 @@ const tradeRowSchema = z.object({
   trades: numberish,
   volume_usd: numberish,
 });
+const breadthRowSchema = z.object({
+  Block: dayBlock,
+  Trade: z.object({ Currency: z.object({ SmartContract: z.string() }) }),
+  addresses: numberish,
+  buyers: numberish,
+  sellers: numberish,
+  pools: numberish,
+});
 const transferRowSchema = z.object({ Block: dayBlock, Transfer: z.object({ Currency: z.object({ SmartContract: z.string() }) }), transfers: numberish });
 
 const tradeDaysResponseSchema = z.object({
-  data: z.object({ EVM: z.object({ trades: z.array(tradeRowSchema).nullish(), transfers: z.array(transferRowSchema).nullish() }).nullish() }).nullish(),
+  data: z
+    .object({
+      EVM: z
+        .object({
+          trades: z.array(tradeRowSchema).nullish(),
+          breadth: z.array(breadthRowSchema).nullish(),
+          transfers: z.array(transferRowSchema).nullish(),
+        })
+        .nullish(),
+    })
+    .nullish(),
   errors: z.array(z.object({ message: z.string() })).nullish(),
 });
 
@@ -108,8 +146,7 @@ const chainDaysResponseSchema = z.object({
       EVM: z
         .object({
           trades: z.array(z.object({ Block: dayBlock, trades: numberish, pools: numberish })).nullish(),
-          tokens: z.array(z.object({ Block: dayBlock, tokens: numberish })).nullish(),
-          volume: z.array(z.object({ Block: dayBlock, volume_usd: numberish })).nullish(),
+          tokens: z.array(z.object({ Block: dayBlock, tokens: numberish, volume_usd: numberish })).nullish(),
           transactions: z.array(z.object({ Block: dayBlock, transactions: numberish })).nullish(),
           transfers: z.array(z.object({ Block: dayBlock, transfers: numberish })).nullish(),
         })
@@ -136,6 +173,16 @@ export type BitqueryTokenDay = {
   sells: number;
   buyVolumeUsd: number;
   sellVolumeUsd: number;
+  /**
+   * Counts of the addresses behind the day's trades (2026-09-15). Absent means
+   * the provider did not answer, never zero — a token that was not traded has
+   * no row at all.
+   */
+  distinctAddresses?: number;
+  distinctBuyers?: number;
+  distinctSellers?: number;
+  /** How many pools the token actually traded in that day. */
+  poolsTraded?: number;
   /** The day's last trade price in USD, when any trade carried one. */
   closeUsd?: number;
   transfers?: number;
@@ -171,6 +218,7 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 export function normalizeBitqueryTokenDays(
   trades: readonly z.infer<typeof tradeRowSchema>[],
   transfers: readonly z.infer<typeof transferRowSchema>[],
+  breadth: readonly z.infer<typeof breadthRowSchema>[] = [],
 ): BitqueryTokenDay[] {
   const byKey = new Map<string, BitqueryTokenDay>();
   const keyOf = (address: string, day: string) => `${address}:${day}`;
@@ -194,6 +242,33 @@ export function normalizeBitqueryTokenDays(
     if (close !== undefined) current.closeUsd = current.closeUsd === undefined ? close : side === 'sell' ? close : current.closeUsd;
     byKey.set(keyOf(address, day), current);
   }
+  /*
+   * Breadth rows are one per (token, day) and only attach to a day the trade
+   * rows already produced — a count with no trades behind it would be a figure
+   * about nothing. A zero from the provider is stored as a zero here only
+   * because a traded day with no distinct addresses is impossible; anything
+   * missing stays undefined.
+   */
+  for (const row of breadth) {
+    const address = row.Trade.Currency.SmartContract.toLowerCase();
+    const day = row.Block.Date;
+    if (!ADDRESS.test(address) || !DAY.test(day)) continue;
+    const current = byKey.get(keyOf(address, day));
+    if (!current) continue;
+    const positive = (value: number | string | null | undefined): number | undefined => {
+      const parsed = toNumber(value);
+      return parsed !== undefined && Number.isFinite(parsed) && parsed > 0 ? Math.round(parsed) : undefined;
+    };
+    const addresses = positive(row.addresses);
+    const buyers = positive(row.buyers);
+    const sellers = positive(row.sellers);
+    const pools = positive(row.pools);
+    if (addresses !== undefined) current.distinctAddresses = addresses;
+    if (buyers !== undefined) current.distinctBuyers = buyers;
+    if (sellers !== undefined) current.distinctSellers = sellers;
+    if (pools !== undefined) current.poolsTraded = pools;
+  }
+
   for (const row of transfers) {
     const address = row.Transfer.Currency.SmartContract.toLowerCase();
     const day = row.Block.Date;
@@ -219,11 +294,12 @@ export function normalizeBitqueryChainDays(data: NonNullable<NonNullable<z.infer
   }
   for (const row of data.tokens ?? []) {
     const d = at(row.Block.Date);
-    if (d) d.tokensTraded = whole(row.tokens);
-  }
-  for (const row of data.volume ?? []) {
-    const d = at(row.Block.Date);
-    if (d) d.dexVolumeUsd = money(row.volume_usd);
+    if (!d) continue;
+    d.tokensTraded = whole(row.tokens);
+    // Volume shares this cube (2026-09-15): it was a second alias of the same
+    // table filtered to the quote assets, and a filtered sum says the same
+    // thing for five points less.
+    d.dexVolumeUsd = money(row.volume_usd);
   }
   for (const row of data.transactions ?? []) {
     const d = at(row.Block.Date);
@@ -257,7 +333,11 @@ export function createBitqueryTradeDaysAdapter(): SourceAdapter<BitqueryTradeDay
         cacheTtlSeconds: CACHE_TTL_SECONDS,
         normalize: (response) => {
           if (response.errors?.length) throw new Error(response.errors.map((error) => error.message).join('; '));
-          return normalizeBitqueryTokenDays(response.data?.EVM?.trades ?? [], response.data?.EVM?.transfers ?? []);
+          return normalizeBitqueryTokenDays(
+              response.data?.EVM?.trades ?? [],
+              response.data?.EVM?.transfers ?? [],
+              response.data?.EVM?.breadth ?? [],
+            );
         },
       });
     },

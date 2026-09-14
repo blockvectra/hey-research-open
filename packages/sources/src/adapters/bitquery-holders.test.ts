@@ -25,7 +25,13 @@ describe('bitquery holders', () => {
     const declared = [...BITQUERY_HOLDERS_QUERY.matchAll(/\$(\w+):/g)].map((m) => m[1]!);
     const body = BITQUERY_HOLDERS_QUERY.slice(BITQUERY_HOLDERS_QUERY.indexOf('{'));
     for (const name of declared) expect(body).toContain(`$${name}`);
-    expect(declared).toEqual(['token', 'top']);
+    expect(declared).toEqual(['token', 'top', 'exclude']);
+    // The exclusion belongs to the counts only: the ranked list must still
+    // return the pool and the burn address, because the map labels them.
+    const total = BITQUERY_HOLDERS_QUERY.slice(BITQUERY_HOLDERS_QUERY.indexOf('total:'));
+    expect(total).toContain('notIn: $exclude');
+    const topSelection = BITQUERY_HOLDERS_QUERY.slice(BITQUERY_HOLDERS_QUERY.indexOf('top: Holders'), BITQUERY_HOLDERS_QUERY.indexOf('total:'));
+    expect(topSelection).not.toContain('$exclude');
     expect(BITQUERY_HOLDERS_QUERY).not.toMatch(/AmountInUSD|PnL|Trade/);
   });
 

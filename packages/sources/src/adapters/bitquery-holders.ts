@@ -49,7 +49,7 @@ const CACHE_TTL_SECONDS = 60 * 60;
 /** How many holders a bubble map draws. Past this the circles are too small to read. */
 export const BITQUERY_HOLDERS_TOP_N = 50;
 
-export const BITQUERY_HOLDERS_QUERY = `query HeyTokenHolders($token: String!, $top: Int!) {
+export const BITQUERY_HOLDERS_QUERY = `query HeyTokenHolders($token: String!, $top: Int!, $exclude: [String!]) {
   EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
     top: Holders(
       where: { Currency: { SmartContract: { is: $token } } }
@@ -59,8 +59,11 @@ export const BITQUERY_HOLDERS_QUERY = `query HeyTokenHolders($token: String!, $t
       Holder { Address }
       Balance { Amount FirstChangeTime LastChangeTime UpdateCount }
     }
-    total: Holders(where: { Currency: { SmartContract: { is: $token } } }) {
+    total: Holders(where: { Currency: { SmartContract: { is: $token } }, Holder: { Address: { notIn: $exclude } } }) {
       holders: count(distinct: Holder_Address, if: { Balance: { Amount: { gt: "0" } } })
+      gini: gini(of: Balance_Amount)
+      nakamoto: nakamoto(of: Balance_Amount, ratio: 0.5)
+      median: median(of: Balance_Amount)
     }
   }
 }`;
@@ -83,7 +86,7 @@ const responseSchema = z.object({
       EVM: z
         .object({
           top: z.array(holderRowSchema).nullish(),
-          total: z.array(z.object({ holders: numberish })).nullish(),
+          total: z.array(z.object({ holders: numberish, gini: numberish, nakamoto: numberish, median: numberish })).nullish(),
         })
         .nullish(),
     })
@@ -103,6 +106,18 @@ export type BitqueryHoldersInput = {
    * the transfers cube broke every request until it was spotted.
    */
   since?: Date;
+  /**
+   * Addresses to leave out of the counts — pools, lockers, routers, factories
+   * and burns (2026-09-15).
+   *
+   * They stay in the ranked list above, because the map labels them and a
+   * reader should see that the pool is the largest balance. They come out of
+   * the concentration figures, because on this chain one pool holds more than
+   * half of almost every token and the Nakamoto coefficient came back as 1
+   * everywhere until they did. The same token reads 1 with them and 34
+   * without.
+   */
+  exclude?: readonly string[];
   apiKey: string;
   baseUrl?: string;
 };
@@ -121,6 +136,20 @@ export type BitqueryHolders = {
   holders: BitqueryHolder[];
   /** Every address holding a non-zero balance, as the provider counts them. */
   holdersTotal?: number;
+  /**
+   * Concentration, computed by the provider over the whole balance set
+   * (2026-09-15) — not over the fifty rows above, which is why it is worth
+   * asking for rather than deriving here.
+   *
+   * `gini` is 0 when everyone holds the same and approaches 1 as one address
+   * holds everything. `nakamotoHalf` is the number of addresses that together
+   * hold more than half the supply — $HEY reads 17 — and is the one figure
+   * that answers "how few hands" in a sentence a reader does not have to be
+   * taught. Both are numbers about a distribution; neither names anyone.
+   */
+  gini?: number;
+  nakamotoHalf?: number;
+  medianBalance?: number;
 };
 
 const amountOf = (value: number | string | null | undefined): number => {
@@ -160,7 +189,25 @@ export function normalizeBitqueryHolders(data: NonNullable<NonNullable<z.infer<t
   }
 
   const total = whole(data.total?.[0]?.holders);
-  return { holders, ...(total > 0 ? { holdersTotal: total } : {}) };
+  /*
+   * Absent means the provider did not answer, never zero. `theil_index` is in
+   * the schema and returns null on this chain, which is exactly the shape a
+   * silently-wrong figure would take, so it is not asked for at all.
+   */
+  const ratio = (value: number | string | null | undefined): number | undefined => {
+    const parsed = toNumber(value);
+    return parsed !== undefined && Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+  };
+  const gini = ratio(data.total?.[0]?.gini);
+  const nakamoto = whole(data.total?.[0]?.nakamoto);
+  const median = ratio(data.total?.[0]?.median);
+  return {
+    holders,
+    ...(total > 0 ? { holdersTotal: total } : {}),
+    ...(gini !== undefined && gini > 0 ? { gini } : {}),
+    ...(nakamoto > 0 ? { nakamotoHalf: nakamoto } : {}),
+    ...(median !== undefined && median > 0 ? { medianBalance: median } : {}),
+  };
 }
 
 export function createBitqueryHoldersAdapter(): SourceAdapter<BitqueryHoldersInput, BitqueryHolders> {
@@ -177,7 +224,14 @@ export function createBitqueryHoldersAdapter(): SourceAdapter<BitqueryHoldersInp
           headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${input.apiKey}` },
           body: JSON.stringify({
             query: BITQUERY_HOLDERS_QUERY,
-            variables: { token: input.token.toLowerCase(), top },
+            variables: {
+              token: input.token.toLowerCase(),
+              top,
+              // Never an empty list: `notIn: []` is an empty exclusion the
+              // provider has no reason to honour, and the burn addresses are
+              // always worth excluding anyway.
+              exclude: [...new Set((input.exclude ?? []).map((address) => address.toLowerCase()).filter((address) => ADDRESS.test(address)))],
+            },
           }),
           allowedContentTypes: ['application/json'],
         },

@@ -520,15 +520,20 @@ factory reader (`REFRESH_LAUNCH_STAGE`, `getLaunchedToken(token).phase`, daily, 
 | Nansen, Arkham, Kaito, Birdeye, LunarCrush | Paid, and all are wallet/attention analytics HEY does not build |
 | X / Twitter firehose | Paid; PRD V4 forbids a paid social dependency for MVP |
 | DEX Screener ads / orders; boost **amounts** | Paid placement is not evidence of building. The boost *lists* are read only to learn which tokens have a profile; the spend is dropped in the adapter |
-| Any holder or wallet endpoint on any provider | CLAUDE.md product rule 1 — enforced by a schema test, not by convention |
+| Any wallet endpoint on any provider, and any holder endpoint beyond the single-token distribution map | CLAUDE.md product rule 1 as amended 2026-09-14 — enforced by a schema test, not by convention |
 | Blockscout (currently) | Returns 403; working around it would mean bypassing an anti-bot control |
 | Blockscout `/api/v2/tokens/{addr}` for market data | Answers 200 only with a browser-like User-Agent (which HEY will not send); its `exchange_rate` / `circulating_market_cap` are null for every token CoinGecko does not list — nothing additive (checked 2026-09-03) |
 | Mobula | Needs an API key (429 without). Could be added behind an optional env key later; not required and not integrated |
-| Bitquery | Paid |
 | CoinGecko `/simple/token_price/{platform}` | One address per free call; `/coins/markets` prices 250 ids per call instead |
 
 ## Cost
 
-**$0.** Every integrated source is a free public endpoint. No API key is required for any
-of them; the one optional key (`GITHUB_PUBLIC_API_TOKEN`) is free to create and raises a
-rate limit rather than unlocking data.
+**One paid source.** Bitquery Pro, $79 a month billed yearly, points-metered: it decodes the
+trades, contract calls and balances no free endpoint on this chain exposes, and it is the only
+source for the 772 tokens no aggregator indexes. HEY spends roughly 9,500 of its ~33,000 daily
+points. This table used to list Bitquery under "deliberately not used" and this section used to
+say $0; both were written before the integration shipped on 2026-09-12 and were simply stale.
+
+Every other integrated source is a free public endpoint. No API key is required for any of them;
+the one optional key (`GITHUB_PUBLIC_API_TOKEN`) is free to create and raises a rate limit rather
+than unlocking data.

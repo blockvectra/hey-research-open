@@ -2,23 +2,58 @@
   "data": {
     "EVM": {
       "trades": [
-        { "Block": { "Date": "2026-09-12" }, "trades": "7512133", "pools": "23911" },
-        { "Block": { "Date": "2026-09-11" }, "trades": "9155148", "pools": "32204" }
+        {
+          "Block": {
+            "Date": "2026-09-12"
+          },
+          "trades": "7512133",
+          "pools": "23911"
+        },
+        {
+          "Block": {
+            "Date": "2026-09-11"
+          },
+          "trades": "9155148",
+          "pools": "32204"
+        }
       ],
       "tokens": [
-        { "Block": { "Date": "2026-09-12" }, "tokens": "36445" },
-        { "Block": { "Date": "2026-09-11" }, "tokens": "45661" }
-      ],
-      "volume": [
-        { "Block": { "Date": "2026-09-12" }, "volume_usd": "951204644.2529359" },
-        { "Block": { "Date": "2026-09-11" }, "volume_usd": "2101602451.214927" }
+        {
+          "Block": {
+            "Date": "2026-09-12"
+          },
+          "tokens": "36445",
+          "volume_usd": "951204644.2529359"
+        },
+        {
+          "Block": {
+            "Date": "2026-09-11"
+          },
+          "tokens": "45661",
+          "volume_usd": "2101602451.214927"
+        }
       ],
       "transactions": [
-        { "Block": { "Date": "2026-09-12" }, "transactions": "7941445" },
-        { "Block": { "Date": "2026-09-11" }, "transactions": "10273729" }
+        {
+          "Block": {
+            "Date": "2026-09-12"
+          },
+          "transactions": "7941445"
+        },
+        {
+          "Block": {
+            "Date": "2026-09-11"
+          },
+          "transactions": "10273729"
+        }
       ],
       "transfers": [
-        { "Block": { "Date": "2026-09-12" }, "transfers": "10819312" }
+        {
+          "Block": {
+            "Date": "2026-09-12"
+          },
+          "transfers": "10819312"
+        }
       ]
     }
   }

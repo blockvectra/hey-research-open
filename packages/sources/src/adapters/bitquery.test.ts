@@ -35,6 +35,9 @@ describe('Bitquery trades adapter', () => {
     expect(headers['authorization']).toBe('Bearer test-token');
     const body = JSON.parse(String(request?.init?.body)) as { query: string; variables: { addresses: string[]; since: string; lookback: string } };
     expect(body.query).toContain('DEXTradeByTokens');
+    // One cube, not two: an aliased repeat of the same table is a second cube
+    // and a second five points (2026-09-15).
+    expect(body.query.match(/DEXTradeByTokens/g)).toHaveLength(1);
     expect(body.variables.lookback).toBe('2026-09-05T10:00:00.000Z');
     expect(body.query).not.toMatch(/Balance|Holder/);
     expect(body.variables.addresses).toEqual(input.addresses);
@@ -47,7 +50,9 @@ describe('Bitquery trades adapter', () => {
     expect(hasData(result)).toBe(true);
     const byAddress = Object.fromEntries((result.data ?? []).map((reading) => [reading.contractAddress, reading]));
     expect(byAddress[hey]).toMatchObject({ symbol: 'HEY', decimals: 18, trades: 41, lastPriceUsd: 0.0000835, venue: 'pons_v2', venueFamily: 'Uniswap', priceFromLookback: false });
-    // A token that traded in the week but not the day keeps the week's price, and the day's zero volume.
+    // One cube now carries both windows (2026-09-15): `trades` and `volumeUsd`
+    // are bounded to the day by `if:`, the price is the window's last trade,
+    // and a price older than the day is flagged rather than presented as today's.
     expect(byAddress['0x1740a3c5b6fb21044df973490b8095439dbb1b07']).toMatchObject({ trades: 0, volumeUsd: 0, lastPriceUsd: 0.00000412, venue: 'clanker', priceFromLookback: true });
     expect(byAddress[hey]?.volumeUsd).toBeCloseTo(2046.701, 3);
     expect(byAddress[hey]?.lastTradeAt?.toISOString()).toBe('2026-09-12T10:02:55.000Z');
@@ -64,7 +69,7 @@ describe('Bitquery trades adapter', () => {
   });
 
   it('refuses a body that is not the documented shape', async () => {
-    const stub = stubFetch({ status: 200, body: JSON.stringify({ data: { EVM: { day: [{ Trade: {} }] } } }), headers: { 'content-type': 'application/json' } });
+    const stub = stubFetch({ status: 200, body: JSON.stringify({ data: { EVM: { week: [{ Trade: {} }] } } }), headers: { 'content-type': 'application/json' } });
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.status).toBe('error');
     expect(result.errorCode).toBe('INVALID_RESPONSE');

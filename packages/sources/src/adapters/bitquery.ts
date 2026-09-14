@@ -36,6 +36,17 @@ export const BITQUERY_DEFAULT_BASE_URL = 'https://streaming.bitquery.io/graphql'
 export const BITQUERY_NETWORK = 'robinhood';
 export const BITQUERY_BATCH_SIZE = 100;
 
+/**
+ * How long a caller waits between Bitquery requests (2026-09-15).
+ *
+ * This lived as three private constants and one inline literal across five
+ * call sites, all of them 1,000 or 1,500 ms and none of them a shared ceiling.
+ * The real limit is the provider's ninety a minute, now encoded once in
+ * `PROVIDER_RATE_LIMITS`; this is the courtesy gap on top of it, so a single
+ * sweep does not spend the whole allowance in its first ten seconds.
+ */
+export const BITQUERY_SPACING_MS = 1_000;
+
 /** The day's trades are what the status reads; a reading an hour old is fine. */
 const CACHE_TTL_SECONDS = 60 * 60;
 
@@ -48,21 +59,23 @@ const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
  * recently but not today — 4 of 100 unpriced launches had a trade in the
  * week, 1 in the day. A token absent from both traded in neither.
  */
+/**
+ * One cube, two windows (2026-09-15).
+ *
+ * This asked the same table twice — once over the day for trades and volume,
+ * once over the week for the price of a token that did not trade today — and
+ * paid for both, because Bitquery charges five points a cube and an aliased
+ * repeat is a second cube. The week is a superset of the day, so the day's
+ * figures are a conditional aggregate inside it: `count(if: …)` and
+ * `sum(of: …, if: …)` bounded to `$since`. Half the points, same answer,
+ * 880 points a day at the current cadence.
+ *
+ * The price and its timestamp are the week's last trade. Whether that trade
+ * falls inside the day is then a comparison the caller can make, rather than
+ * a second request.
+ */
 export const BITQUERY_TRADES_QUERY = `query HeyTokenTrades($addresses: [String!], $since: DateTime, $lookback: DateTime) {
   EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
-    day: DEXTradeByTokens(
-      where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
-      limit: { count: 1000 }
-    ) {
-      Trade {
-        Currency { SmartContract Symbol Name Decimals }
-        Dex { ProtocolName ProtocolFamily }
-        last_price: PriceInUSD(maximum: Block_Number)
-      }
-      Block { last_time: Time(maximum: Block_Number) }
-      trades: count
-      volume_usd: sum(of: Trade_Side_AmountInUSD)
-    }
     week: DEXTradeByTokens(
       where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $lookback } } }
       limit: { count: 1000 }
@@ -73,8 +86,9 @@ export const BITQUERY_TRADES_QUERY = `query HeyTokenTrades($addresses: [String!]
         last_price: PriceInUSD(maximum: Block_Number)
       }
       Block { last_time: Time(maximum: Block_Number) }
-      trades: count
-      volume_usd: sum(of: Trade_Side_AmountInUSD)
+      trades: count(if: { Block: { Time: { since: $since } } })
+      volume_usd: sum(of: Trade_Side_AmountInUSD, if: { Block: { Time: { since: $since } } })
+      week_trades: count
     }
   }
 }`;
@@ -95,10 +109,11 @@ const rowSchema = z.object({
   Block: z.object({ last_time: z.string().nullish() }).nullish(),
   trades: numberish,
   volume_usd: numberish,
+  week_trades: numberish,
 });
 
 const responseSchema = z.object({
-  data: z.object({ EVM: z.object({ day: z.array(rowSchema).nullish(), week: z.array(rowSchema).nullish() }).nullish() }).nullish(),
+  data: z.object({ EVM: z.object({ week: z.array(rowSchema).nullish() }).nullish() }).nullish(),
   errors: z.array(z.object({ message: z.string() })).nullish(),
 });
 
@@ -151,6 +166,9 @@ export function normalizeBitqueryTrades(rows: readonly Row[]): BitqueryTokenTrad
     if (!ADDRESS.test(address)) continue;
     const trades = whole(row.trades);
     const volume = toNumber(row.volume_usd) ?? 0;
+    // The busiest venue is decided over the whole window, not the day: a token
+    // that did not trade today would otherwise have no venue at all.
+    const weekTrades = whole(row.week_trades);
     const lastAt = row.Block?.last_time ? Date.parse(row.Block.last_time) : Number.NaN;
     const venue = row.Trade.Dex?.ProtocolName ?? undefined;
     const price = positive(row.Trade.last_price);
@@ -166,7 +184,7 @@ export function normalizeBitqueryTrades(rows: readonly Row[]): BitqueryTokenTrad
     if (row.Trade.Currency.Name && !current.reading.name) current.reading.name = row.Trade.Currency.Name;
     const decimals = toNumber(row.Trade.Currency.Decimals);
     if (decimals !== undefined && current.reading.decimals === undefined) current.reading.decimals = Math.round(decimals);
-    if (venue) current.venueTrades.set(venue, (current.venueTrades.get(venue) ?? 0) + trades);
+    if (venue) current.venueTrades.set(venue, (current.venueTrades.get(venue) ?? 0) + Math.max(weekTrades, trades));
     // The newest trade across venues carries the price.
     if (Number.isFinite(lastAt) && lastAt > current.lastAt) {
       current.lastAt = lastAt;
@@ -188,26 +206,21 @@ export function normalizeBitqueryTrades(rows: readonly Row[]): BitqueryTokenTrad
 }
 
 /**
- * The day's rows give volume and trades; the week's rows give the price and
- * the venue for a token the day did not see. A token in neither window has
- * no reading.
+ * Rows to readings, with the price marked when it comes from before the day.
+ *
+ * `trades` and `volumeUsd` are already the day's, because the query bounds
+ * them with `if:`. The price is the window's last trade, so a token that has
+ * not traded since `since` still carries one — flagged, so the caller can say
+ * "last traded three days ago" rather than presenting a stale price as today's.
  */
-export function mergeBitqueryWindows(day: readonly Row[], week: readonly Row[]): BitqueryTokenTrades[] {
-  const daily = new Map(normalizeBitqueryTrades(day).map((reading) => [reading.contractAddress, reading]));
-  const weekly = normalizeBitqueryTrades(week);
+export function readBitqueryTrades(rows: readonly Row[], since: Date): BitqueryTokenTrades[] {
+  const readings = normalizeBitqueryTrades(rows);
   const out: BitqueryTokenTrades[] = [];
-  const seen = new Set<string>();
-  for (const w of weekly) {
-    seen.add(w.contractAddress);
-    const d = daily.get(w.contractAddress);
-    if (d && (d.trades > 0 || d.lastPriceUsd !== undefined)) {
-      out.push({ ...d, ...(d.lastPriceUsd === undefined && w.lastPriceUsd !== undefined ? { lastPriceUsd: w.lastPriceUsd, lastTradeAt: w.lastTradeAt, priceFromLookback: true } : {}) });
-      continue;
-    }
-    if (w.trades === 0 && w.lastPriceUsd === undefined) continue;
-    out.push({ ...w, trades: 0, volumeUsd: 0, priceFromLookback: true });
+  for (const reading of readings) {
+    if (reading.trades === 0 && reading.lastPriceUsd === undefined) continue;
+    const stale = reading.lastTradeAt !== undefined && reading.lastTradeAt.getTime() < since.getTime();
+    out.push({ ...reading, priceFromLookback: stale });
   }
-  for (const d of daily.values()) if (!seen.has(d.contractAddress) && (d.trades > 0 || d.lastPriceUsd !== undefined)) out.push(d);
   return out;
 }
 
@@ -243,7 +256,7 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
             if (raw.errors && raw.errors.length > 0) {
               throw new Error(`bitquery: ${raw.errors.map((error) => error.message).join('; ').slice(0, 300)}`);
             }
-            return mergeBitqueryWindows(raw.data?.EVM?.day ?? [], raw.data?.EVM?.week ?? []);
+            return readBitqueryTrades(raw.data?.EVM?.week ?? [], input.since);
           },
         },
       );

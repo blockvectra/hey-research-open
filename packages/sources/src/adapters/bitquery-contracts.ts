@@ -23,9 +23,15 @@ import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from
  * What this asks for: counts, and the day they fall on. What it never asks
  * for: addresses, balances, holders, or who called. `Calls` and `Events` can
  * both group by the sending account on this chain; HEY does not, and the
- * absence is deliberate (CLAUDE.md product rule 1, PRD V4 §10.1). Usage stays
- * context beside the market figures and is not an input to activity status,
- * Build Momentum or any ranking.
+ * absence is deliberate (CLAUDE.md product rule 1, PRD V4 §10.1).
+ *
+ * `callers` (2026-09-15) is `count(distinct: Transaction_From)` — how many
+ * different addresses called the contract that day, as a number. It is the
+ * most direct answer HEY has to its own question, is anyone actually using
+ * this, and it separates the two shapes a big call count can have: PONS took
+ * 544,469 calls from 7,835 addresses; a contract with the same volume from six
+ * would read very differently. It selects no address and costs nothing extra —
+ * it is one more aggregate on a cube this request already buys.
  *
  * Verified against `network: robinhood` on 2026-09-14: the three cubes answer
  * for a batch of a hundred, and a contract with no activity in the window is
@@ -47,6 +53,7 @@ export const BITQUERY_CONTRACT_ACTIVITY_QUERY = `query HeyContractActivity($addr
       Call { To }
       calls: count
       methods: count(distinct: Call_Signature_Name)
+      callers: count(distinct: Transaction_From)
     }
     events: Events(
       where: { Block: { Time: { since: $since } }, Log: { SmartContract: { in: $addresses } } }
@@ -71,7 +78,7 @@ export const BITQUERY_CONTRACT_ACTIVITY_QUERY = `query HeyContractActivity($addr
 const numberish = z.union([z.number(), z.string()]).nullish();
 const dayBlock = z.object({ Date: z.string() });
 
-const callRowSchema = z.object({ Block: dayBlock, Call: z.object({ To: z.string().nullish() }), calls: numberish, methods: numberish });
+const callRowSchema = z.object({ Block: dayBlock, Call: z.object({ To: z.string().nullish() }), calls: numberish, methods: numberish, callers: numberish });
 const eventRowSchema = z.object({ Block: dayBlock, Log: z.object({ SmartContract: z.string().nullish() }), events: numberish, kinds: numberish });
 const txRowSchema = z.object({ Block: dayBlock, Transaction: z.object({ To: z.string().nullish() }), transactions: numberish });
 
@@ -108,6 +115,8 @@ export type BitqueryContractDay = {
   calls: number;
   /** How many different method names were called. A plain ERC-20 sits at three or four. */
   methods: number;
+  /** How many different addresses called it. A count, never an address (2026-09-15). */
+  callers: number;
   /** Logs the contract emitted. */
   events: number;
   /** How many different event names it emitted. */
@@ -129,7 +138,7 @@ export function normalizeBitqueryContractDays(data: NonNullable<NonNullable<z.in
     const address = rawAddress?.toLowerCase();
     if (!address || !ADDRESS.test(address) || !DAY.test(day)) return undefined;
     const key = `${address}:${day}`;
-    const current = byKey.get(key) ?? { address, day, calls: 0, methods: 0, events: 0, eventKinds: 0, transactions: 0 };
+    const current = byKey.get(key) ?? { address, day, calls: 0, methods: 0, callers: 0, events: 0, eventKinds: 0, transactions: 0 };
     byKey.set(key, current);
     return current;
   };
@@ -138,6 +147,7 @@ export function normalizeBitqueryContractDays(data: NonNullable<NonNullable<z.in
     if (!entry) continue;
     entry.calls += whole(row.calls);
     entry.methods = Math.max(entry.methods, whole(row.methods));
+    entry.callers = Math.max(entry.callers, whole(row.callers));
   }
   for (const row of data.events ?? []) {
     const entry = at(row.Log.SmartContract, row.Block.Date);

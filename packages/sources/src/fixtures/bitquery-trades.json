@@ -1,150 +1,92 @@
 {
-  "data": {
-    "EVM": {
-      "day": [
-        {
-          "Trade": {
-            "Currency": {
-              "SmartContract": "0xB33eb16782776b4D738c0Fd643577cb0284Db610",
-              "Symbol": "HEY",
-              "Name": "HEY Research",
-              "Decimals": 18
-            },
-            "Dex": {
-              "ProtocolName": "pons_v2",
-              "ProtocolFamily": "Pons"
-            },
-            "last_price": "0.0000821"
-          },
-          "Block": {
-            "last_time": "2026-09-12T09:41:03Z"
-          },
-          "trades": "37",
-          "volume_usd": "1834.201"
-        },
-        {
-          "Trade": {
-            "Currency": {
-              "SmartContract": "0xB33eb16782776b4D738c0Fd643577cb0284Db610",
-              "Symbol": "HEY",
-              "Name": "HEY Research",
-              "Decimals": 18
-            },
-            "Dex": {
-              "ProtocolName": "uniswap_v4",
-              "ProtocolFamily": "Uniswap"
-            },
-            "last_price": "0.0000835"
-          },
-          "Block": {
-            "last_time": "2026-09-12T10:02:55Z"
-          },
-          "trades": "4",
-          "volume_usd": "212.5"
-        },
-        {
-          "Trade": {
-            "Currency": {
-              "SmartContract": "0x44b7d533b21d9f6f00e61798db55ca4dda3d9b07",
-              "Symbol": "DICE",
-              "Name": "Dice Protocol",
-              "Decimals": 18
-            },
-            "Dex": {
-              "ProtocolName": "clanker",
-              "ProtocolFamily": "Clanker"
-            },
-            "last_price": null
-          },
-          "Block": {
-            "last_time": null
-          },
-          "trades": "0",
-          "volume_usd": "0"
-        }
-      ],
-      "week": [
-        {
-          "Trade": {
-            "Currency": {
-              "SmartContract": "0xB33eb16782776b4D738c0Fd643577cb0284Db610",
-              "Symbol": "HEY",
-              "Name": "HEY Research",
-              "Decimals": 18
-            },
-            "Dex": {
-              "ProtocolName": "pons_v2",
-              "ProtocolFamily": "Pons"
-            },
-            "last_price": "0.0000821"
-          },
-          "Block": {
-            "last_time": "2026-09-12T09:41:03Z"
-          },
-          "trades": "37",
-          "volume_usd": "1834.201"
-        },
-        {
-          "Trade": {
-            "Currency": {
-              "SmartContract": "0xB33eb16782776b4D738c0Fd643577cb0284Db610",
-              "Symbol": "HEY",
-              "Name": "HEY Research",
-              "Decimals": 18
-            },
-            "Dex": {
-              "ProtocolName": "uniswap_v4",
-              "ProtocolFamily": "Uniswap"
-            },
-            "last_price": "0.0000835"
-          },
-          "Block": {
-            "last_time": "2026-09-12T10:02:55Z"
-          },
-          "trades": "4",
-          "volume_usd": "212.5"
-        },
-        {
-          "Trade": {
-            "Currency": {
-              "SmartContract": "0x1740a3c5b6fb21044df973490b8095439dbb1b07",
-              "Symbol": "DNE",
-              "Name": "Do Not Eject",
-              "Decimals": 18
-            },
-            "Dex": {
-              "ProtocolName": "clanker",
-              "ProtocolFamily": "Clanker"
-            },
-            "last_price": 4.12e-06
-          },
-          "Block": {
-            "last_time": "2026-09-11T22:15:40Z"
-          },
-          "trades": 2,
-          "volume_usd": 9.75
-        },
-        {
-          "Trade": {
-            "Currency": {
-              "SmartContract": "0x44b7d533b21d9f6f00e61798db55ca4dda3d9b07",
-              "Symbol": "DICE",
-              "Name": "Dice Protocol",
-              "Decimals": 18
-            },
-            "Dex": {
-              "ProtocolName": "clanker",
-              "ProtocolFamily": "Clanker"
-            },
-            "last_price": null
-          },
-          "Block": {
-            "last_time": null
-          },
-          "trades": "0",
-          "volume_usd": "0"
-        }
-      ]
+ "data": {
+  "EVM": {
+   "week": [
+    {
+     "Trade": {
+      "Currency": {
+       "SmartContract": "0xB33eb16782776b4D738c0Fd643577cb0284Db610",
+       "Symbol": "HEY",
+       "Name": "HEY Research",
+       "Decimals": 18
+      },
+      "Dex": {
+       "ProtocolName": "pons_v2",
+       "ProtocolFamily": "Pons"
+      },
+      "last_price": "0.0000821"
+     },
+     "Block": {
+      "last_time": "2026-09-12T09:41:03Z"
+     },
+     "trades": "37",
+     "volume_usd": "1834.201",
+     "week_trades": "112"
+    },
+    {
+     "Trade": {
+      "Currency": {
+       "SmartContract": "0xB33eb16782776b4D738c0Fd643577cb0284Db610",
+       "Symbol": "HEY",
+       "Name": "HEY Research",
+       "Decimals": 18
+      },
+      "Dex": {
+       "ProtocolName": "uniswap_v4",
+       "ProtocolFamily": "Uniswap"
+      },
+      "last_price": "0.0000835"
+     },
+     "Block": {
+      "last_time": "2026-09-12T10:02:55Z"
+     },
+     "trades": "4",
+     "volume_usd": "212.5",
+     "week_trades": "9"
+    },
+    {
+     "Trade": {
+      "Currency": {
+       "SmartContract": "0x1740a3c5b6fb21044df973490b8095439dbb1b07",
+       "Symbol": "DNE",
+       "Name": "Do Not Eject",
+       "Decimals": 18
+      },
+      "Dex": {
+       "ProtocolName": "clanker",
+       "ProtocolFamily": "Clanker"
+      },
+      "last_price": 4.12e-06
+     },
+     "Block": {
+      "last_time": "2026-09-09T22:15:40Z"
+     },
+     "trades": "0",
+     "volume_usd": null,
+     "week_trades": "6"
+    },
+    {
+     "Trade": {
+      "Currency": {
+       "SmartContract": "0x44b7d533b21d9f6f00e61798db55ca4dda3d9b07",
+       "Symbol": "DICE",
+       "Name": "Dice Protocol",
+       "Decimals": 18
+      },
+      "Dex": {
+       "ProtocolName": "clanker",
+       "ProtocolFamily": "Clanker"
+      },
+      "last_price": null
+     },
+     "Block": {
+      "last_time": null
+     },
+     "trades": "0",
+     "volume_usd": "0",
+     "week_trades": "0"
     }
+   ]
   }
+ }
 }
