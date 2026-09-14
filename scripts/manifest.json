@@ -10,6 +10,7 @@
     "docs/PUBLIC_API.md",
     "docs/MCP.md",
     "docs/SOURCE_REGISTRY.md",
+    "docs/DATA_SOURCES.md",
     "docs/screenshots"
   ],
   "never": [

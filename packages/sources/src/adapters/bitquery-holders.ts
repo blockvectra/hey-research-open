@@ -24,12 +24,23 @@ import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from './bitquery';
  *   it first and last changed, and how many times. Documented as needing the
  *   archive dataset, which this plan is refused; verified on 2026-09-14 that
  *   it answers on `realtime` for `network: robinhood` anyway.
- * - `Transfers` between those same addresses in the window: the edges. A
- *   bubble map without them is a pie chart. The realtime window reaches back
- *   about five days, so an edge means "moved recently", never "related", and
- *   the caller must not present it as a cluster.
+ * The edges are NOT read here. They were, in the first cut, as a third cube on
+ * this document; but the provider can only filter both ends of an edge once it
+ * knows the address set, so that version kept whichever of the token's busiest
+ * transfers happened to have both ends ranked — which on a real token is almost
+ * none of them. `bitquery-holder-graph.ts` asks for them properly, in a second
+ * request, and this document no longer pays five points for a cube nobody reads.
  *
- * `uniq(of: Holder_Address)` gives the total holder count in the same request.
+ * The third figure is the total holder count, and it has to be asked for
+ * carefully (corrected 2026-09-14, the day after it shipped wrong). The cube
+ * holds a row for every address that has **ever** held the token, so an
+ * unfiltered count answers "how many have ever touched it", not "how many hold
+ * it". On `$HEY` that was 2,445 against 1,040 on the block explorer — the page
+ * was showing more than twice the real number under the label "Addresses
+ * holding it". Counting only balances above zero gives 1,039, which is the
+ * explorer's figure. `count(distinct:)` is used rather than `uniq`, which the
+ * provider documents as approximate.
+ *
  * Flat five points a cube, so one token costs fifteen.
  */
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
@@ -38,7 +49,7 @@ const CACHE_TTL_SECONDS = 60 * 60;
 /** How many holders a bubble map draws. Past this the circles are too small to read. */
 export const BITQUERY_HOLDERS_TOP_N = 50;
 
-export const BITQUERY_HOLDERS_QUERY = `query HeyTokenHolders($token: String!, $top: Int!, $since: DateTime!) {
+export const BITQUERY_HOLDERS_QUERY = `query HeyTokenHolders($token: String!, $top: Int!) {
   EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
     top: Holders(
       where: { Currency: { SmartContract: { is: $token } } }
@@ -49,16 +60,7 @@ export const BITQUERY_HOLDERS_QUERY = `query HeyTokenHolders($token: String!, $t
       Balance { Amount FirstChangeTime LastChangeTime UpdateCount }
     }
     total: Holders(where: { Currency: { SmartContract: { is: $token } } }) {
-      holders: uniq(of: Holder_Address)
-    }
-    links: Transfers(
-      where: { Block: { Time: { since: $since } }, Transfer: { Currency: { SmartContract: { is: $token } } } }
-      limit: { count: 2000 }
-      orderBy: { descendingByField: "transfers" }
-    ) {
-      Transfer { Sender Receiver }
-      transfers: count
-      amount: sum(of: Transfer_Amount)
+      holders: count(distinct: Holder_Address, if: { Balance: { Amount: { gt: "0" } } })
     }
   }
 }`;
@@ -74,11 +76,6 @@ const holderRowSchema = z.object({
     UpdateCount: numberish,
   }),
 });
-const linkRowSchema = z.object({
-  Transfer: z.object({ Sender: z.string().nullish(), Receiver: z.string().nullish() }),
-  transfers: numberish,
-  amount: numberish,
-});
 
 const responseSchema = z.object({
   data: z
@@ -87,7 +84,6 @@ const responseSchema = z.object({
         .object({
           top: z.array(holderRowSchema).nullish(),
           total: z.array(z.object({ holders: numberish })).nullish(),
-          links: z.array(linkRowSchema).nullish(),
         })
         .nullish(),
     })
@@ -100,8 +96,13 @@ export type BitqueryHoldersInput = {
   token: string;
   /** How many holders to rank; capped at `BITQUERY_HOLDERS_TOP_N`. */
   top?: number;
-  /** Transfers at or after this moment count as an edge. */
-  since: Date;
+  /**
+   * Unused by this read and kept only so the caller passes one window to both
+   * adapters. It must not appear in the document: GraphQL refuses an operation
+   * that declares a variable it never references, which is exactly how removing
+   * the transfers cube broke every request until it was spotted.
+   */
+  since?: Date;
   apiKey: string;
   baseUrl?: string;
 };
@@ -115,21 +116,11 @@ export type BitqueryHolder = {
   updateCount?: number;
 };
 
-/** A transfer edge between two of the ranked holders, inside the window. */
-export type BitqueryHolderLink = {
-  from: string;
-  to: string;
-  transfers: number;
-  amount: number;
-};
-
 export type BitqueryHolders = {
   /** Ranked by balance, largest first. */
   holders: BitqueryHolder[];
   /** Every address holding a non-zero balance, as the provider counts them. */
   holdersTotal?: number;
-  /** Only edges whose two ends are both in `holders`; the rest are dropped. */
-  links: BitqueryHolderLink[];
 };
 
 const amountOf = (value: number | string | null | undefined): number => {
@@ -147,9 +138,8 @@ const when = (value: string | null | undefined): Date | undefined => {
 };
 
 /**
- * Rows to a map. An edge survives only when both ends are ranked holders and
- * the two are different addresses: a self-transfer is not a connection, and an
- * edge to an address the map does not draw has nothing to attach to.
+ * Rows to a map. A zero or negative balance is dropped: the cube keeps a row
+ * for an address that has emptied itself, and that is not a holder.
  */
 export function normalizeBitqueryHolders(data: NonNullable<NonNullable<z.infer<typeof responseSchema>['data']>['EVM']>): BitqueryHolders {
   const holders: BitqueryHolder[] = [];
@@ -169,26 +159,8 @@ export function normalizeBitqueryHolders(data: NonNullable<NonNullable<z.infer<t
     });
   }
 
-  const byPair = new Map<string, BitqueryHolderLink>();
-  for (const row of data.links ?? []) {
-    const from = row.Transfer.Sender?.toLowerCase();
-    const to = row.Transfer.Receiver?.toLowerCase();
-    if (!from || !to || from === to) continue;
-    if (!ADDRESS.test(from) || !ADDRESS.test(to)) continue;
-    if (!ranked.has(from) || !ranked.has(to)) continue;
-    const key = `${from}>${to}`;
-    const current = byPair.get(key) ?? { from, to, transfers: 0, amount: 0 };
-    current.transfers += whole(row.transfers);
-    current.amount += amountOf(row.amount);
-    byPair.set(key, current);
-  }
-
   const total = whole(data.total?.[0]?.holders);
-  return {
-    holders,
-    ...(total > 0 ? { holdersTotal: total } : {}),
-    links: [...byPair.values()].sort((a, b) => b.transfers - a.transfers || a.from.localeCompare(b.from)),
-  };
+  return { holders, ...(total > 0 ? { holdersTotal: total } : {}) };
 }
 
 export function createBitqueryHoldersAdapter(): SourceAdapter<BitqueryHoldersInput, BitqueryHolders> {
@@ -205,7 +177,7 @@ export function createBitqueryHoldersAdapter(): SourceAdapter<BitqueryHoldersInp
           headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${input.apiKey}` },
           body: JSON.stringify({
             query: BITQUERY_HOLDERS_QUERY,
-            variables: { token: input.token.toLowerCase(), top, since: input.since.toISOString() },
+            variables: { token: input.token.toLowerCase(), top },
           }),
           allowedContentTypes: ['application/json'],
         },

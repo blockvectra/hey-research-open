@@ -10,7 +10,22 @@ describe('bitquery holders', () => {
   it('asks for balances and edges, and for nothing that scores an account', () => {
     // The allowance the founder gave is a distribution map, not wallet analytics.
     expect(BITQUERY_HOLDERS_QUERY).toContain('Holders(');
-    expect(BITQUERY_HOLDERS_QUERY).toContain('uniq(of: Holder_Address)');
+    // The cube keeps a row for every address that has ever held the token, so an
+    // unfiltered count answers "ever touched it", not "holds it". On $HEY that
+    // was 2,445 against 1,040 on the block explorer.
+    expect(BITQUERY_HOLDERS_QUERY).toContain('count(distinct: Holder_Address, if: { Balance: { Amount: { gt: "0" } } })');
+    expect(BITQUERY_HOLDERS_QUERY).not.toContain('uniq(of: Holder_Address)');
+    // The edges are a separate request now; this document must not pay for them.
+    expect(BITQUERY_HOLDERS_QUERY).not.toContain('Transfers(');
+    /*
+     * GraphQL refuses an operation declaring a variable it never uses, and
+     * that is exactly how removing the transfers cube broke all 434 requests
+     * on 2026-09-14. Every declared variable must appear in the body.
+     */
+    const declared = [...BITQUERY_HOLDERS_QUERY.matchAll(/\$(\w+):/g)].map((m) => m[1]!);
+    const body = BITQUERY_HOLDERS_QUERY.slice(BITQUERY_HOLDERS_QUERY.indexOf('{'));
+    for (const name of declared) expect(body).toContain(`$${name}`);
+    expect(declared).toEqual(['token', 'top']);
     expect(BITQUERY_HOLDERS_QUERY).not.toMatch(/AmountInUSD|PnL|Trade/);
   });
 
@@ -22,32 +37,11 @@ describe('bitquery holders', () => {
         { Holder: { Address: C }, Balance: { Amount: '0', FirstChangeTime: null, LastChangeTime: null, UpdateCount: null } },
       ],
       total: [{ holders: '4321' }],
-      links: [],
     });
     expect(out.holders.map((h) => h.address)).toEqual([A, B]);
     expect(out.holders[0]).toMatchObject({ amount: 900.5, updateCount: 12 });
     expect(out.holders[0]!.firstChangeAt?.toISOString()).toBe('2026-09-01T00:00:00.000Z');
     expect(out.holdersTotal).toBe(4321);
-  });
-
-  it('keeps only edges whose two ends are both ranked, and never a self-transfer', () => {
-    const out = normalizeBitqueryHolders({
-      top: [
-        { Holder: { Address: A }, Balance: { Amount: '900' } },
-        { Holder: { Address: B }, Balance: { Amount: '100' } },
-      ],
-      total: [],
-      links: [
-        { Transfer: { Sender: A, Receiver: B }, transfers: '3', amount: '50' },
-        { Transfer: { Sender: A, Receiver: B }, transfers: '2', amount: '25' },
-        // C is not on the map, so this edge has nothing to attach to.
-        { Transfer: { Sender: A, Receiver: C }, transfers: '9', amount: '99' },
-        // Moving to itself is not a connection.
-        { Transfer: { Sender: A, Receiver: A }, transfers: '7', amount: '7' },
-        { Transfer: { Sender: null, Receiver: B }, transfers: '1', amount: '1' },
-      ],
-    });
-    expect(out.links).toEqual([{ from: A, to: B, transfers: 5, amount: 75 }]);
   });
 
   it('refuses a malformed token or a missing key', () => {

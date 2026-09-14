@@ -24,6 +24,12 @@ import { cn } from './cn';
  * Every id in here is a constant. The package learned on the same day that a
  * generated id is a hydration mismatch waiting to happen.
  *
+ * Every circle is a link to that address on the block explorer (2026-09-14),
+ * because the first question a reader has about a bubble is "who is that", and
+ * HEY's answer is to hand them the chain rather than a label of its own. The
+ * link opens in a new tab and carries `rel="noreferrer"`; without an
+ * `explorerBase` the circles render exactly as before, unlinked.
+ *
  * What the picture may say: how much of a supply sits in how few places, which
  * of those places HEY can name, and which of them move it between each other.
  * What it must never say: that an address is a person, that a cluster is one
@@ -72,12 +78,15 @@ export function BubbleMap({
   nodes,
   edges = [],
   size = 560,
+  explorerBase,
   className,
   testId,
 }: {
   nodes: readonly BubbleNode[];
   edges?: readonly BubbleEdge[];
   size?: number;
+  /** Block explorer origin, e.g. `https://robinhoodchain.blockscout.com`. Absent means no links. */
+  explorerBase?: string;
   className?: string;
   testId?: string;
 }) {
@@ -100,6 +109,7 @@ export function BubbleMap({
   const half = size / 2;
   /* Room for a rim label on an outer circle without clipping it. */
   const pad = 18;
+  const addressHref = (address: string) => (explorerBase ? `${explorerBase.replace(/\/$/, '')}/address/${address}` : undefined);
   const colourOf = (node: BubbleNode) =>
     node.cluster !== undefined ? clusterColour(node.cluster) : node.label !== undefined ? 'var(--color-hey-muted)' : 'var(--color-hey-border-strong)';
 
@@ -154,8 +164,9 @@ export function BubbleMap({
           const clustered = node.cluster !== undefined;
           const showPct = node.r >= 24;
           const showRank = node.r >= 13;
-          return (
-            <g key={node.address}>
+          const href = addressHref(node.address);
+          const body = (
+            <>
               <circle
                 cx={node.x}
                 cy={node.y}
@@ -165,6 +176,7 @@ export function BubbleMap({
                 stroke={hue}
                 strokeWidth={clustered ? 1.5 : 1}
                 strokeOpacity={clustered ? 0.85 : 0.4}
+                className={href ? 'cursor-pointer' : undefined}
               >
                 <title>
                   {`#${node.rank} · ${node.label ?? short(node.address)} · ${pct(node.sharePct)}% of supply${clustered ? ` · cluster ${node.cluster}` : ''}`}
@@ -215,7 +227,21 @@ export function BubbleMap({
                   {node.rank}
                 </text>
               ) : null}
-            </g>
+            </>
+          );
+          return href ? (
+            <a
+              key={node.address}
+              href={href}
+              target="_blank"
+              rel="noreferrer"
+              className="opacity-100 transition-opacity hover:opacity-75"
+              aria-label={`${node.label ?? short(node.address)} on the block explorer`}
+            >
+              {body}
+            </a>
+          ) : (
+            <g key={node.address}>{body}</g>
           );
         })}
       </svg>
@@ -236,11 +262,14 @@ export function BubbleMap({
 export function BubbleList({
   nodes,
   clusters = [],
+  explorerBase,
   className,
   limit = 12,
 }: {
   nodes: readonly BubbleNode[];
   clusters?: readonly { id: number; addresses: readonly string[]; sharePct?: number }[];
+  /** Block explorer origin; absent means the rows are plain text. */
+  explorerBase?: string;
   className?: string;
   limit?: number;
 }) {
@@ -269,7 +298,18 @@ export function BubbleList({
           <li key={node.address} className="flex items-baseline justify-between gap-3 text-[13px]">
             <span className="flex min-w-0 items-baseline gap-2">
               <span className="w-5 shrink-0 tabular-nums text-right text-[11.5px] text-hey-muted">{node.rank}</span>
-              <span className="truncate font-mono text-[12.5px]">{node.label ?? short(node.address)}</span>
+              {explorerBase ? (
+                <a
+                  href={`${explorerBase.replace(/\/$/, '')}/address/${node.address}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="truncate font-mono text-[12.5px] underline decoration-hey-border-strong underline-offset-4 hover:decoration-hey-ink"
+                >
+                  {node.label ?? short(node.address)}
+                </a>
+              ) : (
+                <span className="truncate font-mono text-[12.5px]">{node.label ?? short(node.address)}</span>
+              )}
               {node.cluster !== undefined ? (
                 <span aria-hidden="true" className="inline-block size-[7px] shrink-0 rounded-full" style={{ background: clusterColour(node.cluster) }} />
               ) : null}
