@@ -5,6 +5,15 @@ Adapters are the only place the product talks to an external provider, they are 
 called from a page render path, and each one ships with saved fixtures so CI never
 depends on a live API.
 
+> **Where this name does and does not appear.** The product does not name its data suppliers: a
+> reading on a page reads "From on-chain trades", and the public API publishes `onchain`, because
+> what a reader needs is that the figure came from trades on the chain rather than from an
+> aggregator's index. This document is the other half of that, and deliberately so — it exists to
+> say exactly what HEY reads, what each source costs and what it refuses, and a source quietly
+> missing from it would make the whole file worth less than nothing. Founder's decision,
+> 2026-09-15; the split is intentional, not an oversight in either direction.
+
+
 ## Adapters
 
 | Adapter | Purpose | Cache TTL | Notes |

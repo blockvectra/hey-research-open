@@ -32,6 +32,14 @@ export function formatUsdCompact(value: number | undefined): string | undefined 
  * Mirrors `MARKET_SOURCES` in the domain package; an unknown key names itself.
  */
 const MARKET_SOURCE_LABELS: Record<string, string> = {
+  /*
+   * A reading decoded from the chain is named for what it is, not for the
+   * vendor that decoded it (2026-09-15) — and this key had no entry at all, so
+   * a card was printing the raw string "bitquery" at readers. The provenance a
+   * reader needs is that the figure came from trades on the chain rather than
+   * from an aggregator's index; which supplier ran the query is ours.
+   */
+  bitquery: 'on-chain trades',
   dexscreener: 'DEX Screener',
   geckoterminal: 'GeckoTerminal',
   coingecko: 'CoinGecko',
