@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import {
-  errorCodeForStatus,
-  isRetryableErrorCode,
-  SOURCE_ERROR_CODES,
-  SourceError,
-} from './errors';
+import { SOURCE_ERROR_CODES, SourceError, errorCodeForStatus, isRetryableErrorCode } from './errors';
 
 describe('normalized error model', () => {
   it('maps HTTP statuses onto the shared codes', () => {
@@ -49,5 +44,30 @@ describe('normalized error model', () => {
     expect(error.retryable).toBe(true);
     expect(error.retryAfterSeconds).toBe(30);
     expect(error.status).toBe(429);
+  });
+});
+
+describe('a SourceError never carries a credential', () => {
+  it('redacts a key from the message whoever built it', () => {
+    // The real shape: the explorer's URL, with the account key as a query
+    // parameter, inside a message that reached a signed-in reader (2026-09-15).
+    const error = new SourceError('RATE_LIMITED', 'https://api.blockscout.com/v2/api?chain_id=4663&apikey=s3cr3t responded 429', 429);
+    expect(error.message).toContain('REDACTED');
+    expect(error.message).not.toContain('s3cr3t');
+    expect(error.message).toContain('chain_id=4663');
+  });
+
+  it('covers the other names a credential travels under', () => {
+    for (const param of ['api_key', 'key', 'token', 'access_token', 'auth', 'password']) {
+      const error = new SourceError('NETWORK', `https://x.example/a?${param}=hunter2&page=2 failed`);
+      expect(error.message).not.toContain('hunter2');
+      expect(error.message).toContain('page=2');
+    }
+  });
+
+  it('leaves a message with no credential in it alone', () => {
+    expect(new SourceError('TIMEOUT', 'request to https://x.example/a?page=2 timed out').message).toBe(
+      'request to https://x.example/a?page=2 timed out',
+    );
   });
 });

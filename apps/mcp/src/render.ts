@@ -26,6 +26,8 @@ const money = (usd: number): string => {
   if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(2)}B`;
   if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(2)}M`;
   if (usd >= 1_000) return `$${(usd / 1_000).toFixed(1)}K`;
+  // Anything under a dollar rounded to `$0`, which reads as nothing at all.
+  if (usd > 0 && usd < 1) return '<$1';
   return `$${usd.toFixed(0)}`;
 };
 
@@ -205,7 +207,7 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
 }
 
 /** One ship: what it was, when, how it is backed, and where it came from. */
-export function shipLine(ship: HeyShip, now?: Date): string {
+function shipLine(ship: HeyShip, now?: Date): string {
   const who = ship.project.symbol ? `${ship.project.name} ($${ship.project.symbol})` : ship.project.name;
   const backing = ship.verification.toLowerCase().replace(/_/g, ' ');
   const lines = [`- ${who} — ${ship.title}`, `  ${ship.eventType.toLowerCase().replace(/_/g, ' ')} · ${ago(ship.publishedAt, now)} · ${backing}`];

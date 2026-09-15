@@ -42,6 +42,27 @@ export function isRetryableErrorCode(code: SourceErrorCode): boolean {
 }
 
 /** Internal carrier used between the HTTP layer and adapters. */
+/**
+ * Strip a credential out of anything that might be shown to a person
+ * (2026-09-15).
+ *
+ * Every adapter already redacted its own result, and one caller did not: the
+ * on-chain project claim put a failed explorer request's message straight into
+ * the refusal a signed-in reader sees, so a 429 from the explorer would have
+ * shown them `…&apikey=<the real key>`. Redacting in the adapters was the
+ * right idea in the wrong place — it left the guarantee to whoever wrote the
+ * next caller.
+ *
+ * Doing it in the constructor makes it a property of the error rather than a
+ * habit of its callers: a `SourceError` cannot carry a credential in its
+ * message, whoever builds it and wherever it is printed.
+ */
+const SECRET_PARAM = /([?&](?:apikey|api_key|key|token|access_token|auth|password)=)[^&#\s]*/gi;
+
+export function redactSecrets(message: string): string {
+  return message.replace(SECRET_PARAM, '$1REDACTED');
+}
+
 export class SourceError extends Error {
   constructor(
     readonly code: SourceErrorCode,
@@ -49,7 +70,7 @@ export class SourceError extends Error {
     readonly status?: number,
     readonly retryAfterSeconds?: number,
   ) {
-    super(message);
+    super(redactSecrets(message));
     this.name = 'SourceError';
   }
 

@@ -21,6 +21,14 @@ export function formatRelativeTime(date: Date, now: Date = new Date()): string {
 /** Compact USD, because a card has room for `$24K` and not for `$24,013.55`. */
 export function formatUsdCompact(value: number | undefined): string | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;
+  /*
+   * A measured figure under a dollar is not zero (2026-09-15). Rounding it
+   * printed `$0`, which is the one thing this product promises never to do:
+   * absent is unknown, and a day-one token with a few cents of volume read
+   * exactly like a token nobody traded. `$0` is now reserved for an actual
+   * zero.
+   */
+  if (value > 0 && value < 1) return '<$1';
   if (value < 1000) return `$${Math.round(value)}`;
   if (value < 1_000_000) return `$${trim(value / 1000)}K`;
   if (value < 1_000_000_000) return `$${trim(value / 1_000_000)}M`;

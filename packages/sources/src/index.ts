@@ -6,6 +6,7 @@ export * from './optional';
 export * from './http/client';
 export * from './http/perform';
 export * from './http/url-safety';
+export * from './http/pinned';
 export * from './factories/registry';
 export * from './factories/indexer';
 export * from './factories/metadata';

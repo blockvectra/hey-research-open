@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { plainText } from './format';
+import { formatUsdCompact, plainText } from './format';
 
 /**
  * Source text reaches the interface as words, never as markup (QA sweep
@@ -75,5 +75,27 @@ describe('a project description that arrived as Markdown', () => {
   it('leaves a description that was never Markdown exactly as written', () => {
     const plain = 'A protocol for onchain identity. 100% open source; see docs.';
     expect(plainText(plain)).toBe(plain);
+  });
+});
+
+describe('formatUsdCompact', () => {
+  it('never prints a measured figure as $0', () => {
+    // The distinction the whole product rests on: unknown, zero, and small.
+    expect(formatUsdCompact(undefined)).toBeUndefined();
+    expect(formatUsdCompact(0)).toBe('$0');
+    expect(formatUsdCompact(0.42)).toBe('<$1');
+    expect(formatUsdCompact(0.004)).toBe('<$1');
+  });
+
+  it('abbreviates upward without losing the order of magnitude', () => {
+    expect(formatUsdCompact(1)).toBe('$1');
+    expect(formatUsdCompact(999)).toBe('$999');
+    expect(formatUsdCompact(1_000)).toBe('$1K');
+    expect(formatUsdCompact(37_448_237)).toBe('$37M');
+  });
+
+  it('refuses a value that is not a number rather than printing one', () => {
+    expect(formatUsdCompact(Number.NaN)).toBeUndefined();
+    expect(formatUsdCompact(Number.POSITIVE_INFINITY)).toBeUndefined();
   });
 });

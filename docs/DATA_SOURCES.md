@@ -23,8 +23,9 @@ depends on a live API.
 | `blockscout` | Contract metadata, verification, deployment evidence | 1 h | Holder endpoints are deliberately not implemented |
 | `rpc-contract` | `eth_getCode` existence check | 1 h | Lightweight verification only; HEY runs no node |
 | `github-repo` | Repository activity window | 30 min | Stars are display context, never a score input |
-| `github-releases` | Releases → `GITHUB_RELEASE` ShipEvents (M4) | 30 min | Drafts excluded; stable `externalId` for dedupe |
-| `website` | Page metadata + feed discovery | 6 h | SSRF guarded, 2 MB cap, HTML content-type only |
+| `github-releases` | Releases → `GITHUB_RELEASE` ShipEvents (M4) | 30 min | Drafts excluded; stable `externalId` for dedupe; budget 6,000 req/day |
+| `github-commits` | Human commits in the window → one capped `CODE_ACTIVITY` ShipEvent per repository per ISO week | 30 min | Bots, dependency bumps and merge churn excluded; budget 6,000 req/day |
+| `website` | Page metadata + feed discovery | 6 h | SSRF guarded, 2 MB cap, HTML content-type only, socket pinned to the checked address; `DISCOVER_SITE_FEEDS` sweeps registered WEBSITE and DOCS sources, ten a tick |
 | `feed` | RSS/Atom/changelog entries | 2 h | Max 50 entries; summaries tag-stripped |
 | `sourcify` | Verified contract source | 24 h | Optional — a miss is `missing`, never an error |
 | `coingecko-markets` | Price, market cap, FDV, volume for up to 250 CoinGecko ids per call | 1 h | Matched to tokens by `(chain, address)` from the registry; a `0` figure is absent; source `coingecko` |

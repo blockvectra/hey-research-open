@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,6 +11,14 @@ import { describe, expect, it } from 'vitest';
  * time, and they are exactly the detail that makes a research product look like
  * a meme launchpad. Icons come from lucide-react so they inherit stroke weight,
  * size and colour like every other part of the system.
+ *
+ * It enforced almost nothing until 2026-09-15. The skip for this file's own
+ * name was a `return` rather than a `continue`, so the walk — alphabetical —
+ * left the test after 17 of 652 files, and `apps/web/src`, `packages/domain`
+ * and the seed scripts were never scanned at all. That is every page in the
+ * product. A check like this is worse than none: it reports green over ground
+ * it never covered. The scan now skips the test suite instead of one filename,
+ * which removes the special case that hid the bug.
  */
 // Resolved from this file, so the check works whatever the working directory is.
 const REPO_ROOT = resolve(fileURLToPath(new URL('.', import.meta.url)), '../../..');
@@ -32,7 +40,14 @@ function sourceFiles(dir: string): string[] {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) out.push(...sourceFiles(full));
-    else if (/\.(tsx?|css)$/.test(entry)) out.push(full);
+    /*
+     * Production source only (2026-09-15). A test is not the interface, and
+     * two of them have to contain emoji to be worth anything — `plainText`
+     * strips them, and the test that proves it needs one to strip. Skipping
+     * the suite is also what lets this file stop special-casing its own name,
+     * which is what hid the `return`-instead-of-`continue` bug.
+     */
+    else if (/\.(tsx?|css)$/.test(entry) && !/\.(test|spec)\.tsx?$/.test(entry)) out.push(full);
   }
   return out;
 }
@@ -40,12 +55,18 @@ function sourceFiles(dir: string): string[] {
 describe('no emoji in production UI', () => {
   it('has no emoji anywhere in the UI source tree', () => {
     const offenders: string[] = [];
+    /*
+     * The public export carries `packages/` and not `apps/web`, so a root can
+     * legitimately be absent there — but only there. A missing root in this
+     * repository is the check silently covering less ground than it claims,
+     * which is the bug this file was written about, so it is asserted.
+     */
+    const present = ROOTS.filter((root) => existsSync(join(REPO_ROOT, root)));
+    if (existsSync(join(REPO_ROOT, 'apps/web'))) expect(present).toEqual(ROOTS);
 
-    for (const root of ROOTS) {
+    for (const root of present) {
       for (const file of sourceFiles(join(REPO_ROOT, root))) {
         const contents = readFileSync(file, 'utf8');
-        // Skip this file: it necessarily contains the ranges it screens for.
-        if (file.endsWith('no-emoji.test.ts')) return;
         contents.split('\n').forEach((line, index) => {
           if (EMOJI.test(line)) offenders.push(`${file}:${index + 1} ${line.trim().slice(0, 60)}`);
         });

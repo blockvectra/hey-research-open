@@ -276,16 +276,18 @@ export const serverEnvSchema = z.object({
         message: 'HEY_BONDS_ENABLED needs HEY_TOKEN_STATUS=live and HEY_TREASURY_ADDRESS',
       });
     }
-    for (const [flag, key] of [
-      [hey.scoutStakingEnabled, 'HEY_SCOUT_STAKING_ENABLED'],
-      [hey.evidenceChallengesEnabled, 'HEY_EVIDENCE_CHALLENGES_ENABLED'],
+    for (const [flag, path, key] of [
+      [hey.scoutStakingEnabled, 'scoutStakingEnabled', 'HEY_SCOUT_STAKING_ENABLED'],
+      [hey.evidenceChallengesEnabled, 'evidenceChallengesEnabled', 'HEY_EVIDENCE_CHALLENGES_ENABLED'],
     ] as const) {
       // Designed, not built (M13 economy §22). A flag that is on with nothing
       // behind it would advertise a utility that does not exist.
       if (flag) {
+        // The path is the flag's own (2026-09-15). It read `bountiesEnabled`
+        // for both, so the issue named a variable the operator had not set.
         context.addIssue({
           code: z.ZodIssueCode.custom,
-          path: ['bountiesEnabled'],
+          path: [path],
           message: `${key} has no implementation in this release and must stay false`,
         });
       }
@@ -574,19 +576,29 @@ export class EnvValidationError extends Error {
   }
 }
 
-export type ParsedServerEnv = { ok: true; env: ServerEnv } | { ok: false; issues: string[] };
+export type ParsedServerEnv =
+  | { ok: true; env: ServerEnv }
+  /**
+   * `issues` carries the full Zod message and belongs in a log. `variables` is
+   * the names alone, safe to answer an unauthenticated probe with: an operator
+   * reading a 503 needs to know which variable to look at, and nobody else
+   * needs to know what value it currently holds (2026-09-15).
+   */
+  | { ok: false; issues: string[]; variables: string[] };
 
 /** Parse without throwing. Used by health endpoints and diagnostics. */
 export function safeParseServerEnv(raw: RawEnv = process.env): ParsedServerEnv {
   const result = serverEnvSchema.safeParse(shapeEnv(raw));
   if (result.success) return { ok: true, env: result.data };
 
+  const named = result.error.issues.map((issue) => {
+    const path = issue.path.join('.');
+    return { variable: ENV_KEY_BY_PATH[path] ?? (path || 'env'), message: issue.message };
+  });
   return {
     ok: false,
-    issues: result.error.issues.map((issue) => {
-      const path = issue.path.join('.');
-      return `${ENV_KEY_BY_PATH[path] ?? (path || 'env')}: ${issue.message}`;
-    }),
+    issues: named.map((issue) => `${issue.variable}: ${issue.message}`),
+    variables: [...new Set(named.map((issue) => issue.variable))],
   };
 }
 
