@@ -31,6 +31,7 @@ Base URL: `https://heyresearch.xyz`
 | Market data is context | It never ranks anything here, and the default order is activity. |
 | Paid placement is not in the data | The labelled *Sponsored* row on the home page is advertising. It has no field here, no feed entry, and no effect on any order, score or status. |
 | The caveat travels too | Every response carries `disclaimer`. |
+| A claim travels with its evidence | `stillBuilding: true` is accompanied by `stillBuildingEvidence` — the market drawdown HEY tracked and the meaningful ships recorded since it began (2026-09-17). Absent together when no drawdown was recorded, which is every project the claim is not being made about. |
 | Show the link you were given | Anything rendered from a HEY fact carries the `url` back to the project page it came from. It is a condition of use, not a technical gate: a reader who sees a HEY line should always be one tap from the evidence behind it. |
 | The strict states carry their denominator | `GET /api/projects` carries `catalogue`: how many verified builders HEY has and how many meet Still Building and Under the Radar right now (2026-09-11). A handful out of thousands is the rule working, not the data failing. |
 
@@ -141,6 +142,24 @@ A project HEY has not measured carries **no `score` key at all** — a zero woul
 
 A slug that is not published answers `404` with `{ "error": "not_found" }`. It looks
 identical to a slug that never existed, which is what the pages do too.
+
+### Mirroring the ship feed (2026-09-17)
+
+`since` filters on `publishedAt` — the date the *project* shipped — because it names the window
+you are reporting on. That is the wrong axis to mirror along. HEY polls sources on tiers, so a
+release published on Monday is routinely recorded on Tuesday, and a consumer keeping the newest
+`publishedAt` it has seen never sees anything ingested after that watermark moved past it. Not
+late: never.
+
+Every ship now carries **`detectedAt`** — when HEY observed it — and the feed accepts
+**`?detectedSince=<ISO>`** and **`?sort=detected`**. Page along those and nothing is missed:
+
+```bash
+curl "https://heyresearch.xyz/api/ships?sort=detected&detectedSince=2026-09-16T00:00:00Z&limit=100"
+```
+
+Keep the highest `detectedAt` you have seen and pass it back next time. `since` is unchanged and
+still means what it meant.
 
 ## `GET /api/token/{chainId}/{address}` (2026-09-16)
 
