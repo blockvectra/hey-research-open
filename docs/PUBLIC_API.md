@@ -31,6 +31,7 @@ Base URL: `https://heyresearch.xyz`
 | Market data is context | It never ranks anything here, and the default order is activity. |
 | Paid placement is not in the data | The labelled *Sponsored* row on the home page is advertising. It has no field here, no feed entry, and no effect on any order, score or status. |
 | The caveat travels too | Every response carries `disclaimer`. |
+| Show the link you were given | Anything rendered from a HEY fact carries the `url` back to the project page it came from. It is a condition of use, not a technical gate: a reader who sees a HEY line should always be one tap from the evidence behind it. |
 | The strict states carry their denominator | `GET /api/projects` carries `catalogue`: how many verified builders HEY has and how many meet Still Building and Under the Radar right now (2026-09-11). A handful out of thousands is the rule working, not the data failing. |
 
 Dates are ISO 8601 in UTC. Responses are cached for 60 seconds, allow cross-origin reads
@@ -140,6 +141,70 @@ A project HEY has not measured carries **no `score` key at all** — a zero woul
 
 A slug that is not published answers `404` with `{ "error": "not_found" }`. It looks
 identical to a slug that never existed, which is what the pages do too.
+
+## `GET /api/token/{chainId}/{address}` (2026-09-16)
+
+One project, by the identity a reader actually holds. Built for an integration that meets a
+contract address rather than a slug — someone pastes a CA into a chat and the caller wants one
+line about it — so the fields are the ones such a line needs and no more.
+
+```
+GET /api/token/4663/0xa0000000000000000000000000000000000000a1
+```
+
+```jsonc
+{
+  "chainId": 4663,
+  "contractAddress": "0x…",
+  "status": "published",
+  "project": {
+    "slug": "agentos",
+    "name": "AgentOS",
+    "symbol": "AOS",
+    "url": "https://heyresearch.xyz/project/agentos",
+    "activityStatus": "SHIPPING",
+    "activityLabel": "Shipping",
+    "activityHelp": "Shipped something meaningful in the last 7 days.",
+    "shipsLast30Days": 4,
+    "lastShipAt": "2026-09-14T15:54:25.322Z",
+    "lastShip": { "title": "Agent SDK v0.4", "publishedAt": "…", "sourceUrl": "…" },
+    "deployedAt": "2026-06-02T11:20:41Z",
+    "badgeUrl": "https://heyresearch.xyz/badge/agentos.svg"
+  },
+  "scanUrl": "https://heyresearch.xyz/scan?address=0x…",
+  "disclaimer": "…"
+}
+```
+
+**`status: "unknown"` answers `200`, not `404`.** Most addresses pasted anywhere are not
+published projects, and a 404 would make the ordinary case an exception for every caller. That
+answer carries `scanUrl` — somewhere to send the reader instead of a dead end — and no `project`.
+
+**Published records only.** An address HEY holds but has not reviewed answers `unknown`, the same
+as one it has never seen. An unreviewed launch record is not a project to this API.
+
+**The words travel with the enum.** `activityLabel` and `activityHelp` come from the table the
+site itself renders from, so an integration does not have to invent a translation. Left to
+themselves, integrators turn `DORMANT` into "dead" — which is the one thing HEY's activity model
+refuses to say. Use the strings you are given.
+
+**`shipsLast30Days` counts what the project's own page counts**, over the window the field names.
+A number that contradicts the page it links to is worse than no number.
+
+**There is no risk field, no score and no verdict**, here or anywhere. HEY answers whether anyone
+is building; it says nothing about what a token might do next. An integration that wants a risk
+reading should put one from a tool that does that work beside this line — HEY is built to sit
+beside those tools rather than replace them.
+
+`chainId` is in the path because identity here is `(chainId, contractAddress)` and never the
+address alone. An address from another chain answers `400` rather than being resolved against
+this one. So does a malformed address, and so do the burn and zero addresses — well-formed, and
+nobody's project.
+
+This route is a database read and makes no provider call, which is why it sits on the ordinary
+120-a-minute allowance. **`POST /api/scan` is not the endpoint for an integration**: it reads the
+chain, the explorer and whatever a token declares about itself, so it allows ten requests an
+hour, is never cached, and spends a budget the scheduled pipeline needs.
 
 ## `GET /api/ships`
 

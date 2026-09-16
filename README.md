@@ -121,6 +121,18 @@ The MCP server runs on your machine and reads `https://heyresearch.xyz/api`; see
 [docs/MCP.md](docs/MCP.md). The API itself is documented in
 [docs/PUBLIC_API.md](docs/PUBLIC_API.md).
 
+Building something that meets a contract address rather than a slug — a bot where someone
+pastes a CA and wants one line about it — `GET /api/token/{chainId}/{address}` answers it in
+one call (2026-09-16): activity status with the words the site itself uses, ships in the last
+thirty days counted as the project page counts them, the last ship with its source, and a link
+back. An address HEY has no published page for answers `200` with `status: "unknown"` rather
+than a 404, because most addresses pasted anywhere are not published projects. No key needed.
+
+What it will not return is a risk reading. HEY answers whether anyone is building and gives no
+score, grade or verdict — put a risk read from a tool that does that work beside this line
+rather than expecting it here. Whatever you render, carry the `url` back to the project page:
+a reader who sees a HEY line should be one tap from the evidence behind it.
+
 ## How this repository is produced
 
 It is exported from the private repository by a script that copies the listed paths, generates
