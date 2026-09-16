@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { hasData } from '../adapter';
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createRpcBlockNumberAdapter, createRpcBlockTimestampAdapter, createRpcLogCountAdapter, isLogWindowTooLarge } from './rpc-logs';
+import { createRpcBlockNumberAdapter, createRpcBlockTimestampAdapter, createRpcBlockTimestampBatchAdapter, createRpcLogCountAdapter, isLogWindowTooLarge } from './rpc-logs';
 
 const RPC = 'https://rpc.example/';
 const TOKEN = '0xB33eb16782776b4D738c0Fd643577cb0284Db610';
@@ -44,5 +44,46 @@ describe('rpc head and block timestamp', () => {
     const stub = stubFetch({ status: 200, body: readFixture('rpc-block.json') });
     const result = await createRpcBlockTimestampAdapter().fetch({ rpcUrl: RPC, blockNumber: 0x3a2a4f9 }, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.data).toEqual({ blockNumber: 0x3a2a4f9, timestamp: new Date(0x6ac2a9c0 * 1000) });
+  });
+});
+
+describe('rpc block batch', () => {
+  it('maps every block the node answered for, and leaves out the ones it did not', async () => {
+    const stub = stubFetch({
+      status: 200,
+      body: JSON.stringify([
+        { jsonrpc: '2.0', id: 0, result: { number: '0x3c22909', timestamp: '0x68c74e2f' } },
+        // Out of order on purpose: a batch reply may come back in any order,
+        // so the id is what maps a result to its block, never the position.
+        { jsonrpc: '2.0', id: 2, result: { number: '0x128f', timestamp: '0x682c1f97' } },
+        { jsonrpc: '2.0', id: 1, error: { code: -32000, message: 'block not found' } },
+      ]),
+    });
+
+    const result = await createRpcBlockTimestampBatchAdapter().fetch(
+      { rpcUrl: RPC, blockNumbers: [0x3c22909, 0x999999, 0x128f] },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+
+    expect(result.status).toBe('fresh');
+    const stamps = result.data!.stamps;
+    expect(stamps.size).toBe(2);
+    expect(stamps.get(0x3c22909)?.toISOString()).toBe(new Date(0x68c74e2f * 1000).toISOString());
+    expect(stamps.get(0x128f)?.toISOString()).toBe(new Date(0x682c1f97 * 1000).toISOString());
+    // The refused block is absent rather than defaulted: absent means unread.
+    expect(stamps.has(0x999999)).toBe(false);
+
+    const body = JSON.parse(String(stub.requests[0]?.init?.body)) as { method: string; params: unknown[] }[];
+    expect(body).toHaveLength(3);
+    expect(body[0]).toMatchObject({ method: 'eth_getBlockByNumber', params: ['0x3c22909', false] });
+  });
+
+  it('refuses an empty answer rather than reporting nothing found', async () => {
+    const stub = stubFetch({ status: 200, body: '[]' });
+    const result = await createRpcBlockTimestampBatchAdapter().fetch(
+      { rpcUrl: RPC, blockNumbers: [1] },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+    expect(result.status).not.toBe('fresh');
   });
 });

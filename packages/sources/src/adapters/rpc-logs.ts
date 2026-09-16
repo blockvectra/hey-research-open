@@ -108,6 +108,74 @@ export function createRpcBlockNumberAdapter(): SourceAdapter<RpcHeadInput, Chain
   };
 }
 
+export type RpcBlockBatchInput = { rpcUrl: string; blockNumbers: readonly number[] };
+
+/** Every block the node answered for, by number; one it refused is simply absent. */
+export type BlockStamps = { stamps: ReadonlyMap<number, Date> };
+
+const batchSchema = z.array(envelope).superRefine((value, context) => {
+  if (value.length === 0) context.addIssue({ code: z.ZodIssueCode.custom, message: 'empty batch response' });
+});
+
+/**
+ * Many block timestamps in one request (2026-09-16).
+ *
+ * JSON-RPC allows an array of calls in a single POST, and this node honours
+ * it: a hundred blocks come back in about half a second. The node counts the
+ * *calls*, not the requests, so batching does not buy an unlimited rate — it
+ * buys the round trips, which is what made a one-at-a-time backfill of 4,411
+ * blocks take a day rather than an hour.
+ *
+ * A block the node declines is left out of the map rather than defaulted, so
+ * a caller writes a date only where it actually read one.
+ */
+export function createRpcBlockTimestampBatchAdapter(): SourceAdapter<RpcBlockBatchInput, BlockStamps> {
+  return {
+    name: 'rpc-block-batch',
+    canHandle(input) {
+      return Boolean(input.rpcUrl) && input.blockNumbers.length > 0 && input.blockNumbers.every((n) => n >= 0);
+    },
+    fetch(input, ctx: SourceContext): Promise<SourceResult<BlockStamps>> {
+      const calls = input.blockNumbers.map((blockNumber, index) => ({
+        jsonrpc: '2.0',
+        id: index,
+        method: 'eth_getBlockByNumber',
+        params: [hex(blockNumber), false],
+      }));
+      return performSourceFetch(
+        ctx,
+        {
+          url: input.rpcUrl,
+          method: 'POST' as const,
+          body: JSON.stringify(calls),
+          headers: { 'content-type': 'application/json' },
+          conditional: false as const,
+        },
+        {
+          schema: batchSchema,
+          parse: (raw) => JSON.parse(raw) as unknown,
+          cacheTtlSeconds: NO_CACHE,
+          normalize: (raw): BlockStamps => {
+            const stamps = new Map<number, Date>();
+            for (const entry of raw) {
+              const index = typeof entry.id === 'number' ? entry.id : Number(entry.id);
+              const blockNumber = input.blockNumbers[index];
+              if (blockNumber === undefined || entry.error) continue;
+              const block = entry.result as { timestamp?: string } | null;
+              if (!block?.timestamp) continue;
+              const seconds = Number.parseInt(block.timestamp, 16);
+              // A block with no usable time is left out: absent means unread.
+              if (!Number.isFinite(seconds) || seconds <= 0) continue;
+              stamps.set(blockNumber, new Date(seconds * 1000));
+            }
+            return { stamps };
+          },
+        },
+      );
+    },
+  };
+}
+
 export type RpcBlockInput = { rpcUrl: string; blockNumber: number };
 export type BlockStamp = { blockNumber: number; timestamp: Date };
 
