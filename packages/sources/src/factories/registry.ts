@@ -625,3 +625,81 @@ export const enabledFactories = (chainId: number): LaunchFactoryConfig[] =>
 
 export const factoryById = (id: string): LaunchFactoryConfig | undefined =>
   LAUNCH_FACTORIES.find((factory) => factory.id === id);
+
+/**
+ * Contracts that are not launch factories but stand in front of one.
+ *
+ * A launchpad's public factory is not always what an account calls. Pons runs
+ * a launch-and-buy router that creates the token and buys into it in the same
+ * transaction, and every creation through it reports the router as the entry
+ * point — so `/scan` could only say "a contract ran the creation" for a launch
+ * it understood perfectly well (2026-09-15).
+ *
+ * These are **naming only**. They emit no launch event of their own and are
+ * never swept for intake: the factory behind them already emits its event, so
+ * the hourly sweep catches those launches either way (35,262 PONS_V2
+ * candidates in the 24 hours this was written). Adding a router to
+ * `LAUNCH_FACTORIES` would double-count them.
+ */
+export type LaunchRouterConfig = {
+  address: string;
+  chainId: number;
+  /** What to call it in a report. */
+  name: string;
+  /** The factory it fronts, when it fronts one. */
+  factoryAddress?: string;
+  /** False for a generic contract that says nothing about who launched. */
+  isLaunchpad: boolean;
+  verification: string;
+};
+
+export const LAUNCH_ROUTERS: readonly LaunchRouterConfig[] = [
+  {
+    address: '0xe33e9e479df8802cb0866d5d05258bec4cf62948',
+    chainId: 4663,
+    name: "Pons's launch-and-buy router",
+    factoryAddress: '0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e',
+    isLaunchpad: true,
+    verification:
+      'answers launchAndBuy (62,324 calls) and factory(); an eth_call to factory() returns 0x7eD598Bc…EC7e, the registered Pons V2 factory. 4,417 bytes on 4663. Twenty of the sixty most recent creations through Pons\'s token deployer came through it (probed 2026-09-15)',
+  },
+  {
+    // Not a launchpad, and naming it is the point: a reader who sees a launch
+    // routed through a generic batcher should not read it as a service.
+    address: '0xca11bde05977b3631167028862be2a173976ca11',
+    chainId: 4663,
+    name: 'Multicall3, a generic batching contract',
+    isLaunchpad: false,
+    verification:
+      "the canonical Multicall3 address, identical on every EVM chain; it batches calls and belongs to no launchpad. Four of the sixty most recent creations through Pons's token deployer were batched through it (probed 2026-09-15)",
+  },
+];
+
+/** What to call a contract that fronted a creation, if HEY has verified one. */
+export const routerByAddress = (
+  chainId: number,
+  address: string,
+): LaunchRouterConfig | undefined => {
+  const wanted = address.toLowerCase();
+  return LAUNCH_ROUTERS.find(
+    (router) => router.chainId === chainId && router.address.toLowerCase() === wanted,
+  );
+};
+
+/**
+ * The launchpad a contract address belongs to, if HEY has verified one there.
+ *
+ * `/scan` reads the creating call from the decoded chain and gets back whatever
+ * executed it. When that is a registry factory, HEY can name the launchpad
+ * rather than say "a contract" — the same verified addresses the hourly intake
+ * already watches, so nothing new is being claimed (2026-09-15).
+ */
+export const factoryByAddress = (
+  chainId: number,
+  address: string,
+): LaunchFactoryConfig | undefined => {
+  const wanted = address.toLowerCase();
+  return LAUNCH_FACTORIES.find(
+    (factory) => factory.chainId === chainId && factory.factoryAddress.toLowerCase() === wanted,
+  );
+};

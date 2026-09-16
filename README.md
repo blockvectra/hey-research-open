@@ -49,6 +49,30 @@ first and never the other two.
 
 Explore has two views (2026-09-12): **Projects**, everything HEY tracks, and **With a token**, only the projects with a token, with a Market Lens — live market, verified token, launch stage (on the curve, graduated, in a DEX pool), a liquidity floor, liquidity and 24 h volume orders — and one line under every market sort saying how many rows actually carry the figure. Market figures stay context; nothing ranks by them, and tokenless builders are never hidden from the first view. A token card HEY cannot read building from says "No builder signal yet" and prints what HEY does know — traded today, on-chain events, the pool it trades in — as context (2026-09-13); trading is not building. Since 2026-09-13 HEY keeps its own daily index (`token_market_days`, `chain_activity_days`): every token project has a market page (`/project/{slug}/market`, `/api/projects/{slug}/market`) with price, liquidity, trades and volume day by day, the lifecycle and what HEY checked on the contract, and Pulse shows Robinhood Chain day by day (`/api/chain`). Counts, never accounts — until 2026-09-14, when that changed for one thing only; see **What HEY does not do** below. Nothing in scoring reads any of it. HEY Signal (`/signals`) turns measured changes into a feed with before/after figures and sources; the Builder Radar (`/builders`) ranks builders by verified development, on-chain use and research standing, never by price; weekly reports are archived at `/reports/weekly` (2026-09-13). Since 2026-09-14 a market page also carries **token distribution**: a bubble map of the largest balances drawn to scale, with pools, launchpad lockers and burned supply named and kept out of the concentration figure, and circles that moved the token between each other coloured as a group. Every circle links to that address on the block explorer. The same day, contract usage moved to a batched read — calls, transactions, and how many different method names and event names a contract saw — so a token that is only being traded (three or four methods) reads differently from a contract people call. An audit the same evening found the denominator behind every share of supply was wrong: it divided by a fully diluted valuation, which on this chain is supply net of the burn address, so shares were inflated by the burned fraction and twenty-eight token-days summed past 100%. The denominator is now read from the token contract (`packages/sources/src/adapters/erc20-supply.ts`), a token whose contract will not answer is skipped rather than mapped against a guess, and shares that still fail to reconcile are published as no figure rather than a wrong one. The same read now guards the market figures: a reading is refused before it is stored if the pool is worth less than one whole token at the price quoted, if the market cap exceeds the fully diluted valuation of the same token, or if the supply the reading implies disagrees with the contract by more than a factor of two — three checks that between them caught a $7.3 septillion market cap, a bridged asset's global cap published as this chain's, and a price of $265.64 beside a market cap of $3,277. Liquidity and volume are summed across the token's pools rather than taken from the deepest one alone. Since 2026-09-15 each day also carries counts of the addresses behind the numbers — how many called a contract, how many traded a token, how many bought and how many sold — and a token's concentration as a Gini coefficient and a Nakamoto coefficient, the number of addresses holding more than half the supply. All of them are counts the provider computes and returns as numbers; none of them selects, stores or names an address.
 
+Since 2026-09-15 HEY answers the same question for a **single contract address it has never
+seen**, at [heyresearch.xyz/scan](https://heyresearch.xyz/scan): *is anyone building this?* Every
+other scanner on the chain answers whether a token will rug — holders, wallet clusters, honeypot
+simulation, liquidity locks — so this sits beside them rather than against them, and the two do
+not overlap at any point: HEY reads no holders and no wallets here at all. The report is facts
+with the source behind each, in three groups — who built it, what is being built, and what HEY
+cannot see — with **no score, no count of passed checks and no colour**, because one number is
+all it takes for a reader to take a scan box as a safety rating. Absences are named as absences.
+
+Two reads in `packages/sources` were added for it, both from Bitquery's decoded chain. The
+first (`bitquery-deployment.ts`) reads the contract's creating call, which carries two accounts
+a block explorer reports as one: what executed the creation — a factory, for a launchpad token —
+and the account that sent the transaction, which is what a reader means by "who built it". The
+second (`bitquery-surface.ts`) reads **which methods the contract answers**, and for the many
+addresses that declare no website and no repository it is the only evidence there is: a plain
+token answers `balanceOf`, `transfer`, `approve` and little else, while a protocol answers a
+surface somebody designed. Neither is judged — a plain token is an ordinary and honest thing to
+be — and a caller count is a count of distinct senders, never resolved to an address and never
+stored. The realtime window is about four days, so a quiet contract reads as a quiet window
+rather than an empty contract. `packages/sources/src/factories/registry.ts` also gained
+`LAUNCH_ROUTERS`: contracts that front a launch factory rather than being one, so a launch made
+through a launchpad's own router is named for the launchpad, and one batched through a generic
+contract like Multicall3 is named as exactly that.
+
 ## What HEY does not do
 
 For its first year HEY stored nothing about who holds a token. Product rule 1 forbade holder

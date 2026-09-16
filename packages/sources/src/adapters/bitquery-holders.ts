@@ -142,10 +142,12 @@ export type BitqueryHolders = {
    * asking for rather than deriving here.
    *
    * `gini` is 0 when everyone holds the same and approaches 1 as one address
-   * holds everything. `nakamotoHalf` is the number of addresses that together
-   * hold more than half the supply — $HEY reads 17 — and is the one figure
-   * that answers "how few hands" in a sentence a reader does not have to be
-   * taught. Both are numbers about a distribution; neither names anyone.
+   * holds everything. `nakamotoHalf` is the number of addresses holding half
+   * the supply in the filtered set — the caller excludes pools, lockers, burns
+   * and the token itself, so the figure is half of what is left, never half of
+   * the whole supply. It answers "how few hands" in a sentence a reader does
+   * not have to be taught, provided the sentence says which supply. Both are
+   * numbers about a distribution; neither names anyone.
    */
   gini?: number;
   nakamotoHalf?: number;

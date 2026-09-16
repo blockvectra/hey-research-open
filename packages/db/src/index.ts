@@ -135,7 +135,7 @@ export const MODERATION_FLAG_STATUSES = ['OPEN', 'RESOLVED', 'DISMISSED'] as con
 
 export type ModerationFlagStatus = (typeof MODERATION_FLAG_STATUSES)[number];
 
-export const CLAIM_STATUSES = ['UNCLAIMED', 'PENDING', 'VERIFIED', 'REJECTED'] as const;
+export const CLAIM_STATUSES = ['UNCLAIMED', 'PENDING', 'VERIFIED', 'REJECTED', 'SUPERSEDED'] as const;
 
 export type ClaimStatus = (typeof CLAIM_STATUSES)[number];
 
