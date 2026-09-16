@@ -128,6 +128,10 @@ thirty days counted as the project page counts them, the last ship with its sour
 back. An address HEY has no published page for answers `200` with `status: "unknown"` rather
 than a 404, because most addresses pasted anywhere are not published projects. No key needed.
 
+The full guide — the line to render, the three answers to handle, and the four things not to do —
+is [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), also on the site at
+[heyresearch.xyz/docs/integrations](https://heyresearch.xyz/docs/integrations).
+
 What it will not return is a risk reading. HEY answers whether anyone is building and gives no
 score, grade or verdict — put a risk read from a tool that does that work beside this line
 rather than expecting it here. Whatever you render, carry the `url` back to the project page:
