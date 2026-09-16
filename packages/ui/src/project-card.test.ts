@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { explorerTokenUrl } from './brand';
-import { shortenAddress } from './format';
+import { isAddressShaped, shortenAddress } from './format';
 import { ProjectCard, type ProjectCardData, formatPercentChange, marketLensLine, tradeContextLine } from './project-card';
 
 const ADDRESS = '0x82aE0000000000000000000000000000000091bF';
@@ -246,5 +246,29 @@ describe('ProjectCard — tokenless', () => {
     expect(html).not.toContain('Market cap');
     expect(html).not.toContain('contract-address');
     expect(html).not.toContain('data-testid="ticker"');
+  });
+});
+
+describe('isAddressShaped', () => {
+  it('accepts an address in either case', () => {
+    expect(isAddressShaped(ADDRESS)).toBe(true);
+    expect(isAddressShaped(ADDRESS.toLowerCase())).toBe(true);
+    expect(isAddressShaped(`  ${ADDRESS}  `)).toBe(true);
+  });
+
+  it('refuses anything that is not forty hex characters after 0x', () => {
+    expect(isAddressShaped('0xabc')).toBe(false);
+    expect(isAddressShaped(`${ADDRESS}0`)).toBe(false);
+    expect(isAddressShaped(ADDRESS.replace('0x', ''))).toBe(false);
+    expect(isAddressShaped('agentos')).toBe(false);
+  });
+
+  /*
+   * Shape only. The burn address is well-formed and is not a project; that
+   * judgement belongs to `normalizeContractAddress` in the domain, and a field
+   * deciding how to behave while someone types must not pre-empt it.
+   */
+  it('is a shape question, not an identity one', () => {
+    expect(isAddressShaped('0x000000000000000000000000000000000000dEaD')).toBe(true);
   });
 });

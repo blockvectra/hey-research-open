@@ -101,6 +101,23 @@ export function formatVerification(status: string): string {
 }
 
 /**
+ * Whether a typed value is shaped like a contract address (2026-09-16).
+ *
+ * A presentation question, which is why it lives here: it decides how a field
+ * behaves while someone is still typing into it, in the browser. Whether an
+ * address is a token *identity* — the checksum form, the burn and zero
+ * addresses that are well-formed and still nobody's project — is a domain
+ * question, answered by `normalizeContractAddress` in `@hey/domain`, which a
+ * client bundle cannot import without dragging the database layer with it.
+ *
+ * The two patterns are deliberately the same and must stay that way; this one
+ * is never the authority on what HEY will accept.
+ */
+export function isAddressShaped(value: string): boolean {
+  return /^0x[a-fA-F0-9]{40}$/.test(value.trim());
+}
+
+/**
  * `0x82ae…91bf`: enough of both ends to recognise an address, never enough
  * to mistake it for the whole. The full address travels in `title` and the
  * copy action; the shortened form is display only.
