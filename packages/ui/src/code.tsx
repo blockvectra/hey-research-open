@@ -148,13 +148,12 @@ export function CodeHeatmap({
         aria-label={`Days with observed code activity over the last ${weeks} weeks`}
       >
         {cells.map((cell) => (
-          <span key={cell.day} className={cn('h-2.5 w-2.5 rounded-[2px]', intensity(cell.commits))}>
-            <title>
-              {cell.commits > 0
-                ? `${cell.day}: ${cell.commits} commits`
-                : `${cell.day}: no observed activity`}
-            </title>
-          </span>
+          <span
+            key={cell.day}
+            className={cn('h-2.5 w-2.5 rounded-[2px]', intensity(cell.commits))}
+            /* The attribute: `<title>` in HTML is metadata, hoisted into <head> by React 19. */
+            title={cell.commits > 0 ? `${cell.day}: ${cell.commits} commits` : `${cell.day}: no observed activity`}
+          />
         ))}
       </div>
       <p className="mt-2 text-[13px] text-hey-secondary">

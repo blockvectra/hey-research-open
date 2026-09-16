@@ -1,5 +1,5 @@
 {
-  "$comment": "What HEY publishes (2026-09-11). Paths are copied verbatim into the staging tree; everything else in the private repository stays private. Forbidden patterns are regular expressions; write each one so that a plain search of this tree for the secret string finds nothing (a character class or a split does it).",
+  "$comment": "Generic secret shapes only; this deployment's own identifiers are not published.",
   "publicName": "hey-research-open",
   "include": [
     "packages/config",
@@ -47,13 +47,6 @@
   ],
   "dbTypesFrom": "packages/db/src/schema/enums.ts",
   "forbidden": [
-    "[redacted]",
-    "[redacted]",
-    "[redacted]",
-    "[redacted]",
-    "[redacted]",
-    "/Users/[a-z0-9_-]+/(hey-research|\\.claude)",
-    "hey@[0-9]{1,3}\\.[0-9]{1,3}",
     "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY",
     "ghp_[A-Za-z0-9]{20,}",
     "github_pat_[A-Za-z0-9_]{20,}",

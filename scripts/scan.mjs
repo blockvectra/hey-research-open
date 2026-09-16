@@ -19,7 +19,14 @@ const SKIP_DIRS = new Set(['.git', '.claude', 'node_modules', 'dist', '.next', '
 const BINARY = /\.(png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|mp4|mov|pdf|zip|gz|lock)$/i;
 
 export function scanTree(root) {
-  const patterns = manifest.forbidden.map((source) => new RegExp(source, 'i'));
+  /*
+   * Both lists (2026-09-17). `secretLiterals` is this deployment's own hosts,
+   * credentials, accounts and paths; it stays in the private repository, and
+   * the redacted manifest the export publishes carries only `forbidden`. A
+   * public checkout therefore scans for the generic shapes and finds no list
+   * of what it is looking for.
+   */
+  const patterns = [...manifest.forbidden, ...(manifest.secretLiterals ?? [])].map((source) => new RegExp(source, 'i'));
   const hits = [];
   const walk = (dir) => {
     for (const entry of readdirSync(dir)) {

@@ -51,13 +51,14 @@ export function ActiveWeeks({
                   : 'bg-blue-500'
                 : 'bg-ice-100 ring-1 ring-inset ring-hey-border',
             )}
-          >
-            <title>
-              {week.ships > 0
+            /* The attribute, not the element: `<title>` inside HTML is metadata React hoists
+               into <head>, so this rendered no tooltip and polluted the document title. */
+            title={
+              week.ships > 0
                 ? `Week of ${week.week}: ${week.ships} meaningful ${week.ships === 1 ? 'ship' : 'ships'}`
-                : `Week of ${week.week}: no meaningful ships`}
-            </title>
-          </span>
+                : `Week of ${week.week}: no meaningful ships`
+            }
+          />
         ))}
       </div>
 
@@ -164,13 +165,12 @@ export function BuilderActivityChart({
                 week.ships > 0 ? 'bg-blue-500' : 'bg-hey-border',
               )}
               style={{ height: week.ships > 0 ? `${(week.ships / max) * 100}%` : '4px' }}
-            >
-              <title>
-                {week.headline
+              title={
+                week.headline
                   ? `Week of ${week.week}: ${week.ships} ships — ${week.headline}`
-                  : `Week of ${week.week}: no meaningful ships`}
-              </title>
-            </div>
+                  : `Week of ${week.week}: no meaningful ships`
+              }
+            />
           </div>
         ))}
       </div>

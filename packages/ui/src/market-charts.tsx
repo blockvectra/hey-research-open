@@ -187,16 +187,19 @@ export function DailyBarsChart({
           return (
             <div key={p.day} className="flex h-full min-w-0 flex-1 flex-col justify-end">
               <div className="flex w-full flex-col justify-end overflow-hidden rounded-t-[3px]" style={{ height: `${Math.max(2, (total / max) * 100)}%` }}>
+                {/* `title` the attribute, not `<title>` the element: these bars are divs, and in
+                    HTML that tag is metadata React 19 hoists into <head> rather than a tooltip. */}
                 <div
                   className="w-full"
                   style={{ height: total > 0 ? `${(p.value / total) * 100}%` : '100%', background: `linear-gradient(180deg, ${colour.barTo} 0%, ${colour.bar} 100%)` }}
-                >
-                  <title>{`${p.day}: ${format(p.value) ?? p.value}${secondaryLabel ? ` ${primaryLabel ?? label.toLowerCase()}` : ''}`}</title>
-                </div>
+                  title={`${p.day}: ${format(p.value) ?? p.value}${secondaryLabel ? ` ${primaryLabel ?? label.toLowerCase()}` : ''}`}
+                />
                 {p.secondary !== undefined && total > 0 ? (
-                  <div className="w-full" style={{ height: `${(p.secondary / total) * 100}%`, background: SECONDARY, opacity: 0.85 }}>
-                    <title>{`${p.day}: ${format(p.secondary) ?? p.secondary} ${secondaryLabel ?? ''}`}</title>
-                  </div>
+                  <div
+                    className="w-full"
+                    style={{ height: `${(p.secondary / total) * 100}%`, background: SECONDARY, opacity: 0.85 }}
+                    title={`${p.day}: ${format(p.secondary) ?? p.secondary} ${secondaryLabel ?? ''}`}
+                  />
                 ) : null}
               </div>
             </div>

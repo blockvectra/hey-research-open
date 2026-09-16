@@ -262,9 +262,10 @@ export function ShipsPerWeekChart({
             <div
               className="w-full rounded-t-md bg-blue-500"
               style={{ height: `${Math.max(4, (entry.ships / max) * 100)}%` }}
-            >
-              <title>{`${entry.week}: ${entry.ships} ships across ${entry.projects} projects`}</title>
-            </div>
+              /* `title` the attribute, not `<title>` the element (2026-09-17): in HTML that tag
+                 is metadata, React 19 hoists it into <head>, and it renders no tooltip at all. */
+              title={`${entry.week}: ${entry.ships} ships across ${entry.projects} projects`}
+            />
             <span className="text-[11px] tabular-nums text-hey-muted">{entry.ships}</span>
           </div>
         ))}
