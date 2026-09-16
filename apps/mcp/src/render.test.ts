@@ -1,7 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
 import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from './client';
-import { ago, projectLine, renderProject, renderProjects, renderShips, STILL_BUILDING_MEANING } from './render';
+import {
+  STILL_BUILDING_MEANING,
+  ago,
+  projectLine,
+  renderBuilders,
+  renderProject,
+  renderProjects,
+  renderShips,
+  renderSignals,
+  renderThisWeek,
+  renderTokenLookup,
+  renderTokenMarket,
+  renderWeeklyReport,
+} from './render';
 
 /**
  * What an agent is handed (2026-09-05).
@@ -216,5 +229,153 @@ describe('renderShips', () => {
 
     expect(rendered).toContain('self reported');
     expect(rendered).toContain('no public source recorded');
+  });
+});
+
+/**
+ * The renderers the 2026-09-17 audit found untested — which is exactly where
+ * its defects were: a series truncated in silence, evidence dropped from a
+ * signal, a filter echo missing so a dropped filter read as an answer, and
+ * "Still Building" printed without its meaning.
+ */
+describe('the renderers nothing was watching', () => {
+  const NOW = new Date('2026-09-17T12:00:00Z');
+
+  it('says when the day series it prints is shorter than the one it counted', () => {
+    const days = Array.from({ length: 90 }, (_, i) => ({
+      day: `2026-06-${String((i % 28) + 1).padStart(2, '0')}`,
+      liquidityCloseUsd: 1000 + i,
+    }));
+    const market = {
+      slug: 'agentos',
+      name: 'AgentOS',
+      symbol: 'AOS',
+      token: { chainId: 4663, contractAddress: '0xabc' },
+      marketStatus: 'ACTIVE_MARKET',
+      verification: 'VERIFIED',
+      lifecycle: {},
+      checks: [],
+      onchainDays: [],
+      tvlDays: [],
+    };
+    const wide = renderTokenMarket({ ...market, days } as never, NOW);
+    expect(wide).toContain('Days indexed: 90');
+    // The defect: 90 announced, 14 shown, nothing said.
+    expect(wide).toMatch(/Showing the 14 most recent/);
+    expect(wide).toContain('/api/projects/agentos/market');
+
+    const narrow = renderTokenMarket({ ...market, days: days.slice(0, 5) } as never, NOW);
+    expect(narrow).toContain('Days indexed: 5');
+    expect(narrow).not.toMatch(/Showing the/);
+  });
+
+  it('cites the evidence a signal was read from, not just HEY', () => {
+    const page = {
+      query: { group: 'development' },
+      total: 1,
+      items: [
+        {
+          id: 's1',
+          kind: 'development_spike',
+          group: 'development',
+          label: 'Development spike',
+          meaning: 'More commits than usual.',
+          severity: 'notable',
+          confidence: 0.9,
+          importance: 4,
+          observedAt: '2026-09-16T00:00:00Z',
+          title: 'AgentOS shipped more than usual',
+          summary: 'Commits doubled.',
+          evidence: [
+            { label: 'Commit range', url: 'https://github.com/a/b/compare/x...y' },
+            { label: 'HEY observed this on 16 September' },
+          ],
+          source: 'github_repo',
+          project: { slug: 'agentos', name: 'AgentOS', activityStatus: 'SHIPPING', url: 'https://hey/p/agentos' },
+          url: 'https://hey/signal/s1',
+        },
+      ],
+    };
+    const out = renderSignals(page as never, NOW);
+    expect(out).toContain('https://github.com/a/b/compare/x...y');
+    // An entry with no URL is HEY's own observation; naming it as a citation would be false.
+    expect(out).not.toMatch(/evidence: HEY observed/);
+    // And the filter is echoed, so a dropped one is visible rather than inferred.
+    expect(out).toContain('Query as HEY read it');
+  });
+
+  it('echoes the Radar view it actually applied', () => {
+    const page = { query: { filter: 'pons' }, day: '2026-09-17', ranked: 2, total: 2, method: 'Ranked by verified development.', items: [] };
+    expect(renderBuilders(page as never, NOW)).toContain('Query as HEY read it');
+    // Without an echo the renderer still says the rule, rather than silently promising nothing.
+    const noEcho = { day: '2026-09-17', ranked: 0, total: 0, method: 'm', items: [] };
+    expect(renderBuilders(noEcho as never, NOW)).toMatch(/ignored rather than refused/);
+  });
+
+  it('never prints the Still Building count without saying what it means', () => {
+    const report = {
+      week: '2026-W38',
+      window: { start: '2026-09-14T00:00:00Z', end: '2026-09-21T00:00:00Z' },
+      final: true,
+      headline: 'A week.',
+      overview: { published: 10, verifiedBuilders: 5, ships: 9, projectsShipping: 4, newBuilders: 1, backToShipping: 0, stillBuilding: 4, underTheRadar: 6 },
+      chain: { days: 7 },
+      shipped: [],
+      newBuilders: [],
+      backToShipping: [],
+      topBuilders: [],
+      movers: [],
+      signals: [],
+      url: 'https://hey/reports/weekly/2026-W38',
+    };
+    const out = renderWeeklyReport(report as never);
+    expect(out).toContain('4 Still Building');
+    expect(out).toContain(STILL_BUILDING_MEANING);
+  });
+
+  it('renders the weekly rollup instead of handing over raw JSON', () => {
+    const week = {
+      window: { start: '2026-09-10T00:00:00Z', end: '2026-09-17T00:00:00Z' },
+      ships: { total: 12, projects: 5, items: [{ slug: 'agentos', name: 'AgentOS', symbol: 'AOS' }] },
+      stillBuilding: { total: 2, items: [{ slug: 'darkroute', name: 'DarkRoute' }] },
+    };
+    const out = renderThisWeek(week as never);
+    expect(out).not.toMatch(/^\s*[{[]/);
+    expect(out).toContain('12 from 5 projects');
+    // The two rules raw JSON slipped past.
+    expect(out).toContain(STILL_BUILDING_MEANING);
+    expect(out).toMatch(/does not name its provider in this rollup/);
+  });
+
+  it('answers an unindexed address plainly, and never as an error', () => {
+    const unknown = renderTokenLookup(
+      { chainId: 4663, contractAddress: '0xabc', status: 'unknown', scanUrl: 'https://hey/scan?address=0xabc', disclaimer: 'D' } as never,
+      NOW,
+    );
+    expect(unknown).toMatch(/not an error/);
+    expect(unknown).toContain('https://hey/scan?address=0xabc');
+
+    const found = renderTokenLookup(
+      {
+        chainId: 4663,
+        contractAddress: '0xabc',
+        status: 'published',
+        scanUrl: 's',
+        disclaimer: 'D',
+        project: {
+          slug: 'darkroute', name: 'DarkRoute', symbol: 'dark', url: 'https://hey/p/darkroute',
+          activityStatus: 'SHIPPING', activityLabel: 'Shipping', activityHelp: 'Shipped in the last 7 days.',
+          shipsLast30Days: 4, lastShipAt: '2026-09-16T00:00:00Z',
+          lastShip: { title: 'v0.4', publishedAt: '2026-09-16T00:00:00Z', sourceUrl: 'https://github.com/x' },
+          badgeUrl: 'b',
+        },
+      } as never,
+      NOW,
+    );
+    // HEY's own word for the status, never the enum an integrator would mistranslate.
+    expect(found).toContain('Shipping');
+    expect(found).not.toContain('SHIPPING');
+    expect(found).toContain('4 ships in the last 30 days');
+    expect(found).toContain('https://github.com/x');
   });
 });

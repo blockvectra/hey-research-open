@@ -1,4 +1,13 @@
-import type { HeyBountyPage, HeyBuildersPage, HeyChain, HeySignalPage, HeyTokenMarket, HeyWeeklyReport } from './client';
+import type {
+  HeyBountyPage,
+  HeyBuildersPage,
+  HeyChain,
+  HeySignalPage,
+  HeyThisWeek,
+  HeyTokenLookup,
+  HeyTokenMarket,
+  HeyWeeklyReport,
+} from './client';
 import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from './client';
 
 /**
@@ -125,6 +134,25 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
       : `- Activity: ${project.activityStatus.toLowerCase()}${project.lastShippedAt ? `, last shipped ${ago(project.lastShippedAt, now)}` : ''}`,
   );
   if (project.stillBuilding) lines.push(`- ${STILL_BUILDING_MEANING}`);
+  /*
+   * Whether the token still has a market, beside the figures (2026-09-17).
+   * A pool whose liquidity was pulled still reports a market cap and a volume;
+   * printing those without HEY's own classification of the market let an agent
+   * describe a removed pool as an active one. A statement about the token, and
+   * never about the team.
+   */
+  if (project.tokenMarket) {
+    const m = project.tokenMarket;
+    const detail = [
+      m.reason ? m.reason.replace(/_/g, ' ') : undefined,
+      m.liquidityUsd === undefined ? undefined : `liquidity ${money(m.liquidityUsd)}`,
+      m.peakLiquidityUsd === undefined ? undefined : `highest HEY saw ${money(m.peakLiquidityUsd)}`,
+      m.evaluatedAt ? `checked ${m.evaluatedAt.slice(0, 10)}` : undefined,
+    ].filter((v): v is string => v !== undefined);
+    lines.push(
+      `- Token market: ${m.status.replace(/_/g, ' ').toLowerCase()}${detail.length > 0 ? ` (${detail.join('; ')})` : ''}. A reading of the market, not of the team.`,
+    );
+  }
   lines.push(`- Kind: ${project.projectKind.toLowerCase()}`);
   if (project.narratives.length > 0) {
     lines.push(`- Narratives: ${project.narratives.map((n) => n.name).join(', ')}`);
@@ -288,8 +316,21 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     signed(l.priceChange30dPct) === undefined ? undefined : `${signed(l.priceChange30dPct)} over 30 days`,
   ].filter((v): v is string => v !== undefined);
   if (life.length > 0) lines.push(`Lifecycle: ${life.join('; ')}.`);
-  lines.push('', `Days indexed: ${market.days.length}. Latest first:`);
-  for (const d of [...market.days].reverse().slice(0, 14)) {
+  /*
+   * The series is capped for readability, and the cap is stated (2026-09-17).
+   * It printed the full count and then showed fourteen rows, so an agent asked
+   * for ninety days was told ninety were indexed, shown two weeks, and given
+   * nothing to notice the difference by — then reasoned about a quarter from
+   * a fortnight.
+   */
+  const shown = Math.min(market.days.length, DAY_ROWS);
+  lines.push(
+    '',
+    shown < market.days.length
+      ? `Days indexed: ${market.days.length}. Showing the ${shown} most recent; the rest are in GET /api/projects/${market.slug}/market. Latest first:`
+      : `Days indexed: ${market.days.length}. Latest first:`,
+  );
+  for (const d of [...market.days].reverse().slice(0, DAY_ROWS)) {
     const parts = [
       d.priceCloseUsd === undefined ? undefined : `close $${d.priceCloseUsd >= 1 ? d.priceCloseUsd.toFixed(2) : d.priceCloseUsd.toPrecision(3)}`,
       d.liquidityCloseUsd === undefined ? undefined : `liquidity ${money(d.liquidityCloseUsd)}`,
@@ -329,6 +370,23 @@ export function renderChain(chain: HeyChain): string {
   return lines.join('\n');
 }
 
+/** How many day rows a series prints before it says it stopped. */
+const DAY_ROWS = 14;
+
+/**
+ * The query as HEY read it (2026-09-17).
+ *
+ * Both of these routes drop an unrecognised filter rather than refusing it,
+ * and both echo what they understood — but the renderers printed neither, so a
+ * model that invented a `kind` or a `filter` was handed the whole unfiltered
+ * feed and reported it as the filtered answer. `renderProjects` and
+ * `renderShips` have said this since the beginning; these two now say it too.
+ */
+function queryEcho(query: Record<string, unknown> | undefined): string {
+  if (!query) return 'A filter HEY does not recognise is ignored rather than refused.';
+  return `Query as HEY read it: ${JSON.stringify(query)}. A filter HEY does not recognise is ignored rather than refused.`;
+}
+
 const fig = (value: number | undefined, unit: string | undefined) => (value === undefined ? undefined : unit === 'usd' || unit === 'usd/day' ? money(value) : value.toLocaleString('en-US'));
 
 /** HEY Signal as prose: what changed, before and after, source, confidence. Never a verdict. */
@@ -338,9 +396,20 @@ export function renderSignals(page: HeySignalPage, now: Date): string {
   for (const s of page.items) {
     const change = [fig(s.before, s.unit), fig(s.after, s.unit)].filter((v) => v !== undefined).join(' → ');
     const parts = [s.label, `${s.severity} · confidence ${Math.round(s.confidence * 100)}%`, change ? `${change}${s.changePct !== undefined ? ` (${s.changePct > 0 ? '+' : ''}${Math.round(s.changePct)}%)` : ''}` : undefined, `source ${s.source.replace(/_/g, ' ')}`, ago(s.observedAt, now)].filter((v): v is string => Boolean(v));
-    lines.push(`- ${s.project.name}${s.project.symbol ? ` ($${s.project.symbol})` : ''}: ${s.title}`, `  ${parts.join(' · ')}`, `  ${s.summary}`, `  ${s.url}`);
+    lines.push(`- ${s.project.name}${s.project.symbol ? ` ($${s.project.symbol})` : ''}: ${s.title}`, `  ${parts.join(' · ')}`, `  ${s.summary}`);
+    /*
+     * The evidence is the point of a signal (2026-09-17). Without it an agent
+     * answering "any news on X" cites HEY rather than the release, the commit
+     * range or the pool transaction HEY read — which is the opposite of what
+     * this server promises. Entries without a URL are HEY's own observations
+     * and are named, not linked.
+     */
+    for (const e of s.evidence ?? []) {
+      if (e.url) lines.push(`  evidence: ${e.label}${e.value ? ` (${e.value})` : ''} — ${e.url}`);
+    }
+    lines.push(`  ${s.url}`);
   }
-  lines.push('', 'Counts of trades, transfers and events only, never accounts. Context, never a recommendation.');
+  lines.push('', queryEcho(page.query), 'Counts of trades, transfers and events only, never accounts. Context, never a recommendation.');
   return lines.join('\n');
 }
 
@@ -352,7 +421,7 @@ export function renderBuilders(page: HeyBuildersPage, now: Date): string {
     const move = b.rank7d === undefined ? 'new' : b.rank7d === b.rank ? 'unchanged' : `${b.rank7d > b.rank ? '▲' : '▼'} ${Math.abs(b.rank7d - b.rank)} in 7d`;
     lines.push(`- #${b.rank} ${b.name}${b.symbol ? ` ($${b.symbol})` : ''} · overall ${Math.round(b.scores.overall)} (dev ${Math.round(b.scores.development)}, on-chain ${Math.round(b.scores.onchain)}, research ${Math.round(b.scores.research)}) · ${move} · ${b.activityStatus.toLowerCase()}${b.lastShippedAt ? ` · shipped ${ago(b.lastShippedAt, now)}` : ''}${b.liquidityHealth === undefined ? '' : ` · liquidity health ${Math.round(b.liquidityHealth)} (context)`}`, `  ${b.url}`);
   }
-  lines.push('', 'Market cap, price and volume take no part in the rank.');
+  lines.push('', queryEcho(page.query), 'Market cap, price and volume take no part in the rank.');
   return lines.join('\n');
 }
 
@@ -370,6 +439,91 @@ export function renderWeeklyReport(report: HeyWeeklyReport): string {
   if (report.newBuilders.length > 0) lines.push('', `New verified builders: ${report.newBuilders.map((b) => b.name).join(', ')}.`);
   if (report.backToShipping.length > 0) lines.push(`Back to shipping: ${report.backToShipping.map((b) => b.name).join(', ')}.`);
   if (report.signals.length > 0) lines.push('', 'Signals of the week:', ...report.signals.map((s) => `- ${s.name}: ${s.label} — ${s.title}`));
+  if (o.stillBuilding > 0) lines.push('', STILL_BUILDING_MEANING);
   lines.push('', "Every figure was measured from HEY's tables at generation time. Not a recommendation.", report.url);
+  return lines.join('\n');
+}
+
+/**
+ * HEY's weekly rollup as prose (2026-09-17).
+ *
+ * It was the one tool that returned `JSON.stringify` of an API payload, which
+ * let two rules the rest of this server enforces past it: "Still Building"
+ * reached a model with none of its meaning attached, and `marketCapUsd` — the
+ * one market field in the API that travels without a provider — arrived as a
+ * bare number beside an instruction that every figure names who reported it.
+ */
+export function renderThisWeek(week: HeyThisWeek): string {
+  const w = week.window;
+  const lines: string[] = [
+    `# This week on Robinhood Chain (${w.start.slice(0, 10)} → ${w.end.slice(0, 10)})`,
+    `Counted over the window above, from HEY's own tables.`,
+    '',
+  ];
+
+  const ships = week.ships;
+  if (ships) lines.push(`Ships: ${ships.total} from ${ships.projects} ${ships.projects === 1 ? 'project' : 'projects'}.`);
+  if (week.newBuilders) lines.push(`Newly verified builders: ${week.newBuilders.total}.`);
+  if (week.backToShipping) lines.push(`Back to shipping: ${week.backToShipping.total}.`);
+  if (week.stillBuilding) lines.push(`Still Building: ${week.stillBuilding.total}.`);
+
+  const named = (label: string, items: { slug: string; name: string; symbol?: string }[] | undefined) => {
+    if (!items || items.length === 0) return;
+    lines.push('', `${label}:`, ...items.map((p) => `- ${p.name}${p.symbol ? ` ($${p.symbol})` : ''} — ${p.slug}`));
+  };
+  named('Shipped', ships?.items);
+  named('New builders', week.newBuilders?.items);
+  named('Back to shipping', week.backToShipping?.items);
+  named('Still Building', week.stillBuilding?.items);
+
+  if (week.stillBuilding && week.stillBuilding.total > 0) lines.push('', STILL_BUILDING_MEANING);
+  /*
+   * The rollup's market caps are the one place in the API where a figure has
+   * no `source` beside it, so the caveat is stated once rather than a provider
+   * being invented for each.
+   */
+  lines.push(
+    '',
+    "Any market cap here is context HEY recorded and does not name its provider in this rollup; GET /api/projects/{slug} carries the figure with the source that reported it.",
+    'Not a recommendation.',
+  );
+  return lines.join('\n');
+}
+
+/**
+ * One project by the contract address someone pasted (2026-09-17).
+ *
+ * The line a bot would render, in the words HEY uses for it. `activityLabel`
+ * is printed rather than the enum on purpose: left to translate `DORMANT`
+ * themselves, integrators write *dead*, which is the one thing HEY's activity
+ * model refuses to say.
+ */
+export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
+  if (lookup.status !== 'published' || !lookup.project) {
+    return [
+      `# ${lookup.contractAddress} — HEY publishes no page for this address`,
+      '',
+      'That is an answer, not an error: most addresses are not indexed projects, and an address HEY holds but has not reviewed reads the same way.',
+      `A live read of the chain for it: ${lookup.scanUrl}`,
+      '',
+      lookup.disclaimer,
+    ].join('\n');
+  }
+
+  const p = lookup.project;
+  const ships = p.shipsLast30Days === 1 ? '1 ship' : `${p.shipsLast30Days} ships`;
+  const lines = [
+    `# ${p.name}${p.symbol ? ` ($${p.symbol})` : ''} — ${p.activityLabel}`,
+    `${p.activityHelp}`,
+    '',
+    `- ${ships} in the last 30 days, counted the way the project page counts them.`,
+  ];
+  if (p.lastShip) {
+    lines.push(
+      `- Last ship ${ago(p.lastShip.publishedAt, now)}: ${p.lastShip.title}${p.lastShip.sourceUrl ? ` — ${p.lastShip.sourceUrl}` : ''}`,
+    );
+  }
+  if (p.deployedAt) lines.push(`- Contract deployed ${p.deployedAt.slice(0, 10)}, read from the block.`);
+  lines.push(`- ${p.url}`, '', lookup.disclaimer);
   return lines.join('\n');
 }

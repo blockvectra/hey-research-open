@@ -64,7 +64,7 @@ describe('the HEY MCP server', () => {
     const client = await connect(fetchOk(projectsPage));
     const { tools } = await client.listTools();
 
-    expect(tools.map((tool) => tool.name).sort()).toEqual(['chain_activity', 'get_project', 'get_token_market', 'list_bounties', 'list_builders', 'list_projects', 'list_ships', 'list_signals', 'search_projects', 'this_week', 'weekly_report']);
+    expect(tools.map((tool) => tool.name).sort()).toEqual(['chain_activity', 'get_project', 'get_token_market', 'list_bounties', 'list_builders', 'list_projects', 'list_ships', 'list_signals', 'lookup_token', 'search_projects', 'this_week', 'weekly_report']);
 
     // No tool promises a valuation, a recommendation or a price ranking.
     const descriptions = tools.map((tool) => tool.description ?? '').join(' ').toLowerCase();

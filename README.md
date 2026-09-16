@@ -12,7 +12,7 @@ This repository holds the parts of HEY that are useful on their own and safe to 
 | `packages/scoring` | The deterministic activity status, Build Momentum, Still Building and Under the Radar rules, versioned. Scores never read price or holdings. |
 | `packages/config` | Environment schema and chain constants. |
 | `packages/ui` | The presentation components (cards, chips, formatting). |
-| `apps/mcp` | The MCP server: five tools an assistant can call, over the public API. |
+| `apps/mcp` | The MCP server: twelve tools an assistant can call, over the public API. |
 | `docs/` | The public API, the MCP server, the source registry, and every data source HEY reads with what it refuses and why. |
 
 The ingestion pipeline, the quality gate, the database schema, the web app and the operations

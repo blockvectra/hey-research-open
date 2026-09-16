@@ -12,10 +12,24 @@ import {
   type HeyProjectDetail,
   type HeyShip,
   type HeySignalPage,
+  type HeyThisWeek,
+  type HeyTokenLookup,
   type HeyTokenMarket,
   type HeyWeeklyReport,
 } from './client';
-import { renderBounties, renderBuilders, renderChain, renderProject, renderProjects, renderShips, renderSignals, renderTokenMarket, renderWeeklyReport } from './render';
+import {
+  renderBounties,
+  renderBuilders,
+  renderChain,
+  renderProject,
+  renderProjects,
+  renderShips,
+  renderSignals,
+  renderThisWeek,
+  renderTokenLookup,
+  renderTokenMarket,
+  renderWeeklyReport,
+} from './render';
 
 /**
  * HEY Research as MCP tools (2026-09-05).
@@ -26,7 +40,7 @@ import { renderBounties, renderBuilders, renderChain, renderProject, renderProje
  * tools let it be answered from HEY's own record instead of from guesswork.
  *
  * Every tool reads the public API, so this server needs no credentials and
- * holds no database. Five tools, matching the five questions the pages answer;
+ * holds no database. Twelve tools, matching the questions the pages answer;
  * there is deliberately no tool that ranks by price, values a token, or
  * recommends anything, because HEY does not do those things.
  *
@@ -175,6 +189,31 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
   );
 
   server.tool(
+    'lookup_token',
+    [
+      'One project by its contract address — use this whenever the user pastes a contract, rather than searching for the address as text.',
+      "It answers HEY's one question about that address: is anyone building it. Returns the activity status in HEY's own words,",
+      'ships in the last thirty days counted the way the project page counts them, the last ship with the source it was read from, and a link back.',
+      'An address HEY publishes no page for answers status "unknown" with a scan link for the user to follow; that is an answer, not an error.',
+      'No risk reading of any kind: HEY gives no score, no grade and no verdict about what a token might do.',
+    ].join(' '),
+    {
+      address: z.string().regex(/^0x[a-fA-F0-9]{40}$/).describe('The contract address, 0x followed by 40 hex characters.'),
+      chainId: z.number().int().optional().describe('Chain id; HEY indexes Robinhood Chain, 4663, which is the default.'),
+    },
+    async ({ address, chainId }) => {
+      try {
+        const lookup = await client.get<HeyTokenLookup>(
+          `/api/token/${chainId ?? 4663}/${encodeURIComponent(address)}`,
+        );
+        return text(renderTokenLookup(lookup, at() ?? new Date()));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
     'get_project',
     [
       'Everything HEY holds on one project: description, activity, token identity, launch origin,',
@@ -249,11 +288,16 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
       slug: z.string().optional().describe("A project slug, to read one project's signals."),
       days: z.number().int().min(1).max(365).optional().describe('Window in days; default 30.'),
       order: z.enum(['newest', 'importance']).optional(),
+      include: z
+        .enum(['published'])
+        .optional()
+        .describe('Add project_published signals — how to ask "what launched". They are left out of the unfiltered feed by default.'),
       limit: z.number().int().min(1).max(100).optional(),
+      offset: z.number().int().min(0).optional().describe('Skip this many; the answer says the total, so a second call can reach the rest.'),
     },
-    async ({ group, kind, slug, days, order, limit }) => {
+    async ({ group, kind, slug, days, order, include, limit, offset }) => {
       try {
-        const page = await client.get<HeySignalPage>('/api/signals', { group, kind, slug, days, order, limit: limit ?? 30 });
+        const page = await client.get<HeySignalPage>('/api/signals', { group, kind, slug, days, order, include, limit: limit ?? 30, offset });
         return text(renderSignals(page, at() ?? new Date()));
       } catch (error) {
         return failure(error);
@@ -268,10 +312,18 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
       "never by price — with each project's rank seven and thirty days ago. Use this for \"top builders\", \"most improved\", \"who is building on Pons\".",
       'Filters: all, pons, virtuals, other-launch, no-token, new, established, most-improved, development, onchain, resumed.',
     ].join(' '),
-    { filter: z.string().optional(), q: z.string().optional().describe('Find a builder by name or symbol.'), limit: z.number().int().min(1).max(200).optional() },
-    async ({ filter, q, limit }) => {
+    {
+      filter: z
+        .enum(['all', 'pons', 'virtuals', 'other-launch', 'no-token', 'new', 'established', 'most-improved', 'development', 'onchain', 'resumed'])
+        .optional()
+        .describe('One of HEY\'s own Radar views. An unrecognised value is ignored, so it is an enum here rather than free text.'),
+      q: z.string().optional().describe('Find a builder by name or symbol.'),
+      limit: z.number().int().min(1).max(200).optional(),
+      offset: z.number().int().min(0).optional().describe('Skip this many; the answer says how many are ranked, so a second call can reach the rest.'),
+    },
+    async ({ filter, q, limit, offset }) => {
       try {
-        const page = await client.get<HeyBuildersPage>('/api/builders', { filter, q, limit: limit ?? 25 });
+        const page = await client.get<HeyBuildersPage>('/api/builders', { filter, q, limit: limit ?? 25, offset });
         return text(renderBuilders(page, at() ?? new Date()));
       } catch (error) {
         return failure(error);
@@ -340,16 +392,31 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
         .optional()
         .describe('One event type, e.g. GITHUB_RELEASE, PRODUCT_LAUNCH, FEATURE_RELEASE.'),
       query: z.string().optional().describe('Free text matching the shipping project.'),
+      has: z
+        .array(z.enum(FACTS))
+        .optional()
+        .describe('Facts the shipping project must carry, all of them — e.g. ["github"] for projects HEY reads code from.'),
+      sort: z
+        .enum(['latest', 'marketCap', 'activity', 'detected'])
+        .optional()
+        .describe('Order. Default latest (when the project shipped). `detected` is when HEY observed it, which is the order to page along when mirroring. Ordering by market cap is context the caller asked for, never a ranking HEY makes.'),
+      detectedSince: z
+        .string()
+        .optional()
+        .describe('ISO 8601 instant. Only ships HEY observed at or after it — use this, not `since`, to keep a copy up to date.'),
       limit: z.number().int().min(1).max(48).optional().describe('How many, up to 48. Default 24.'),
       offset: z.number().int().min(0).optional(),
     },
-    async ({ project, since, type, query, limit, offset }) => {
+    async ({ project, since, type, query, has, sort, detectedSince, limit, offset }) => {
       try {
         const page = await client.get<HeyPage<HeyShip>>('/api/ships', {
           project,
           since,
+          detectedSince,
           type,
           q: query,
+          has: has && has.length > 0 ? has.join(',') : undefined,
+          sort,
           limit: limit ?? 24,
           offset,
         });
@@ -370,11 +437,15 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
     {},
     async () => {
       try {
-        const week = await client.get<Record<string, unknown>>('/api/this-week');
-        // The rollup is already written to be pasted somewhere else, so it is
-        // passed through rather than re-worded into a second summary that
-        // could drift from the one on the page.
-        return text(JSON.stringify(week, null, 2));
+        const week = await client.get<HeyThisWeek>('/api/this-week');
+        /*
+         * Rendered, not passed through (2026-09-17). It was the one tool that
+         * returned raw JSON, which let two rules past it: "Still Building"
+         * reached the model with none of its meaning, and the rollup's market
+         * caps — the only figures in the API that travel without a provider —
+         * arrived bare beside an instruction saying every figure names one.
+         */
+        return text(renderThisWeek(week));
       } catch (error) {
         return failure(error);
       }

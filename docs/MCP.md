@@ -2,7 +2,7 @@
 
 HEY answers one question: **which projects on Robinhood Chain are still building, what have
 they shipped, and which of them is nobody looking at?** That is the shape of a question
-someone asks an assistant, so HEY is available as an MCP server — five tools an assistant
+someone asks an assistant, so HEY is available as an MCP server — twelve tools an assistant
 can call while answering.
 
 It runs **beside the assistant**, not on HEY's servers. It holds no database and no
@@ -46,13 +46,14 @@ Set `HEY_API_URL` to read a different instance (`http://localhost:3000` while de
 to read with your key's allowance (M13-E); the server never prints the key.
 It defaults to `https://heyresearch.xyz`.
 
-## The five tools
+## The twelve tools
 
 | Tool | The question it answers |
 |---|---|
 | `search_projects` | "What is *AgentOS*?" · "Whose token is `0xa000…`?" |
 | `list_projects` | "What is still being built?" · "What launched on Pons?" · "Which infra projects are active?" |
 | `get_project` | "Tell me everything about this project." |
+| `lookup_token` | One project by the contract address someone pasted: activity status in HEY's words, ships in the last 30 days, the last ship with its source. An address HEY publishes no page for answers plainly, with a scan link. |
 | `list_ships` | "What shipped this week?" · "Is this project alive?" |
 | `this_week` | "What happened on Robinhood Chain this week?" |
 | `list_bounties` | "Which research bounties are open, what do they pay, is this one claimed?" (read-only; claiming is a wallet sign-in on the site) |

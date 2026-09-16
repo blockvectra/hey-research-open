@@ -135,6 +135,22 @@ export type HeyProjectDetail = HeyProject & {
   sources: { url: string; sourceType: string; isVerified: boolean; confidence: string; contextOnly?: boolean; contextReason?: string }[];
   /** Whether the project stands behind the tracked contract (2026-09-11): VERIFIED, UNVERIFIED or MISMATCH. */
   tokenVerification?: { status: string; reason?: string };
+  /**
+   * Whether the token still has a market HEY can read (2026-09-17).
+   *
+   * An agent reading the market figures without this was shown liquidity and
+   * volume for a pool HEY had already classified as removed or abandoned, with
+   * nothing saying so. Context on the token, never a verdict on the team.
+   */
+  tokenMarket?: {
+    status: string;
+    reason?: string;
+    evaluatedAt?: string;
+    liquidityUsd?: number;
+    volume24hUsd?: number;
+    peakLiquidityUsd?: number;
+    pairCreatedAt?: string;
+  };
   /** Events the token contract emitted, as HEY last read them from the chain. Context only. */
   onchainActivity?: { events24h: number; events7d: number; daysCovered: number; truncated: boolean; observedAt: string };
   /** TVL DefiLlama reports for the project's protocol on this chain. Context only. */
@@ -279,7 +295,31 @@ export type HeyBuilder = {
   liquidityHealth?: number;
   url: string;
 };
-export type HeyBuildersPage = { day: string; ranked: number; total: number; method: string; items: HeyBuilder[] };
+/** `query` is echoed so a dropped filter can be seen rather than inferred (2026-09-17). */
+export type HeyBuildersPage = { query?: Record<string, unknown>; day: string; ranked: number; total: number; method: string; items: HeyBuilder[] };
+
+/** `GET /api/token/{chainId}/{address}` (2026-09-16): one project, by the identity a reader holds. */
+export type HeyTokenLookup = {
+  chainId: number;
+  contractAddress: string;
+  status: 'published' | 'unknown';
+  project?: {
+    slug: string;
+    name: string;
+    symbol?: string;
+    url: string;
+    activityStatus: string;
+    activityLabel: string;
+    activityHelp: string;
+    shipsLast30Days: number;
+    lastShipAt?: string;
+    lastShip?: { title: string; publishedAt: string; sourceUrl?: string };
+    deployedAt?: string;
+    badgeUrl: string;
+  };
+  scanUrl: string;
+  disclaimer: string;
+};
 
 /** `GET /api/reports/weekly/{week}` (2026-09-13). */
 export type HeyWeeklyReport = {
@@ -298,3 +338,13 @@ export type HeyWeeklyReport = {
   url: string;
 };
 export type HeyWeeklyIndex = { items: { week: string; headline: string; final: boolean; url: string }[] };
+
+/** `GET /api/this-week` (2026-09-05): the weekly rollup, each figure with the window it was counted over. */
+export type HeyThisWeekGroup = { total: number; items: { slug: string; name: string; symbol?: string }[] };
+export type HeyThisWeek = {
+  window: { start: string; end: string };
+  ships?: HeyThisWeekGroup & { projects: number };
+  newBuilders?: HeyThisWeekGroup;
+  backToShipping?: HeyThisWeekGroup;
+  stillBuilding?: HeyThisWeekGroup;
+};
