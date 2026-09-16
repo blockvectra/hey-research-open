@@ -206,6 +206,31 @@ This route is a database read and makes no provider call, which is why it sits o
 chain, the explorer and whatever a token declares about itself, so it allows ten requests an
 hour, is never cached, and spends a budget the scheduled pipeline needs.
 
+## `POST /api/scan` (2026-09-15)
+
+The builder question for one address, read live. **Not the route for an integration** — see
+`GET /api/token/{chainId}/{address}` above, which reads HEY's own tables and calls nobody.
+
+```
+POST /api/scan   { "address": "0x…" }
+```
+
+Ten requests an hour per client, never cached, and every call spends a provider budget the
+scheduled pipeline needs first. It is the only route in HEY that makes outbound provider calls
+on a reader's request, and it can answer `503` when that budget is spent for the day.
+
+| `status` | HTTP | What it means |
+|---|---|---|
+| `published` | 200 | HEY publishes a page. Carries `slug`, `url` and `apiUrl`. |
+| `known` | 200 | HEY holds the record and has not reviewed it. Carries `slug` and `url` and **no `apiUrl`**: `/api/projects/{slug}` answers 404 until the record is published, and the `message` says so. |
+| `no_contract` | 200 | The address is well-formed and there is no contract at it. |
+| `invalid` | 400 | Not a contract address on this chain. |
+| `unavailable` | 503 | HEY has spent what it set aside for scans today. |
+| `scanned` | 200 | A live read. Carries `report` with `groups` of findings, each with its `provenance`. |
+
+A `report` has no score, no count of passed checks and no verdict vocabulary. Findings are
+facts with the place they were read from, and the absences are named as absences.
+
 ## `GET /api/ships`
 
 A record of ships, not of projects: a project that shipped three times this week appears
