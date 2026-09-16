@@ -27,7 +27,7 @@ Base URL: `https://heyresearch.xyz`
 | Provenance travels with the fact | A ship carries `sourceUrl` and `verification`; a market figure carries the `source` that reported it. A market value with no provenance is not published at all. |
 | Self-reported ≠ verified | `verification` distinguishes them, always. |
 | Research depth is stated | `researchLevel` and `catalogStatus` say whether HEY merely indexed a record or actually researched it, so an `INDEXED` row is not read as a claim. |
-| No wallet or holder data | HEY does not build it and does not store it. There is nothing to expose. |
+| No wallet data, and no holder data in the API | HEY builds no wallet analytics, no PnL, no smart-money labels and no cross-token holder history — there is nothing of that kind to expose. Since 2026-09-14 it does keep one narrow thing: a daily snapshot of a **single token's** largest balances, so the distribution bubble map on `/project/{slug}/market` renders from HEY's own tables. **No API payload carries it**, no field here exposes it, and nothing in it reaches a status, a score or an ordering. |
 | Market data is context | It never ranks anything here, and the default order is activity. |
 | Paid placement is not in the data | The labelled *Sponsored* row on the home page is advertising. It has no field here, no feed entry, and no effect on any order, score or status. |
 | The caveat travels too | Every response carries `disclaimer`. |

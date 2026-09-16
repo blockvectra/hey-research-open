@@ -35,7 +35,7 @@ import { renderBounties, renderBuilders, renderChain, renderProject, renderProje
  * answer a question HEY cannot answer.
  */
 const NOT_ADVICE =
-  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet, holder or trading data.';
+  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data. No tool here returns holder data of any kind.';
 
 /** The activity surfaces the site itself offers. */
 const SURFACES = [
