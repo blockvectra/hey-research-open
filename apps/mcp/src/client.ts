@@ -67,7 +67,7 @@ export class HeyClient {
     try {
       response = await this.fetchImpl(url.toString(), {
         signal: controller.signal,
-        headers: { accept: 'application/json', 'user-agent': 'hey-research-mcp', ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}) },
+        headers: { accept: 'application/json', 'user-agent': 'hey-research-mcp/0.1.0', ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}) },
       });
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
