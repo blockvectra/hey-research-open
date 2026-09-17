@@ -41,8 +41,12 @@ Dates are ISO 8601 in UTC. Responses are cached for 60 seconds, allow cross-orig
 **API keys (M13-E).** A signed-in reader with a linked wallet can create a key on `/account`. Send it as
 `authorization: Bearer hey_…` (or `x-api-key`). A key reads exactly the same data; it carries the account's
 holder tier, which sets a monthly allowance and a per-minute limit (`x-hey-tier`, `x-hey-monthly-remaining`
-on every keyed answer). Keyed answers are `private, no-store`. A bad key is `401 unauthorized`; a spent
-allowance is `429 quota` with `retry-after`. The routes answer `OPTIONS` with the allowed headers.
+on every keyed answer). Keyed answers are `private, no-store`. A bad, revoked or expired key is `401 unauthorized`; a
+key the lab has suspended, or an account it has blocked, is `403 forbidden` with a `reason` (`key_suspended`,
+`account_suspended`, `account_blocked`) and a sentence saying whom to write to; a spent allowance is `429 quota`
+with `retry-after`. The allowance is checked before a request is counted. A keyed request draws on its tier's
+per-minute bucket from one address (since 2026-09-18; it used to be capped at the anonymous limit). The routes
+answer `OPTIONS` with the allowed headers.
 
 ## `GET /api/projects`
 
