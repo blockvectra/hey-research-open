@@ -121,9 +121,11 @@ export function isUnderTheRadarEligible(input: EligibilityInput): boolean {
   if (!ACTIVE_STATUSES.includes(input.activityStatus)) return false;
   if (input.hbm < UNDER_THE_RADAR.minHbm) return false;
   if (!input.marketDataFresh) return false;
-  return (
-    meaningfulIn30Days(input.events, input.now).length >= UNDER_THE_RADAR.minMeaningfulEvents30d
-  );
+  const recent = meaningfulIn30Days(input.events, input.now);
+  if (recent.length < UNDER_THE_RADAR.minMeaningfulEvents30d) return false;
+  // A commit summary is evidence of work, not of a ship (hbm-v6).
+  if (UNDER_THE_RADAR.requireShipBeyondCommits && !recent.some((event) => event.eventType !== 'CODE_ACTIVITY')) return false;
+  return true;
 }
 
 export type StillBuildingInput = EligibilityInput & {

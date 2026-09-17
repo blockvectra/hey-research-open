@@ -24,6 +24,12 @@
  * (`UNDER_THE_RADAR.minHbm`). Weights, HBM and Discovery Gap formulas are
  * unchanged; only eligibility for the surface widens — measured on
  * production: 16 → 29 projects with a live market and verified building.
+ *
+ * hbm-v6 (2026-09-17): Under the Radar requires at least one meaningful event
+ * in the window that is not a `CODE_ACTIVITY` summary
+ * (`UNDER_THE_RADAR.requireShipBeyondCommits`). Two days of commits cleared the
+ * floor while one feature release did not; the surface ranked committing above
+ * shipping. Weights, HBM and Discovery Gap formulas are unchanged.
  */
-export const SCORING_VERSION = 'hbm-v5' as const;
+export const SCORING_VERSION = 'hbm-v6' as const;
 export type ScoringVersion = typeof SCORING_VERSION;

@@ -112,6 +112,14 @@ export const UNDER_THE_RADAR = {
   /** 45 until hbm-v5 (2026-09-13): on the honest published cohort only 16 projects cleared 45 with a live market; 30 admits 29 and still demands verified building. */
   minHbm: 30,
   minMeaningfulEvents30d: 2,
+  /**
+   * At least one of those meaningful events must be a ship, not a commit
+   * summary (hbm-v6, 2026-09-17). Two days of commits scored 30.9 and cleared
+   * the floor while one feature release scored 29.3 and did not, so the
+   * discovery surface ranked a project that had committed above one that had
+   * shipped. Commits still count toward the two; they no longer suffice alone.
+   */
+  requireShipBeyondCommits: true,
 } as const;
 
 /** PRD V4 section 13.3. All thresholds are configuration and versioned. */

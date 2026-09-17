@@ -92,6 +92,15 @@ describe('under the radar eligibility', () => {
     expect(isUnderTheRadarEligible(base)).toBe(true);
   });
 
+  it('needs a ship, not only commit summaries (hbm-v6)', () => {
+    const commit = (daysAgo: number): ScoredEvent => ({ ...ship(daysAgo), eventType: 'CODE_ACTIVITY' });
+    // Two days of commits: enough events, no ship — two days of commits scored 30.9
+    // in production and outranked a feature release that scored 29.3.
+    expect(isUnderTheRadarEligible({ ...base, events: [commit(1), commit(3)] })).toBe(false);
+    // One commit summary beside one release still counts as two meaningful events.
+    expect(isUnderTheRadarEligible({ ...base, events: [commit(1), ship(5)] })).toBe(true);
+  });
+
   it('rejects quiet and dormant projects', () => {
     expect(isUnderTheRadarEligible({ ...base, activityStatus: 'QUIET' })).toBe(false);
     expect(isUnderTheRadarEligible({ ...base, activityStatus: 'DORMANT' })).toBe(false);
