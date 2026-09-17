@@ -195,6 +195,11 @@ GET /api/token/4663/0xa0000000000000000000000000000000000000a1
 }
 ```
 
+**One identity, one spelling (2026-09-17).** The chain id is the plain integer `4663` —
+`4663.0`, `04663` and `4663e0` are refused with `400` rather than accepted as the same chain, so
+a token has one URL for caches and crawlers to hold. The address prefix may be `0x` or `0X`
+(some explorers print the latter); the answer's `contractAddress` is always the lowercase form.
+
 **`status: "unknown"` answers `200`, not `404`.** Most addresses pasted anywhere are not
 published projects, and a 404 would make the ordinary case an exception for every caller. That
 answer carries `scanUrl` — somewhere to send the reader instead of a dead end — and no `project`.

@@ -4,6 +4,7 @@ import type {
   HeyChain,
   HeySignalPage,
   HeyThisWeek,
+  HeyThisWeekProject,
   HeyTokenLookup,
   HeyTokenMarket,
   HeyWeeklyReport,
@@ -453,30 +454,45 @@ export function renderWeeklyReport(report: HeyWeeklyReport): string {
  * one market field in the API that travels without a provider — arrived as a
  * bare number beside an instruction that every figure names who reported it.
  */
+/** Rows per section of the weekly rollup; the page holds the rest. */
+const WEEK_ROWS = 10;
+
 export function renderThisWeek(week: HeyThisWeek): string {
   const w = week.window;
+  const one = (p: HeyThisWeekProject) =>
+    `${p.name}${p.symbol ? ` ($${p.symbol})` : ''} · ${p.activityStatus.toLowerCase()}${p.marketCapUsd === undefined ? '' : ` · mcap ${money(p.marketCapUsd)} (context)`} — ${p.url}`;
   const lines: string[] = [
-    `# This week on Robinhood Chain (${w.start.slice(0, 10)} → ${w.end.slice(0, 10)})`,
-    `Counted over the window above, from HEY's own tables.`,
+    `# This week on Robinhood Chain (${w.label})`,
+    week.summary,
+    `Counted over the ${w.days} days to ${w.until.slice(0, 10)}, from HEY's own tables.`,
     '',
+    `Ships: ${week.shipped.ships.toLocaleString('en-US')} from ${week.shipped.projects.toLocaleString('en-US')} ${week.shipped.projects === 1 ? 'project' : 'projects'}.`,
+    `Newly verified builders: ${week.newBuilders.total.toLocaleString('en-US')}.`,
+    `Back to shipping: ${week.backToShipping.total.toLocaleString('en-US')}.`,
+    `Still Building: ${week.stillBuilding.total.toLocaleString('en-US')}.`,
+    ...(week.underTheRadar ? [`Under the Radar: ${week.underTheRadar.total.toLocaleString('en-US')}.`] : []),
   ];
-
-  const ships = week.ships;
-  if (ships) lines.push(`Ships: ${ships.total} from ${ships.projects} ${ships.projects === 1 ? 'project' : 'projects'}.`);
-  if (week.newBuilders) lines.push(`Newly verified builders: ${week.newBuilders.total}.`);
-  if (week.backToShipping) lines.push(`Back to shipping: ${week.backToShipping.total}.`);
-  if (week.stillBuilding) lines.push(`Still Building: ${week.stillBuilding.total}.`);
-
-  const named = (label: string, items: { slug: string; name: string; symbol?: string }[] | undefined) => {
-    if (!items || items.length === 0) return;
-    lines.push('', `${label}:`, ...items.map((p) => `- ${p.name}${p.symbol ? ` ($${p.symbol})` : ''} — ${p.slug}`));
+  const section = (label: string, rows: string[]) => {
+    if (rows.length === 0) return;
+    lines.push('', `${label}:`, ...rows.slice(0, WEEK_ROWS));
+    if (rows.length > WEEK_ROWS) lines.push(`  …and ${rows.length - WEEK_ROWS} more on ${week.links.page}`);
   };
-  named('Shipped', ships?.items);
-  named('New builders', week.newBuilders?.items);
-  named('Back to shipping', week.backToShipping?.items);
-  named('Still Building', week.stillBuilding?.items);
+  section(
+    'Shipped most',
+    week.shipped.items.map(
+      (i) =>
+        `- ${one(i.project)} — ${i.ships} ${i.ships === 1 ? 'ship' : 'ships'}${i.latest ? `; latest: ${i.latest.title}${i.latest.sourceUrl ? ` (${i.latest.sourceUrl})` : ''}` : ''}`,
+    ),
+  );
+  section('New builders', week.newBuilders.items.map((i) => `- ${one(i.project)} — verified ${i.verifiedAt.slice(0, 10)}`));
+  section(
+    'Back to shipping',
+    week.backToShipping.items.map((i) => `- ${one(i.project)} — ${i.from.toLowerCase()} → ${i.to.toLowerCase()} on ${i.changedAt.slice(0, 10)}`),
+  );
+  section('Still Building', week.stillBuilding.items.map((p) => `- ${one(p)}`));
+  if (week.underTheRadar) section('Under the Radar', week.underTheRadar.items.map((p) => `- ${one(p)}`));
 
-  if (week.stillBuilding && week.stillBuilding.total > 0) lines.push('', STILL_BUILDING_MEANING);
+  if (week.stillBuilding.total > 0) lines.push('', STILL_BUILDING_MEANING);
   /*
    * The rollup's market caps are the one place in the API where a figure has
    * no `source` beside it, so the caveat is stated once rather than a provider
@@ -485,7 +501,8 @@ export function renderThisWeek(week: HeyThisWeek): string {
   lines.push(
     '',
     "Any market cap here is context HEY recorded and does not name its provider in this rollup; GET /api/projects/{slug} carries the figure with the source that reported it.",
-    'Not a recommendation.',
+    week.disclaimer,
+    `Page: ${week.links.page}`,
   );
   return lines.join('\n');
 }

@@ -340,11 +340,30 @@ export type HeyWeeklyReport = {
 export type HeyWeeklyIndex = { items: { week: string; headline: string; final: boolean; url: string }[] };
 
 /** `GET /api/this-week` (2026-09-05): the weekly rollup, each figure with the window it was counted over. */
-export type HeyThisWeekGroup = { total: number; items: { slug: string; name: string; symbol?: string }[] };
+/*
+ * The shape `GET /api/this-week` actually returns (2026-09-17). The first
+ * version of this type was written from memory — `window.start`, a `ships`
+ * group — and the renderer threw on the real payload, so the tool answered
+ * every call with an error. `fixtures/this-week.json` is a captured response
+ * and the tests render it, so the type cannot drift from the API again.
+ */
+export type HeyThisWeekProject = {
+  slug: string;
+  name: string;
+  symbol?: string;
+  activityStatus: string;
+  marketCapUsd?: number;
+  url: string;
+};
+export type HeyThisWeekShip = { title: string; eventType: string; publishedAt: string; verification: string; sourceUrl?: string };
 export type HeyThisWeek = {
-  window: { start: string; end: string };
-  ships?: HeyThisWeekGroup & { projects: number };
-  newBuilders?: HeyThisWeekGroup;
-  backToShipping?: HeyThisWeekGroup;
-  stillBuilding?: HeyThisWeekGroup;
+  window: { since: string; until: string; days: number; label: string };
+  summary: string;
+  shipped: { ships: number; projects: number; items: { project: HeyThisWeekProject; ships: number; latest?: HeyThisWeekShip }[] };
+  newBuilders: { total: number; items: { project: HeyThisWeekProject; verifiedAt: string }[] };
+  backToShipping: { total: number; comparable?: number; items: { project: HeyThisWeekProject; from: string; to: string; changedAt: string }[] };
+  stillBuilding: { total: number; items: HeyThisWeekProject[] };
+  underTheRadar?: { total: number; items: HeyThisWeekProject[] };
+  links: { page: string; ships: string; radar: string; methodology: string };
+  disclaimer: string;
 };

@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -147,6 +149,18 @@ describe('the HEY MCP server', () => {
     expect(body).toContain('Could not reach HEY at https://hey.test');
     // It must not look like an answer: no project, no empty list to summarise.
     expect(body).not.toContain('Showing');
+  });
+
+  it('answers this_week from the payload the API actually returns (2026-09-17)', async () => {
+    const week = JSON.parse(readFileSync(new URL('./fixtures/this-week.json', import.meta.url), 'utf8')) as unknown;
+    const client = await connect(fetchOk(week));
+    const result = await client.callTool({ name: 'this_week', arguments: {} });
+
+    expect(result.isError).toBeFalsy();
+    const text = (result.content as { text: string }[])[0]!.text;
+    expect(text).toContain('Ships: 2,540 from 597 projects.');
+    expect(text).toContain('Still Building');
+    expect(requested).toEqual(['https://hey.test/api/this-week']);
   });
 
   it('reports a rate limit as temporary rather than as "no results"', async () => {

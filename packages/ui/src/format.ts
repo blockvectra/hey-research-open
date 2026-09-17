@@ -114,7 +114,8 @@ export function formatVerification(status: string): string {
  * is never the authority on what HEY will accept.
  */
 export function isAddressShaped(value: string): boolean {
-  return /^0x[a-fA-F0-9]{40}$/.test(value.trim());
+  // The prefix in either case too: `0X…` is how some explorers print it (2026-09-17).
+  return /^0[xX][a-fA-F0-9]{40}$/.test(value.trim());
 }
 
 /**

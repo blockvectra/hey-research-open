@@ -1,6 +1,8 @@
+import { readFileSync } from 'node:fs';
+
 import { describe, expect, it } from 'vitest';
 
-import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from './client';
+import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip, HeyThisWeek } from './client';
 import {
   STILL_BUILDING_MEANING,
   ago,
@@ -334,14 +336,20 @@ describe('the renderers nothing was watching', () => {
   });
 
   it('renders the weekly rollup instead of handing over raw JSON', () => {
-    const week = {
-      window: { start: '2026-09-10T00:00:00Z', end: '2026-09-17T00:00:00Z' },
-      ships: { total: 12, projects: 5, items: [{ slug: 'agentos', name: 'AgentOS', symbol: 'AOS' }] },
-      stillBuilding: { total: 2, items: [{ slug: 'darkroute', name: 'DarkRoute' }] },
+    const agentos = { slug: 'agentos', name: 'AgentOS', symbol: 'AOS', activityStatus: 'SHIPPING', url: 'https://hey/project/agentos' };
+    const week: HeyThisWeek = {
+      window: { since: '2026-09-10T00:00:00Z', until: '2026-09-17T00:00:00Z', days: 7, label: '7 days to 17 Sep 2026' },
+      summary: '12 ships from 5 projects.',
+      shipped: { ships: 12, projects: 5, items: [{ project: agentos, ships: 3 }] },
+      newBuilders: { total: 0, items: [] },
+      backToShipping: { total: 0, items: [] },
+      stillBuilding: { total: 2, items: [{ slug: 'darkroute', name: 'DarkRoute', activityStatus: 'SHIPPING', url: 'https://hey/project/darkroute' }] },
+      links: { page: 'https://hey/this-week', ships: 'https://hey/ships', radar: 'https://hey/radar', methodology: 'https://hey/methodology' },
+      disclaimer: 'Not a recommendation.',
     };
-    const out = renderThisWeek(week as never);
+    const out = renderThisWeek(week);
     expect(out).not.toMatch(/^\s*[{[]/);
-    expect(out).toContain('12 from 5 projects');
+    expect(out).toContain('Ships: 12 from 5 projects.');
     // The two rules raw JSON slipped past.
     expect(out).toContain(STILL_BUILDING_MEANING);
     expect(out).toMatch(/does not name its provider in this rollup/);
@@ -377,5 +385,39 @@ describe('the renderers nothing was watching', () => {
     expect(found).not.toContain('SHIPPING');
     expect(found).toContain('4 ships in the last 30 days');
     expect(found).toContain('https://github.com/x');
+  });
+});
+
+/*
+ * The weekly rollup, rendered from a captured `/api/this-week` response
+ * (2026-09-17). The renderer's first version was written against a shape the
+ * API never had and threw on the real one, so every `this_week` call errored;
+ * a fixture is what stops the type drifting from the API a second time.
+ */
+describe('renderThisWeek', () => {
+  const week = JSON.parse(readFileSync(new URL('./fixtures/this-week.json', import.meta.url), 'utf8')) as HeyThisWeek;
+
+  it('renders the captured payload without a single undefined', () => {
+    const text = renderThisWeek(week);
+
+    expect(text).toContain('# This week on Robinhood Chain (');
+    expect(text).toContain('Ships: 2,540 from 597 projects.');
+    expect(text).toContain('Newly verified builders: 294.');
+    expect(text).toContain('Under the Radar: 38.');
+    expect(text).toContain('Genius · shipping — https://heyresearch.xyz/project/genius-ai-77-genius — 1 ship; latest: Active development');
+    expect(text).toContain('quiet → shipping on 2026-09-16');
+    expect(text).toContain(STILL_BUILDING_MEANING);
+    expect(text).toContain('Page: https://heyresearch.xyz/this-week');
+    expect(text).not.toMatch(/undefined|\[object|NaN/);
+  });
+
+  it('shows ten rows a section and says where the rest are', () => {
+    const radar = week.underTheRadar!;
+    const long = { ...week, underTheRadar: { total: 38, items: Array.from({ length: 15 }, (_, i) => ({ ...radar.items[0]!, slug: `p${i}`, name: `Project ${i}` })) } };
+    const text = renderThisWeek(long);
+    const section = text.slice(text.indexOf('Under the Radar:\n'));
+
+    expect(section.split('\n- ')).toHaveLength(11);
+    expect(section).toContain('…and 5 more on https://heyresearch.xyz/this-week');
   });
 });

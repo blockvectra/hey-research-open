@@ -132,6 +132,12 @@ The full guide — the line to render, the three answers to handle, and the four
 is [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md), also on the site at
 [heyresearch.xyz/developers/integrations](https://heyresearch.xyz/developers/integrations).
 
+Two small corrections to that endpoint (2026-09-17): the address prefix is read in either case
+(`0X…` is what some explorers print) and the chain id is the plain integer `4663` — `4663.0` and
+`04663` are refused rather than treated as the same chain, so a token has one URL. The MCP
+server's `this_week` tool now renders the real weekly rollup; its first version answered every
+call with an error, which the captured fixture in `apps/mcp/src/fixtures/` now guards against.
+
 What it will not return is a risk reading. HEY answers whether anyone is building and gives no
 score, grade or verdict — put a risk read from a tool that does that work beside this line
 rather than expecting it here. Whatever you render, carry the `url` back to the project page:
