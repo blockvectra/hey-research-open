@@ -138,6 +138,11 @@ Two small corrections to that endpoint (2026-09-17): the address prefix is read 
 server's `this_week` tool now renders the real weekly rollup; its first version answered every
 call with an error, which the captured fixture in `apps/mcp/src/fixtures/` now guards against.
 
+The site's own metadata was consolidated the same day (2026-09-17): one builder for title,
+description, canonical and share card, project titles that name the chain, share images that carry
+the narrative and the latest ship, a complete sitemap, and a public roadmap at
+[heyresearch.xyz/roadmap](https://heyresearch.xyz/roadmap) that describes the platform as it runs.
+
 What it will not return is a risk reading. HEY answers whether anyone is building and gives no
 score, grade or verdict — put a risk read from a tool that does that work beside this line
 rather than expecting it here. Whatever you render, carry the `url` back to the project page:
