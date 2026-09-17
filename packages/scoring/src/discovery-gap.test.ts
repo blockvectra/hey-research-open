@@ -8,6 +8,7 @@ import {
   marketBand,
   marketContextPercentile,
 } from './discovery-gap';
+import { STILL_BUILDING } from './config';
 
 const now = new Date('2026-09-01T00:00:00Z');
 const DAY = 24 * 60 * 60 * 1000;
@@ -155,6 +156,14 @@ describe('still building', () => {
 
   it('is not eligible without a large enough decline', () => {
     expect(evaluateStillBuilding({ ...base, currentMarketValueUsd: 90_000 }).eligible).toBe(false);
+  });
+
+  it('is not eligible on a high younger than the drawdown age floor (2026-09-17)', () => {
+    // Yesterday's candle wick is not a drawdown, however far today sits below it.
+    const wick = evaluateStillBuilding({ ...base, trackedHighAt: daysAgo(1) });
+    expect(wick.eligible).toBe(false);
+    expect(wick.reason).toContain('less than');
+    expect(evaluateStillBuilding({ ...base, trackedHighAt: daysAgo(STILL_BUILDING.minDrawdownAgeDays) }).eligible).toBe(true);
   });
 
   it('is not eligible without market context', () => {

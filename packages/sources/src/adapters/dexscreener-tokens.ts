@@ -26,14 +26,14 @@ const linkSchema = z.object({
 });
 
 const pairSchema = z.object({
-  chainId: z.string().optional(),
-  pairAddress: z.string().optional(),
-  url: z.string().optional(),
+  chainId: z.string().nullish(),
+  pairAddress: z.string().nullish(),
+  url: z.string().nullish(),
   baseToken: z
     .object({
-      address: z.string().optional(),
-      name: z.string().optional(),
-      symbol: z.string().optional(),
+      address: z.string().nullish(),
+      name: z.string().nullish(),
+      symbol: z.string().nullish(),
     })
     .optional(),
   priceUsd: z.union([z.string(), z.number()]).nullish(),

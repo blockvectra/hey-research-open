@@ -117,12 +117,15 @@ async function readBodyCapped(response: Response, maxBytes: number): Promise<str
   return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength))).toString('utf8');
 }
 
+/** Headers that carry a secret and must not follow a redirect to another host. */
+const CREDENTIAL_HEADERS = new Set(['authorization', 'cookie', 'x-api-key', 'x-auth-token', 'proxy-authorization', 'if-none-match', 'if-modified-since']);
+
 async function attemptOnce(
   request: HttpRequest,
   ctx: SourceContext,
   fetchImpl: FetchLike,
 ): Promise<HttpOutcome> {
-  const headers: Record<string, string> = {
+  let headers: Record<string, string> = {
     'user-agent': ctx.userAgent ?? DEFAULT_USER_AGENT,
     accept: '*/*',
     ...request.headers,
@@ -210,6 +213,16 @@ async function attemptOnce(
     if (response.status !== 307 && response.status !== 308) {
       method = 'GET';
       body = undefined;
+    }
+    /*
+     * Credentials never cross a host (2026-09-17). The header set was built
+     * once and replayed on every hop, so a repository, an RPC or a Bitquery
+     * endpoint answering with a redirect would have received HEY's bearer at
+     * whatever host it named. Dropped for the rest of the chain.
+     */
+    if (new URL(nextUrl).host !== new URL(currentUrl).host) {
+      // A fresh object: the one already handed to fetch stays as it was sent.
+      headers = Object.fromEntries(Object.entries(headers).filter(([name]) => !CREDENTIAL_HEADERS.has(name.toLowerCase())));
     }
     currentUrl = nextUrl;
   }

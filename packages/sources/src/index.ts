@@ -1,6 +1,7 @@
 export * from './adapter';
 export * from './errors';
 export * from './html';
+export * from './registrable';
 export * from './market';
 export * from './optional';
 export * from './http/client';

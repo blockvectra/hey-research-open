@@ -128,6 +128,12 @@ export const STILL_BUILDING = {
   /** Current market value must be at or below this share of the tracked high. */
   maxShareOfTrackedHigh: 0.5,
   trackedHighWindowDays: 90,
+  /**
+   * A high younger than this is a wick, not a drawdown (2026-09-17): 13 of
+   * 23 badges rested on a candle high from the day before, with the token at
+   * the top of everything HEY itself had ever observed.
+   */
+  minDrawdownAgeDays: 7,
 } as const;
 
 /** PRD V4 section 12.1. Thresholds are configuration, never hardcoded in UI. */

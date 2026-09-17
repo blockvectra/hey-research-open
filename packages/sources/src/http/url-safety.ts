@@ -114,6 +114,12 @@ export function assertSafeUrl(candidate: string): UrlSafetyResult {
     return { ok: false, reason: 'BLOCKED_HOST', detail: `host ${hostname} is blocked` };
   }
 
+  // `127.1`, `2130706433`, `0x7f000001`, `0177.0.0.1` all resolve to loopback
+  // (2026-09-17); a host that is only digits, dots and a hex prefix is an
+  // address in a form the octet check cannot read, and is refused as one.
+  if (isNumericHostForm(hostname) && !/^\d{1,3}(\.\d{1,3}){3}$/.test(hostname)) {
+    return { ok: false, reason: 'BLOCKED_HOST', detail: `host ${hostname} is a numeric address form` };
+  }
   if (isPrivateIpv4(hostname) || isPrivateIpv6(hostname)) {
     return { ok: false, reason: 'PRIVATE_HOST', detail: `host ${hostname} is a private address` };
   }
@@ -137,8 +143,10 @@ export const systemLookup: AddressLookup = async (hostname) => {
   return records.map((record) => record.address);
 };
 
+const isNumericHostForm = (hostname: string): boolean => /^(0x[0-9a-f]+|[0-9.]+)$/i.test(hostname);
+
 const isIpLiteral = (hostname: string): boolean =>
-  /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname) || hostname.includes(':');
+  isNumericHostForm(hostname) || hostname.includes(':');
 
 /** True for any address the literal-host guard would refuse. */
 export function isPrivateAddress(address: string): boolean {

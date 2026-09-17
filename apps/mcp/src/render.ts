@@ -33,19 +33,36 @@ export const STILL_BUILDING_MEANING =
   'Still Building = verified activity continuing through a market drawdown HEY tracked. It is a record of what happened, not a prediction and not a buy signal.';
 
 const money = (usd: number): string => {
-  if (usd >= 1_000_000_000) return `$${(usd / 1_000_000_000).toFixed(2)}B`;
-  if (usd >= 1_000_000) return `$${(usd / 1_000_000).toFixed(2)}M`;
+  // Thresholds sit where two-decimal rounding would print 1000.00 (2026-09-17).
+  if (usd >= 999_995_000) return `$${(usd / 1_000_000_000).toFixed(2)}B`;
+  if (usd >= 999_995) return `$${(usd / 1_000_000).toFixed(2)}M`;
   if (usd >= 1_000) return `$${(usd / 1_000).toFixed(1)}K`;
   // Anything under a dollar rounded to `$0`, which reads as nothing at all.
   if (usd > 0 && usd < 1) return '<$1';
   return `$${usd.toFixed(0)}`;
 };
 
+/** "in 2 days" for an instant ahead; "expired" once it has passed. */
+export function until(iso: string, now: Date = new Date()): string {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return iso;
+  const ms = then.getTime() - now.getTime();
+  if (ms <= 0) return 'expired';
+  const hours = Math.floor(ms / 3_600_000);
+  if (hours < 1) return 'in under an hour';
+  if (hours < 24) return `in ${hours} hour${hours === 1 ? '' : 's'}`;
+  const days = Math.floor(hours / 24);
+  return `in ${days} day${days === 1 ? '' : 's'}`;
+}
+
 /** "3 days ago" against a stated now, so an agent is not left doing date arithmetic. */
 export function ago(iso: string, now: Date = new Date()): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return iso;
   const days = Math.floor((now.getTime() - then.getTime()) / 86_400_000);
+  // A future instant is a deadline, not "today" (2026-09-17): a bounty claim
+  // with two days left rendered "claim expires today".
+  if (then.getTime() > now.getTime()) return until(iso, now);
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   if (days < 30) return `${days} days ago`;
@@ -271,16 +288,16 @@ export function renderBounties(page: HeyBountyPage, now?: Date): string {
   const lines = page.items.map((bounty) => {
     const parts = [`${bounty.title} [${bounty.status}]`];
     if (bounty.project) parts.push(`project ${bounty.project.name}`);
-    parts.push(`reward ${bounty.reward.hey} HEY${bounty.reward.targetUsd ? ` (≈ $${bounty.reward.targetUsd} at quote)` : ''}`);
+    parts.push(`reward ${Number(bounty.reward.hey).toLocaleString('en-US')} HEY${bounty.reward.targetUsd ? ` (≈ $${bounty.reward.targetUsd} at quote)` : ''}`);
     if (bounty.status === 'OPEN') {
       if (bounty.claim.claimed) parts.push(`already claimed${bounty.claim.claimedBy ? ` by ${bounty.claim.claimedBy}` : ''}${bounty.claim.expiresAt ? `, claim expires ${ago(bounty.claim.expiresAt, now)}` : ''}`);
       else if (bounty.claim.openToAll) parts.push('unclaimed, open to any wallet sign-in');
-      else parts.push(`unclaimed, holders only until ${bounty.claim.holdersOnlyUntil ?? 'later'}`);
+      else parts.push(`unclaimed, holders only ${bounty.claim.holdersOnlyUntil ? `for another ${until(bounty.claim.holdersOnlyUntil, now).replace(/^in /, '')}` : 'for now'}`);
     }
     if (bounty.awardedAt) parts.push(`awarded ${ago(bounty.awardedAt, now)}`);
     return `- ${parts.join(' · ')}\n  ${bounty.url}`;
   });
-  const summary = page.summary ? `${page.summary.openBounties} open bounties, ${page.summary.committedHey} HEY committed, ${page.summary.paidHey} HEY paid so far.` : '';
+  const summary = page.summary ? `${page.summary.openBounties} open bounties, ${Number(page.summary.committedHey).toLocaleString('en-US')} HEY committed, ${Number(page.summary.paidHey).toLocaleString('en-US')} HEY paid so far.` : '';
   return `${summary}\n\n${lines.join('\n')}\n\nHow claiming works: ${page.rules.claim} ${page.rules.review}\n\n${page.disclaimer}`;
 }
 
@@ -347,7 +364,7 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
   }
   if (market.onchainDays.length > 0) lines.push('', `Contract events by day: ${market.onchainDays.map((d) => `${d.day} ${d.events}${d.truncated ? '+' : ''}`).join(', ')}.`);
   if (market.tvlDays.length > 0) lines.push(`Value locked (DefiLlama, ${market.tvlDays[0]!.protocolName}): latest ${money(market.tvlDays[market.tvlDays.length - 1]!.tvlUsd)}.`);
-  lines.push('', 'Counts of trades, transfers and events, never of accounts. Context only: nothing here reaches activity status or any HEY score, and none of it is a buy signal.', market.url);
+  lines.push('', 'Counts, never a wallet: no address is named, scored, ranked or followed here. Context only: nothing here reaches activity status or any HEY score, and none of it is a buy signal.', market.url);
   return lines.join('\n');
 }
 
@@ -529,11 +546,14 @@ export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
 
   const p = lookup.project;
   const ships = p.shipsLast30Days === 1 ? '1 ship' : `${p.shipsLast30Days} ships`;
+  // An indexed record is not a measured zero (2026-09-17): HEY has not
+  // looked, and a count an agent might compare must not say it has.
+  const notResearched = p.researchLevel === 'INDEXED';
   const lines = [
-    `# ${p.name}${p.symbol ? ` ($${p.symbol})` : ''} — ${p.activityLabel}`,
-    `${p.activityHelp}`,
+    `# ${p.name}${p.symbol ? ` ($${p.symbol})` : ''} — ${notResearched ? 'Activity not researched yet' : p.activityLabel}`,
+    notResearched ? 'HEY indexed this record from the chain but has not yet read its sources for building activity.' : `${p.activityHelp}`,
     '',
-    `- ${ships} in the last 30 days, counted the way the project page counts them.`,
+    ...(notResearched ? [] : [`- ${ships} in the last 30 days, counted the way the project page counts them.`]),
   ];
   if (p.lastShip) {
     lines.push(

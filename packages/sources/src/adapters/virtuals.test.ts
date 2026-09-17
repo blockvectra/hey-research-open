@@ -34,6 +34,16 @@ describe('Virtuals adapter', () => {
     expect(url).toContain('sort=createdAt%3Aasc');
   });
 
+  it('reads an empty tokenAddress as "not graduated" and keeps the agent at its pre-token (2026-09-17)', async () => {
+    const body = JSON.parse(readFixture('virtuals-agents.json')) as { data: Record<string, unknown>[] };
+    body.data[0] = { ...body.data[0], tokenAddress: '' };
+    const stub = stubFetch({ status: 200, body: JSON.stringify(body) });
+    const result = await createVirtualsAdapter().fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(hasData(result)).toBe(true);
+    const scout = result.data?.agents.find((agent) => agent.symbol === 'SCOUT');
+    expect(scout?.contractAddress).toBe('0x1111111111111111111111111111111111111111');
+  });
+
   it('keeps only chain-4663 agents with a real contract address', async () => {
     const stub = stubFetch(fixture());
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));

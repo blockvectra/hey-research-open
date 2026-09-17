@@ -35,12 +35,12 @@ const searchResponseSchema = z.object({
   pairs: z
     .array(
       z.object({
-        chainId: z.string().optional(),
+        chainId: z.string().nullish(),
         baseToken: z
           .object({
-            address: z.string().optional(),
-            name: z.string().optional(),
-            symbol: z.string().optional(),
+            address: z.string().nullish(),
+            name: z.string().nullish(),
+            symbol: z.string().nullish(),
           })
           .optional(),
         pairCreatedAt: z.number().nullish(),

@@ -109,3 +109,13 @@ describe('assertResolvesPublic', () => {
     if (!result.ok) expect(result.reason).toBe('UNSUPPORTED_PROTOCOL');
   });
 });
+
+describe('numeric host forms (2026-09-17)', () => {
+  it('refuses the shorthand, decimal, hex and octal spellings of an address', () => {
+    for (const host of ['127.1', '2130706433', '0x7f000001', '0177.0.0.1', '127.0.1']) {
+      expect(assertSafeUrl(`http://${host}/admin`).ok, host).toBe(false);
+    }
+    expect(assertSafeUrl('https://example.com/').ok).toBe(true);
+    expect(assertSafeUrl('http://8.8.8.8/').ok).toBe(true);
+  });
+});

@@ -14,10 +14,10 @@ export const GECKOTERMINAL_DEFAULT_BASE_URL = 'https://api.geckoterminal.com/api
 const numericish = z.union([z.string(), z.number()]).nullish();
 
 const poolSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().nullish(),
   attributes: z.object({
-    address: z.string().optional(),
-    name: z.string().optional(),
+    address: z.string().nullish(),
+    name: z.string().nullish(),
     base_token_price_usd: numericish,
     reserve_in_usd: numericish,
     fdv_usd: numericish,
@@ -28,7 +28,7 @@ const poolSchema = z.object({
     pool_created_at: z.string().nullish(),
   }),
   /** The DEX the pool belongs to, when the listing names it. */
-  relationships: z.object({ dex: z.object({ data: z.object({ id: z.string().optional() }).nullish() }).nullish() }).nullish(),
+  relationships: z.object({ dex: z.object({ data: z.object({ id: z.string().nullish() }).nullish() }).nullish() }).nullish(),
 });
 
 export const geckoterminalResponseSchema = z.object({

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatUsdCompact, plainText } from './format';
+import { formatUsdCompact, plainText, formatRelativeTime } from './format';
 
 /**
  * Source text reaches the interface as words, never as markup (QA sweep
@@ -78,7 +78,24 @@ describe('a project description that arrived as Markdown', () => {
   });
 });
 
+describe('formatRelativeTime', () => {
+  it('reads a future instant as a countdown, never as "just now" (2026-09-17)', () => {
+    const now = new Date('2026-09-17T12:00:00Z');
+    expect(formatRelativeTime(new Date('2026-09-22T12:00:00Z'), now)).toBe('in 5d');
+    expect(formatRelativeTime(new Date('2026-09-17T12:30:00Z'), now)).toBe('in 30m');
+    expect(formatRelativeTime(new Date('2026-09-17T11:59:30Z'), now)).toBe('just now');
+    expect(formatRelativeTime(new Date('2026-09-15T12:00:00Z'), now)).toBe('2d ago');
+  });
+});
+
 describe('formatUsdCompact', () => {
+  it('steps up a unit instead of printing a thousand of the smaller one (2026-09-17)', () => {
+    expect(formatUsdCompact(999_999)).toBe('$1M');
+    expect(formatUsdCompact(999_999_999)).toBe('$1B');
+    expect(formatUsdCompact(999.7)).toBe('$1K');
+    expect(formatUsdCompact(999_499)).toBe('$999K');
+  });
+
   it('never prints a measured figure as $0', () => {
     // The distinction the whole product rests on: unknown, zero, and small.
     expect(formatUsdCompact(undefined)).toBeUndefined();

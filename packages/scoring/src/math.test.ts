@@ -57,6 +57,14 @@ describe('percentileRanker', () => {
     const b = percentileRanker([9, 3, 1, 3, 2]);
     expect(a(3)).toBe(b(3));
   });
+
+  it('ignores a non-finite cohort member instead of misranking everyone else (2026-09-17)', () => {
+    // NaN sorted unpredictably and broke the bisection: 15 in [20, NaN, 10] ranked 0.
+    const cohort = [20, Number.NaN, 10];
+    expect(percentileRanker(cohort)(15)).toBe(percentileRank(15, cohort));
+    expect(percentileRanker(cohort)(15)).toBe(50);
+    expect(percentileRanker([Number.NaN, Number.POSITIVE_INFINITY])(1)).toBe(0);
+  });
 });
 
 describe('percentileRank', () => {

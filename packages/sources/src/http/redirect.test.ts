@@ -26,6 +26,24 @@ describe('redirect handling', () => {
     ]);
   });
 
+  it('never carries a credential to another host (2026-09-17)', async () => {
+    const stub = stubFetch([redirectTo('https://attacker.example/collect'), page('ok')]);
+    await httpRequest(
+      { url: 'https://api.github.com/repos/x/y', headers: { authorization: 'Bearer secret-token' }, enforceUrlSafety: false },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+    const sent = stub.requests.map((r) => (r.init?.headers as Record<string, string> | undefined)?.authorization);
+    expect(sent[0]).toBe('Bearer secret-token');
+    expect(sent[1]).toBeUndefined();
+    // The same host keeps it: a renamed repository still needs the token.
+    const same = stubFetch([redirectTo('https://api.github.com/repos/x/z'), page('ok')]);
+    await httpRequest(
+      { url: 'https://api.github.com/repos/x/y', headers: { authorization: 'Bearer secret-token' }, enforceUrlSafety: false },
+      testContext({ fetchImpl: same.fetchImpl }),
+    );
+    expect((same.requests[1]?.init?.headers as Record<string, string> | undefined)?.authorization).toBe('Bearer secret-token');
+  });
+
   it('resolves a relative Location against the current URL', async () => {
     const stub = stubFetch([redirectTo('/changelog'), page('ok')]);
     await httpRequest(

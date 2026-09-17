@@ -185,6 +185,18 @@ export function evaluateStillBuilding(input: StillBuildingInput): StillBuildingR
     };
   }
 
+  if (
+    input.trackedHighAt &&
+    input.now.getTime() - input.trackedHighAt.getTime() < STILL_BUILDING.minDrawdownAgeDays * 86_400_000
+  ) {
+    // A drawdown is a state the market has been in, not a day it visited.
+    return {
+      eligible: false,
+      shipsSinceDecline: recent.length,
+      reason: `The tracked high is less than ${STILL_BUILDING.minDrawdownAgeDays} days old.`,
+    };
+  }
+
   const share = input.currentMarketValueUsd / input.trackedHighUsd;
   if (share > STILL_BUILDING.maxShareOfTrackedHigh) {
     return {

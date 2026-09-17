@@ -311,6 +311,7 @@ export type HeyTokenLookup = {
     activityStatus: string;
     activityLabel: string;
     activityHelp: string;
+    researchLevel?: string;
     shipsLast30Days: number;
     lastShipAt?: string;
     lastShip?: { title: string; publishedAt: string; sourceUrl?: string };

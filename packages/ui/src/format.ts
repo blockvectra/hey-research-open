@@ -5,17 +5,29 @@
  * belongs on the methodology page, not on a card.
  */
 export function formatRelativeTime(date: Date, now: Date = new Date()): string {
-  const seconds = Math.max(0, (now.getTime() - date.getTime()) / 1000);
+  const delta = (now.getTime() - date.getTime()) / 1000;
+  /*
+   * A deadline ahead reads "in 5d", never "just now" (2026-09-17). The
+   * negative difference was clamped to zero, so every sponsorship end, vote
+   * close, bounty claim window, early-access date and bond maturity on the
+   * site — and six admin surfaces — said "just now", which for a claim window
+   * reads as already lapsed.
+   */
+  if (delta < 0) return `in ${span(-delta)}`;
+  if (delta < 60) return 'just now';
+  return `${span(delta)} ago`;
+}
+
+function span(seconds: number): string {
   const minutes = seconds / 60;
   const hours = minutes / 60;
   const days = hours / 24;
-
-  if (minutes < 1) return 'just now';
-  if (minutes < 60) return `${Math.floor(minutes)}m ago`;
-  if (hours < 24) return `${Math.floor(hours)}h ago`;
-  if (days < 30) return `${Math.floor(days)}d ago`;
-  if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-  return `${Math.floor(days / 365)}y ago`;
+  if (minutes < 1) return 'a moment';
+  if (minutes < 60) return `${Math.floor(minutes)}m`;
+  if (hours < 24) return `${Math.floor(hours)}h`;
+  if (days < 30) return `${Math.floor(days)}d`;
+  if (days < 365) return `${Math.floor(days / 30)}mo`;
+  return `${Math.floor(days / 365)}y`;
 }
 
 /** Compact USD, because a card has room for `$24K` and not for `$24,013.55`. */
@@ -29,9 +41,11 @@ export function formatUsdCompact(value: number | undefined): string | undefined 
    * zero.
    */
   if (value > 0 && value < 1) return '<$1';
-  if (value < 1000) return `$${Math.round(value)}`;
-  if (value < 1_000_000) return `$${trim(value / 1000)}K`;
-  if (value < 1_000_000_000) return `$${trim(value / 1_000_000)}M`;
+  // Each unit ends where rounding would print 1000 of it (2026-09-17):
+  // $999,999 read "$1000K" and $999,999,999 "$1000M".
+  if (value < 999.5) return `$${Math.round(value)}`;
+  if (value < 999_500) return `$${trim(value / 1000)}K`;
+  if (value < 999_500_000) return `$${trim(value / 1_000_000)}M`;
   return `$${trim(value / 1_000_000_000)}B`;
 }
 

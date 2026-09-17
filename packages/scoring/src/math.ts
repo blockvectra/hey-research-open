@@ -33,14 +33,25 @@ export function renormalizeWeights(weights: readonly number[]): number[] {
  * a cohort of identical values scores 50 rather than 0 or 100.
  */
 export function percentileRank(value: number, cohort: readonly number[]): number {
-  if (cohort.length === 0) return 0;
+  const finite = finiteOnly(cohort);
+  if (finite.length === 0) return 0;
   let below = 0;
   let equal = 0;
-  for (const entry of cohort) {
+  for (const entry of finite) {
     if (entry < value) below += 1;
     else if (entry === value) equal += 1;
   }
-  return clampScore(((below + equal / 2) / cohort.length) * 100);
+  return clampScore(((below + equal / 2) / finite.length) * 100);
+}
+
+/**
+ * A cohort member that is not a number ranks nobody. `NaN` compares false
+ * both ways in the linear scan (so it only inflated the denominator) and is
+ * placed unpredictably by `sort`, which broke the bisection for every other
+ * value in the cohort (2026-09-17). Both rankers drop it.
+ */
+function finiteOnly(cohort: readonly number[]): number[] {
+  return cohort.filter((entry) => Number.isFinite(entry));
 }
 
 /**
@@ -50,7 +61,7 @@ export function percentileRank(value: number, cohort: readonly number[]): number
  * Results are identical to `percentileRank` for every value, ties included.
  */
 export function percentileRanker(cohort: readonly number[]): (value: number) => number {
-  const sorted = [...cohort].sort((a, b) => a - b);
+  const sorted = finiteOnly(cohort).sort((a, b) => a - b);
   const size = sorted.length;
   if (size === 0) return () => 0;
 

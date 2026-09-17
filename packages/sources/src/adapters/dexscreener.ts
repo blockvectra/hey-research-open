@@ -14,15 +14,15 @@ export const DEXSCREENER_DEFAULT_BASE_URL = 'https://api.dexscreener.com';
 const numericish = z.union([z.string(), z.number()]).nullish();
 
 const pairSchema = z.object({
-  chainId: z.string().optional(),
-  dexId: z.string().optional(),
-  url: z.string().optional(),
-  pairAddress: z.string().optional(),
+  chainId: z.string().nullish(),
+  dexId: z.string().nullish(),
+  url: z.string().nullish(),
+  pairAddress: z.string().nullish(),
   baseToken: z
     .object({
-      address: z.string().optional(),
-      name: z.string().optional(),
-      symbol: z.string().optional(),
+      address: z.string().nullish(),
+      name: z.string().nullish(),
+      symbol: z.string().nullish(),
     })
     .optional(),
   priceUsd: numericish,

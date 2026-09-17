@@ -150,7 +150,9 @@ export function createVirtualsAdapter(): SourceAdapter<VirtualsInput, VirtualsPa
               if (agent.chain && agent.chain.toUpperCase() !== VIRTUALS_CHAIN_FILTER) continue;
 
               const graduated = Boolean(agent.tokenAddress);
-              const address = (agent.tokenAddress ?? agent.preToken ?? '').toLowerCase();
+              // `||`, not `??` (2026-09-17): an empty tokenAddress is "not graduated", and
+              // the agent then lives at its pre-token — `??` dropped it entirely.
+              const address = (agent.tokenAddress || agent.preToken || '').toLowerCase();
               if (!ADDRESS_PATTERN.test(address)) continue;
 
               const createdAt = agent.createdAt ? new Date(agent.createdAt) : undefined;
@@ -162,7 +164,7 @@ export function createVirtualsAdapter(): SourceAdapter<VirtualsInput, VirtualsPa
                 graduated,
                 ...opt('name', agent.name ?? undefined),
                 ...opt('symbol', agent.symbol ?? undefined),
-                ...opt('description', agent.description ?? undefined),
+                ...opt('description', plainDescription(agent.description)),
                 ...opt('agentStatus', agent.status ?? undefined),
                 ...opt('category', agent.category ?? undefined),
                 ...opt('verifiedWebsite', cleanLink(agent.socials?.VERIFIED_LINKS?.WEBSITE)),
@@ -196,4 +198,22 @@ export function createVirtualsAdapter(): SourceAdapter<VirtualsInput, VirtualsPa
       );
     },
   };
+}
+
+/**
+ * A description is prose, not markup (2026-09-17). Virtuals lets an agent's
+ * description be a bare markdown image — `![Upload](https://…/vex.jpg)` —
+ * and that string reached every API surface and the Radar as the project's
+ * one-line summary. Images and links are reduced to their text; a
+ * description that was only an image is absent.
+ */
+export function plainDescription(value: string | null | undefined): string | undefined {
+  if (!value) return undefined;
+  const text = value
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
+    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(/[*_`#>]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return text.length > 0 ? text : undefined;
 }

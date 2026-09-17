@@ -11,6 +11,16 @@ const input = { chainId: 4663, tokenAddress: TOKEN };
 describe('DEX Screener adapter', () => {
   const adapter = createDexscreenerAdapter();
 
+  it('keeps the reading when a provider sends null for an optional field (2026-09-17)', async () => {
+    // `.optional()` refused an explicit null and the whole response — not the
+    // one pair — became INVALID_RESPONSE, so the token had no market at all.
+    const body = JSON.parse(readFixture('dexscreener-token.json')) as { pairs: Record<string, unknown>[] };
+    body.pairs[0] = { ...body.pairs[0], pairAddress: null, dexId: null, url: null };
+    const stub = stubFetch({ status: 200, body: JSON.stringify(body) });
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(hasData(result)).toBe(true);
+  });
+
   it('only handles well-formed contract addresses', () => {
     expect(adapter.canHandle(input)).toBe(true);
     expect(adapter.canHandle({ chainId: 4663, tokenAddress: 'AOS' })).toBe(false);

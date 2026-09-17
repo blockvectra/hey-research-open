@@ -1,3 +1,5 @@
+import { registrableHost } from './registrable';
+
 /**
  * Minimal HTML metadata extraction.
  *
@@ -179,14 +181,6 @@ const GITHUB_REPO_SUBPATHS = new Set([
  * real project pages during the builder-discovery audit and would otherwise be
  * recorded as that project's documentation.
  */
-function registrableDomain(host: string): string {
-  const labels = host
-    .toLowerCase()
-    .replace(/^www\./, '')
-    .split('.');
-  return labels.slice(-2).join('.');
-}
-
 export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadata {
   const meta: HtmlMetadata = { feedUrls: [], githubUrls: [], docsUrls: [] };
 
@@ -310,7 +304,7 @@ function collectProjectLinks(html: string, baseUrl: string | undefined, meta: Ht
     // domain. A link to someone else's docs describes what the project uses,
     // not what it has built.
     const sameDomain =
-      baseHost !== undefined && registrableDomain(host) === registrableDomain(baseHost);
+      baseHost !== undefined && registrableHost(host) !== undefined && registrableHost(host) === registrableHost(baseHost);
     const isDocs =
       sameDomain && (host.startsWith('docs.') || /^\/docs(\/|$)/i.test(parsed.pathname));
     if (isDocs && docs.size < MAX_LINKS_PER_KIND) docs.add(resolved);

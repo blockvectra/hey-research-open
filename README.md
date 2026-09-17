@@ -143,6 +143,19 @@ description, canonical and share card, project titles that name the chain, share
 the narrative and the latest ship, a complete sitemap, and a public roadmap at
 [heyresearch.xyz/roadmap](https://heyresearch.xyz/roadmap) that describes the platform as it runs.
 
+A second findings pass the same evening (2026-09-17) changed four things an integrator sees: the
+dossier at `GET /api/projects/{slug}` now carries its newest five `ships` and, whenever it claims
+`stillBuilding`, the `stillBuildingEvidence` behind the claim; a bare contract deployment is a
+launch, not a ship, on every ship surface (the project page's own timeline still shows it);
+`/api/projects` pages no longer overlap or drop rows inside ties, so a full walk by offset returns
+each project once; and the per-client rate limit is consumed before any key is looked at, so an
+unknown bearer is limited like everyone else. Still Building is measured against a daily *close*
+at least a week old, never an intraday high. A third pass the same evening added: `/api/ships` never
+hands back an offset the cap will clamp; `GET /api/token` carries `researchLevel`, and a record HEY
+has only indexed carries no ship count; the badge says "indexed", "checked" or "verified" by what HEY
+actually did; `tab=new-builders` is a seven-day window; and a date that does not exist (`2026-09-31`)
+is refused rather than rolled forward.
+
 What it will not return is a risk reading. HEY answers whether anyone is building and gives no
 score, grade or verdict — put a risk read from a tool that does that work beside this line
 rather than expecting it here. Whatever you render, carry the `url` back to the project page:

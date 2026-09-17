@@ -2,7 +2,7 @@
 
 HEY answers one question — **which projects are still building, what have they shipped, and
 which of them are not yet getting much market attention?** Until now the only way to ask it
-was to read the pages. These three endpoints are that answer as JSON.
+was to read the pages. These endpoints are that answer as JSON.
 
 Quote every URL in your shell: `?` and `&` are glob and job control in zsh and bash, so an unquoted
 URL fails before curl runs.
@@ -142,6 +142,13 @@ A project HEY has not measured carries **no `score` key at all** — a zero woul
 
 A slug that is not published answers `404` with `{ "error": "not_found" }`. It looks
 identical to a slug that never existed, which is what the pages do too.
+
+### What the dossier adds (2026-09-17)
+
+- `ships` — the project's newest five ships, each as `GET /api/ships?project=` would list it. A bare
+  contract deployment is a launch, not a ship, and appears on none of the ship surfaces; the project
+  page's own timeline still shows it.
+- `stillBuildingEvidence` — present whenever `stillBuilding` is true, on the dossier as on the listing.
 
 ### Mirroring the ship feed (2026-09-17)
 

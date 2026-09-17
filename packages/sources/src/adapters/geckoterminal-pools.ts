@@ -21,11 +21,11 @@ import type { TokenCandidate } from './dexscreener-search';
 export const GECKOTERMINAL_POOLS_MAX_PAGE = 10;
 
 const poolSchema = z.object({
-  id: z.string().optional(),
+  id: z.string().nullish(),
   attributes: z
     .object({
-      address: z.string().optional(),
-      name: z.string().optional(),
+      address: z.string().nullish(),
+      name: z.string().nullish(),
       pool_created_at: z.string().nullish(),
       market_cap_usd: z.union([z.string(), z.number()]).nullish(),
       fdv_usd: z.union([z.string(), z.number()]).nullish(),
@@ -110,7 +110,7 @@ export function createGeckoterminalPoolsAdapter(): SourceAdapter<
                 chainId: input.chainId,
                 contractAddress: address,
                 discoveredVia: `geckoterminal-${listing}`,
-                ...opt('symbol', baseSymbolFrom(attrs.name)),
+                ...opt('symbol', baseSymbolFrom(attrs.name ?? undefined)),
                 ...opt('pairAddress', attrs.address),
                 ...opt('marketCapUsd', toNumber(attrs.market_cap_usd)),
                 ...opt('liquidityUsd', toNumber(attrs.reserve_in_usd)),
