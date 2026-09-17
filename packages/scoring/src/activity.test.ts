@@ -61,6 +61,22 @@ describe('activity status', () => {
     expect(result.reason).toContain('Resumed building');
   });
 
+  it('is RESUMED when the comeback ships twice on the same day (hbm-v7)', () => {
+    // Measured between the two newest events, a release plus a docs update on
+    // the comeback day read as SHIPPING; the gap is to the last event before
+    // the comeback cluster.
+    const result = derive([ship(1), ship(1, { eventType: 'DOCS_UPDATE' }), ship(108)]);
+    expect(result.status).toBe('RESUMED');
+    expect(result.reason).toContain('107 days');
+  });
+
+  it('is UNKNOWN, not QUIET, when HEY has no source to observe (hbm-v7)', () => {
+    // "No meaningful updates for 40 days" is a claim about having looked.
+    const result = derive([ship(40)], false);
+    expect(result.status).toBe('UNKNOWN');
+    expect(result.lastMeaningfulShipAt).toEqual(daysAgo(40));
+  });
+
   it('does not call a short pause a resumption', () => {
     expect(derive([ship(3), ship(30)]).status).toBe('SHIPPING');
   });

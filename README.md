@@ -141,7 +141,7 @@ call with an error, which the captured fixture in `apps/mcp/src/fixtures/` now g
 The site's own metadata was consolidated the same day (2026-09-17): one builder for title,
 description, canonical and share card, project titles that name the chain, share images that carry
 the narrative and the latest ship, a complete sitemap, and a public roadmap at
-[heyresearch.xyz/roadmap](https://heyresearch.xyz/roadmap) that describes the platform as it runs.
+[heyresearch.xyz/roadmap](https://heyresearch.xyz/roadmap) that describes the platform as it runs. The roadmap was rebuilt on 2026-09-18 as four quarters on one dependency ladder — research, then signals, then a Telegram Shipping Signal Agent, then an agent and execution network — with every line marked LIVE, SHIPPED, IN PROGRESS, PLANNED or RESEARCH from an inventory of the code; the audit behind it and the architecture plan for the signal and the agent are served at `/docs/roadmap-audit` and `/docs/shipping-signal-architecture`.
 
 A second findings pass the same evening (2026-09-17) changed four things an integrator sees: the
 dossier at `GET /api/projects/{slug}` now carries its newest five `ships` and, whenever it claims
@@ -154,7 +154,7 @@ at least a week old, never an intraday high. A third pass the same evening added
 hands back an offset the cap will clamp; `GET /api/token` carries `researchLevel`, and a record HEY
 has only indexed carries no ship count; the badge says "indexed", "checked" or "verified" by what HEY
 actually did; `tab=new-builders` is a seven-day window; and a date that does not exist (`2026-09-31`)
-is refused rather than rolled forward.
+is refused rather than rolled forward. A fourth pass (2026-09-18) changed, for an integrator: the logo proxy answers 404 for a host it does not allow instead of redirecting to it; `/api/search` and the signals page report the total their list is drawn from; `SCORING_VERSION` is `hbm-v7` (consistency counts ISO weeks, a comeback is measured from its cluster, and a project with no polled source reads UNKNOWN before QUIET); and an email address is confirmed by a button, never by a link preview.
 
 What it will not return is a risk reading. HEY answers whether anyone is building and gives no
 score, grade or verdict — put a risk read from a tool that does that work beside this line

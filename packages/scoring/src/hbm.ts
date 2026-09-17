@@ -90,18 +90,32 @@ export function shippingRecency(events: readonly ScoredEvent[], now: Date): numb
   return clampScore((Math.min(total, RECENCY.saturation) / RECENCY.saturation) * 100);
 }
 
-/** Share of the last six calendar weeks containing meaningful activity. */
+/**
+ * Share of the last six calendar weeks containing meaningful activity.
+ *
+ * Calendar weeks are UTC ISO weeks (Monday to Sunday), the current one
+ * included (2026-09-18). Buckets used to be seven-day spans measured back
+ * from the rescore clock, so the same two events counted as one week at 06:00
+ * and two at 18:00 — a 4.2-point HBM swing from the clock alone, and the
+ * whitepaper's "calendar weeks" was not what ran.
+ */
+/** Whole ISO weeks since the epoch: Monday 1970-01-05 is week 1; 1970-01-01 was a Thursday. */
+function isoWeekIndex(date: Date): number {
+  const day = Math.floor(date.getTime() / 86_400_000);
+  return Math.floor((day + 3) / 7);
+}
+
 export function shippingConsistency(
   events: readonly ScoredEvent[],
   now: Date,
 ): { score: number; activeWeeks: number } {
   const buckets = new Set<number>();
+  const thisWeek = isoWeekIndex(now);
 
   for (const event of events) {
-    const ageMs = now.getTime() - event.publishedAt.getTime();
-    if (ageMs < 0) continue;
-    const week = Math.floor(ageMs / WEEK_MS);
-    if (week < CONSISTENCY.weeks) buckets.add(week);
+    if (event.publishedAt.getTime() > now.getTime()) continue;
+    const week = thisWeek - isoWeekIndex(event.publishedAt);
+    if (week >= 0 && week < CONSISTENCY.weeks) buckets.add(week);
   }
 
   return {

@@ -107,12 +107,18 @@ describe('HEY Build Momentum', () => {
     expect(shippingRecency(burst, now)).toBe(100);
   });
 
-  it('rewards consistency across six rolling weeks', () => {
+  it('rewards consistency across six calendar weeks, and the clock cannot move it (hbm-v7)', () => {
     const spread = [0, 7, 14, 21, 28, 35].map((days) => ship(days));
+    // `now` is Tuesday 2026-09-01: six days back reaches into the previous ISO week.
     const bunched = [0, 1, 2, 3, 4, 5].map((days) => ship(days));
 
     expect(shippingConsistency(spread, now).activeWeeks).toBe(6);
-    expect(shippingConsistency(bunched, now).activeWeeks).toBe(1);
+    expect(shippingConsistency(bunched, now).activeWeeks).toBe(2);
+    // Two events in one ISO week are one week whatever hour the rescore runs.
+    const sameWeek = [ship(0), ship(1)];
+    const morning = new Date('2026-09-01T06:00:00Z');
+    const evening = new Date('2026-09-01T18:00:00Z');
+    expect(shippingConsistency(sameWeek, morning).activeWeeks).toBe(shippingConsistency(sameWeek, evening).activeWeeks);
   });
 
   it('rewards breadth of work over repetition in one dimension', () => {
@@ -164,7 +170,7 @@ describe('HEY Build Momentum', () => {
   });
 
   it('stamps the scoring version onto every result', () => {
-    expect(SCORING_VERSION).toBe('hbm-v6');
+    expect(SCORING_VERSION).toBe('hbm-v7');
     expect(computeHbm({ events: [ship(1)], now }).scoringVersion).toBe(SCORING_VERSION);
   });
 

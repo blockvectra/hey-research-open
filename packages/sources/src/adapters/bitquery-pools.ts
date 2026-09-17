@@ -161,9 +161,9 @@ export function normalizeBitqueryPools(
   addresses: readonly string[],
 ): BitqueryTokenPools[] {
   const wanted = new Set(addresses.map((address) => address.toLowerCase()));
-  const byToken = new Map<string, BitqueryTokenPools & { seen: Set<string> }>();
+  const byToken = new Map<string, BitqueryTokenPools & { seen: Set<string>; seenDepth: Set<string>; seenLiquidity?: Set<string> }>();
   const at = (token: string) => {
-    const current = byToken.get(token) ?? { tokenAddress: token, pools: 0, events: 0, seen: new Set<string>() };
+    const current = byToken.get(token) ?? { tokenAddress: token, pools: 0, events: 0, seen: new Set<string>(), seenDepth: new Set<string>() };
     byToken.set(token, current);
     return current;
   };
@@ -186,7 +186,13 @@ export function normalizeBitqueryPools(
      * aggregator quotes the whole pool.
      */
     const total = (money(row.PoolEvent.Liquidity?.a) ?? 0) + (money(row.PoolEvent.Liquidity?.b) ?? 0);
-    if (total > 0) entry.liquidityUsd = (entry.liquidityUsd ?? 0) + total;
+    // Once per pool (2026-09-18): the provider returns one row per event and
+    // the sum ran over all of them — yolo's one pool read $5,078 against the
+    // card's $1, and 16 of 608 tokens were ten times their own market reading.
+    if (total > 0 && (!pool || !entry.seenLiquidity?.has(pool))) {
+      entry.liquidityUsd = (entry.liquidityUsd ?? 0) + total;
+      if (pool) (entry.seenLiquidity ??= new Set<string>()).add(pool);
+    }
   }
 
   for (const row of data.depth ?? []) {
@@ -199,11 +205,16 @@ export function normalizeBitqueryPools(
     const amount = money(side === 'a' ? row.Price.AtoB?.sellingA : row.Price.BtoA?.sellingB);
     if (amount === undefined) continue;
     const entry = at(token);
+    // Once per pool, like liquidity (2026-09-18): summed over every returned
+    // slippage row, apple-robinhood-token's 1% depth came to 4,900× its supply.
+    const depthPool = row.Price.Pool.SmartContract?.toLowerCase();
+    if (depthPool && entry.seenDepth.has(depthPool)) continue;
+    if (depthPool) entry.seenDepth.add(depthPool);
     entry.depthOnePctBase = (entry.depthOnePctBase ?? 0) + amount;
   }
 
   return [...byToken.values()]
-    .map(({ seen: _seen, ...rest }) => rest)
+    .map(({ seen: _seen, seenDepth: _seenDepth, seenLiquidity: _seenLiquidity, ...rest }) => rest)
     .sort((a, b) => a.tokenAddress.localeCompare(b.tokenAddress));
 }
 

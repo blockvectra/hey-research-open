@@ -120,7 +120,16 @@ export function deriveActivityStatus(input: ActivityInput): ActivityResult {
   // Resumption is checked before recency so a comeback reads as RESUMED rather
   // than simply SHIPPING (PRD V4 section 10).
   if (ageDays <= ACTIVITY.resumedWithinDays) {
-    const previous = meaningful[1];
+    /*
+     * The gap is measured from the comeback *cluster* to the last event
+     * before it (2026-09-18). Measured between the two newest events, a
+     * comeback that shipped a release and a docs update on the same day read
+     * as SHIPPING — two of the eight resumed projects in production were in
+     * exactly that shape. Every event inside the comeback window belongs to
+     * the comeback; the gap is to the first event older than that.
+     */
+    const comebackStart = latest.publishedAt.getTime() - ACTIVITY.resumedWithinDays * 86_400_000;
+    const previous = meaningful.find((event) => event.publishedAt.getTime() < comebackStart);
     if (previous) {
       const gapDays = daysBetween(previous.publishedAt, latest.publishedAt);
       if (gapDays >= ACTIVITY.dormancyGapDays) {
@@ -153,19 +162,22 @@ export function deriveActivityStatus(input: ActivityInput): ActivityResult {
     };
   }
 
-  if (ageDays <= ACTIVITY.quietWithinDays) {
-    return {
-      ...base,
-      status: 'QUIET',
-      reason: `No meaningful updates for ${Math.floor(ageDays)} days.`,
-    };
-  }
-
+  // "No updates for N days" is a claim about having looked (2026-09-18): with
+  // no observable source, the honest answer is UNKNOWN — the ruling the
+  // DORMANT path already follows. The dated last ship still renders.
   if (!input.hasSourceCoverage) {
     return {
       ...base,
       status: 'UNKNOWN',
       reason: 'Not enough source coverage to confirm current activity.',
+    };
+  }
+
+  if (ageDays <= ACTIVITY.quietWithinDays) {
+    return {
+      ...base,
+      status: 'QUIET',
+      reason: `No meaningful updates for ${Math.floor(ageDays)} days.`,
     };
   }
 
