@@ -113,6 +113,22 @@
       "fdvInVirtual": null,
       "liquidityUsd": null,
       "holderCount": 3
+    },
+    {
+      "id": 138990,
+      "uid": "0f2a5c11-6b3e-4d0a-9c1e-emptytoken00",
+      "name": "Blank Token Field by Virtuals",
+      "symbol": "BLANK",
+      "chain": "ROBINHOOD",
+      "status": "UNDERGRAD",
+      "preToken": "0x5555555555555555555555555555555555555555",
+      "tokenAddress": "",
+      "createdAt": "2026-09-03T08:00:00.000Z",
+      "mcapInVirtual": 4321.5,
+      "fdvInVirtual": 4400,
+      "liquidityUsd": 9000,
+      "holderCount": 3,
+      "top10HolderPercentage": 100
     }
   ],
   "meta": {

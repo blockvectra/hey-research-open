@@ -24,13 +24,21 @@ const PROTOCOLS_MAX_BYTES = 32 * 1024 * 1024;
 
 const CACHE_TTL_SECONDS = 6 * 60 * 60;
 
+/*
+ * Lenient on purpose (round-8 audit, 2026-09-18). The registry is ~10 MB of
+ * other people's data; one protocol with a null name or `"chains": null`
+ * used to fail the whole list's schema and HEY read nothing. `name` and
+ * `slug` may be absent — the row is skipped — and `chains` is `nullish`
+ * rather than defaulted, because a default does not survive an explicit
+ * null. Rows are validated one at a time below, so one bad row costs one row.
+ */
 const protocolSchema = z.object({
-  name: z.string(),
-  slug: z.string(),
+  name: z.string().nullish(),
+  slug: z.string().nullish(),
   url: z.string().nullish(),
   description: z.string().nullish(),
   category: z.string().nullish(),
-  chains: z.array(z.string()).default([]),
+  chains: z.array(z.string()).nullish(),
   twitter: z.string().nullish(),
   github: z.array(z.string()).nullish(),
   chainTvls: z.record(z.string(), z.number().nullable()).nullish(),
@@ -39,7 +47,18 @@ const protocolSchema = z.object({
   logo: z.string().nullish(),
 });
 
-const protocolsSchema = z.array(protocolSchema);
+/** The envelope only: each row is judged on its own in the normalizer. */
+const protocolsSchema = z.array(z.unknown());
+
+type Protocol = z.infer<typeof protocolSchema> & { name: string; slug: string };
+
+const validProtocol = (row: unknown): Protocol | undefined => {
+  const parsed = protocolSchema.safeParse(row);
+  if (!parsed.success) return undefined;
+  const { name, slug } = parsed.data;
+  if (!name || !slug) return undefined;
+  return { ...parsed.data, name, slug };
+};
 
 export type EcosystemListing = {
   name: string;
@@ -73,7 +92,12 @@ const chainTvlOf = (tvls: Record<string, number | null> | null | undefined, chai
   const key = chain.toLowerCase();
   let total = 0;
   for (const [label, value] of Object.entries(tvls)) {
-    // `Robinhood Chain-borrowed` and `-staking` are sub-buckets of the same chain.
+    /*
+     * Exact label only, deliberately. `Robinhood Chain-borrowed`,
+     * `-staking` and `-pool2` are DefiLlama's variants of the same chain
+     * bucket and must not be summed on top of it: borrowed is counted inside
+     * the headline figure already, and adding it doubles the number.
+     */
     if (label.toLowerCase() === key && typeof value === 'number') total += value;
   }
   return total;
@@ -100,6 +124,8 @@ export function createDefillamaAdapter(): SourceAdapter<DefillamaInput, Ecosyste
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (raw): EcosystemListing[] =>
             raw
+              .map(validProtocol)
+              .filter((protocol): protocol is Protocol => protocol !== undefined)
               .filter((protocol) => (protocol.chains ?? []).some((c) => c.toLowerCase() === wanted))
               .map((protocol) => ({
                 name: protocol.name,

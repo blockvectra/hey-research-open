@@ -60,28 +60,53 @@ describe('retry and backoff', () => {
     expect(stub.callCount()).toBe(2);
   });
 
-  it('retries a 429 and honours Retry-After over its own backoff', async () => {
+  it('never retries a 429 in-process: one request, and the Retry-After unclamped in ms (round-8, 2026-09-18)', async () => {
     const sleep = vi.fn(async () => {});
-    const stub = stubFetch([{ status: 429, headers: { 'retry-after': '2' } }, ok('{}')]);
+    const stub = stubFetch([{ status: 429, headers: { 'retry-after': '3600' } }, ok('{}')]);
 
-    await httpRequest(
-      { url: 'https://api.example.com/x' },
-      testContext({
-        fetchImpl: stub.fetchImpl,
-        retry: { attempts: 3, baseDelayMs: 1000, maxDelayMs: 4000, sleep },
-      }),
-    );
+    await expect(
+      httpRequest(
+        { url: 'https://api.example.com/x' },
+        testContext({ fetchImpl: stub.fetchImpl, retry: { attempts: 3, baseDelayMs: 1000, maxDelayMs: 4000, sleep } }),
+      ),
+    ).rejects.toMatchObject({ code: 'RATE_LIMITED', retryAfterMs: 3_600_000, retryAfterSeconds: 3600, attempts: 1 });
 
-    expect(sleep).toHaveBeenCalledWith(2000);
+    expect(stub.callCount()).toBe(1);
+    expect(sleep).not.toHaveBeenCalled();
   });
 
-  it('gives up after the configured attempts and reports RATE_LIMITED', async () => {
-    const stub = stubFetch({ status: 429 });
+  it("treats GitHub's rate-limiting 403 the same way: no in-process retry", async () => {
+    const stub = stubFetch([{ status: 403, headers: { 'x-ratelimit-remaining': '0' } }, ok('{}')]);
     await expect(
-      httpRequest({ url: 'https://api.example.com/x' }, testContext({ fetchImpl: stub.fetchImpl })),
-    ).rejects.toMatchObject({ code: 'RATE_LIMITED' });
+      httpRequest({ url: 'https://api.github.com/x' }, testContext({ fetchImpl: stub.fetchImpl })),
+    ).rejects.toMatchObject({ code: 'RATE_LIMITED', attempts: 1 });
+    expect(stub.callCount()).toBe(1);
+  });
 
-    expect(stub.callCount()).toBe(3);
+  it('retries a 5xx once at most, whatever the policy asks, and reports the attempts', async () => {
+    const stub = stubFetch([{ status: 503 }, { status: 503 }, ok('{}')]);
+    await expect(
+      httpRequest(
+        { url: 'https://api.example.com/x' },
+        testContext({ fetchImpl: stub.fetchImpl, retry: { attempts: 5, baseDelayMs: 1, maxDelayMs: 2, sleep: async () => {} } }),
+      ),
+    ).rejects.toMatchObject({ code: 'UPSTREAM_ERROR', attempts: 2 });
+    expect(stub.callCount()).toBe(2);
+  });
+
+  it('counts the attempts on a success that needed a retry (503, then 200 → attempts 2)', async () => {
+    const stub = stubFetch([{ status: 503 }, ok('{"ok":true}')]);
+    const outcome = await httpRequest({ url: 'https://api.example.com/x' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(outcome.kind === 'ok' && outcome.response.attempts).toBe(2);
+
+    const direct = await httpRequest({ url: 'https://api.example.com/x' }, testContext({ fetchImpl: stubFetch(ok('{}')).fetchImpl }));
+    expect(direct.kind === 'ok' && direct.response.attempts).toBe(1);
+  });
+
+  it('exposes the Link header so a paging adapter can see rel="next"', async () => {
+    const stub = stubFetch(ok('[]', { link: '<https://api.example.com/x?page=2>; rel="next"' }));
+    const outcome = await httpRequest({ url: 'https://api.example.com/x' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(outcome.kind === 'ok' && outcome.response.link).toContain('rel="next"');
   });
 
   it('does not retry a 404', async () => {
@@ -171,6 +196,20 @@ describe('response limits', () => {
         testContext({ fetchImpl: stub.fetchImpl }),
       ),
     ).rejects.toMatchObject({ code: 'UNSUPPORTED_CONTENT_TYPE' });
+  });
+
+  it('refuses a response with no Content-Type when an allow-list is set (round-8, 2026-09-18)', async () => {
+    const stub = stubFetch(ok('<rss/>'));
+    await expect(
+      httpRequest(
+        { url: 'https://api.example.com/feed.xml', allowedContentTypes: ['application/rss+xml'] },
+        testContext({ fetchImpl: stub.fetchImpl }),
+      ),
+    ).rejects.toMatchObject({ code: 'UNSUPPORTED_CONTENT_TYPE' });
+
+    // With no allow-list a bare response is still fine.
+    const open = await httpRequest({ url: 'https://api.example.com/x' }, testContext({ fetchImpl: stubFetch(ok('{}')).fetchImpl }));
+    expect(open.kind).toBe('ok');
   });
 });
 

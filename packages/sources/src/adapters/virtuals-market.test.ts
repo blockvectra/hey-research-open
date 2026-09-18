@@ -69,6 +69,16 @@ describe('Virtuals market adapter', () => {
     expect(result.data?.some((r) => r.contractAddress === '0x1111111111111111111111111111111111111111')).toBe(false);
   });
 
+  it('keys an agent whose tokenAddress is an empty string at its pre-token, not graduated (round-8, 2026-09-18)', async () => {
+    const stub = stubFetch(page());
+    const result = await adapter.fetch(
+      { chainId: 4663, addresses: [...addresses, '0x5555555555555555555555555555555555555555'] },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+    const blank = result.data?.find((r) => r.contractAddress === '0x5555555555555555555555555555555555555555');
+    expect(blank).toMatchObject({ graduated: false, mcapInVirtual: 4321.5 });
+  });
+
   it('drops agents on another chain even when the provider returns them', async () => {
     const stub = stubFetch(page());
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));

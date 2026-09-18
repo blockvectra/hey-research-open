@@ -67,6 +67,7 @@ export async function performSourceFetch<TRaw, TOut>(
       sourceUrl: response.url ?? request.url,
       cacheTtlSeconds: options.cacheTtlSeconds,
       status: 'fresh',
+      attempts: response.attempts,
       ...(response.etag === undefined ? {} : { etag: response.etag }),
       ...(response.lastModified === undefined ? {} : { lastModified: response.lastModified }),
     };
@@ -77,6 +78,7 @@ export async function performSourceFetch<TRaw, TOut>(
         ...(error.retryAfterSeconds === undefined
           ? {}
           : { retryAfterSeconds: error.retryAfterSeconds }),
+        ...(error.attempts === undefined ? {} : { attempts: error.attempts }),
       });
     }
     return errorResult(ctx, 'NETWORK', describe(error), { sourceUrl: request.url });

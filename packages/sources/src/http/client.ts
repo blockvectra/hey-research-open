@@ -44,9 +44,20 @@ export type HttpResponse = {
   etag?: string;
   lastModified?: string;
   contentType?: string;
+  /** The `Link` header, for adapters that page (`rel="next"` means more). */
+  link?: string;
   /** Final URL after redirects, when the runtime exposes it. */
   url?: string;
+  /**
+   * Requests actually sent for this response (round-8 audit, 2026-09-18):
+   * 1 normally, 2 when a 5xx was retried once. Telemetry meters this, not
+   * one per call.
+   */
+  attempts: number;
 };
+
+/** The most times one `httpRequest` call may send a request (a 5xx retried once). */
+export const MAX_ATTEMPTS_IN_PROCESS = 2;
 
 /** `304 Not Modified` — the source is unchanged, so no downstream work is needed. */
 export type HttpOutcome = { kind: 'ok'; response: HttpResponse } | { kind: 'not_modified' };
@@ -66,13 +77,14 @@ export function backoffDelayMs(attempt: number, policy: RetryPolicy): number {
   return Math.min(exponential, policy.maxDelayMs);
 }
 
-const parseRetryAfter = (header: string | null): number | undefined => {
+/** `Retry-After` in milliseconds, exactly as sent: delay-seconds or an HTTP date. */
+const parseRetryAfterMs = (header: string | null): number | undefined => {
   if (!header) return undefined;
   const seconds = Number(header);
-  if (Number.isFinite(seconds) && seconds >= 0) return seconds;
+  if (Number.isFinite(seconds) && seconds >= 0) return Math.round(seconds * 1000);
   const date = Date.parse(header);
   if (Number.isNaN(date)) return undefined;
-  return Math.max(0, Math.round((date - Date.now()) / 1000));
+  return Math.max(0, date - Date.now());
 };
 
 /**
@@ -241,16 +253,26 @@ async function attemptOnce(
       (response.headers.get('retry-after') !== null ||
         response.headers.get('x-ratelimit-remaining') === '0');
     const code = rateLimited403 ? 'RATE_LIMITED' : errorCodeForStatus(response.status);
+    const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'));
     throw new SourceError(
       code,
       `${currentUrl} responded ${response.status}`,
       response.status,
-      parseRetryAfter(response.headers.get('retry-after')),
+      retryAfterMs === undefined ? undefined : Math.ceil(retryAfterMs / 1000),
+      retryAfterMs === undefined ? {} : { retryAfterMs },
     );
   }
 
   const contentType = response.headers.get('content-type') ?? undefined;
-  if (request.allowedContentTypes && contentType) {
+  if (request.allowedContentTypes) {
+    /*
+     * A missing Content-Type is not a pass (round-8 audit, 2026-09-18): the
+     * allow-list exists so a feed or document parser only sees what it was
+     * built for, and a response that will not say what it is has not met it.
+     */
+    if (contentType === undefined) {
+      throw new SourceError('UNSUPPORTED_CONTENT_TYPE', 'response carries no content type');
+    }
     const base = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
     if (!request.allowedContentTypes.some((allowed) => base === allowed)) {
       throw new SourceError('UNSUPPORTED_CONTENT_TYPE', `unexpected content type ${base}`);
@@ -269,8 +291,10 @@ async function attemptOnce(
         ? { lastModified: response.headers.get('last-modified') as string }
         : {}),
       ...(contentType === undefined ? {} : { contentType }),
+      ...(response.headers.get('link') ? { link: response.headers.get('link') as string } : {}),
       // The URL we actually ended on, so callers record real provenance.
       url: response.url || currentUrl,
+      attempts: 1,
     },
   };
 }
@@ -280,6 +304,15 @@ async function attemptOnce(
  * content-type limits, and exponential backoff with jitter on transient failures.
  *
  * Throws `SourceError`; adapters convert that into a `SourceResult`.
+ *
+ * What is retried here, and how often (round-8 audit, 2026-09-18):
+ * - a timeout, a network failure or a 5xx: once more, so at most
+ *   `MAX_ATTEMPTS_IN_PROCESS` requests per call, whatever the policy asks;
+ * - a 429 (or GitHub's rate-limiting 403): never. The error carries the
+ *   provider's `Retry-After` unclamped as `retryAfterMs`, and the caller's
+ *   cooldown / `retryAt` decides when to come back.
+ * Either way the response or the error says how many requests were sent
+ * (`attempts`), so the budget meter can count what actually left.
  */
 export async function httpRequest(request: HttpRequest, ctx: SourceContext): Promise<HttpOutcome> {
   if (request.enforceUrlSafety !== false) {
@@ -293,27 +326,27 @@ export async function httpRequest(request: HttpRequest, ctx: SourceContext): Pro
   const policy = ctx.retry ?? DEFAULT_RETRY_POLICY;
   const sleep = policy.sleep ?? defaultSleep;
 
+  const maxAttempts = Math.min(MAX_ATTEMPTS_IN_PROCESS, Math.max(1, policy.attempts));
+
   let lastError: SourceError | undefined;
-  for (let attempt = 1; attempt <= Math.max(1, policy.attempts); attempt += 1) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     try {
-      return await attemptOnce(request, ctx, fetchImpl);
+      const outcome = await attemptOnce(request, ctx, fetchImpl);
+      return outcome.kind === 'ok' ? { kind: 'ok', response: { ...outcome.response, attempts: attempt } } : outcome;
     } catch (error) {
       const sourceError =
         error instanceof SourceError
           ? error
           : new SourceError('NETWORK', error instanceof Error ? error.message : 'unknown failure');
+      sourceError.attempts = attempt;
       lastError = sourceError;
 
-      const isLast = attempt >= policy.attempts;
-      if (!sourceError.retryable || isLast) throw sourceError;
+      const isLast = attempt >= maxAttempts;
+      const rateLimitedOptIn = policy.retryRateLimited === true && sourceError.code === 'RATE_LIMITED';
+      if ((!sourceError.retryableInProcess && !rateLimitedOptIn) || isLast) throw sourceError;
 
-      // Respect a provider-advertised cool-off over our own backoff curve.
-      const advertised = sourceError.retryAfterSeconds;
-      const delay =
-        advertised !== undefined
-          ? Math.min(advertised * 1000, policy.maxDelayMs)
-          : jitter(backoffDelayMs(attempt, policy));
-      await sleep(delay);
+      // An opted-in 429 waits what the provider asked for, not this curve.
+      await sleep(rateLimitedOptIn && sourceError.retryAfterMs !== undefined ? sourceError.retryAfterMs : jitter(backoffDelayMs(attempt, policy)));
     }
   }
 

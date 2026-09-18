@@ -124,7 +124,9 @@ export function createVirtualsMarketAdapter(): SourceAdapter<
               if (agent.chain && agent.chain.toUpperCase() !== VIRTUALS_CHAIN_FILTER) continue;
 
               const graduated = Boolean(agent.tokenAddress);
-              const address = (agent.tokenAddress ?? agent.preToken ?? '').toLowerCase();
+              // `||`, not `??` (round-8 audit, 2026-09-18, matching virtuals.ts): an empty
+              // tokenAddress is "not graduated", and the agent then lives at its pre-token.
+              const address = (agent.tokenAddress || agent.preToken || '').toLowerCase();
               if (!ADDRESS_PATTERN.test(address) || !requested.has(address) || seen.has(address)) {
                 continue;
               }

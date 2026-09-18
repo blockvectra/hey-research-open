@@ -23,13 +23,23 @@ describe('Blockscout adapter', () => {
     });
   });
 
-  it('captures proxy implementations for upgrade evidence', async () => {
+  it('captures proxy implementations for upgrade evidence (live v2 says address_hash)', async () => {
     const stub = stubFetch({ status: 200, body: readFixture('blockscout-address.json') });
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
 
+    expect(readFixture('blockscout-address.json')).toContain('"address_hash"');
     expect(result.data?.implementationAddresses).toEqual([
       '0x8888888888888888888888888888888888888888',
     ]);
+  });
+
+  it('still reads an older instance that names the implementation `address` (round-8, 2026-09-18)', async () => {
+    const legacy = JSON.parse(readFixture('blockscout-address.json')) as Record<string, unknown>;
+    legacy.implementations = [{ address: '0x7777777777777777777777777777777777777777', name: 'Old' }, { name: 'nameless' }];
+    const stub = stubFetch({ status: 200, body: JSON.stringify(legacy) });
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.data?.implementationAddresses).toEqual(['0x7777777777777777777777777777777777777777']);
   });
 
   it('never requests a holders endpoint', async () => {

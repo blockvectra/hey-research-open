@@ -41,6 +41,24 @@ export function isRetryableErrorCode(code: SourceErrorCode): boolean {
   return RETRYABLE.has(code);
 }
 
+/**
+ * The subset the HTTP client may retry inside one call (round-8 audit,
+ * 2026-09-18). A 429 is retryable in the job sense — the caller's cooldown
+ * and `retryAt` own it — but never in-process: the client used to repeat it
+ * up to three times with the provider's Retry-After clamped to 4 s, so a
+ * "come back in an hour" became three requests in eight seconds, and the
+ * budget meter counted one.
+ */
+const RETRYABLE_IN_PROCESS: ReadonlySet<SourceErrorCode> = new Set<SourceErrorCode>([
+  'TIMEOUT',
+  'NETWORK',
+  'UPSTREAM_ERROR',
+]);
+
+export function isRetryableInProcess(code: SourceErrorCode): boolean {
+  return RETRYABLE_IN_PROCESS.has(code);
+}
+
 /** Internal carrier used between the HTTP layer and adapters. */
 /**
  * Strip a credential out of anything that might be shown to a person
@@ -64,18 +82,43 @@ export function redactSecrets(message: string): string {
 }
 
 export class SourceError extends Error {
+  /**
+   * Provider cool-off in milliseconds, exactly as the `Retry-After` header
+   * said it — never clamped. `retryAfterSeconds` is the same figure rounded
+   * up, kept for the callers that already read seconds.
+   */
+  readonly retryAfterMs?: number;
+
+  /**
+   * How many requests the HTTP client actually sent before giving up
+   * (round-8 audit, 2026-09-18): 1 for anything it did not retry, up to the
+   * in-process cap for a 5xx. Telemetry should meter this number, not one
+   * per call. Set by the client; absent on an error built elsewhere.
+   */
+  attempts?: number;
+
   constructor(
     readonly code: SourceErrorCode,
     message: string,
     readonly status?: number,
     readonly retryAfterSeconds?: number,
+    options: { retryAfterMs?: number; attempts?: number } = {},
   ) {
     super(redactSecrets(message));
     this.name = 'SourceError';
+    if (options.retryAfterMs !== undefined) this.retryAfterMs = options.retryAfterMs;
+    else if (retryAfterSeconds !== undefined) this.retryAfterMs = retryAfterSeconds * 1000;
+    if (options.attempts !== undefined) this.attempts = options.attempts;
   }
 
+  /** Worth retrying at all — by a later job, a cooldown, or the client itself. */
   get retryable(): boolean {
     return isRetryableErrorCode(this.code);
+  }
+
+  /** Worth the HTTP client repeating right now, inside the same call. */
+  get retryableInProcess(): boolean {
+    return isRetryableInProcess(this.code);
   }
 }
 

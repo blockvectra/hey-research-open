@@ -100,13 +100,25 @@ export type GithubOwnerReposInput = {
   perPage?: number;
 };
 
+/**
+ * One page of an account's repositories (round-8 audit, 2026-09-18). Forks
+ * are dropped from `repositories`, so the caller pages on `pageSize` — the
+ * raw row count — not on what survived: a page of 100 with 24 forks used to
+ * read as a short last page and end the sweep early.
+ */
+export type GithubOwnerReposPage = {
+  repositories: GithubSearchHit[];
+  /** Rows on the page before forks were dropped. */
+  pageSize: number;
+};
+
 const toDate = (value: string | null | undefined): Date | undefined => {
   if (!value) return undefined;
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
-export function createGithubOwnerReposAdapter(): SourceAdapter<GithubOwnerReposInput, GithubSearchHit[]> {
+export function createGithubOwnerReposAdapter(): SourceAdapter<GithubOwnerReposInput, GithubOwnerReposPage> {
   return {
     name: 'github-owner-repos',
 
@@ -114,7 +126,7 @@ export function createGithubOwnerReposAdapter(): SourceAdapter<GithubOwnerReposI
       return REPO_PATTERN.test(input.owner);
     },
 
-    fetch(input, ctx: SourceContext): Promise<SourceResult<GithubSearchHit[]>> {
+    fetch(input, ctx: SourceContext): Promise<SourceResult<GithubOwnerReposPage>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
       const perPage = Math.min(input.perPage ?? 100, 100);
       const page = Math.max(1, Math.floor(input.page ?? 1));
@@ -134,8 +146,9 @@ export function createGithubOwnerReposAdapter(): SourceAdapter<GithubOwnerReposI
           schema: ownerReposSchema,
           parse: (body) => JSON.parse(body) as unknown,
           cacheTtlSeconds: CACHE_TTL_SECONDS,
-          normalize: (raw): GithubSearchHit[] =>
-            raw
+          normalize: (raw): GithubOwnerReposPage => ({
+            pageSize: raw.length,
+            repositories: raw
               .filter((item) => item.fork !== true)
               .map((item) => ({
                 fullName: item.full_name,
@@ -154,6 +167,7 @@ export function createGithubOwnerReposAdapter(): SourceAdapter<GithubOwnerReposI
                 ...opt('stars', item.stargazers_count),
                 ...opt('sizeKb', item.size),
               })),
+          }),
         },
       );
     },

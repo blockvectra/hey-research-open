@@ -214,6 +214,19 @@ export type GithubSearchHit = GithubRepoActivity & {
   topics: string[];
 };
 
+/**
+ * One page of repository search (round-8 audit, 2026-09-18). Forks are
+ * dropped from `hits`; `pageSize` is the raw row count, which is what tells
+ * a caller whether this was the last page.
+ */
+export type GithubSearchPage = {
+  hits: GithubSearchHit[];
+  /** Rows on the page before forks were dropped. */
+  pageSize: number;
+  /** GitHub's own total for the query, capped by the API at 1,000 reachable. */
+  totalCount: number;
+};
+
 export type GithubSearchInput = {
   /** A GitHub search qualifier string, e.g. `"Robinhood Chain" in:readme`. */
   query: string;
@@ -227,7 +240,7 @@ export type GithubSearchInput = {
   page?: number;
 };
 
-export function createGithubSearchAdapter(): SourceAdapter<GithubSearchInput, GithubSearchHit[]> {
+export function createGithubSearchAdapter(): SourceAdapter<GithubSearchInput, GithubSearchPage> {
   return {
     name: 'github-search',
 
@@ -235,7 +248,7 @@ export function createGithubSearchAdapter(): SourceAdapter<GithubSearchInput, Gi
       return input.query.trim().length > 0;
     },
 
-    fetch(input, ctx: SourceContext): Promise<SourceResult<GithubSearchHit[]>> {
+    fetch(input, ctx: SourceContext): Promise<SourceResult<GithubSearchPage>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
       const perPage = Math.min(input.perPage ?? 50, 100);
       const page = Math.max(1, Math.floor(input.page ?? 1));
@@ -250,8 +263,10 @@ export function createGithubSearchAdapter(): SourceAdapter<GithubSearchInput, Gi
           schema: githubSearchSchema,
           parse: (body) => JSON.parse(body) as unknown,
           cacheTtlSeconds: CACHE_TTL_SECONDS,
-          normalize: (raw): GithubSearchHit[] =>
-            raw.items
+          normalize: (raw): GithubSearchPage => ({
+            pageSize: raw.items.length,
+            totalCount: raw.total_count,
+            hits: raw.items
               // A fork is someone else's code; it says nothing about this team.
               .filter((item) => item.fork !== true)
               .map((item) => {
@@ -276,6 +291,7 @@ export function createGithubSearchAdapter(): SourceAdapter<GithubSearchInput, Gi
                 ...opt('createdAt', toDate(item.created_at)),
                 ...opt('stars', item.stargazers_count),
               })),
+          }),
         },
       );
     },

@@ -65,8 +65,10 @@ describe('GitHub owner repositories', () => {
     const result = await adapter.fetch({ owner: 'nirholas', token: 't' }, testContext({ fetchImpl: stub.fetchImpl }));
 
     expect(hasData(result)).toBe(true);
-    expect(result.data?.map((repo) => repo.fullName)).toEqual(['nirholas/loxley', 'nirholas/dotfiles']);
-    expect(result.data?.[0]).toMatchObject({
+    expect(result.data?.repositories.map((repo) => repo.fullName)).toEqual(['nirholas/loxley', 'nirholas/dotfiles']);
+    // Three rows on the page, one a fork: the caller pages on the three.
+    expect(result.data?.pageSize).toBe(3);
+    expect(result.data?.repositories[0]).toMatchObject({
       owner: 'nirholas',
       name: 'loxley',
       homepage: 'https://loxley.dev',
@@ -74,7 +76,7 @@ describe('GitHub owner repositories', () => {
       isArchived: false,
       isTemplate: false,
     });
-    expect(result.data?.[0]?.latestPushAt?.toISOString()).toBe('2026-09-03T18:12:00.000Z');
+    expect(result.data?.repositories[0]?.latestPushAt?.toISOString()).toBe('2026-09-03T18:12:00.000Z');
     expect(stub.requests[0]?.url).toBe(
       'https://api.github.com/users/nirholas/repos?type=owner&sort=pushed&direction=desc&per_page=100&page=1',
     );

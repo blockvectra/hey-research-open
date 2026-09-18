@@ -63,30 +63,59 @@ const text = (value: unknown): string | undefined => {
   return undefined;
 };
 
+/**
+ * `YYYY-MM-DD HH:MM:SS` or ISO-8601 without a zone or offset. `new Date()`
+ * reads the first as local time and the second as local time too (the spec
+ * says UTC only for date-only forms), so the worker's zone would have
+ * shifted a feed's dates. A feed that gives no zone is read as UTC.
+ */
+const ZONELESS_DATETIME = /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?$/;
+
 const toDate = (value: unknown): Date | undefined => {
   const raw = text(value);
   if (!raw) return undefined;
-  const parsed = new Date(raw);
+  const normalized = ZONELESS_DATETIME.test(raw) ? `${raw.replace(' ', 'T')}Z` : raw;
+  const parsed = new Date(normalized);
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
-/** Atom links are attribute-based; RSS links are element text. */
-const linkOf = (entry: Record<string, unknown>): string | undefined => {
+/**
+ * Atom links are attribute-based; RSS links are element text. Either kind is
+ * resolved against the feed's own URL (round-8 audit, 2026-09-18): a
+ * relative `/blog/v2-release` used to be stored as the entry's provenance
+ * and external id, so it dereferenced to nothing and deduped against nothing.
+ * A link that is still not absolute http(s) after resolution is no link.
+ */
+const linkOf = (entry: Record<string, unknown>, feedUrl: string): string | undefined => {
   const direct = text(entry.link);
-  if (direct) return direct;
+  if (direct) return absoluteHttpUrl(direct, feedUrl);
 
   for (const candidate of asArray(entry.link as unknown)) {
     if (candidate && typeof candidate === 'object') {
       const record = candidate as Record<string, unknown>;
       const rel = record['@_rel'];
       const href = record['@_href'];
-      if (typeof href === 'string' && (rel === undefined || rel === 'alternate')) return href;
+      if (typeof href === 'string' && (rel === undefined || rel === 'alternate')) {
+        return absoluteHttpUrl(href, feedUrl);
+      }
     }
   }
   return undefined;
 };
 
-function normalizeEntries(document: Record<string, unknown>): {
+const absoluteHttpUrl = (href: string, base: string): string | undefined => {
+  const trimmed = href.trim();
+  // A fragment-only href resolves to the feed itself, which is not the entry's page.
+  if (trimmed === '' || trimmed.startsWith('#')) return undefined;
+  try {
+    const resolved = new URL(trimmed, base);
+    return resolved.protocol === 'http:' || resolved.protocol === 'https:' ? resolved.toString() : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+function normalizeEntries(document: Record<string, unknown>, feedUrl: string): {
   feedTitle?: string;
   entries: FeedEntry[];
 } {
@@ -103,7 +132,9 @@ function normalizeEntries(document: Record<string, unknown>): {
   const entries = rawEntries
     .map((entry): FeedEntry | undefined => {
       const title = text(entry.title);
-      const link = linkOf(entry);
+      const link = linkOf(entry, feedUrl);
+      // An entry whose only id would have been an unusable link is dropped:
+      // `#` or `javascript:` is not something HEY can cite.
       const externalId = text(entry.guid) ?? text(entry.id) ?? link;
       if (!externalId || !title) return undefined;
 
@@ -146,8 +177,8 @@ export function createFeedAdapter(): SourceAdapter<FeedInput, FeedResult> {
           schema: z.object({ body: z.string(), document: z.record(z.unknown()) }),
           parse: (body) => ({ body, document: parser.parse(body) as Record<string, unknown> }),
           cacheTtlSeconds: CACHE_TTL_SECONDS,
-          normalize: ({ body, document }): FeedResult => ({
-            ...normalizeEntries(document),
+          normalize: ({ body, document }, response): FeedResult => ({
+            ...normalizeEntries(document, response.url ?? input.url),
             contentHash: hashContent(body),
           }),
         },

@@ -41,7 +41,8 @@ Dates are ISO 8601 in UTC. Responses are cached for 60 seconds, allow cross-orig
 **API keys (M13-E).** A signed-in reader with a linked wallet can create a key on `/account`. Send it as
 `authorization: Bearer hey_…` (or `x-api-key`). A key reads exactly the same data; it carries the account's
 holder tier, which sets a monthly allowance and a per-minute limit (`x-hey-tier`, `x-hey-monthly-remaining`
-on every keyed answer). Keyed answers are `private, no-store`. A bad, revoked or expired key is `401 unauthorized`; a
+on every keyed answer). A key with no holder tier has a monthly ceiling too; the figure is a setting the lab
+edits on its console (since 2026-09-18), and the holder tiers sit above it. Keyed answers are `private, no-store`. A bad, revoked or expired key is `401 unauthorized`; a
 key the lab has suspended, or an account it has blocked, is `403 forbidden` with a `reason` (`key_suspended`,
 `account_suspended`, `account_blocked`) and a sentence saying whom to write to; a spent allowance is `429 quota`
 with `retry-after`. The allowance is checked before a request is counted. A keyed request draws on its tier's
@@ -247,7 +248,7 @@ hour, is never cached, and spends a budget the scheduled pipeline needs.
 
 The by-contract lookup above in the shape a trading bot's card wants: `found`, `status` (HEY's six
 states, lower-cased) with `status_label` and `status_help` in HEY's own words, `verified_builder`,
-`activity` (`commits_30d` — absent when no repository is read, `releases_30d`, `ships_30d`,
+`activity` (`commits_30d` — absent when no repository is read, and a floor when `commits_30d_partial: true` says a commits page was cut inside the window; `releases_30d`, `ships_30d`,
 `last_ship`), `project_url`, `logo_url`, `badge_url`, a `cta` that points at the project page, and
 the disclaimer. `found: false` is a 200 for an unpublished token and for a chain HEY does not index
 (`reason: "chain"`); a malformed `token` is a 400. `chain` defaults to 4663. Same limits and cache as

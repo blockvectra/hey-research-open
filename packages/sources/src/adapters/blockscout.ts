@@ -27,8 +27,14 @@ export const blockscoutAddressSchema = z.object({
   name: z.string().nullish(),
   creation_transaction_hash: z.string().nullish(),
   creator_address_hash: z.string().nullish(),
+  /*
+   * Live Blockscout v2 names the implementation `address_hash` (round-8
+   * audit, 2026-09-18); older instances and the hand-written fixture said
+   * `address`. Both are read, so a proxy's implementation is not silently an
+   * empty list on the live explorer.
+   */
   implementations: z
-    .array(z.object({ address: z.string().nullish(), name: z.string().nullish() }))
+    .array(z.object({ address_hash: z.string().nullish(), address: z.string().nullish(), name: z.string().nullish() }))
     .nullish(),
   token: z
     .object({
@@ -95,7 +101,7 @@ export function createBlockscoutAdapter(): SourceAdapter<BlockscoutInput, Contra
               isContract: raw.is_contract ?? false,
               isVerified: raw.is_verified ?? false,
               implementationAddresses: (raw.implementations ?? [])
-                .map((entry) => entry.address ?? undefined)
+                .map((entry) => entry.address_hash ?? entry.address ?? undefined)
                 .filter((value): value is string => value !== undefined),
               explorerUrl: `${base}/address/${raw.hash}`,
               ...opt('contractName', raw.name ?? undefined),

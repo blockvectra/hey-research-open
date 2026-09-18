@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SOURCE_ERROR_CODES, SourceError, errorCodeForStatus, isRetryableErrorCode } from './errors';
+import { SOURCE_ERROR_CODES, SourceError, errorCodeForStatus, isRetryableErrorCode, isRetryableInProcess } from './errors';
 
 describe('normalized error model', () => {
   it('maps HTTP statuses onto the shared codes', () => {
@@ -43,7 +43,18 @@ describe('normalized error model', () => {
     const error = new SourceError('RATE_LIMITED', 'slow down', 429, 30);
     expect(error.retryable).toBe(true);
     expect(error.retryAfterSeconds).toBe(30);
+    expect(error.retryAfterMs).toBe(30_000);
     expect(error.status).toBe(429);
+  });
+
+  it('keeps a 429 out of the in-process retry set while the job layer may still retry it (round-8, 2026-09-18)', () => {
+    expect(isRetryableInProcess('RATE_LIMITED')).toBe(false);
+    expect(isRetryableInProcess('PACED')).toBe(false);
+    for (const code of ['TIMEOUT', 'NETWORK', 'UPSTREAM_ERROR'] as const) expect(isRetryableInProcess(code)).toBe(true);
+    for (const code of ['NOT_FOUND', 'INVALID_RESPONSE', 'BLOCKED_URL', 'TOO_LARGE', 'UNSUPPORTED_CONTENT_TYPE'] as const) {
+      expect(isRetryableInProcess(code)).toBe(false);
+    }
+    expect(new SourceError('RATE_LIMITED', 'x', 429, 1).retryableInProcess).toBe(false);
   });
 });
 

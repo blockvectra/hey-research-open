@@ -16,18 +16,20 @@ describe('GitHub repository search', () => {
 
     expect(hasData(result)).toBe(true);
     // Three in the fixture; the third is a fork and says nothing about its owner.
-    expect(result.data?.map((hit) => hit.fullName)).toEqual([
+    expect(result.data?.hits.map((hit) => hit.fullName)).toEqual([
       'eurotropica01-spec/squeeze',
       'Meridian402/meridian',
     ]);
-    expect(result.data?.[1]).toMatchObject({
+    // The raw page held three; paging is judged on that, not on the two kept.
+    expect(result.data?.pageSize).toBe(3);
+    expect(result.data?.hits[1]).toMatchObject({
       owner: 'Meridian402',
       name: 'meridian',
       homepage: 'https://meridian402.xyz',
       stars: 3,
       isArchived: false,
     });
-    expect(result.data?.[1]?.topics).toContain('robinhood-chain');
+    expect(result.data?.hits[1]?.topics).toContain('robinhood-chain');
   });
 
   it('requests the page it was asked for, defaulting to the first', async () => {

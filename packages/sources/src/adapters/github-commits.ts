@@ -32,6 +32,29 @@ export type GithubCommit = {
   isBot: boolean;
 };
 
+/**
+ * One page of the commits endpoint (round-8 audit, 2026-09-18).
+ *
+ * The adapter reads a single page. The old shape was the bare list, so the
+ * caller judged "was this the whole window?" by counting what was left after
+ * bots and merges were dropped — a full page with one bot commit read as an
+ * exact count ("94 commits in the last 90 days") for a repository with
+ * thousands. The page carries its own raw length and whether GitHub said
+ * there was more, and the caller judges from that.
+ */
+export type GithubCommitsPage = {
+  commits: GithubCommit[];
+  /** Rows on the page before any filtering. */
+  pageSize: number;
+  /**
+   * The page did not reach `since`: GitHub named a next page, or, with no
+   * `Link` header to go by, the page was full.
+   */
+  truncated: boolean;
+  /** The earliest commit on the page, dated; what the page actually covers. */
+  oldestCommitAt?: Date;
+};
+
 export type GithubCommitsInput = GithubRepoInput & {
   /** Only commits after this instant are requested. */
   since: Date;
@@ -51,7 +74,11 @@ const toDate = (value: string | null | undefined): Date | undefined => {
   return Number.isNaN(parsed.getTime()) ? undefined : parsed;
 };
 
-export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, GithubCommit[]> {
+/** Whether a `Link` header names a next page. */
+export const linkHasNext = (link: string | undefined): boolean =>
+  link !== undefined && /;\s*rel="?next"?/i.test(link);
+
+export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, GithubCommitsPage> {
   return {
     name: 'github-commits',
 
@@ -59,7 +86,7 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
       return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
     },
 
-    fetch(input, ctx: SourceContext): Promise<SourceResult<GithubCommit[]>> {
+    fetch(input, ctx: SourceContext): Promise<SourceResult<GithubCommitsPage>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
       const perPage = Math.min(input.perPage ?? 100, 100);
       // Encoded rather than concatenated, so parameter values cannot alter the URL.
@@ -83,8 +110,8 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
           schema: githubCommitsSchema,
           parse: (body) => JSON.parse(body) as unknown,
           cacheTtlSeconds: CACHE_TTL_SECONDS,
-          normalize: (raw): GithubCommit[] =>
-            raw
+          normalize: (raw, response): GithubCommitsPage => {
+            const commits = raw
               .map((entry) => {
                 const committedAt = toDate(entry.commit.author?.date);
                 if (!committedAt) return undefined;
@@ -103,7 +130,21 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
                   ...opt('authorLogin', login),
                 } satisfies GithubCommit;
               })
-              .filter((commit): commit is GithubCommit => commit !== undefined),
+              .filter((commit): commit is GithubCommit => commit !== undefined);
+            const oldestCommitAt = commits.reduce<Date | undefined>(
+              (oldest, commit) => (oldest === undefined || commit.committedAt < oldest ? commit.committedAt : oldest),
+              undefined,
+            );
+            // GitHub sends `Link` only when there is another page to name;
+            // without one, a full page is the only sign that more exists.
+            const truncated = linkHasNext(response.link) || (response.link === undefined && raw.length >= perPage);
+            return {
+              commits,
+              pageSize: raw.length,
+              truncated,
+              ...opt('oldestCommitAt', oldestCommitAt),
+            };
+          },
         },
       );
     },

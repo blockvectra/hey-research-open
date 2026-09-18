@@ -214,6 +214,76 @@ describe('feed adapter', () => {
     expect(second.data?.contentHash).toBe(first.data?.contentHash);
   });
 
+  describe('entry links are provenance (round-8, 2026-09-18)', () => {
+    const rssWith = (items: string) => `<?xml version="1.0"?><rss version="2.0"><channel><title>Acme</title>${items}</channel></rss>`;
+    const fetchAt = (url: string, body: string) =>
+      adapter.fetch({ url }, testContext({ fetchImpl: stubFetch({ status: 200, body, headers: feedHeaders }).fetchImpl }));
+
+    it('resolves a relative link against the feed URL before it becomes the id', async () => {
+      const result = await fetchAt(
+        'https://acme.dev/feed.xml',
+        rssWith('<item><title>v2 release</title><link>/blog/v2-release</link><pubDate>Sat, 30 Aug 2026 12:00:00 GMT</pubDate></item>'),
+      );
+      expect(result.data?.entries[0]).toMatchObject({
+        link: 'https://acme.dev/blog/v2-release',
+        externalId: 'https://acme.dev/blog/v2-release',
+      });
+    });
+
+    it('resolves an Atom href the same way', async () => {
+      const atom = `<?xml version="1.0"?><feed xmlns="http://www.w3.org/2005/Atom"><title>Acme</title><entry><title>Post</title><id>tag:acme.dev,2026:1</id><link rel="alternate" href="../posts/1" /><updated>2026-08-28T16:00:00Z</updated></entry></feed>`;
+      const result = await adapter.fetch(
+        { url: 'https://acme.dev/blog/atom.xml' },
+        testContext({ fetchImpl: stubFetch({ status: 200, body: atom, headers: { 'content-type': 'application/atom+xml' } }).fetchImpl }),
+      );
+      expect(result.data?.entries[0]?.link).toBe('https://acme.dev/posts/1');
+    });
+
+    it('drops an entry whose only id would be a bare # or a javascript: link', async () => {
+      const result = await fetchAt(
+        'https://acme.dev/feed.xml',
+        rssWith(
+          '<item><title>Anchor</title><link>#</link></item>' +
+            '<item><title>Script</title><link>javascript:alert(1)</link></item>' +
+            '<item><title>Kept</title><link>https://acme.dev/kept</link></item>',
+        ),
+      );
+      expect(result.data?.entries.map((entry) => entry.title)).toEqual(['Kept']);
+    });
+
+    it('keeps an entry with a guid but no usable link, without a link', async () => {
+      const result = await fetchAt(
+        'https://acme.dev/feed.xml',
+        rssWith('<item><title>Guid only</title><guid>post-7</guid><link>javascript:void(0)</link></item>'),
+      );
+      expect(result.data?.entries[0]).toMatchObject({ externalId: 'post-7', title: 'Guid only' });
+      expect(result.data?.entries[0]).not.toHaveProperty('link');
+    });
+  });
+
+  describe('dates without a zone (round-8, 2026-09-18)', () => {
+    const rssDated = (date: string) =>
+      `<?xml version="1.0"?><rss version="2.0"><channel><title>Acme</title><item><title>Post</title><guid>p1</guid><pubDate>${date}</pubDate></item></channel></rss>`;
+    const publishedAt = async (date: string) => {
+      const result = await adapter.fetch(
+        { url: 'https://acme.dev/feed.xml' },
+        testContext({ fetchImpl: stubFetch({ status: 200, body: rssDated(date), headers: feedHeaders }).fetchImpl }),
+      );
+      return result.data?.entries[0]?.publishedAt?.toISOString();
+    };
+
+    it('reads a zone-less date as UTC, whatever the worker’s zone', async () => {
+      expect(await publishedAt('2026-08-30 12:00:00')).toBe('2026-08-30T12:00:00.000Z');
+      expect(await publishedAt('2026-08-30T12:00:00')).toBe('2026-08-30T12:00:00.000Z');
+      expect(await publishedAt('2026-08-30T12:00')).toBe('2026-08-30T12:00:00.000Z');
+    });
+
+    it('leaves a date that names its zone alone', async () => {
+      expect(await publishedAt('2026-08-30T12:00:00+02:00')).toBe('2026-08-30T10:00:00.000Z');
+      expect(await publishedAt('Sat, 30 Aug 2026 12:00:00 GMT')).toBe('2026-08-30T12:00:00.000Z');
+    });
+  });
+
   it('reports malformed XML as an invalid response', async () => {
     const stub = stubFetch({
       status: 200,

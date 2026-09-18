@@ -25,6 +25,13 @@ export type SourceResult<T> = {
   errorMessage?: string;
   /** Provider-advertised cool-off, from `Retry-After` on a 429. */
   retryAfterSeconds?: number;
+  /**
+   * Requests the HTTP client actually sent for this result (round-8 audit,
+   * 2026-09-18): 1 normally, 2 when a 5xx was retried once, absent when no
+   * request left (a paced or budget-declined call). Telemetry should meter
+   * this figure rather than one per call.
+   */
+  attempts?: number;
 };
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -36,6 +43,13 @@ export type RetryPolicy = {
   maxDelayMs: number;
   /** Injected so tests do not actually wait. */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Retry a 429 once, in process, for exactly the Retry-After it names
+   * (2026-09-18). Off by default: a research provider's 429 is the job's to
+   * honour through its cool-off, never re-hit inside the call. A transactional
+   * mailer with a one-second Retry-After is the one honest exception.
+   */
+  retryRateLimited?: boolean;
 };
 
 export type SourceContext = {
@@ -99,7 +113,7 @@ export function errorResult<T>(
   ctx: SourceContext,
   code: SourceErrorCode,
   message: string,
-  options: { sourceUrl?: string; retryAfterSeconds?: number; cacheTtlSeconds?: number } = {},
+  options: { sourceUrl?: string; retryAfterSeconds?: number; cacheTtlSeconds?: number; attempts?: number } = {},
 ): SourceResult<T> {
   return {
     fetchedAt: resolveNow(ctx),
@@ -118,6 +132,7 @@ export function errorResult<T>(
     ...(options.retryAfterSeconds === undefined
       ? {}
       : { retryAfterSeconds: options.retryAfterSeconds }),
+    ...(options.attempts === undefined ? {} : { attempts: options.attempts }),
   };
 }
 
