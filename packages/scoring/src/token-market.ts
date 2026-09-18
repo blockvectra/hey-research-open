@@ -24,8 +24,18 @@ export const TOKEN_MARKET = {
   dustLiquidityUsd: 100,
   /** "Removed" needs a real prior market: the tracked peak must have reached this. */
   removedMinPeakUsd: 5_000,
-  /** … and today's liquidity must sit at or below this share of that peak. */
+  /** … and today's liquidity must sit at or below this share of that peak … */
   removedShareOfPeak: 0.1,
+  /**
+   * … and under this in absolute terms (2026-09-18): five times the low
+   * threshold. The share test alone called a $500K pool with $2M of daily
+   * volume "liquidity removed" because it had once held $6M — a smaller
+   * market, not a drained one. Below the low-liquidity line the share test
+   * still applies on its own; between the line and this ceiling it applies
+   * too, since $20K left of a $500K pool is what a removal looks like; above
+   * it, what remains is a market in its own right whatever the peak was.
+   */
+  removedMaxAbsoluteUsd: 25_000,
   /** A 24h volume at or below this, on a reading that reports volume, is "trading inactive". */
   inactiveVolumeUsd: 1,
   /** A reading older than this no longer describes the market. */
@@ -116,7 +126,11 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     }
     return { status: 'LOW_LIQUIDITY', reason: 'liquidity_below_threshold' };
   }
-  if (hadMarket && liquidity <= peakLiquidityUsd * TOKEN_MARKET.removedShareOfPeak) {
+  if (
+    hadMarket &&
+    liquidity <= TOKEN_MARKET.removedMaxAbsoluteUsd &&
+    liquidity <= peakLiquidityUsd * TOKEN_MARKET.removedShareOfPeak
+  ) {
     return { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' };
   }
   if (latest.volume24hUsd !== undefined && latest.volume24hUsd <= TOKEN_MARKET.inactiveVolumeUsd) {

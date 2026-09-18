@@ -121,7 +121,9 @@ echoes the request *as it was understood*, which is how you find out a filter wa
 ```
 
 Paging: follow `nextOffset` until it is absent. It is absent at the end of a listing rather
-than pointing past it.
+than pointing past it. Only `/api/projects` and `/api/ships` carry `nextOffset`; `/api/signals`
+and `/api/builders` carry `total` alone, so a caller pages those by adding `limit` to `offset`
+until `offset` reaches `total` (2026-09-18).
 
 Project detail (`/api/projects/<slug>`) also carries two facts about the tracked token, kept apart
 from `activityStatus` (2026-09-11): `tokenVerification` (`status` VERIFIED, UNVERIFIED or MISMATCH,

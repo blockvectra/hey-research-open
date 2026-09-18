@@ -166,6 +166,14 @@ describe('still building', () => {
     expect(evaluateStillBuilding({ ...base, trackedHighAt: daysAgo(STILL_BUILDING.minDrawdownAgeDays) }).eligible).toBe(true);
   });
 
+  it('is not eligible without a current market reading (2026-09-18)', () => {
+    // The same drawdown, read days ago: HEY no longer has a "current" value to measure.
+    const stale = evaluateStillBuilding({ ...base, marketDataFresh: false });
+    expect(stale.eligible).toBe(false);
+    expect(stale.reason).toBe('No current market reading.');
+    expect(stale.shipsSinceDecline).toBe(3);
+  });
+
   it('is not eligible without market context', () => {
     const result = evaluateStillBuilding({
       ...base,

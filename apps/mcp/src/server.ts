@@ -198,7 +198,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
       'No risk reading of any kind: HEY gives no score, no grade and no verdict about what a token might do.',
     ].join(' '),
     {
-      address: z.string().regex(/^0x[a-fA-F0-9]{40}$/).describe('The contract address, 0x followed by 40 hex characters.'),
+      // `0X` as well as `0x` (round-7 audit 2026-09-18): the API accepts both, and a pasted address arrives however the explorer printed it.
+      address: z.string().regex(/^0[xX][a-fA-F0-9]{40}$/).describe('The contract address, 0x followed by 40 hex characters.'),
       chainId: z.number().int().optional().describe('Chain id; HEY indexes Robinhood Chain, 4663, which is the default.'),
     },
     async ({ address, chainId }) => {

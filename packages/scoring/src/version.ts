@@ -48,8 +48,25 @@
  * spans from the rescore clock; a comeback is measured from the whole
  * comeback cluster to the last event before it; and a page with no observable
  * source reads UNKNOWN rather than QUIET.
+ *
+ * hbm-v8 (2026-09-18): a project's `CODE_ACTIVITY` counts once per UTC ISO
+ * week, not once per UTC day (`collapseSameWeekCodeActivity`). Ingestion has
+ * written one commit summary per repository per ISO week since 2026-09-15,
+ * each dated that repository's last commit, so a project with four
+ * repositories committing on four days of one week held four rows on four
+ * days and the per-day collapse of hbm-v3 let every one of them through —
+ * repository count was raising recency, significance and the "two meaningful
+ * updates" activity rule again. Weights and thresholds are unchanged; only
+ * multi-repository projects move, downward. Two further rules changed the
+ * same day without touching a weight and are recorded here: Still Building
+ * refuses a project whose newest market reading is older than a day
+ * (`marketDataFresh`, as Under the Radar already did) and measures against
+ * the daily-close history whenever one exists rather than against whichever
+ * of that and a raw spot snapshot was greater; and token market status only
+ * calls liquidity "removed" on a peak-relative fall when what is left is
+ * under `TOKEN_MARKET.removedMaxAbsoluteUsd`.
  */
-export const SCORING_VERSION = 'hbm-v7' as const;
+export const SCORING_VERSION = 'hbm-v8' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

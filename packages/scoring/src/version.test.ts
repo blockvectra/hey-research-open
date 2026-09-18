@@ -50,7 +50,7 @@ describe('scoring version', () => {
 
   it('changes whenever a weight, window or threshold changes', () => {
     // When this fails: bump SCORING_VERSION, write its note, then update the pair.
-    expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({ version: 'hbm-v7', rules: RULES_DIGEST_PINNED });
+    expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({ version: 'hbm-v8', rules: RULES_DIGEST_PINNED });
   });
 });
 

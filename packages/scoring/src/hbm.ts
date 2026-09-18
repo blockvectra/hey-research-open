@@ -1,6 +1,6 @@
 import type { ShipEventType, ShipSourceKind } from '@hey/db';
 
-import { daysBetween, meaningfulEvents, type ScoredEvent } from './activity';
+import { daysBetween, isoWeekIndex, meaningfulEvents, type ScoredEvent } from './activity';
 import {
   CONSISTENCY,
   EVENT_BASE_WEIGHTS,
@@ -97,14 +97,9 @@ export function shippingRecency(events: readonly ScoredEvent[], now: Date): numb
  * included (2026-09-18). Buckets used to be seven-day spans measured back
  * from the rescore clock, so the same two events counted as one week at 06:00
  * and two at 18:00 — a 4.2-point HBM swing from the clock alone, and the
- * whitepaper's "calendar weeks" was not what ran.
+ * whitepaper's "calendar weeks" was not what ran. The week index lives in
+ * `activity.ts`, beside the code-activity collapse that shares it (hbm-v8).
  */
-/** Whole ISO weeks since the epoch: Monday 1970-01-05 is week 1; 1970-01-01 was a Thursday. */
-function isoWeekIndex(date: Date): number {
-  const day = Math.floor(date.getTime() / 86_400_000);
-  return Math.floor((day + 3) / 7);
-}
-
 export function shippingConsistency(
   events: readonly ScoredEvent[],
   now: Date,

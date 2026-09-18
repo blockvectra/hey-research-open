@@ -168,6 +168,21 @@ export function evaluateStillBuilding(input: StillBuildingInput): StillBuildingR
     };
   }
 
+  /*
+   * A drawdown is a claim about where the market is now (2026-09-18). Under
+   * the Radar already refused a stale reading; Still Building read the
+   * cohort's `marketDataFresh` into its input and never looked at it, so a
+   * token whose last reading was days old could wear the badge against a
+   * "current" value HEY no longer had.
+   */
+  if (!input.marketDataFresh) {
+    return {
+      eligible: false,
+      shipsSinceDecline: recent.length,
+      reason: 'No current market reading.',
+    };
+  }
+
   if (input.currentMarketValueUsd === undefined || input.trackedHighUsd === undefined) {
     // Without market context there is no drawdown to describe.
     return {

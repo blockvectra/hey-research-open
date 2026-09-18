@@ -163,6 +163,19 @@ describe('the HEY MCP server', () => {
     expect(requested).toEqual(['https://hey.test/api/this-week']);
   });
 
+  it('lookup_token takes an address written 0X as well as 0x (round-7 audit 2026-09-18)', async () => {
+    // The API accepts both; the schema refused the upper-case prefix an explorer sometimes prints.
+    const lookup = { chainId: 4663, contractAddress: '0x' + 'a'.repeat(40), status: 'unknown', scanUrl: 'https://hey.test/scan', disclaimer: 'not investment advice' };
+    const client = await connect(fetchOk(lookup));
+    const result = await client.callTool({ name: 'lookup_token', arguments: { address: '0X' + 'A'.repeat(40) } });
+
+    expect(result.isError).toBeFalsy();
+    expect(requested[0]).toBe(`https://hey.test/api/token/4663/0X${'A'.repeat(40)}`);
+
+    const refused = await client.callTool({ name: 'lookup_token', arguments: { address: '0x' + 'g'.repeat(40) } });
+    expect(refused.isError).toBe(true);
+  });
+
   it('reports a rate limit as temporary rather than as "no results"', async () => {
     const client = await connect(async () => respond({}, 429));
     const result = await client.callTool({ name: 'list_ships', arguments: {} });

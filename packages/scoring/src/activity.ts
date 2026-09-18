@@ -46,15 +46,22 @@ export const daysBetween = (from: Date, to: Date): number =>
 
 /**
  * Meaningful events only, newest first, with a project's aggregated code
- * activity counted once per UTC day.
+ * activity counted once per UTC ISO week.
  *
- * Ingestion writes one `CODE_ACTIVITY` event per repository per day, so a
- * builder page with four repositories earned four weight-3 events for four
- * single commits where a one-repository page earned one (data-quality audit
- * F7, 2026-09-04). Commit volume is not shipping and repository count is not
- * either: the day's code activity is one fact about the project however many
- * repositories it is spread over. Collapsed here, so activity status, Build
- * Momentum and the streak all see the same events (hbm-v3).
+ * Ingestion used to write one `CODE_ACTIVITY` event per repository per day,
+ * so a builder page with four repositories earned four weight-3 events for
+ * four single commits where a one-repository page earned one (data-quality
+ * audit F7, 2026-09-04). Commit volume is not shipping and repository count
+ * is not either: a period's code activity is one fact about the project
+ * however many repositories it is spread over. Collapsed here, so activity
+ * status, Build Momentum and the streak all see the same events (hbm-v3).
+ *
+ * The period is the ISO week, not the day (hbm-v8, 2026-09-18). Ingestion
+ * now writes one row per repository per ISO week, dated the repository's
+ * last commit (`ships/normalize.ts`), so four repositories committing on
+ * four days of one week were four rows on four different days — and the
+ * per-day collapse let all four through. The same key ingestion writes under
+ * is the key they are collapsed under.
  */
 /**
  * How far ahead of the clock a publication date may sit before HEY stops
@@ -75,7 +82,7 @@ export const FUTURE_DATE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
  */
 export function meaningfulEvents(events: readonly ScoredEvent[], now?: Date): ScoredEvent[] {
   const horizon = now ? now.getTime() + FUTURE_DATE_TOLERANCE_MS : Number.POSITIVE_INFINITY;
-  return collapseSameDayCodeActivity(
+  return collapseSameWeekCodeActivity(
     events
       .filter((event) => isMeaningful(event))
       .filter((event) => event.publishedAt.getTime() <= horizon)
@@ -83,14 +90,24 @@ export function meaningfulEvents(events: readonly ScoredEvent[], now?: Date): Sc
   );
 }
 
-/** One `CODE_ACTIVITY` per UTC day; the input is newest first, so the newest of a day is kept. */
-export function collapseSameDayCodeActivity(sorted: readonly ScoredEvent[]): ScoredEvent[] {
-  const seenDays = new Set<string>();
+/**
+ * Whole UTC ISO weeks since the epoch: Monday 1970-01-05 is week 1;
+ * 1970-01-01 was a Thursday. Shared by the consistency buckets (`hbm.ts`)
+ * and the code-activity collapse below, so "the same week" means one thing.
+ */
+export function isoWeekIndex(date: Date): number {
+  const day = Math.floor(date.getTime() / 86_400_000);
+  return Math.floor((day + 3) / 7);
+}
+
+/** One `CODE_ACTIVITY` per UTC ISO week; the input is newest first, so the newest of a week is kept. */
+export function collapseSameWeekCodeActivity(sorted: readonly ScoredEvent[]): ScoredEvent[] {
+  const seenWeeks = new Set<number>();
   return sorted.filter((event) => {
     if (event.eventType !== 'CODE_ACTIVITY') return true;
-    const day = event.publishedAt.toISOString().slice(0, 10);
-    if (seenDays.has(day)) return false;
-    seenDays.add(day);
+    const week = isoWeekIndex(event.publishedAt);
+    if (seenWeeks.has(week)) return false;
+    seenWeeks.add(week);
     return true;
   });
 }

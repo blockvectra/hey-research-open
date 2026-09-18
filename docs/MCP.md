@@ -86,7 +86,10 @@ what a model reads before deciding whether HEY can answer, and what it quotes af
   *undervalued*, *price target* or *predict*.
 - **"Still Building" never appears without its meaning.** Every rendering that shows the
   badge carries: *verified activity continuing through a market drawdown HEY tracked — a
-  record of what happened, not a prediction and not a buy signal.*
+  record of what happened, not a prediction and not a buy signal.* When the API sends the
+  claim's evidence (`stillBuildingEvidence`, since 2026-09-17) the line carries it too, as
+  two facts and no verdict: *down 62% from the HEY-tracked high, 5 verified ships since*
+  (2026-09-18).
 - **Absent stays absent.** A project with no market reading gets no market line — never a
   zero, a dash or an "n/a" an assistant might average or compare. A project HEY has not
   measured says so, in words, because that is a different answer from measuring and finding

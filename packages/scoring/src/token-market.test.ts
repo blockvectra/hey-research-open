@@ -33,6 +33,18 @@ describe('token market status', () => {
     expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 2_000, volume24hUsd: 3 }, peakLiquidityUsd: 2_500 })).toMatchObject({ status: 'LOW_LIQUIDITY' });
   });
 
+  it('does not call a smaller market a removed one (2026-09-18)', () => {
+    // $500K of depth with $2M traded that day is a market, whatever it once held.
+    const smaller = classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 500_000, volume24hUsd: 2_000_000, fdvUsd: 50_000_000 }, peakLiquidityUsd: 6_000_000 });
+    expect(smaller).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' });
+    expect(marketIsLive(smaller.status, smaller.reason)).toBe(true);
+    // Dust left of a real market is still a removal.
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 400, volume24hUsd: 0 }, peakLiquidityUsd: 50_000 })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
+    // $20K left of $500K sits under the ceiling: what a removal looks like.
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 20_000, volume24hUsd: 100 }, peakLiquidityUsd: 500_000 })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
+    expect(TOKEN_MARKET.removedMaxAbsoluteUsd).toBe(TOKEN_MARKET.lowLiquidityUsd * 5);
+  });
+
   it('marks a market HEY can no longer read as abandoned only after it existed', () => {
     const old = at(TOKEN_MARKET.staleDays + 5);
     expect(classifyTokenMarket({ now, latest: { observedAt: old, liquidityUsd: 20_000, volume24hUsd: 10 }, latestObservedAt: old, peakLiquidityUsd: 20_000 })).toMatchObject({ status: 'MARKET_ABANDONED' });

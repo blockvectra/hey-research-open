@@ -77,6 +77,19 @@ const STAGE_WORDS: Record<'CURVE' | 'GRADUATED' | 'DEX', string> = {
   DEX: 'trading in a DEX pool',
 };
 
+/**
+ * The evidence behind Still Building, as a clause (round-7 audit 2026-09-18):
+ * "down 62% from the HEY-tracked high, 5 verified ships since". Two facts and
+ * no verdict, so the claim never travels as a bare badge.
+ */
+export function stillBuildingEvidence(project: Pick<HeyProject, 'stillBuildingEvidence'>): string | undefined {
+  const evidence = project.stillBuildingEvidence;
+  if (!evidence) return undefined;
+  const drawdown = `down ${Math.round(Math.abs(evidence.drawdownPercent))}% from the HEY-tracked high`;
+  if (evidence.shipsSinceDecline === undefined) return drawdown;
+  return `${drawdown}, ${evidence.shipsSinceDecline} verified ship${evidence.shipsSinceDecline === 1 ? '' : 's'} since`;
+}
+
 export function projectLine(project: HeyProject, now?: Date): string {
   const parts = [project.symbol ? `${project.name} ($${project.symbol})` : project.name];
 
@@ -88,7 +101,10 @@ export function projectLine(project: HeyProject, now?: Date): string {
         ? 'activity not researched yet'
         : project.activityStatus.toLowerCase(),
   );
-  if (project.stillBuilding) parts.push('STILL BUILDING');
+  if (project.stillBuilding) {
+    const evidence = stillBuildingEvidence(project);
+    parts.push(evidence ? `STILL BUILDING (${evidence})` : 'STILL BUILDING');
+  }
   if (project.lastShippedAt) parts.push(`last shipped ${ago(project.lastShippedAt, now)}`);
   if (project.primaryNarrative) parts.push(project.primaryNarrative.name);
   if (project.launchedVia) parts.push(`via ${project.launchedVia.name}`);
@@ -151,7 +167,11 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
       ? '- Activity: not researched yet — HEY indexed this record but has not verified activity.'
       : `- Activity: ${project.activityStatus.toLowerCase()}${project.lastShippedAt ? `, last shipped ${ago(project.lastShippedAt, now)}` : ''}`,
   );
-  if (project.stillBuilding) lines.push(`- ${STILL_BUILDING_MEANING}`);
+  if (project.stillBuilding) {
+    lines.push(`- ${STILL_BUILDING_MEANING}`);
+    const evidence = stillBuildingEvidence(project);
+    if (evidence) lines.push(`- Still Building evidence: ${evidence}.`);
+  }
   /*
    * Whether the token still has a market, beside the figures (2026-09-17).
    * A pool whose liquidity was pulled still reports a market cap and a volume;

@@ -110,6 +110,13 @@ export type HeyProject = {
   researchLevel: string;
   catalogStatus: string;
   stillBuilding: boolean;
+  /**
+   * What the Still Building claim rests on (round-7 audit 2026-09-18): the
+   * drawdown HEY tracked and the verified ships since it began. The API has
+   * sent it beside `stillBuilding: true` since 2026-09-17; the client dropped
+   * it, so an agent could repeat the badge without the evidence behind it.
+   */
+  stillBuildingEvidence?: { drawdownPercent: number; shipsSinceDecline?: number };
   lastShippedAt?: string;
   primaryNarrative?: { slug: string; name: string };
   token?: { chainId: number; contractAddress: string };

@@ -16,6 +16,7 @@ import {
   renderTokenLookup,
   renderTokenMarket,
   renderWeeklyReport,
+  stillBuildingEvidence,
 } from './render';
 
 /**
@@ -419,5 +420,42 @@ describe('renderThisWeek', () => {
 
     expect(section.split('\n- ')).toHaveLength(11);
     expect(section).toContain('…and 5 more on https://heyresearch.xyz/this-week');
+  });
+});
+
+describe('Still Building evidence (round-7 audit 2026-09-18)', () => {
+  /*
+   * The API has sent `stillBuildingEvidence` beside `stillBuilding: true`
+   * since 2026-09-17 and the client dropped it, so an agent could repeat the
+   * badge without the drawdown and the ships that make it a claim. Two facts
+   * in a clause, and no word that reads as a verdict.
+   */
+  const evidenced = { stillBuilding: true, stillBuildingEvidence: { drawdownPercent: 62.4, shipsSinceDecline: 5 } };
+
+  it('states the drawdown and the ships since, as facts', () => {
+    expect(stillBuildingEvidence(evidenced)).toBe('down 62% from the HEY-tracked high, 5 verified ships since');
+    expect(stillBuildingEvidence({ stillBuildingEvidence: { drawdownPercent: -40, shipsSinceDecline: 1 } })).toBe('down 40% from the HEY-tracked high, 1 verified ship since');
+    expect(stillBuildingEvidence({ stillBuildingEvidence: { drawdownPercent: 55 } })).toBe('down 55% from the HEY-tracked high');
+    expect(stillBuildingEvidence({})).toBeUndefined();
+  });
+
+  it('travels with the badge on the listing line and in the dossier', () => {
+    const line = projectLine(project(evidenced), NOW);
+    expect(line).toContain('STILL BUILDING (down 62% from the HEY-tracked high, 5 verified ships since)');
+
+    const dossier = renderProject(
+      { ...project(evidenced), firstSeenAt: '2026-06-01T00:00:00.000Z', isClaimed: false, submitted: false, narratives: [], sources: [], disclaimer: 'not investment advice' },
+      NOW,
+    );
+    expect(dossier).toContain(STILL_BUILDING_MEANING);
+    expect(dossier).toContain('Still Building evidence: down 62% from the HEY-tracked high, 5 verified ships since.');
+    for (const forbidden of ['buy', 'invest', 'undervalued', 'price target', 'predict', 'resilient', 'strong']) {
+      expect(stillBuildingEvidence(evidenced)).not.toContain(forbidden);
+    }
+  });
+
+  it('prints the bare badge when the API sent no evidence, and never invents one', () => {
+    expect(projectLine(project({ stillBuilding: true }), NOW)).toMatch(/STILL BUILDING(?! \()/);
+    expect(projectLine(project({ stillBuilding: true }), NOW)).not.toContain('HEY-tracked high');
   });
 });

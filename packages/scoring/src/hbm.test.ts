@@ -135,14 +135,14 @@ describe('HEY Build Momentum', () => {
     );
   });
 
-  it('counts a day of code activity once, however many repositories reported it (hbm-v3)', () => {
+  it('counts a week of code activity once, however many repositories reported it (hbm-v8)', () => {
     const code = (days: number, hour: number) =>
       ship(days, {
         eventType: 'CODE_ACTIVITY',
         verificationStatus: 'SOURCE_LINKED',
         publishedAt: new Date(daysAgo(days).getTime() + hour * 60 * 60 * 1000),
       });
-    // One repository committing on two days (the day's newest commit is the one kept).
+    // One repository committing in two weeks (the week's newest summary is the one kept).
     const oneRepo = computeHbm({ events: [code(1, 4), code(8, 4)], now });
     // Four repositories committing on the same two days: same building, more rows.
     const fourRepos = computeHbm({
@@ -153,9 +153,22 @@ describe('HEY Build Momentum', () => {
     expect(fourRepos.hbm).toBe(oneRepo.hbm);
     expect(fourRepos.components).toEqual(oneRepo.components);
     expect(fourRepos.explanation.meaningfulEvents).toBe(2);
-    // Days are UTC days: activity just after midnight is a new day, not the same one.
-    const twoDays = computeHbm({ events: [code(2, 23), code(1, 0.5)], now });
-    expect(twoDays.explanation.meaningfulEvents).toBe(2);
+
+    /*
+     * Ingestion writes one summary per repository per ISO week, dated that
+     * repository's last commit (2026-09-15), so four repositories are four
+     * rows on four *different* days of one week. `now` is Tuesday 1 September;
+     * days 2–5 ago are Sunday back to Thursday of the week before.
+     */
+    const oneRow = computeHbm({ events: [code(2, 4)], now });
+    const fourRows = computeHbm({ events: [code(2, 4), code(3, 4), code(4, 4), code(5, 4)], now });
+    expect(fourRows.hbm).toBe(oneRow.hbm);
+    expect(fourRows.components).toEqual(oneRow.components);
+    expect(fourRows.explanation.meaningfulEvents).toBe(1);
+
+    // Weeks are UTC ISO weeks: a commit just after Sunday midnight is a new week, not the same one.
+    const twoWeeks = computeHbm({ events: [code(2, 23), code(1, 0.5)], now });
+    expect(twoWeeks.explanation.meaningfulEvents).toBe(2);
     // Releases are never collapsed: two releases in a day are two ships.
     expect(computeHbm({ events: [ship(1), ship(1)], now }).explanation.meaningfulEvents).toBe(2);
   });
@@ -170,7 +183,7 @@ describe('HEY Build Momentum', () => {
   });
 
   it('stamps the scoring version onto every result', () => {
-    expect(SCORING_VERSION).toBe('hbm-v7');
+    expect(SCORING_VERSION).toBe('hbm-v8');
     expect(computeHbm({ events: [ship(1)], now }).scoringVersion).toBe(SCORING_VERSION);
   });
 

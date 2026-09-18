@@ -37,8 +37,30 @@ describe('activity status', () => {
     const result = deriveActivityStatus({ events: [code(40, 1), code(40, 2), code(40, 3)], now, hasSourceCoverage: true });
     expect(result.status).toBe('QUIET');
     expect(result.meaningfulEventCount).toBe(1);
-    // Two different days are two updates.
+    // Two different weeks are two updates.
     expect(deriveActivityStatus({ events: [code(40, 1), code(35, 1)], now, hasSourceCoverage: true }).status).toBe('ACTIVE');
+  });
+
+  it('does not read one week of commits across several repositories as several updates (hbm-v8)', () => {
+    const code = (days: number): ScoredEvent => ({
+      eventType: 'CODE_ACTIVITY',
+      verificationStatus: 'SOURCE_LINKED',
+      sourceKind: 'GITHUB',
+      publishedAt: daysAgo(days),
+    });
+    /*
+     * Ingestion writes one summary per repository per ISO week, dated that
+     * repository's last commit (2026-09-15): four repositories are four rows
+     * on four different days. Days 33–36 ago are Thursday back to Monday of
+     * one ISO week (`now` is Tuesday 1 September).
+     */
+    const oneRow = deriveActivityStatus({ events: [code(33)], now, hasSourceCoverage: true });
+    const fourRows = deriveActivityStatus({ events: [code(33), code(34), code(35), code(36)], now, hasSourceCoverage: true });
+    expect(fourRows).toEqual(oneRow);
+    expect(fourRows.status).toBe('QUIET');
+    expect(fourRows.meaningfulEventCount).toBe(1);
+    // A second week of commits is a second update.
+    expect(deriveActivityStatus({ events: [code(33), code(40)], now, hasSourceCoverage: true }).status).toBe('ACTIVE');
   });
 
   it('is ACTIVE on two meaningful updates inside 45 days', () => {
