@@ -1,0 +1,19 @@
+{
+  "data": {
+    "EVM": {
+      "methods": [
+        { "calls": "976987", "Call": { "Signature": { "Name": "getLaunchedToken" } } },
+        { "calls": "62149", "Call": { "Signature": { "Name": "launchTokenFor" } } },
+        { "calls": "31438", "Call": { "Signature": { "Name": "launchToken" } } },
+        { "calls": "1271", "Call": { "Signature": { "Name": "createGraduatedPool" } } },
+        { "calls": "900", "Call": { "Signature": { "Name": "balanceOf" } } },
+        { "calls": "1", "Call": { "Signature": { "Name": "" } } }
+      ],
+      "totals": [{ "calls": "1072745", "callers": "9004", "methods": "12" }],
+      "logs": [
+        { "events": "22624", "Log": { "Signature": { "Name": "Transfer" } } },
+        { "events": "4829", "Log": { "Signature": { "Name": "Approval" } } }
+      ]
+    }
+  }
+}

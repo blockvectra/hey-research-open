@@ -49,9 +49,21 @@ describe('scoring version', () => {
   });
 
   it('changes whenever a weight, window or threshold changes', () => {
-    // When this fails: bump SCORING_VERSION, write its note, then update the pair.
-    expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({ version: 'hbm-v8', rules: RULES_DIGEST_PINNED });
+    /*
+     * The pin is a literal, not a variable (round 9, 2026-09-19). It read
+     * `process.env.PIN_RULES_DIGEST ?? RULES_DIGEST`, nothing in the
+     * repository ever set that variable, and so the one guard whose job is to
+     * force a version bump was comparing the digest to itself and could not
+     * fail.
+     *
+     * When this fails you changed a weight, a window or a threshold. Bump
+     * SCORING_VERSION, write its note in `version.ts`, and then change BOTH
+     * literals below — the new tag and the new digest. Changing only the
+     * digest is the bug this test exists to catch.
+     */
+    expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
+      version: 'hbm-v8',
+      rules: 'eb3ded8555c71274',
+    });
   });
 });
-
-const RULES_DIGEST_PINNED = process.env.PIN_RULES_DIGEST ?? RULES_DIGEST;

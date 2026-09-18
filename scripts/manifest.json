@@ -2,17 +2,18 @@
   "$comment": "Generic secret shapes only; this deployment's own identifiers are not published.",
   "publicName": "hey-research-open",
   "include": [
+    "apps/mcp",
+    "docs/DATA_SOURCES.md",
+    "docs/INTEGRATIONS.md",
+    "docs/MCP.md",
+    "docs/PUBLIC_API.md",
+    "docs/SOURCE_REGISTRY.md",
+    "docs/screenshots",
     "packages/config",
     "packages/scoring",
     "packages/sdk",
     "packages/sources",
-    "packages/ui",
-    "apps/mcp",
-    "docs/PUBLIC_API.md",
-    "docs/MCP.md",
-    "docs/SOURCE_REGISTRY.md",
-    "docs/DATA_SOURCES.md",
-    "docs/screenshots"
+    "packages/ui"
   ],
   "never": [
     "apps/web",
@@ -30,8 +31,8 @@
     "docker-compose.prod.yml",
     "Dockerfile"
   ],
+  "$copyRootComment": "Root files copied verbatim from the private tree (round-9 security, 2026-09-19). `.npmrc` used to be one of them: a registry file is where an auth token lands (`//registry.npmjs.org/:_authToken=`), and the scanner had no pattern for one, so a token added to the private root would have been published on the next sync. The public tree gets the fixed two-line file in template/ instead, and this list is for files whose content is only tooling settings.",
   "copyRoot": [
-    ".npmrc",
     ".prettierrc.json",
     "tsconfig.base.json",
     "vitest.setup.ts"
@@ -47,11 +48,16 @@
     "vitest"
   ],
   "dbTypesFrom": "packages/db/src/schema/enums.ts",
+  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see.",
   "forbidden": [
     "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY",
     "ghp_[A-Za-z0-9]{20,}",
     "github_pat_[A-Za-z0-9_]{20,}",
     "sk-[A-Za-z0-9]{20,}",
+    "npm_[A-Za-z0-9]{30,}",
+    "(?<![A-Za-z0-9_-])re_[A-Za-z0-9_-]{20,}",
+    "\\d{8,10}:AA[\\w-]{30,}",
+    "\\\\nMII[A-Za-z0-9+/]{40,}",
     "postgres(ql)?://(?!hey:hey@)(?![^\\s'\"]*(change|replace|example|password|<))[^\\s'\"]*:[^\\s'\"@]+@(?!localhost)"
   ]
 }

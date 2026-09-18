@@ -13,7 +13,7 @@ and reads the same public API anyone can `curl`.
 npx -y @hey-research/mcp
 ```
 
-Node 18 or newer.
+Node 20 or newer — the floor `@modelcontextprotocol/sdk` brings with it.
 
 ## Install
 

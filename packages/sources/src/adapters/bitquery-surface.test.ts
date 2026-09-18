@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { readFixture, stubFetch, testContext } from '../testing';
 import {
   BITQUERY_SURFACE_QUERY,
   createBitquerySurfaceAdapter,
@@ -103,5 +104,64 @@ describe('bitquery contract surface', () => {
       ctx as never,
     );
     expect(result.status).toBe('error');
+  });
+});
+
+/*
+ * The cases above hand literals to the normaliser; the only one that reaches
+ * `performSourceFetch` sends a GraphQL error, so the Zod schema was never run
+ * against a real body (round 9, 2026-09-19) — architecture rule 16 on the paid
+ * source. The fixture is the Pons V2 factory's answer from 2026-09-15, in the
+ * envelope the adapter receives; Bitquery is keyed and metered and no test
+ * calls it.
+ */
+const json = (body: string) => ({ status: 200, body, headers: { 'content-type': 'application/json' } });
+const fixture = () => JSON.parse(readFixture('bitquery-surface.json')) as {
+  data: { EVM: { methods: Record<string, unknown>[]; totals: Record<string, unknown>[]; logs: Record<string, unknown>[] } };
+};
+const ADDRESS = '0xa78735badaad80fca7ac7c03bdd029160d45ce68';
+
+describe('bitquery contract surface, through the schema', () => {
+  const adapter = createBitquerySurfaceAdapter();
+
+  it('validates the saved envelope and separates the protocol methods from the token ones', async () => {
+    const stub = stubFetch(json(readFixture('bitquery-surface.json')));
+    const result = await adapter.fetch({ address: ADDRESS, apiKey: 'test-token' }, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('fresh');
+    expect(result.data?.beyondErc20.map((method) => method.name)).toEqual([
+      'getLaunchedToken',
+      'launchTokenFor',
+      'launchToken',
+      'createGraduatedPool',
+    ]);
+    // An unnamed signature is dropped; it tells a reader nothing.
+    expect(result.data?.methods.map((method) => method.name)).not.toContain('');
+    expect(result.data).toMatchObject({ calls: 1_072_745, callers: 9_004, distinctMethods: 12, seen: true });
+  });
+
+  it('refuses a cube that no longer answers with a list of rows', async () => {
+    /*
+     * This schema is the loosest of the six: every field inside a row is
+     * nullish, so a renamed `Call` or `Signature` would normalise to an empty
+     * surface and read as "a contract nobody calls". What it does still catch
+     * is the shape of the cube itself, and that is what is pinned here.
+     */
+    const body = fixture();
+    (body.data.EVM as Record<string, unknown>).methods = { edges: body.data.EVM.methods };
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch({ address: ADDRESS, apiKey: 'test-token' }, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('error');
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
+  });
+
+  it('refuses a total that arrives as an object instead of a count', async () => {
+    const body = fixture();
+    body.data.EVM.totals[0]!.callers = { value: '9004' };
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch({ address: ADDRESS, apiKey: 'test-token' }, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
   });
 });

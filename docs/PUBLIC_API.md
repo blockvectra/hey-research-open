@@ -24,13 +24,13 @@ Base URL: `https://heyresearch.xyz`
 |---|---|
 | Identity is `(chainId, contractAddress)` | `token` is the pair, never the ticker alone. `symbol` is shown, but it is not the identity. |
 | Absent means unknown | A field HEY has no answer for is **left out**, never sent as `null` or `0`. Nothing downstream can average a fact that was never claimed. |
-| Provenance travels with the fact | A ship carries `sourceUrl` and `verification`; a market figure carries the `source` that reported it. A market value with no provenance is not published at all. |
+| Provenance travels with the fact | A ship carries `sourceUrl` and `verification`; a market figure carries the `source` that reported it. One exception, and it is the roll-up rather than the record: `/api/this-week` prints a bare `marketCapUsd` on its list items, with no `source` and no `observedAt` — read it as the figure the project listing carries, and take the provenance from `/api/projects` (2026-09-19). |
 | Self-reported ≠ verified | `verification` distinguishes them, always. |
 | Research depth is stated | `researchLevel` and `catalogStatus` say whether HEY merely indexed a record or actually researched it, so an `INDEXED` row is not read as a claim. |
-| No wallet data, and no holder data in the API | HEY builds no wallet analytics, no PnL, no smart-money labels and no cross-token holder history — there is nothing of that kind to expose. Since 2026-09-14 it does keep one narrow thing: a daily snapshot of a **single token's** largest balances, so the distribution bubble map on `/project/{slug}/market` renders from HEY's own tables. **No API payload carries it**, no field here exposes it, and nothing in it reaches a status, a score or an ordering. |
+| No wallet data, and one narrow holder snapshot | HEY builds no wallet analytics, no PnL, no smart-money labels and no cross-token holder history. Since the founder's 2026-09-14 amendment it does keep one narrow thing: a daily snapshot of a **single token's** fifty largest balances, which draws the distribution bubble map on `/project/{slug}/market`. **No payload here carries a balance or an address**, and the snapshot is never an input to activity status, Build Momentum, the Discovery Gap or the Builder Radar. It is not sealed off from everything: `/api/signals` publishes a `concentration_rose` signal derived from it (2026-09-15) — a Nakamoto count with its before and after, carrying an `importance` like every other signal, which `order=importance` sorts the *feed* by. That feed is a record of measured changes, not a ranking of projects. |
 | Market data is context | It never ranks anything here, and the default order is activity. |
 | Paid placement is not in the data | The labelled *Sponsored* row on the home page is advertising. It has no field here, no feed entry, and no effect on any order, score or status. |
-| The caveat travels too | Every response carries `disclaimer`. |
+| The caveat travels too | Every data response carries `disclaimer`. `/api/status` is the exception: it reports HEY's own freshness and health, claims nothing about a project, and carries no `disclaimer` (2026-09-19). |
 | A claim travels with its evidence | `stillBuilding: true` is accompanied by `stillBuildingEvidence` — the market drawdown HEY tracked and the meaningful ships recorded since it began (2026-09-17). Absent together when no drawdown was recorded, which is every project the claim is not being made about. |
 | Show the link you were given | Anything rendered from a HEY fact carries the `url` back to the project page it came from. It is a condition of use, not a technical gate: a reader who sees a HEY line should always be one tap from the evidence behind it. |
 | The strict states carry their denominator | `GET /api/projects` carries `catalogue`: how many verified builders HEY has and how many meet Still Building and Under the Radar right now (2026-09-11). A handful out of thousands is the rule working, not the data failing. |
@@ -51,13 +51,19 @@ answer `OPTIONS` with the allowed headers.
 
 ## SDK (`@hey-research/sdk`)
 
-Since 2026-09-19 the same API is available as a typed client on npm, so nobody has to retype
-the shapes on this page. It is a thin fetch wrapper with no dependencies, ESM and CJS, Node 18
-or a browser; it holds no data and no credential beyond the key you hand it.
+Since 2026-09-19 the same API is also a typed client, so nobody has to retype the shapes on
+this page. It is a thin fetch wrapper with no dependencies, ESM and CJS, Node 18 or a browser;
+it holds no data and no credential beyond the key you hand it.
+
+**It is not on npm yet** (checked 2026-09-19): the `@hey-research` scope does not exist, so
+`npm i @hey-research/sdk` does not resolve. Until the lab creates the organisation and the
+publish token, build it from the repository:
 
 ```bash
-npm i @hey-research/sdk
+pnpm install && pnpm --filter @hey-research/sdk build   # packages/sdk/dist
 ```
+
+Once published, the install is `npm i @hey-research/sdk` and nothing else on this page changes.
 
 ```ts
 import { HeyClient, HeyApiError } from '@hey-research/sdk';
@@ -68,7 +74,7 @@ const page = await hey.projects.list({ tab: 'still-building', limit: 24 });
 console.log(page.total, page.items[0]?.activityStatus);
 
 for await (const project of hey.projects.items({ tab: 'still-building' })) {
-  console.log(project.slug, project.lastShipAt ?? 'no ship recorded');
+  console.log(project.slug, project.lastShippedAt ?? 'no ship recorded');
 }
 
 try {
@@ -79,8 +85,12 @@ try {
 ```
 
 - **Paging follows the API, not one convention.** `projects` and `ships` pages walk `nextOffset`
-  until it is absent; `signals` and `builders` step `offset` by `limit` until `offset >= total`.
-  `pages()` yields one page at a time and `items()` one row at a time; both stop by themselves.
+  until it is absent; `signals` and `builders` have no `nextOffset`, so the client steps `offset`
+  by **the number of items the previous page actually returned** — not by the `limit` asked for —
+  and stops when `offset` reaches `total` or a page comes back empty (`packages/sdk/src/paging.ts`).
+  A route that clamps `limit` below what you asked for therefore still walks correctly.
+  `pages()` yields one page at a time on all four; `items()` — one row at a time — exists on
+  `projects` and `ships` only, because those are the two that carry `nextOffset`.
 - **Absent means unknown, in the types too.** A field the API leaves out is an optional
   property, never `null`, so `project.marketCap?.usd` reads as it should and nothing downstream
   can average a fact that was never claimed. The only `null` is where the API itself sends one
@@ -89,7 +99,8 @@ try {
   `'quota'` and `retryAfterSeconds` from the `retry-after` header; the caller decides. A network
   failure is `code: 'network'`, a timeout `'timeout'`, a missing record `'not_found'` with
   `status: 404`.
-- **It cannot drift from the API.** `apps/web/src/lib/public-api-contract.test.ts` asserts, at
+- **It cannot drift from the API.** `apps/web/src/lib/public-api-contract.test.ts` (private
+  repository) asserts, at
   the type level and in both directions, that every response type the SDK exports is identical
   to the serialiser that produces it; `pnpm typecheck` fails on a field added to one side only.
 - **The user-agent says who is calling.** Every request carries `hey-research-sdk/<version>`,
@@ -105,7 +116,7 @@ The catalogue, with the same filters and order the browse pages use.
 | Parameter | Values | Default |
 |---|---|---|
 | `limit` | 1–48 | 24 |
-| `offset` | ≥ 0 | 0 |
+| `offset` | 0–5000; a larger value is silently clamped to 5000 (`MAX_LISTING_OFFSET`), so a deep walk ends there rather than erroring | 0 |
 | `sort` | `activity`, `marketCap`, `newest`, `liquidity`, `volume24h` | `activity` |
 | `tab` | `building-with-token`, `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes` | — |
 | `kind` | `UTILITY`, `MEME`, `HYBRID`, `INFRASTRUCTURE`, `RWA`, `APPLICATION`, `OTHER` | — |
@@ -118,6 +129,9 @@ The catalogue, with the same filters and order the browse pages use.
 | `minMarketCap` | a positive dollar figure; only tokens whose card reading shows a market cap at or above it (with `maxMarketCap`, a band) | — |
 | `launchpad` | `pons`, `virtuals`, `hoodfun`, `clanker`, `pairfund`, `bankr`, `hooddev`, `poolstrade`, `easya-kickstart`, `hoodit`, … | — |
 | `q` | free text — name, ticker or contract prefix; under two characters is no query | — |
+| `minVolume` | a positive dollar figure; only tokens whose card reading shows at least this much 24 h volume | — |
+| `age` | `day`, `week`, `month`, `older` — how long ago the token's pool was created | — |
+| `deployed` | `day`, `week`, `month`, `older` — how long ago the contract was deployed. Two dates, one vocabulary: a pool is opened when someone makes a market, a contract is deployed when the project puts it on chain, and they can be months apart | — |
 
 **The Token Projects view, in API terms (2026-09-12).** Explore's `?view=tokens` is spelled here as
 `has=token`. A market order (`sort=marketCap`, `liquidity`, `volume24h`) puts projects without that
@@ -126,7 +140,9 @@ figure. Whenever a request names a market field (a market sort, `stage`, `minLiq
 `maxMarketCap`, or `has=marketCap|liveMarket|verifiedToken`) the response carries
 `catalogue.marketCoverage`: `base` (rows under the non-market filters), and how many of them have a
 `marketCap`, `liquidity`, `volume24h` reading, a `liveMarket` (market not gone), an `activeMarket`
-(traded in the last day), a `verifiedToken`, and each launch `stage` — the denominators a sorted list needs to be read honestly. List items gain `liquidity` and
+(traded in the last day), a `verifiedToken`, each launch `stage`, and `github` — how many carry a
+public repository HEY reads commits from, a builder fact kept in the same block because it narrows
+the base the other denominators are counted over — the denominators a sorted list needs to be read honestly. List items gain `liquidity` and
 `volume24h` (`{usd, source, observedAt}`, from the same snapshot as `marketCap`) and `launchStage`
 only when present. A token priced only by its launchpad's curve has no liquidity figure by design.
 Two more fields since 2026-09-13: `venue`, the pool the current reading came from in words
@@ -135,6 +151,11 @@ absent for a token whose launch HEY did not observe — and `hasBuilderSource`, 
 a repository, org, changelog or feed to read building from. `activityStatus: "UNKNOWN"` with
 `hasBuilderSource: false` means there is nothing to read, not that HEY has not looked; trading
 is not building.
+
+Four more list-item fields, present only when HEY holds them (documented 2026-09-19; they have
+been served for longer): `websiteUrl`, the project's own site; `trades24h`
+(`{buys, sells, source, observedAt}`), the day's buy and sell counts from the same market
+snapshot; `priceChange24hPct`, a plain number; and `logoUrl`, an absolute image URL as HEY recorded it.
 
 **An unrecognised value is dropped, not refused.** A caller who invents a filter gets the
 unfiltered listing rather than a 400 to handle — and the `query` object in every response
@@ -218,7 +239,7 @@ Every ship now carries **`detectedAt`** — when HEY observed it — and the fee
 **`?detectedSince=<ISO>`** and **`?sort=detected`**. Page along those and nothing is missed:
 
 ```bash
-curl "https://heyresearch.xyz/api/ships?sort=detected&detectedSince=2026-09-16T00:00:00Z&limit=100"
+curl "https://heyresearch.xyz/api/ships?sort=detected&detectedSince=2026-09-16T00:00:00Z&limit=48"
 ```
 
 Keep the highest `detectedAt` you have seen and pass it back next time. `since` is unchanged and
@@ -328,6 +349,15 @@ on a reader's request, and it can answer `503` when that budget is spent for the
 A `report` has no score, no count of passed checks and no verdict vocabulary. Findings are
 facts with the place they were read from, and the absences are named as absences.
 
+**Three refusals before any of that** (documented 2026-09-19). The route is same-origin and JSON
+only: a request whose `origin` is not HEY's own is `403` with `{"error": "Cross-site request
+refused."}`, and a body that is not `application/json` is `415` with `{"error": "Send JSON."}`;
+a malformed or missing `address` is `400`. The `403` is the one to design around, because the
+`OPTIONS` preflight succeeds first — it answers `204` with the allowed methods, as every route
+here does — so a browser call from another origin clears the preflight and is then refused on
+the POST itself. Use `GET /api/token/{chainId}/{address}` from a browser; it is cross-origin by
+design.
+
 ## `GET /api/ships`
 
 A record of ships, not of projects: a project that shipped three times this week appears
@@ -336,12 +366,13 @@ three times, each with its own source.
 | Parameter | Values | Default |
 |---|---|---|
 | `limit` / `offset` | 1–48 / ≥ 0 | 24 / 0 |
-| `sort` | `latest`, `marketCap`, `activity` | `latest` |
+| `sort` | `latest`, `marketCap`, `activity`, `detected` (by when HEY observed the ship) | `latest` |
 | `project` | a project slug | — |
 | `type` | a ship event type, e.g. `GITHUB_RELEASE`, `PRODUCT_LAUNCH` | — |
 | `has` | the card facts, as above | — |
 | `q` | the shipping project's name, ticker or contract prefix | — |
-| `since` | an ISO 8601 instant — the window you are reporting on | — |
+| `since` | an ISO 8601 instant — the window you are reporting on (filters `publishedAt`) | — |
+| `detectedSince` | an ISO 8601 instant filtering `detectedAt`, the mirroring axis — see below | — |
 
 An unreadable `since` is treated as **no window** rather than a silently shifted one, and the
 echo shows the instant it was actually read as.
@@ -382,15 +413,21 @@ A project's `onchainActivity` in `GET /api/projects/{slug}` gained four optional
 `methods` and `eventKinds`. The last two are how many *different* method names were called and
 event names emitted over the days read — the cheapest honest separation between an ERC-20 being
 traded and a contract with functions people call. All four are counts and context, never an input
-to any score. Still no accounts, anywhere.
+to any score. No address is named here — but "no accounts, anywhere", which this line used to
+say, stopped being true on 2026-09-15: HEY's daily index counts how many different addresses
+called a contract and traded a token, and `/api/signals` publishes those counts (2026-09-19).
+They are figures the provider returns; nothing selects, stores or exposes an address.
 
 ## `GET /api/signals` and `GET /api/signals/{id}` (2026-09-13)
 
 HEY Signal: measured changes about published projects. `group` (`development`, `contract`,
-`market`, `launch`, `research`), `kind` (e.g. `development_spike`, `development_slowing`,
-`development_dormant`, `development_resumed`, `release_published`, `contract_deployed`,
-`contract_upgraded`, `liquidity_drop`, `liquidity_rise`, `liquidity_removed`, `market_active`,
-`volume_spike`, `launch_graduated`, `project_published`, `builder_verified`, `token_verified`),
+`market`, `launch`, `research`), `kind` — the full vocabulary is `development_spike`,
+`development_slowing`, `development_dormant`, `development_resumed`, `release_published`,
+`contract_deployed`, `contract_upgraded`, `liquidity_drop`, `liquidity_rise`,
+`liquidity_removed`, `market_active`, `volume_spike`, `usage_broadened`, `usage_narrowed`,
+`concentration_rose`, `trading_narrow`, `launch_graduated`, `project_published`,
+`builder_verified` and `token_verified` (`packages/domain/src/signals/vocabulary.ts`, private
+repository) —
 `slug`, `days` (default 30), `order=newest|importance`, `limit` ≤ 100, `offset`. The unfiltered feed leaves out
 `project_published` (a launch record, thousands after a promotion pass); pass `group=launch`,
 `kind=project_published` or `include=published` to see them. Each item carries
@@ -398,7 +435,16 @@ HEY Signal: measured changes about published projects. `group` (`development`, `
 URLs a reader can open), `source` (the HEY table the figures came from), `confidence` (0–1) and
 `importance` (0–100). Every rule needs an absolute floor and a relative change, fires once per
 project per window, and honours a cooldown; a moderator can mark a false positive, which leaves
-the feed. Counts of trades, transfers and events only, never accounts. Never a verdict.
+the feed.
+
+**Four kinds count addresses, and say so** (2026-09-19; the page used to claim "never accounts",
+which stopped being true when they shipped). `usage_broadened` and `usage_narrowed` report
+`address-days` of contract calls week over week; `trading_narrow` reports how few addresses were
+behind a day of heavy trading; `concentration_rose` reports a Nakamoto coefficient — how few
+addresses hold half the supply, pools, lockers and burn addresses excluded from both the count
+and the supply it is measured against. All four are figures a provider computes and returns;
+none of them names, stores or exposes an address, and none of them is an input to activity
+status, Build Momentum, the Discovery Gap or the Builder Radar. Never a verdict.
 
 ## `GET /api/builders` (2026-09-13)
 
@@ -442,14 +488,22 @@ The same material is also published as RSS, for a reader rather than a script:
 
 ## Implementation
 
+Paths under `apps/web/` and `packages/domain/` are in HEY's **private** repository and are
+named here so a reader of that repository can find them; they are not part of the public export
+(2026-09-19). `packages/sdk`, `packages/sources`, `packages/scoring`, `packages/config`,
+`packages/ui` and `apps/mcp` are public.
+
 - Routes: `apps/web/src/app/api/projects/`, `apps/web/src/app/api/ships/`
 - Serialisers: `apps/web/src/lib/public-api-view.ts` (pure, unit-tested)
 - Query vocabulary: `apps/web/src/lib/public-api-query.ts` (pure, unit-tested)
 - Shared response rules: `apps/web/src/lib/public-api.ts`
 - Contract tests: `apps/web/e2e/public-api.spec.ts`
-- The SDK: `packages/sdk` (`@hey-research/sdk` on npm); the type-level contract between its response
-  types and the serialisers: `apps/web/src/lib/public-api-contract.test.ts` (2026-09-19)
+- The SDK: `packages/sdk` (published as `@hey-research/sdk` once the npm organisation exists);
+  the type-level contract between its response types and the serialisers:
+  `apps/web/src/lib/public-api-contract.test.ts` (2026-09-19)
 
-Every route reads HEY's own database and makes no third-party call (CLAUDE.md architecture
-rules 13–14), and every filter goes through the same query layer the pages use, so a count
-returned here and a count shown on a page cannot disagree.
+Every route here reads HEY's own database and makes no third-party call (CLAUDE.md
+architecture rules 13–14) — with one deliberate exception, `POST /api/scan`, which exists to
+read an address HEY has never seen and says so in its own section above. Every filter goes
+through the same query layer the pages use, so a count returned here and a count shown on a
+page cannot disagree.

@@ -6,6 +6,16 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- `HEY_API_URL` must be https, unless the host is localhost. The API key rides
+  on every request, and a plaintext or foreign base URL sent it there in clear
+  text with nothing said; the server now refuses to start and the ready line
+  prints the resolved origin.
+- `engines.node` is `>=20`: `@modelcontextprotocol/sdk` pulls
+  `@hono/node-server`, which requires Node 20. Installing under Node 18 warned
+  `EBADENGINE`, so the declared floor now matches the tree.
+
 ## 0.1.0 — 2026-09-19
 
 ### Added

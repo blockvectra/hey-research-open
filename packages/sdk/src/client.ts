@@ -70,6 +70,22 @@ export type HeyClientOptions = {
 
 export type QueryParams = Record<string, string | number | boolean | readonly string[] | undefined>;
 
+/** A 3xx, or the opaque stand-in a browser returns for one under `redirect: 'manual'`. */
+function isRedirect(response: Response): boolean {
+  if (response.type === 'opaqueredirect') return true;
+  return response.status >= 300 && response.status < 400;
+}
+
+/** The host a `Location` names, resolved against the request URL; a word when there is nothing to read. */
+function locationHost(location: string | null, requestUrl: URL): string {
+  if (!location) return 'an undisclosed host';
+  try {
+    return new URL(location, requestUrl).host;
+  } catch {
+    return 'an unreadable location';
+  }
+}
+
 /** `has: ['token', 'github']` travels as `has=token,github`, the way the API reads it. */
 function encodeParam(value: string | number | boolean | readonly string[]): string | undefined {
   if (Array.isArray(value)) return value.length === 0 ? undefined : value.join(',');
@@ -115,6 +131,18 @@ export class HeyClient {
     try {
       response = await this.fetchImpl(url.toString(), {
         signal: controller.signal,
+        /*
+         * The key never follows a redirect (round-9 security, 2026-09-19).
+         *
+         * `fetch` follows up to twenty hops by default and replays the request
+         * headers on each one, so a caller pointed at a base URL that answers
+         * 302 — a shortener, a stale vanity domain, a proxy someone else
+         * controls — handed the bearer token to whatever host the `Location`
+         * named, silently. Manual, and a 3xx is an error naming that host:
+         * HEY's public API answers every documented route directly, so a
+         * redirect is a misconfigured base URL, not a thing to chase.
+         */
+        redirect: 'manual',
         headers: {
           accept: 'application/json',
           'user-agent': this.userAgent,
@@ -129,6 +157,20 @@ export class HeyClient {
       throw new HeyApiError(`Could not reach HEY at ${this.baseUrl}: ${reason}`, { code: 'network', cause: error });
     } finally {
       clearTimeout(timer);
+    }
+
+    /*
+     * A redirect is a misconfigured base URL, and it is reported as one. The
+     * browser fetch hides the target behind an opaque response, so the
+     * message says what it can: the host when the header is readable, and
+     * otherwise that there was one.
+     */
+    if (isRedirect(response)) {
+      const target = locationHost(response.headers?.get('location') ?? null, url);
+      throw new HeyApiError(
+        `HEY at ${this.baseUrl} answered with a redirect to ${target}. The SDK does not follow redirects, because the API key travels with the request; point baseUrl at the origin that answers directly.`,
+        { code: 'http', status: response.status || undefined },
+      );
     }
 
     if (!response.ok) {

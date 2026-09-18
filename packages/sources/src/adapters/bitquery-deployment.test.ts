@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { readFixture, stubFetch, testContext } from '../testing';
 import {
   BITQUERY_DEPLOYMENT_QUERY,
   createBitqueryDeploymentAdapter,
@@ -110,5 +111,60 @@ describe('bitquery deployment', () => {
       ctx as never,
     );
     expect(bad.status).toBe('error');
+  });
+});
+
+/*
+ * The cases above hand typed literals to the normaliser, so the Zod schema
+ * never ran (round 9, 2026-09-19) — architecture rule 16 on the one paid
+ * source. The fixture is the shape the 2026-09-15 probe returned, hand-built
+ * from the adapter's own schema; Bitquery is keyed and metered and is never
+ * called from a test.
+ */
+const json = (body: string) => ({ status: 200, body, headers: { 'content-type': 'application/json' } });
+const fixture = () => JSON.parse(readFixture('bitquery-deployment.json')) as {
+  data: { EVM: { Calls: Record<string, unknown>[] } };
+};
+
+describe('bitquery deployment, through the schema', () => {
+  const adapter = createBitqueryDeploymentAdapter();
+  const input = { address: TOKEN, apiKey: 'test-token' };
+
+  it('validates the saved envelope and separates the factory from the deployer', async () => {
+    const stub = stubFetch(json(readFixture('bitquery-deployment.json')));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('fresh');
+    expect(result.data).toEqual({
+      address: TOKEN,
+      creator: FACTORY,
+      origin: DEPLOYER,
+      entryPoint: ENTRY,
+      txHash: '0xaa11',
+      blockNumber: 4_821_993,
+      createdAt: new Date('2026-09-15T09:46:28Z'),
+    });
+  });
+
+  it('refuses an account that arrives as an object instead of an address', async () => {
+    // A plausible reshape: `Call.From` becoming `{ Address }` like the holders
+    // cube. Nothing downstream would notice — `address()` would read undefined
+    // and the creation would silently become "HEY could not read it".
+    const body = fixture();
+    body.data.EVM.Calls[0]!.Call = { From: { Address: FACTORY }, To: TOKEN };
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('error');
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
+  });
+
+  it('refuses a `Calls` that is no longer a list', async () => {
+    const body = fixture();
+    (body.data.EVM as Record<string, unknown>).Calls = { edges: [] };
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
   });
 });

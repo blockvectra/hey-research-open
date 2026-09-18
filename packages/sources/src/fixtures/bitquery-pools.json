@@ -1,0 +1,16 @@
+{
+  "data": {
+    "EVM": {
+      "pools": [
+        { "PoolEvent": { "Pool": { "SmartContract": "0x8366a39cc670b4001a1121b8f6a443a643e40951", "CurrencyA": { "SmartContract": "0x0000000000000000000000000000000000000000" }, "CurrencyB": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" } }, "Liquidity": { "a": 20512.723, "b": 20425.15 } }, "events": "835" },
+        { "PoolEvent": { "Pool": { "SmartContract": "0xe2c6b7056eba176add3097ff537114c11db0db18", "CurrencyA": { "SmartContract": "0x39dbed3a2bd333467115de45665cc57f813c4571" }, "CurrencyB": { "SmartContract": "0x0000000000000000000000000000000000000000" } }, "Liquidity": { "a": 7516.95, "b": 7421.34 } }, "events": "12" },
+        { "PoolEvent": { "Pool": { "SmartContract": "0xe2c6b7056eba176add3097ff537114c11db0db18", "CurrencyA": { "SmartContract": "0x39dbed3a2bd333467115de45665cc57f813c4571" }, "CurrencyB": { "SmartContract": "0x0000000000000000000000000000000000000000" } }, "Liquidity": { "a": 0, "b": 0 } }, "events": "4" }
+      ],
+      "depth": [
+        { "Price": { "Pool": { "SmartContract": "0x8366a39cc670b4001a1121b8f6a443a643e40951", "CurrencyA": { "SmartContract": "0x0000000000000000000000000000000000000000" }, "CurrencyB": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" } }, "AtoB": { "sellingA": 9.5 }, "BtoA": { "sellingB": 1200 } } },
+        { "Price": { "Pool": { "SmartContract": "0xe2c6b7056eba176add3097ff537114c11db0db18", "CurrencyA": { "SmartContract": "0x39dbed3a2bd333467115de45665cc57f813c4571" }, "CurrencyB": { "SmartContract": "0x0000000000000000000000000000000000000000" } }, "AtoB": { "sellingA": 611.957 }, "BtoA": { "sellingB": 4.1 } } },
+        { "Price": { "Pool": { "SmartContract": "0xaa241a27c911027b0f3236ec89d4db21269064da", "CurrencyA": { "SmartContract": "0x39dbed3a2bd333467115de45665cc57f813c4571" }, "CurrencyB": { "SmartContract": "0x0000000000000000000000000000000000000000" } }, "AtoB": { "sellingA": 0.556 }, "BtoA": { "sellingB": 1 } } }
+      ]
+    }
+  }
+}

@@ -6,6 +6,13 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- The client no longer follows redirects. `fetch` replays request headers across
+  hops, so a base URL that forwarded handed the API key to whatever host the
+  `Location` named; a 3xx is now a `HeyApiError` with code `http`, naming that
+  host. Point `baseUrl` at the origin that answers directly.
+
 ## 0.1.0 — 2026-09-19
 
 ### Added

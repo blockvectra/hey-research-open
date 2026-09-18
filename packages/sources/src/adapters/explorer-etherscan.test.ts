@@ -37,6 +37,47 @@ describe('explorer etherscan-style reads (Blockscout PRO)', () => {
     expect(result.data).toEqual([]);
   });
 
+  it('reads the string `result` the provider actually returns when there is nothing to list', async () => {
+    /*
+     * `explorer-etherscan.ts:9-12` documents that this API answers with a
+     * *string* rather than a list when empty, and `rows()` exists to absorb
+     * exactly that. The only empty fixture held `"result": []` until round 9
+     * (2026-09-19), so the documented behaviour was certified by nothing and
+     * the union in `envelope()` was never exercised.
+     */
+    const stub = stubFetch({ status: 200, body: readFixture('explorer-txlist-empty-string.json') });
+    const result = await createAddressTxListAdapter().fetch({ ...api, address: '0xfdfbcae9ed23dc88757a48b2c0cc3910e6c1afa6' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.status).toBe('fresh');
+    expect(result.data).toEqual([]);
+  });
+
+  it('cannot tell a rate-limit envelope from an empty listing (2026-09-19)', async () => {
+    /*
+     * The provider's rate-limit answer is a 200 with `status: "0"`,
+     * `message: "NOTOK"` and a string `result`, which `rows()` absorbs into
+     * the same empty list as "no transactions found". Pinned deliberately:
+     * the caller currently reads "this address has sent nothing since that
+     * block" from a request that was refused, which is a real gap in the
+     * adapter rather than in this test. Changing that behaviour has to change
+     * this case with it.
+     */
+    const stub = stubFetch({ status: 200, body: readFixture('explorer-ratelimit.json') });
+    const result = await createAddressTxListAdapter().fetch({ ...api, address: '0xfdfbcae9ed23dc88757a48b2c0cc3910e6c1afa6' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.status).toBe('fresh');
+    expect(result.data).toEqual([]);
+
+    // The same envelope on the creation read, which is where it would be read
+    // as "this contract has no creation record".
+    const creation = stubFetch({ status: 200, body: readFixture('explorer-ratelimit.json') });
+    const created = await createContractCreationAdapter().fetch({ ...api, addresses: [TOKEN] }, testContext({ fetchImpl: creation.fetchImpl }));
+    expect(created.data).toEqual([]);
+
+    // And on the source read, where it becomes "unverified".
+    const source = stubFetch({ status: 200, body: readFixture('explorer-ratelimit.json') });
+    const named = await createContractSourceAdapter().fetch({ ...api, address: TOKEN }, testContext({ fetchImpl: source.fetchImpl }));
+    expect(named.data).toEqual({ address: TOKEN, verified: false });
+  });
+
   it('names a verified contract', async () => {
     const stub = stubFetch({ status: 200, body: readFixture('explorer-getsourcecode.json') });
     const result = await createContractSourceAdapter().fetch({ ...api, address: '0xcb199e9bbd4a3e52331eb1e90d17e6d3746b5fc6' }, testContext({ fetchImpl: stub.fetchImpl }));

@@ -83,6 +83,14 @@ for await (const ship of hey.ships.items({ sort: 'detected', detectedSince: wate
 
 Both are async iterables: stop reading and no further request is made.
 
+**One walk at a time.** Read serially and a full walk of the catalogue is
+comfortable — 101 pages, 4,844 items, no duplicates and no refusal, measured
+against the live API without a key. `Promise.all` over several `list()` or
+`pages()` calls is a different thing: the anonymous limit is 120 a minute per
+address, and 150 concurrent requests were first refused at request 19, with 82
+refused in all. One client, one walk at a time — or use a key, which raises the
+bucket to your tier.
+
 ### Absent means unknown
 
 A field the API does not know is left out, never sent as `null` or `0`. A
@@ -114,6 +122,14 @@ The message is the sentence HEY sent, when it sent one. `status` and the parsed
 **No retries.** The client never retries on your behalf; a 429 surfaces with
 `retryAfterSeconds` and you decide. A paging walk ends with the same error a
 single call would throw.
+
+**No redirects.** The API key is sent as a bearer token on every request, so the
+client asks `fetch` not to follow redirects: a 3xx becomes a `http` error naming
+the host the `Location` pointed at, rather than a key handed to that host. If
+you see one, `baseUrl` is pointing somewhere that forwards — give it the origin
+that answers directly (`https://heyresearch.xyz`, not an `http://` or vanity
+form of it). A `fetchImpl` of your own must keep that property: do not replay
+the `Authorization` header across origins.
 
 ### In a browser
 

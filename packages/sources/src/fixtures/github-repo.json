@@ -10,6 +10,8 @@
   "updated_at": "2026-08-30T14:25:00Z",
   "archived": false,
   "fork": false,
+  "is_template": false,
   "stargazers_count": 42,
-  "open_issues_count": 7
+  "open_issues_count": 7,
+  "size": 2400
 }

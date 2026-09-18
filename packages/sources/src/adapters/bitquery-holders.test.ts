@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { readFixture, stubFetch, testContext } from '../testing';
 import { BITQUERY_HOLDERS_QUERY, createBitqueryHoldersAdapter, normalizeBitqueryHolders } from './bitquery-holders';
 
 const A = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
@@ -55,5 +56,60 @@ describe('bitquery holders', () => {
     expect(adapter.canHandle({ token: A, since: new Date(), apiKey: 'k' })).toBe(true);
     expect(adapter.canHandle({ token: 'nope', since: new Date(), apiKey: 'k' })).toBe(false);
     expect(adapter.canHandle({ token: A, since: new Date(), apiKey: '' })).toBe(false);
+  });
+});
+
+/*
+ * The cases above bypass the Zod schema by handing literals to the normaliser
+ * (round 9, 2026-09-19), so nothing proved the envelope this adapter actually
+ * receives is the one it validates — architecture rule 16 on the paid source.
+ * The fixture is hand-built from the adapter's own schema; Bitquery is keyed
+ * and metered and no test calls it.
+ */
+const json = (body: string) => ({ status: 200, body, headers: { 'content-type': 'application/json' } });
+const fixture = () => JSON.parse(readFixture('bitquery-holders.json')) as {
+  data: { EVM: { top: Record<string, unknown>[]; total: Record<string, unknown>[] } };
+};
+
+describe('bitquery holders, through the schema', () => {
+  const adapter = createBitqueryHoldersAdapter();
+  const input = { token: A, since: new Date('2026-09-14T00:00:00Z'), apiKey: 'test-token', exclude: [C] };
+
+  it('validates the saved envelope, ranks the balances and carries the concentration figures', async () => {
+    const stub = stubFetch(json(readFixture('bitquery-holders.json')));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('fresh');
+    // A zero balance is a row the cube keeps and not a holder.
+    expect(result.data?.holders.map((holder) => holder.address)).toEqual([A, B]);
+    expect(result.data).toMatchObject({ holdersTotal: 4321, gini: 0.8123, nakamotoHalf: 34, medianBalance: 125.75 });
+    // The exclusion is a variable on the request, not something the reply carries.
+    const body = JSON.parse(String(stub.requests[0]?.init?.body)) as { variables: { exclude: string[]; top: number } };
+    expect(body.variables).toMatchObject({ exclude: [C], top: 50 });
+  });
+
+  it('refuses a holder address that arrives null instead of a string', async () => {
+    // `Holder { Address }` is the only required string in the reply. A null
+    // there would drop a balance out of the map with no error at all.
+    const body = fixture();
+    (body.data.EVM.top[0]!.Holder as Record<string, unknown>).Address = null;
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('error');
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
+  });
+
+  it('refuses a balance that arrives flattened to a bare amount', async () => {
+    // The plausible reshape for this cube: `Balance` collapsing from an object
+    // to the number it mostly carries. Everything inside `Balance` is nullish,
+    // so the object being required is the whole of the guard.
+    const body = fixture();
+    body.data.EVM.top[0]!.Balance = 900.5 as unknown as Record<string, unknown>;
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('error');
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
   });
 });

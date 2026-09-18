@@ -96,6 +96,49 @@ describe('HeyClient.get', () => {
     await anonymous.client.get('/api/projects');
     expect((anonymous.calls[0]!.init?.headers as Record<string, string>).authorization).toBeUndefined();
   });
+
+  /*
+   * The key must not follow a redirect (round-9 security, 2026-09-19). `fetch`
+   * replays request headers across hops by default, so a base URL that
+   * forwards — a shortener, a stale vanity domain, someone else's proxy —
+   * handed the bearer token to that host without a word.
+   */
+  it('asks fetch not to follow redirects', async () => {
+    const { client, calls } = recording({}, { apiKey: 'hey_abc' });
+    await client.get('/api/status');
+    expect(calls[0]!.init?.redirect).toBe('manual');
+  });
+
+  it('turns a redirect into an error naming the host, and never re-sends the key', async () => {
+    const calls: string[] = [];
+    const client = new HeyClient({
+      baseUrl: 'https://hey.test',
+      apiKey: 'hey_abc',
+      fetchImpl: async (input) => {
+        calls.push(input);
+        return ok({}, 302, { location: 'https://collector.example/api/status' });
+      },
+    });
+
+    const error = await caught(client.status());
+    expect(error.code).toBe('http');
+    expect(error.status).toBe(302);
+    expect(error.message).toContain('collector.example');
+    // One request, not two: nothing chased the Location.
+    expect(calls).toEqual(['https://hey.test/api/status']);
+  });
+
+  it('reports a browser’s opaque redirect too, which names no host at all', async () => {
+    const client = new HeyClient({
+      baseUrl: 'https://hey.test',
+      fetchImpl: async () => ({ ...ok({}, 0), type: 'opaqueredirect' }) as Response,
+    });
+
+    const error = await caught(client.status());
+    expect(error.code).toBe('http');
+    expect(error.status).toBeUndefined();
+    expect(error.message).toContain('an undisclosed host');
+  });
 });
 
 describe('HeyClient typed methods', () => {

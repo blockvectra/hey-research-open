@@ -27,6 +27,37 @@ describe('GitHub repo adapter', () => {
     });
     expect(result.data?.forkOf).toBeUndefined();
     expect(result.data?.latestPushAt?.toISOString()).toBe('2026-08-30T14:22:10.000Z');
+    /*
+     * `size` and `is_template` are both declared, both mapped, and both
+     * branched on in production — and until round 9 (2026-09-19) neither was
+     * in the fixture, so `isTemplate` was only ever the `?? false` default and
+     * `sizeKb` was never anything but undefined. Confirmed against a live
+     * unauthenticated read on 2026-09-19: `size` is a number of kilobytes and
+     * `is_template` a boolean.
+     */
+    expect(result.data?.sizeKb).toBe(2400);
+  });
+
+  it('carries an empty repository as a size of zero, which is what rejects a submission', async () => {
+    /*
+     * `submission-evidence.ts:160` turns `sizeKb === 0` into "the repository
+     * is empty" and refuses the anchor. `opt()` drops null and undefined but
+     * keeps 0, and that distinction is the whole rejection — a fixture without
+     * `size` could never have exercised it.
+     */
+    const base = JSON.parse(readFixture('github-repo.json')) as Record<string, unknown>;
+    const empty = stubFetch({ status: 200, body: JSON.stringify({ ...base, size: 0, pushed_at: null }) });
+    const result = await adapter.fetch(repoInput, testContext({ fetchImpl: empty.fetchImpl }));
+
+    expect(result.status).toBe('fresh');
+    expect(result.data?.sizeKb).toBe(0);
+    expect(Object.hasOwn(result.data ?? {}, 'sizeKb')).toBe(true);
+
+    // And a repository GitHub does not report a size for is unknown, not empty.
+    const silent = stubFetch({ status: 200, body: JSON.stringify({ ...base, size: undefined }) });
+    const unknown = await adapter.fetch(repoInput, testContext({ fetchImpl: silent.fetchImpl }));
+    expect(unknown.data?.sizeKb).toBeUndefined();
+    expect(Object.hasOwn(unknown.data ?? {}, 'sizeKb')).toBe(false);
   });
 
   it('reports a fork with its upstream, and a template, so neither is taken for build evidence', async () => {
@@ -41,6 +72,9 @@ describe('GitHub repo adapter', () => {
     const template = stubFetch({ status: 200, body: JSON.stringify({ ...base, is_template: true }) });
     const templated = await adapter.fetch(repoInput, testContext({ fetchImpl: template.fetchImpl }));
     expect(templated.data).toMatchObject({ isFork: false, isTemplate: true });
+    // The fixture carries `is_template: false`, so the false case is the
+    // provider's answer now rather than the adapter's `?? false` default.
+    expect(base['is_template']).toBe(false);
   });
 
   it('sends the token only when one is configured', async () => {

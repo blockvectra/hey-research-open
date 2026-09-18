@@ -1,0 +1,12 @@
+{
+  "data": {
+    "EVM": {
+      "edges": [
+        { "Transfer": { "Sender": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "Receiver": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "transfers": "5", "amount": "10" },
+        { "Transfer": { "Sender": "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA", "Receiver": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "transfers": "3", "amount": "4" },
+        { "Transfer": { "Sender": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "Receiver": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" }, "transfers": "1", "amount": "2" },
+        { "Transfer": { "Sender": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", "Receiver": "0xdddddddddddddddddddddddddddddddddddddddd" }, "transfers": "99", "amount": "99" }
+      ]
+    }
+  }
+}

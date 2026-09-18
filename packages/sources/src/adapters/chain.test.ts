@@ -46,6 +46,14 @@ describe('Blockscout adapter', () => {
     const stub = stubFetch({ status: 200, body: readFixture('blockscout-address.json') });
     await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
 
+    /*
+     * Product rule 1 is enforced by the loop below, and a loop over an empty
+     * list enforces nothing (round 9, 2026-09-19). An adapter that stopped
+     * fetching — or a stub that was never handed to it — would have passed
+     * this test while the rule went unchecked, so the requests are asserted
+     * to exist before they are inspected.
+     */
+    expect(stub.requests.length).toBeGreaterThan(0);
     for (const request of stub.requests) {
       expect(request.url.toLowerCase()).not.toContain('holder');
       expect(request.url.toLowerCase()).not.toContain('token-transfers');

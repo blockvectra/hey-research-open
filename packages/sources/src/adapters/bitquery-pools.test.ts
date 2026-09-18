@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { readFixture, stubFetch, testContext } from '../testing';
 import { BITQUERY_POOLS_QUERY, createBitqueryPoolsAdapter, normalizeBitqueryPools } from './bitquery-pools';
 
 const HEY = '0xb33eb16782776b4d738c0fd643577cb0284db610';
@@ -70,5 +71,58 @@ describe('bitquery pools', () => {
     expect(adapter.canHandle({ addresses: many, since: new Date(), apiKey: 'k' })).toBe(false);
     expect(adapter.canHandle({ addresses: [HEY], since: new Date(), apiKey: '' })).toBe(false);
     expect(adapter.canHandle({ addresses: [HEY], since: new Date(), apiKey: 'k' })).toBe(true);
+  });
+});
+
+/*
+ * The cases above hand literals to the normaliser, so the Zod schema never ran
+ * (round 9, 2026-09-19) — architecture rule 16 on the paid source. The fixture
+ * carries the same two pools asserted above, in the envelope the adapter
+ * actually receives; Bitquery is keyed and metered and no test calls it.
+ */
+const json = (body: string) => ({ status: 200, body, headers: { 'content-type': 'application/json' } });
+const fixture = () => JSON.parse(readFixture('bitquery-pools.json')) as {
+  data: { EVM: { pools: Record<string, unknown>[]; depth: Record<string, unknown>[] } };
+};
+
+describe('bitquery pools, through the schema', () => {
+  const adapter = createBitqueryPoolsAdapter();
+  const input = { addresses: [HEY, PONS], since: new Date('2026-09-14T00:00:00Z'), apiKey: 'test-token' };
+
+  it('validates the saved envelope, counts each pool once and reads depth in the selling direction', async () => {
+    const stub = stubFetch(json(readFixture('bitquery-pools.json')));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('fresh');
+    const hey = result.data?.find((row) => row.tokenAddress === HEY);
+    expect(hey).toMatchObject({ pools: 1, events: 835 });
+    expect(hey?.liquidityUsd).toBeCloseTo(40_937.873, 3);
+    // HEY is CurrencyB, so its depth is the B→A side only.
+    expect(hey?.depthOnePctBase).toBeCloseTo(1200, 3);
+    const pons = result.data?.find((row) => row.tokenAddress === PONS);
+    // A second event on a pool already seen must not count or bank it twice.
+    expect(pons).toMatchObject({ pools: 1, events: 16 });
+    expect(pons?.depthOnePctBase).toBeCloseTo(612.513, 3);
+  });
+
+  it('refuses an envelope whose pool wrapper was renamed', async () => {
+    // `PoolEvent { Pool }` is required on every row. A rename would leave every
+    // token with no pools and no liquidity, which reads as a dead market.
+    const body = fixture();
+    body.data.EVM.pools[0] = { PoolEvents: body.data.EVM.pools[0]!.PoolEvent, events: '835' };
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('error');
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
+  });
+
+  it('refuses a pool address that arrives as a number', async () => {
+    const body = fixture();
+    ((body.data.EVM.depth[0]!.Price as Record<string, unknown>).Pool as Record<string, unknown>).SmartContract = 42;
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
   });
 });

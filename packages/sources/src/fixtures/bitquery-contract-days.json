@@ -1,0 +1,17 @@
+{
+  "data": {
+    "EVM": {
+      "calls": [
+        { "Block": { "Date": "2026-09-13" }, "Call": { "To": "0x39DBED3A2BD333467115DE45665CC57F813C4571" }, "calls": "1450750", "methods": "17", "callers": "7835" },
+        { "Block": { "Date": "2026-09-12" }, "Call": { "To": "0x39dbed3a2bd333467115de45665cc57f813c4571" }, "calls": "900", "methods": "4", "callers": "12" }
+      ],
+      "events": [
+        { "Block": { "Date": "2026-09-13" }, "Log": { "SmartContract": "0x39dbed3a2bd333467115de45665cc57f813c4571" }, "events": "590679", "kinds": "3" },
+        { "Block": { "Date": "2026-09-13" }, "Log": { "SmartContract": "0x2e8c31162b855a2ffa90f6f8634643ad6f111e18" }, "events": "12", "kinds": "2" }
+      ],
+      "transactions": [
+        { "Block": { "Date": "2026-09-13" }, "Transaction": { "To": "0x39dbed3a2bd333467115de45665cc57f813c4571" }, "transactions": "4200" }
+      ]
+    }
+  }
+}

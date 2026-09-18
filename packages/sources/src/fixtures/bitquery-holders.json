@@ -1,0 +1,12 @@
+{
+  "data": {
+    "EVM": {
+      "top": [
+        { "Holder": { "Address": "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA" }, "Balance": { "Amount": "900.5", "FirstChangeTime": "2026-09-01T00:00:00Z", "LastChangeTime": "2026-09-13T00:00:00Z", "UpdateCount": "12" } },
+        { "Holder": { "Address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "Balance": { "Amount": "100", "FirstChangeTime": null, "LastChangeTime": null, "UpdateCount": null } },
+        { "Holder": { "Address": "0xcccccccccccccccccccccccccccccccccccccccc" }, "Balance": { "Amount": "0", "FirstChangeTime": null, "LastChangeTime": null, "UpdateCount": null } }
+      ],
+      "total": [{ "holders": "4321", "gini": "0.8123", "nakamoto": "34", "median": "125.75" }]
+    }
+  }
+}

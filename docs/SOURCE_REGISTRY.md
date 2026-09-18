@@ -4,11 +4,15 @@ Every external source HEY reads, with what was actually observed when it was ver
 not what its documentation claims. A source is not integrated until it appears here.
 
 **Scope lock:** Robinhood Chain only, `chain_id = 4663`. Aggregators are queried for
-Robinhood Chain contracts and nothing else. No paid provider is present, and none may be
-added without explicit founder approval.
+Robinhood Chain contracts and nothing else. One paid provider is present — Bitquery Pro, named
+in its own row below — and no other may be added without explicit founder approval.
 
 **Verified:** 2026-09-01. Re-verify before trusting any row: endpoints change without notice,
 and a stale registry is worse than none.
+
+**Paths:** the `packages/domain/...` and `apps/web/...` files named below live in the lab's
+private repository and are not part of the public subset (2026-09-19). They are named so a
+reader can see where a rule is decided, not as links to follow here.
 
 ---
 

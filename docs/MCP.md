@@ -13,14 +13,21 @@ them.
 ## Install
 
 There is no hosted MCP endpoint and no URL to paste. The server is a small program that
-runs on your machine and calls the public API. Since 2026-09-19 it is on npm as
-`@hey-research/mcp` (Node 18 or newer), so a client can start it with `npx` and nothing
-needs cloning.
+runs on your machine and calls the public API (Node 20 or newer).
 
-**Claude Code** — add it with the CLI:
+**It is not on npm yet** (checked 2026-09-19): the `@hey-research` scope has not been created,
+so `npx -y @hey-research/mcp` does not resolve. Build it from source — this is the working
+path today.
 
 ```bash
-claude mcp add hey-research -- npx -y @hey-research/mcp
+# in a clone of HEY's public repository
+pnpm install && pnpm --filter @hey-research/mcp build
+```
+
+Then point a client at the built entrypoint, `apps/mcp/dist/index.js`:
+
+```bash
+claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist/index.js
 ```
 
 **Claude Desktop** — in `claude_desktop_config.json`:
@@ -29,29 +36,21 @@ claude mcp add hey-research -- npx -y @hey-research/mcp
 {
   "mcpServers": {
     "hey-research": {
-      "command": "npx",
-      "args": ["-y", "@hey-research/mcp"]
+      "command": "node",
+      "args": ["/absolute/path/to/hey-research/apps/mcp/dist/index.js"]
     }
   }
 }
 ```
 
+**Once the package is published**, the same server starts with `npx` and nothing needs
+cloning — `claude mcp add hey-research -- npx -y @hey-research/mcp`, or `"command": "npx"`
+with `"args": ["-y", "@hey-research/mcp"]`. Releases will be tagged `mcp-v*` and published
+from the private repository; the public repository mirrors the source.
+
 Set `HEY_API_URL` to read a different instance (`http://localhost:3000` while developing). Set `HEY_API_KEY`
 to read with your key's allowance (M13-E); the server never prints the key.
 It defaults to `https://heyresearch.xyz`.
-
-**From source**, when you want to read or change it: the server's source is in HEY's public
-repository.
-
-```bash
-# in a clone of the public repository
-pnpm install && pnpm --filter @hey-research/mcp build
-```
-
-Then point a client at `apps/mcp/dist/index.js` instead of `npx`
-(`claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist/index.js`,
-or `"command": "node"` with that path in `args`). Releases are tagged `mcp-v*` and published from
-the private repository; the public repository mirrors the source (`docs/OPEN_SOURCE.md`).
 
 ## The twelve tools
 
