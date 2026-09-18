@@ -4,6 +4,7 @@
   "include": [
     "packages/config",
     "packages/scoring",
+    "packages/sdk",
     "packages/sources",
     "packages/ui",
     "apps/mcp",

@@ -1,21 +1,60 @@
 {
-  "name": "@hey/mcp",
-  "version": "0.0.0",
-  "private": true,
+  "name": "@hey-research/mcp",
+  "version": "0.1.0",
+  "description": "MCP server for HEY Research: which projects on Robinhood Chain are still building, what they shipped, and which of them nobody is looking at — as tools an assistant can call.",
+  "license": "MIT",
   "type": "module",
-  "bin": { "hey-research-mcp": "./dist/index.js" },
+  "bin": {
+    "hey-research-mcp": "./dist/index.js"
+  },
   "main": "./dist/index.js",
+  "exports": {
+    ".": "./dist/index.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hey-research-lab/hey-research.git",
+    "directory": "apps/mcp"
+  },
+  "homepage": "https://heyresearch.xyz/docs/mcp",
+  "bugs": {
+    "url": "https://github.com/hey-research-lab/hey-research/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "hey-research",
+    "robinhood-chain",
+    "builders",
+    "claude",
+    "assistant"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsup",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "prepack": "pnpm build"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.30.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@hey-research/sdk": "workspace:*",
     "@types/node": "^22.10.2",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",

@@ -13,20 +13,14 @@ them.
 ## Install
 
 There is no hosted MCP endpoint and no URL to paste. The server is a small program that
-runs on your machine and calls the public API; its source is published in HEY's public
-repository (the developers page links it once it is up).
-
-```bash
-# in a clone of the public repository
-pnpm install && pnpm --filter @hey/mcp build
-```
-
-Then point a client at `apps/mcp/dist/index.js`.
+runs on your machine and calls the public API. Since 2026-09-19 it is on npm as
+`@hey-research/mcp` (Node 18 or newer), so a client can start it with `npx` and nothing
+needs cloning.
 
 **Claude Code** — add it with the CLI:
 
 ```bash
-claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist/index.js
+claude mcp add hey-research -- npx -y @hey-research/mcp
 ```
 
 **Claude Desktop** — in `claude_desktop_config.json`:
@@ -35,8 +29,8 @@ claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist
 {
   "mcpServers": {
     "hey-research": {
-      "command": "node",
-      "args": ["/absolute/path/to/hey-research/apps/mcp/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "@hey-research/mcp"]
     }
   }
 }
@@ -45,6 +39,19 @@ claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist
 Set `HEY_API_URL` to read a different instance (`http://localhost:3000` while developing). Set `HEY_API_KEY`
 to read with your key's allowance (M13-E); the server never prints the key.
 It defaults to `https://heyresearch.xyz`.
+
+**From source**, when you want to read or change it: the server's source is in HEY's public
+repository.
+
+```bash
+# in a clone of the public repository
+pnpm install && pnpm --filter @hey-research/mcp build
+```
+
+Then point a client at `apps/mcp/dist/index.js` instead of `npx`
+(`claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist/index.js`,
+or `"command": "node"` with that path in `args`). Releases are tagged `mcp-v*` and published from
+the private repository; the public repository mirrors the source (`docs/OPEN_SOURCE.md`).
 
 ## The twelve tools
 
@@ -113,7 +120,7 @@ holds no wallet, holder or trading data and that none of this is investment advi
 |---|---|
 | stdio entry point | `apps/mcp/src/index.ts` |
 | Tool definitions and descriptions | `apps/mcp/src/server.ts` |
-| HTTP client for the public API | `apps/mcp/src/client.ts` |
+| HTTP client for the public API | `packages/sdk` (`@hey-research/sdk`, bundled into the server at build time; since 2026-09-19) |
 | Rendering (pure, unit-tested) | `apps/mcp/src/render.ts` |
 | Contract tests over a real MCP client | `apps/mcp/src/server.test.ts` |
 

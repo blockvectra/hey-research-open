@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip, HeyThisWeek } from './client';
+import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip, HeyThisWeek } from '@hey-research/sdk';
 import {
   STILL_BUILDING_MEANING,
   ago,
@@ -131,12 +131,13 @@ describe('renderProjects', () => {
 describe('renderProject', () => {
   const detail = (over: Partial<HeyProjectDetail> = {}): HeyProjectDetail => ({
     ...project(),
+    ships: [],
     firstSeenAt: '2026-06-01T00:00:00.000Z',
     isClaimed: false,
     submitted: false,
     narratives: [{ slug: 'ai-agents', name: 'AI Agents', isPrimary: true }],
     sources: [
-      { url: 'https://github.com/org/repo', sourceType: 'GITHUB_REPO', isVerified: true, confidence: 'OFFICIAL' },
+      { url: 'https://github.com/org/repo', sourceType: 'GITHUB_REPO', isVerified: true, confidence: 'OFFICIAL', contextOnly: false },
     ],
     disclaimer: 'Public, source-backed activity HEY recorded. … not investment advice.',
     ...over,
@@ -209,6 +210,7 @@ describe('renderShips', () => {
     title: 'Agent SDK v0.4',
     eventType: 'SDK_RELEASE',
     publishedAt: '2026-09-03T10:00:00.000Z',
+    detectedAt: '2026-09-03T12:00:00.000Z',
     verification: 'SOURCE_VERIFIED',
     sourceUrl: 'https://github.com/org/repo/releases/tag/v0.4',
     project: project({ symbol: 'AOS' }),
@@ -341,10 +343,11 @@ describe('the renderers nothing was watching', () => {
     const week: HeyThisWeek = {
       window: { since: '2026-09-10T00:00:00Z', until: '2026-09-17T00:00:00Z', days: 7, label: '7 days to 17 Sep 2026' },
       summary: '12 ships from 5 projects.',
-      shipped: { ships: 12, projects: 5, items: [{ project: agentos, ships: 3 }] },
+      shipped: { ships: 12, projects: 5, items: [{ project: agentos, ships: 3, latest: { title: 'Agent SDK v0.4', eventType: 'SDK_RELEASE', publishedAt: '2026-09-16T10:00:00.000Z', verification: 'SOURCE_VERIFIED' } }] },
       newBuilders: { total: 0, items: [] },
-      backToShipping: { total: 0, items: [] },
+      backToShipping: { total: 0, comparable: 0, items: [] },
       stillBuilding: { total: 2, items: [{ slug: 'darkroute', name: 'DarkRoute', activityStatus: 'SHIPPING', url: 'https://hey/project/darkroute' }] },
+      underTheRadar: { total: 0, items: [] },
       links: { page: 'https://hey/this-week', ships: 'https://hey/ships', radar: 'https://hey/radar', methodology: 'https://hey/methodology' },
       disclaimer: 'Not a recommendation.',
     };
@@ -444,7 +447,7 @@ describe('Still Building evidence (round-7 audit 2026-09-18)', () => {
     expect(line).toContain('STILL BUILDING (down 62% from the HEY-tracked high, 5 verified ships since)');
 
     const dossier = renderProject(
-      { ...project(evidenced), firstSeenAt: '2026-06-01T00:00:00.000Z', isClaimed: false, submitted: false, narratives: [], sources: [], disclaimer: 'not investment advice' },
+      { ...project(evidenced), ships: [], firstSeenAt: '2026-06-01T00:00:00.000Z', isClaimed: false, submitted: false, narratives: [], sources: [], disclaimer: 'not investment advice' },
       NOW,
     );
     expect(dossier).toContain(STILL_BUILDING_MEANING);

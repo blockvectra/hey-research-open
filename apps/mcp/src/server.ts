@@ -16,7 +16,8 @@ import {
   type HeyTokenLookup,
   type HeyTokenMarket,
   type HeyWeeklyReport,
-} from './client';
+} from '@hey-research/sdk';
+
 import {
   renderBounties,
   renderBuilders,
@@ -30,6 +31,7 @@ import {
   renderTokenMarket,
   renderWeeklyReport,
 } from './render';
+import { MCP_VERSION } from './version';
 
 /**
  * HEY Research as MCP tools (2026-09-05).
@@ -74,23 +76,28 @@ const text = (body: string) => ({ content: [{ type: 'text' as const, text: body 
 /**
  * A failure a model can act on: what went wrong and whether retrying helps,
  * rather than a stack trace it will paraphrase into a wrong answer.
+ *
+ * The SDK's sentences are for any caller (2026-09-19); the two things only
+ * this server knows are added here — that the key came from `HEY_API_KEY`,
+ * and how long a rate limit asked it to wait.
  */
+const failureText = (error: unknown): string => {
+  if (!(error instanceof HeyApiError)) return `Could not read HEY: ${error instanceof Error ? error.message : String(error)}`;
+  if (error.code === 'unauthorized') return `${error.message} Check HEY_API_KEY against your HEY account page.`;
+  if (error.retryAfterSeconds !== undefined && !/try again in/i.test(error.message)) {
+    return `${error.message} Try again in ${error.retryAfterSeconds} seconds.`;
+  }
+  return error.message;
+};
+
 const failure = (error: unknown) => ({
-  content: [
-    {
-      type: 'text' as const,
-      text:
-        error instanceof HeyApiError
-          ? error.message
-          : `Could not read HEY: ${error instanceof Error ? error.message : String(error)}`,
-    },
-  ],
+  content: [{ type: 'text' as const, text: failureText(error) }],
   isError: true,
 });
 
 export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServer {
   const server = new McpServer(
-    { name: 'hey-research', version: '0.1.0' },
+    { name: 'hey-research', version: MCP_VERSION },
     {
       instructions: [
         'HEY Research Lab is the builder-discovery layer for Robinhood Chain (chain id 4663).',

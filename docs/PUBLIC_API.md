@@ -49,6 +49,55 @@ with `retry-after`. The allowance is checked before a request is counted. A keye
 per-minute bucket from one address (since 2026-09-18; it used to be capped at the anonymous limit). The routes
 answer `OPTIONS` with the allowed headers.
 
+## SDK (`@hey-research/sdk`)
+
+Since 2026-09-19 the same API is available as a typed client on npm, so nobody has to retype
+the shapes on this page. It is a thin fetch wrapper with no dependencies, ESM and CJS, Node 18
+or a browser; it holds no data and no credential beyond the key you hand it.
+
+```bash
+npm i @hey-research/sdk
+```
+
+```ts
+import { HeyClient, HeyApiError } from '@hey-research/sdk';
+
+const hey = new HeyClient(); // https://heyresearch.xyz; { baseUrl, apiKey, timeoutMs } are optional
+
+const page = await hey.projects.list({ tab: 'still-building', limit: 24 });
+console.log(page.total, page.items[0]?.activityStatus);
+
+for await (const project of hey.projects.items({ tab: 'still-building' })) {
+  console.log(project.slug, project.lastShipAt ?? 'no ship recorded');
+}
+
+try {
+  await hey.projects.get('no-such-slug');
+} catch (error) {
+  if (error instanceof HeyApiError) console.log(error.status, error.code, error.retryAfterSeconds);
+}
+```
+
+- **Paging follows the API, not one convention.** `projects` and `ships` pages walk `nextOffset`
+  until it is absent; `signals` and `builders` step `offset` by `limit` until `offset >= total`.
+  `pages()` yields one page at a time and `items()` one row at a time; both stop by themselves.
+- **Absent means unknown, in the types too.** A field the API leaves out is an optional
+  property, never `null`, so `project.marketCap?.usd` reads as it should and nothing downstream
+  can average a fact that was never claimed. The only `null` is where the API itself sends one
+  (`status()`).
+- **No retries, by design.** A `429` surfaces as `HeyApiError` with `code: 'rate_limited'` or
+  `'quota'` and `retryAfterSeconds` from the `retry-after` header; the caller decides. A network
+  failure is `code: 'network'`, a timeout `'timeout'`, a missing record `'not_found'` with
+  `status: 404`.
+- **It cannot drift from the API.** `apps/web/src/lib/public-api-contract.test.ts` asserts, at
+  the type level and in both directions, that every response type the SDK exports is identical
+  to the serialiser that produces it; `pnpm typecheck` fails on a field added to one side only.
+- **The user-agent says who is calling.** Every request carries `hey-research-sdk/<version>`,
+  which is how the lab's console counts SDK callers apart from the MCP and from `curl`.
+
+The MCP server (`@hey-research/mcp`) is this client with tool definitions around it; see
+`docs/MCP.md`. Releases of both come from the private repository, tagged `sdk-v*` / `mcp-v*`.
+
 ## `GET /api/projects`
 
 The catalogue, with the same filters and order the browse pages use.
@@ -398,6 +447,8 @@ The same material is also published as RSS, for a reader rather than a script:
 - Query vocabulary: `apps/web/src/lib/public-api-query.ts` (pure, unit-tested)
 - Shared response rules: `apps/web/src/lib/public-api.ts`
 - Contract tests: `apps/web/e2e/public-api.spec.ts`
+- The SDK: `packages/sdk` (`@hey-research/sdk` on npm); the type-level contract between its response
+  types and the serialisers: `apps/web/src/lib/public-api-contract.test.ts` (2026-09-19)
 
 Every route reads HEY's own database and makes no third-party call (CLAUDE.md architecture
 rules 13–14), and every filter goes through the same query layer the pages use, so a count

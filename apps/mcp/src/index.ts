@@ -1,7 +1,9 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import { DEFAULT_BASE_URL, HeyClient } from './client';
+import { DEFAULT_BASE_URL, HeyClient } from '@hey-research/sdk';
+
 import { createHeyMcpServer } from './server';
+import { MCP_VERSION } from './version';
 
 /**
  * `hey-research-mcp` — HEY Research over stdio (2026-09-05).
@@ -17,7 +19,7 @@ const baseUrl = process.env.HEY_API_URL ?? DEFAULT_BASE_URL;
 const apiKey = process.env.HEY_API_KEY;
 
 async function main(): Promise<void> {
-  const server = createHeyMcpServer(new HeyClient({ baseUrl, ...(apiKey ? { apiKey } : {}) }));
+  const server = createHeyMcpServer(new HeyClient({ baseUrl, ...(apiKey ? { apiKey } : {}), userAgent: `hey-research-mcp/${MCP_VERSION}` }));
   await server.connect(new StdioServerTransport());
   console.error(`[hey-research-mcp] ready, reading ${baseUrl} ${apiKey ? 'with an API key' : 'without a key'}`);
 }

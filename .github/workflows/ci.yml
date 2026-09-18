@@ -27,7 +27,9 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test
-      - run: pnpm --filter @hey/mcp build
+      # The two npm packages build from this tree; releases are published from the private repository (2026-09-19).
+      - run: pnpm --filter @hey-research/sdk build
+      - run: pnpm --filter @hey-research/mcp build
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')

@@ -1,0 +1,70 @@
+{
+  "name": "@hey-research/sdk",
+  "version": "0.1.0",
+  "description": "Typed client for the HEY Research public API: which projects on Robinhood Chain are still building, what they shipped, and which of them nobody is looking at.",
+  "license": "MIT",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "access": "public",
+    "main": "./dist/index.cjs",
+    "module": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "import": {
+          "types": "./dist/index.d.ts",
+          "default": "./dist/index.js"
+        },
+        "require": {
+          "types": "./dist/index.d.cts",
+          "default": "./dist/index.cjs"
+        }
+      },
+      "./package.json": "./package.json"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hey-research-lab/hey-research.git",
+    "directory": "packages/sdk"
+  },
+  "homepage": "https://heyresearch.xyz/developers",
+  "bugs": {
+    "url": "https://github.com/hey-research-lab/hey-research/issues"
+  },
+  "keywords": [
+    "hey-research",
+    "robinhood-chain",
+    "builders",
+    "ships",
+    "crypto",
+    "api-client",
+    "sdk",
+    "typescript"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "prepack": "pnpm build"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2"
+  }
+}

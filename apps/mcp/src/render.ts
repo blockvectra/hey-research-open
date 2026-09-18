@@ -8,8 +8,8 @@ import type {
   HeyTokenLookup,
   HeyTokenMarket,
   HeyWeeklyReport,
-} from './client';
-import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from './client';
+} from '@hey-research/sdk';
+import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from '@hey-research/sdk';
 
 /**
  * HEY's answers, as text a model reads (2026-09-05).

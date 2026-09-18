@@ -1,0 +1,21 @@
+# Changelog
+
+All notable changes to `@hey-research/mcp` are recorded here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows
+[Semantic Versioning](https://semver.org/).
+
+## Unreleased
+
+## 0.1.0 — 2026-09-19
+
+### Added
+
+- First published release. Twelve read-only tools over the HEY Research public
+  API: `search_projects`, `list_projects`, `lookup_token`, `get_project`,
+  `get_token_market`, `chain_activity`, `list_signals`, `list_builders`,
+  `weekly_report`, `list_bounties`, `list_ships`, `this_week`.
+- `HEY_API_URL` to point the server at another HEY, `HEY_API_KEY` to lift the
+  anonymous rate limit.
+- Built on `@hey-research/sdk`, bundled in; the server names itself
+  `hey-research-mcp/<version>` so HEY's traffic console counts it as itself.
+- A refused key says to check `HEY_API_KEY`; a rate limit says how long to wait.

@@ -4,7 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { HeyClient } from './client';
+import { HeyClient } from '@hey-research/sdk';
 import { createHeyMcpServer } from './server';
 
 /**
@@ -182,6 +182,20 @@ describe('the HEY MCP server', () => {
 
     expect(result.isError).toBe(true);
     expect((result.content as { text: string }[])[0]!.text).toMatch(/try again in a minute/i);
+  });
+
+  it('adds what only this server knows: the key came from HEY_API_KEY, and how long a limiter asked it to wait (2026-09-19)', async () => {
+    const withHeaders = (body: unknown, status: number, headers: Record<string, string>): Response =>
+      ({ ok: false, status, headers: new Headers(headers), json: async () => body }) as Response;
+
+    const refused = await connect(async () => withHeaders({ error: 'unauthorized' }, 401, {}));
+    const refusedText = ((await refused.callTool({ name: 'this_week', arguments: {} })).content as { text: string }[])[0]!.text;
+    expect(refusedText).toContain('HEY_API_KEY');
+
+    const spent = await connect(async () => withHeaders({ error: 'quota', message: 'Monthly allowance used. It resets on 2026-11-01.' }, 429, { 'retry-after': '3600' }));
+    const spentText = ((await spent.callTool({ name: 'this_week', arguments: {} })).content as { text: string }[])[0]!.text;
+    expect(spentText).toContain('resets on 2026-11-01');
+    expect(spentText).toContain('Try again in 3600 seconds.');
   });
 
   it('refuses a query shorter than HEY will match, before making a request', async () => {
