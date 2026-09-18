@@ -241,6 +241,16 @@ This route is a database read and makes no provider call, which is why it sits o
 chain, the explorer and whatever a token declares about itself, so it allows ten requests an
 hour, is never cached, and spends a budget the scheduled pipeline needs.
 
+## `GET /api/v1/scan?chain={chainId}&token={address}` (2026-09-18)
+
+The by-contract lookup above in the shape a trading bot's card wants: `found`, `status` (HEY's six
+states, lower-cased) with `status_label` and `status_help` in HEY's own words, `verified_builder`,
+`activity` (`commits_30d` — absent when no repository is read, `releases_30d`, `ships_30d`,
+`last_ship`), `project_url`, `logo_url`, `badge_url`, a `cta` that points at the project page, and
+the disclaimer. `found: false` is a 200 for an unpublished token and for a chain HEY does not index
+(`reason: "chain"`); a malformed `token` is a 400. `chain` defaults to 4663. Same limits and cache as
+`/api/token`; a database read only. Documented for bots in [INTEGRATIONS.md](INTEGRATIONS.md).
+
 ## `POST /api/scan` (2026-09-15)
 
 The builder question for one address, read live. **Not the route for an integration** — see
