@@ -374,6 +374,18 @@ export const serverEnvSchema = z.object({
       }
     }),
 
+  /**
+   * Google Search Console (2026-09-18, docs/ANALYTICS.md). Both optional:
+   * without them the `GSC_SYNC` job records "not configured" and the console
+   * shows its own coverage views. `credentialsJson` is the service-account
+   * key file as one value; it is parsed by the client, never here, so a
+   * malformed key surfaces as a job error and not as a boot failure.
+   */
+  searchConsole: z.object({
+    credentialsJson: optionalString,
+    site: optionalString,
+  }),
+
   worker: z.object({
     heartbeatMs: numberWithDefault(DEFAULT_WORKER_HEARTBEAT_MS).pipe(z.number().int().positive()),
     /** How often the worker polls the job table. */
@@ -490,6 +502,10 @@ function shapeEnv(raw: RawEnv) {
       telegramBotToken: raw.HEY_TELEGRAM_BOT_TOKEN,
       telegramChatId: raw.HEY_TELEGRAM_CHAT_ID,
     },
+    searchConsole: {
+      credentialsJson: raw.GOOGLE_SEARCH_CONSOLE_CREDENTIALS,
+      site: raw.GOOGLE_SEARCH_CONSOLE_SITE,
+    },
     worker: {
       heartbeatMs: raw.WORKER_HEARTBEAT_MS,
       pollIntervalMs: raw.WORKER_POLL_INTERVAL_MS,
@@ -558,6 +574,8 @@ const ENV_KEY_BY_PATH: Record<string, string> = {
   'mail.from': 'HEY_MAIL_FROM',
   'alerts.telegramBotToken': 'HEY_TELEGRAM_BOT_TOKEN',
   'alerts.telegramChatId': 'HEY_TELEGRAM_CHAT_ID',
+  'searchConsole.credentialsJson': 'GOOGLE_SEARCH_CONSOLE_CREDENTIALS',
+  'searchConsole.site': 'GOOGLE_SEARCH_CONSOLE_SITE',
   'worker.heartbeatMs': 'WORKER_HEARTBEAT_MS',
   'worker.pollIntervalMs': 'WORKER_POLL_INTERVAL_MS',
   'worker.jobConcurrency': 'WORKER_JOB_CONCURRENCY',
@@ -676,6 +694,11 @@ export function isMailEnabled(env: ServerEnv): boolean {
 /** Telegram ops alerts are on when both the bot token and the chat id are set. */
 export function isTelegramAlertsEnabled(env: ServerEnv): boolean {
   return Boolean(env.alerts.telegramBotToken) && Boolean(env.alerts.telegramChatId);
+}
+
+/** Both Search Console values are set; the key itself is only parsed by the client that uses it. */
+export function isSearchConsoleConfigured(env: ServerEnv): boolean {
+  return Boolean(env.searchConsole.credentialsJson && env.searchConsole.site);
 }
 
 /**

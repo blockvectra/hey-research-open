@@ -96,6 +96,9 @@ export function ContractAddress({
         }}
         aria-label={copied ? 'Contract address copied' : 'Copy contract address'}
         title={copied ? 'Copied' : 'Copy full address'}
+        // Reported only where a `TrackClicks` listener is mounted (the project page, 2026-09-18).
+        data-track="link.copied"
+        data-outcome="contract"
         className={cn(
           // 28px drawn, 40px to the thumb: the ring extends the target without moving the row.
           'relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-hey-muted',
@@ -117,6 +120,8 @@ export function ContractAddress({
         onClick={stop}
         aria-label="Open contract in explorer"
         title="Open in explorer"
+        data-track="source.clicked"
+        data-outcome="explorer"
         className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-hey-muted before:absolute before:-inset-1.5 before:content-[''] hover:bg-hey-subtle hover:text-hey-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hey-ink/30"
       >
         <ExternalLink aria-hidden="true" size={14} strokeWidth={1.75} />
