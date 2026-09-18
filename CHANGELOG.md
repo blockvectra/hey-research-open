@@ -6,6 +6,14 @@ record.
 
 ## 2026-09-19
 
+- **A refused API key now says how to carry on.** A `401` used to answer only "That API key is not
+  valid."; every read endpoint answers the same call without a key at 120 requests a minute, and
+  the message now says so and points at the page that issues one. Nothing about who is refused
+  changed.
+- **The edge's agent families read the `From` header first.** A crawler that spoofs a browser
+  string still names itself there, so one that sends a plain `Chrome/130.0` is no longer filed as a
+  suspected scraper. Only mailboxes matching a known crawler are read, because `From` may carry a
+  person's own address, and neither the header nor the user agent is ever stored.
 - **Two npm packages prepared.** `@hey-research/sdk` (`packages/sdk`) is the whole read API as one
   typed client: `new HeyClient().scanCard(4663, address)`, `projects.items({ tab: 'still-building' })`
   walks a listing, a `429` surfaces as `HeyApiError` with `retryAfterSeconds` and is never retried
