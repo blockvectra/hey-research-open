@@ -46,6 +46,8 @@ export type DexscreenerResponse = z.infer<typeof dexscreenerResponseSchema>;
 export type DexscreenerInput = {
   chainId: number;
   tokenAddress: string;
+  /** DEX Screener's slug for the chain (`robinhood`); pairs on any other chain are not this token's market (2026-09-18). */
+  chainSlug?: string;
   baseUrl?: string;
 };
 
@@ -78,7 +80,14 @@ export function createDexscreenerAdapter(): SourceAdapter<DexscreenerInput, Mark
              * market; if the provider omits the base token entirely, take what
              * it gave rather than dropping the reading.
              */
-            const all = raw.pairs ?? [];
+            /*
+             * The endpoint is cross-chain and capped at thirty pairs (2026-09-18):
+             * an address that also exists on Base or Ink answers with those pools
+             * too, and the deepest of them could have been taken as this token's
+             * price and venue. Off-chain pairs are dropped first, as the batch,
+             * search and profile adapters already do.
+             */
+            const all = (raw.pairs ?? []).filter((pair) => !input.chainSlug || !pair.chainId || pair.chainId === input.chainSlug);
             const ours = all.filter((pair) => pair.baseToken?.address?.toLowerCase() === input.tokenAddress.toLowerCase());
             const mine = ours.length > 0 ? ours : all;
             const pairs = mine.map((pair) => ({

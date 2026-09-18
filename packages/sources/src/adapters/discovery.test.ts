@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { readFixture, stubFetch, testContext } from '../testing';
 import { createDexscreenerSearchAdapter } from './dexscreener-search';
 
-const input = { chainId: 4663, chainSlug: 'robinhoodchain', query: 'robinhood chain' };
+const input = { chainId: 4663, chainSlug: 'robinhood', query: 'robinhood chain' };
 const fixture = () => ({ status: 200, body: readFixture('dexscreener-search.json') });
 
 describe('DEX Screener search discovery adapter', () => {

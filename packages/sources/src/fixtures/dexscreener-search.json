@@ -2,7 +2,7 @@
   "schemaVersion": "1.0.0",
   "pairs": [
     {
-      "chainId": "robinhoodchain",
+      "chainId": "robinhood",
       "pairAddress": "0x1111111111111111111111111111111111111111",
       "baseToken": {
         "address": "0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa",
@@ -12,7 +12,7 @@
       "pairCreatedAt": 1787100000000
     },
     {
-      "chainId": "robinhoodchain",
+      "chainId": "robinhood",
       "pairAddress": "0x2222222222222222222222222222222222222222",
       "baseToken": {
         "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -32,13 +32,13 @@
       "pairCreatedAt": 1787300000000
     },
     {
-      "chainId": "robinhoodchain",
+      "chainId": "robinhood",
       "pairAddress": "0x4444444444444444444444444444444444444444",
       "baseToken": { "address": "not-an-address", "name": "Broken", "symbol": "BRK" },
       "pairCreatedAt": null
     },
     {
-      "chainId": "robinhoodchain",
+      "chainId": "robinhood",
       "pairAddress": "0x5555555555555555555555555555555555555555",
       "baseToken": {
         "address": "0xcccccccccccccccccccccccccccccccccccccccc",

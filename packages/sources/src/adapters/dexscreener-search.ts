@@ -25,7 +25,7 @@ export type TokenCandidate = {
 export type DexscreenerSearchInput = {
   /** Numeric chain id stored by HEY, e.g. 4663. */
   chainId: number;
-  /** DEX Screener's own chain slug, e.g. `robinhoodchain`. */
+  /** DEX Screener's own chain slug, e.g. `robinhood`. */
   chainSlug: string;
   query: string;
   baseUrl?: string;

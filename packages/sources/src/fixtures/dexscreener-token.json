@@ -2,9 +2,9 @@
   "schemaVersion": "1.0.0",
   "pairs": [
     {
-      "chainId": "robinhoodchain",
+      "chainId": "robinhood",
       "dexId": "ponsswap",
-      "url": "https://dexscreener.com/robinhoodchain/0xshallow",
+      "url": "https://dexscreener.com/robinhood/0xshallow",
       "pairAddress": "0x1111111111111111111111111111111111111111",
       "baseToken": {
         "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -46,9 +46,9 @@
       }
     },
     {
-      "chainId": "robinhoodchain",
+      "chainId": "robinhood",
       "dexId": "ponsswap",
-      "url": "https://dexscreener.com/robinhoodchain/0xdeep",
+      "url": "https://dexscreener.com/robinhood/0xdeep",
       "pairAddress": "0x2222222222222222222222222222222222222222",
       "baseToken": {
         "address": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",

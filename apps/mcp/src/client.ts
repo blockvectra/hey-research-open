@@ -82,6 +82,11 @@ export class HeyClient {
     if (response.status === 401) {
       throw new HeyApiError('HEY refused the API key in HEY_API_KEY. Check it on your HEY account page.', 401);
     }
+    if (response.status === 403) {
+      // A hold the lab placed on the key or the account (2026-09-18): the body says which and whom to write to.
+      const body = (await response.json().catch(() => ({}))) as { message?: string };
+      throw new HeyApiError(body.message ?? 'HEY has suspended this API key or its account.', 403);
+    }
     if (response.status === 429) {
       const body = (await response.json().catch(() => ({}))) as { error?: string; message?: string };
       throw new HeyApiError(body.error === 'quota' ? (body.message ?? 'The monthly allowance for this API key is used.') : 'HEY is rate limiting this client; try again in a minute.', 429);

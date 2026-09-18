@@ -85,5 +85,8 @@ describe('HeyClient', () => {
     await expect(refused.get('/api/projects')).rejects.toMatchObject({ status: 401, message: expect.stringContaining('HEY_API_KEY') });
     const spent = new HeyClient({ baseUrl: 'https://hey.test', fetchImpl: vi.fn(async () => ok({ error: 'quota', message: 'Monthly allowance used. It resets on 2026-11-01.' }, 429)) });
     await expect(spent.get('/api/projects')).rejects.toMatchObject({ status: 429, message: expect.stringContaining('resets on 2026-11-01') });
+    // A hold placed in the console carries its reason and whom to write to; the assistant should say that, not "403".
+    const held = new HeyClient({ baseUrl: 'https://hey.test', fetchImpl: vi.fn(async () => ok({ error: 'forbidden', reason: 'key_suspended', message: 'This API key is suspended. Contact hi@heyresearch.xyz if you think that is wrong.' }, 403)), apiKey: 'hey_abc' });
+    await expect(held.get('/api/projects')).rejects.toMatchObject({ status: 403, message: expect.stringContaining('suspended') });
   });
 });

@@ -27,8 +27,13 @@ const poolSchema = z.object({
     price_change_percentage: z.object({ h1: numericish, h6: numericish, h24: numericish }).nullish(),
     pool_created_at: z.string().nullish(),
   }),
-  /** The DEX the pool belongs to, when the listing names it. */
-  relationships: z.object({ dex: z.object({ data: z.object({ id: z.string().nullish() }).nullish() }).nullish() }).nullish(),
+  /** The DEX the pool belongs to, when the listing names it, and which token is the base. */
+  relationships: z
+    .object({
+      dex: z.object({ data: z.object({ id: z.string().nullish() }).nullish() }).nullish(),
+      base_token: z.object({ data: z.object({ id: z.string().nullish() }).nullish() }).nullish(),
+    })
+    .nullish(),
 });
 
 export const geckoterminalResponseSchema = z.object({
@@ -72,7 +77,21 @@ export function createGeckoterminalAdapter(): SourceAdapter<GeckoterminalInput, 
                   ? raw.data
                   : [raw.data];
 
-            const pools = list.map((pool) => ({
+            /*
+             * The pools endpoint lists every pool the token appears in, on
+             * either side (2026-09-18). A pool where this token is the quote —
+             * pair.fund launches against tokenised stocks — prices the other
+             * asset in `base_token_price_usd`. Only base-side pools are this
+             * token's market; when the listing names no base token at all,
+             * take what it gave rather than dropping the reading.
+             */
+            const wanted = input.tokenAddress.toLowerCase();
+            const sided = list.filter((pool) => {
+              const id = pool.relationships?.base_token?.data?.id?.toLowerCase();
+              return !id || id.endsWith(`_${wanted}`) || id === wanted;
+            });
+            const mine = sided.length > 0 ? sided : list.every((pool) => !pool.relationships?.base_token?.data?.id) ? list : [];
+            const pools = mine.map((pool) => ({
               pool,
               liquidityUsd: toNumber(pool.attributes.reserve_in_usd),
             }));
@@ -91,12 +110,12 @@ export function createGeckoterminalAdapter(): SourceAdapter<GeckoterminalInput, 
               ...opt('fdvUsd', toNumber(attrs.fdv_usd)),
               // Depth and volume across every pool the token trades in, not
               // the deepest one's alone (2026-09-14).
-              ...opt('liquidityUsd', sumAcrossPools(list, (pool) => toNumber(pool.attributes.reserve_in_usd))),
-              ...opt('volume24hUsd', sumAcrossPools(list, (pool) => toNumber(pool.attributes.volume_usd?.h24))),
+              ...opt('liquidityUsd', sumAcrossPools(mine, (pool) => toNumber(pool.attributes.reserve_in_usd))),
+              ...opt('volume24hUsd', sumAcrossPools(mine, (pool) => toNumber(pool.attributes.volume_usd?.h24))),
               ...opt('pairAddress', attrs.address),
               ...opt('venue', best.pool.relationships?.dex?.data?.id),
-              ...opt('buys24h', sumAcrossPools(list, (pool) => toNumber(pool.attributes.transactions?.h24?.buys))),
-              ...opt('sells24h', sumAcrossPools(list, (pool) => toNumber(pool.attributes.transactions?.h24?.sells))),
+              ...opt('buys24h', sumAcrossPools(mine, (pool) => toNumber(pool.attributes.transactions?.h24?.buys))),
+              ...opt('sells24h', sumAcrossPools(mine, (pool) => toNumber(pool.attributes.transactions?.h24?.sells))),
               ...opt('priceChange1hPct', toNumber(attrs.price_change_percentage?.h1)),
               ...opt('priceChange6hPct', toNumber(attrs.price_change_percentage?.h6)),
               ...opt('priceChange24hPct', toNumber(attrs.price_change_percentage?.h24)),

@@ -27,6 +27,7 @@ const linkSchema = z.object({
 
 const pairSchema = z.object({
   chainId: z.string().nullish(),
+  dexId: z.string().nullish(),
   pairAddress: z.string().nullish(),
   url: z.string().nullish(),
   baseToken: z
@@ -41,6 +42,9 @@ const pairSchema = z.object({
   fdv: z.union([z.string(), z.number()]).nullish(),
   liquidity: z.object({ usd: z.union([z.string(), z.number()]).nullish() }).nullish(),
   volume: z.object({ h24: z.union([z.string(), z.number()]).nullish() }).nullish(),
+  // The provider sends these in the same payload; the schema dropped them and every card's venue line stayed empty (2026-09-18).
+  txns: z.object({ h24: z.object({ buys: z.union([z.string(), z.number()]).nullish(), sells: z.union([z.string(), z.number()]).nullish() }).nullish() }).nullish(),
+  priceChange: z.object({ h1: z.union([z.string(), z.number()]).nullish(), h6: z.union([z.string(), z.number()]).nullish(), h24: z.union([z.string(), z.number()]).nullish() }).nullish(),
   pairCreatedAt: z.number().nullish(),
   info: z
     .object({
@@ -84,6 +88,13 @@ export type TokenScreening = {
   pairAddress?: string;
   pairUrl?: string;
   pairCreatedAt?: Date;
+  /** The DEX the deepest pair is on, and the market's trade counts and moves — the batch path kept none of them until 2026-09-18. */
+  venue?: string;
+  buys24h?: number;
+  sells24h?: number;
+  priceChange1hPct?: number;
+  priceChange6hPct?: number;
+  priceChange24hPct?: number;
 };
 
 const CACHE_TTL_SECONDS = 300;
@@ -187,6 +198,12 @@ export function createDexscreenerTokensAdapter(): SourceAdapter<
                 ...opt('priceUsd', toNumber(pair.priceUsd)),
                 ...opt('pairAddress', pair.pairAddress),
                 ...opt('pairUrl', pair.url),
+                ...opt('venue', pair.dexId ?? undefined),
+                ...opt('buys24h', sumAcrossPools(tokenPairs, (row) => toNumber(row.txns?.h24?.buys))),
+                ...opt('sells24h', sumAcrossPools(tokenPairs, (row) => toNumber(row.txns?.h24?.sells))),
+                ...opt('priceChange1hPct', toNumber(pair.priceChange?.h1)),
+                ...opt('priceChange6hPct', toNumber(pair.priceChange?.h6)),
+                ...opt('priceChange24hPct', toNumber(pair.priceChange?.h24)),
                 ...opt(
                   'pairCreatedAt',
                   createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : undefined,
