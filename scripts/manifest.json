@@ -8,7 +8,7 @@
     "docs/MCP.md",
     "docs/PUBLIC_API.md",
     "docs/SOURCE_REGISTRY.md",
-    "docs/screenshots",
+    ":(glob)docs/screenshots/*.png",
     "packages/config",
     "packages/scoring",
     "packages/sdk",
