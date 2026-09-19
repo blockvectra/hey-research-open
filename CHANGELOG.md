@@ -4,6 +4,26 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-09-20
+
+- **`GET /api/v1/builder?chain=4663&token=0x…`** — builder activity for one contract, for a partner
+  that already draws the chart. `status` (`active`/`stale`/`dormant`/`unknown`), `last_activity_at`,
+  the corroborated `repo_url`, the latest release and post-launch deployment, and HEY's own status
+  label to print. HEY's tables only, no provider call. `last_commit` is always `null` — HEY
+  aggregates commits into weekly summaries and stores no SHA — and there is no `abandoned` status,
+  because HEY sees silence rather than intent. An unpublished contract answers `404` with a
+  `scan_url`.
+- An **Open in RHTools** link on the project page, on a scan result and on the token's market page,
+  wherever a reader already holds a contract. It is a reference in the existing link row, never a
+  button, and absent when there is no contract.
+
+
+- **A website a project declares is now screened.** The candidate site reader selected on the
+  candidate's own URL, so a site that reached the project by any path other than the discovery feed
+  was never fetched — which left the token unverified, the repository context-only, and the code
+  activity unread on projects that had all three. It now falls back to the project's declared
+  website and keeps the URL it read.
+
 ## 2026-09-19
 
 - **`POST /api/scan` carries an evidence breakdown** (`scan-evidence-v1`): `identity`, `build`,

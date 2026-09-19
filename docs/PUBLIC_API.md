@@ -324,6 +324,70 @@ the disclaimer. `found: false` is a 200 for an unpublished token and for a chain
 (`reason: "chain"`); a malformed `token` is a 400. `chain` defaults to 4663. Same limits and cache as
 `/api/token`; a database read only. Documented for bots in [INTEGRATIONS.md](INTEGRATIONS.md).
 
+## `GET /api/v1/builder?chain={chainId}&token={address}` (2026-09-20)
+
+Builder activity for one contract, for a surface that already draws the chart. Built with RHTools,
+whose half of the collaboration is the chart, the pairs and the trading, and whose readers still need
+to know whether anyone is building the thing. HEY's own tables only: no GitHub crawl, no chain read,
+no provider call, so it is cacheable and costs nothing to call per token.
+
+```
+GET /api/v1/builder?chain=4663&token=0xa0000000000000000000000000000000000000a1
+```
+
+```jsonc
+{
+  "contract_address": "0x…",
+  "chain_id": 4663,
+  "last_activity_at": "2026-09-19T10:00:00.000Z",
+  "status": "active",                       // active | stale | dormant | unknown
+  "hey_status": "SHIPPING",
+  "hey_status_label": "Shipping",
+  "hey_status_help": "Shipped something meaningful in the last 7 days.",
+  "hey_project_url": "https://heyresearch.xyz/project/agentos",
+  "hey_project_name": "AgentOS",
+  "repo_url": "https://github.com/…",       // only a repository HEY counts as this project's own
+  "last_commit": null,                      // always: see below
+  "last_code_activity": {
+    "summary": "Active development: 20 commits in the last 90 days across 1 contributor",
+    "commits": 20,
+    "commits_partial": false,
+    "active_days": 6,
+    "contributors": 1,
+    "repo_url": "https://github.com/…",
+    "observed_at": "2026-09-19T10:00:00.000Z"
+  },
+  "latest_release": { "title": "v1.2.0", "version": "v1.2.0", "url": "…", "timestamp": "…" },
+  "latest_deployment": { "title": "Deployed a new contract: 0x…", "environment": "robinhood-chain-4663", "url": "…", "timestamp": "…" },
+  "disclaimer": "…"
+}
+```
+
+**`last_commit` is always `null`, and that is the honest answer.** HEY reads a repository's commits,
+drops the bots, and writes one summary per repository per ISO week. It never stores a SHA or a commit
+message, so there is no commit to return. `last_code_activity` carries what HEY actually holds
+instead, and `commits_partial: true` means a full page was read inside the window and `commits` is a
+floor.
+
+**`last_activity_at` is the project's freshest meaningful ship**, the same value the project page
+uses — across commit summaries, releases and post-launch deploys. Meaningful means approved, not
+withdrawn, not context-only, and of a building event type. A bare launch deploy is a launch, not a
+ship, so it never sets this.
+
+**`status` has no `abandoned`.** The activity enum says in as many words that there is deliberately no
+`DEAD`, `RUGGED` or `ABANDONED` value, and HEY's own copy for dormant reads "Not the same as
+abandoned." HEY can see that nothing has been published for a long time; it cannot see that anyone
+stopped. The mapping is `SHIPPING`/`ACTIVE`/`RESUMED` → `active`, `QUIET` → `stale`, `DORMANT` →
+`dormant`, `UNKNOWN` → `unknown`, and `unknown` means HEY has too few public sources to say either
+way rather than that there was no activity.
+
+**A contract HEY has not published answers `404`**, at the partner's request, with `scan_url` so the
+caller can offer a live scan. Note this differs from `/api/v1/scan`, which answers `200` with
+`found: false` for the same case.
+
+**Optional fields are `null`, never invented.** No repository HEY counts as the project's own, no
+release, no post-launch deploy: each is `null` on its own.
+
 ## `POST /api/scan` (2026-09-15)
 
 The builder question for one address, read live. **Not the route for an integration** — see

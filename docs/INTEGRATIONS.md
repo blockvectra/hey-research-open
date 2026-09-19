@@ -147,6 +147,32 @@ that is a page, and it costs you nothing.
 - If HEY is down, say nothing rather than guessing. A bot that omits a line is fine; one that
   invents one is not.
 
+## The builder call: `GET /api/v1/builder?chain=4663&token=0x…` (2026-09-20)
+
+For a surface that already has the chart and wants the other half. Same two parameters as the card
+call, same validation, HEY's own tables only.
+
+```jsonc
+{
+  "status": "active",                 // active | stale | dormant | unknown
+  "hey_status_label": "Shipping",     // print this, not your own word for it
+  "last_activity_at": "2026-09-19T10:00:00.000Z",
+  "repo_url": "https://github.com/…",
+  "latest_release": { "version": "v1.2.0", "url": "…", "timestamp": "…" },
+  "hey_project_url": "https://heyresearch.xyz/project/…"
+}
+```
+
+Four things worth knowing before you render it:
+
+- **Print `hey_status_label`, not a word of your own.** Left to themselves, integrators turn a quiet
+  project into "dead". HEY's vocabulary is deliberate and the labels travel with the enum.
+- **There is no `abandoned`.** HEY sees silence, not intent. The most it will say is `dormant`.
+- **`last_commit` is always `null`.** HEY aggregates commits into weekly summaries and stores no SHA.
+  Use `last_code_activity`, and treat `commits` as a floor when `commits_partial` is true.
+- **Carry `hey_project_url`.** Someone who sees a HEY line should be one tap from the evidence behind
+  it. This is the one condition of use.
+
 ## The card call: `GET /api/v1/scan?chain=4663&token=0x…` (2026-09-18)
 
 The same answer as the one call above, in the shape a trading bot's card wants and with two more
