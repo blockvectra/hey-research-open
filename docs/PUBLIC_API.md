@@ -346,7 +346,34 @@ on a reader's request, and it can answer `503` when that budget is spent for the
 | `unavailable` | 503 | HEY has spent what it set aside for scans today. |
 | `scanned` | 200 | A live read. Carries `report` with `groups` of findings, each with its `provenance`. |
 
-A `report` has no score, no count of passed checks and no verdict vocabulary. Findings are
+A `report` carries an `evidence` breakdown (2026-09-19) and no verdict vocabulary.
+
+```jsonc
+"evidence": {
+  "identity": { "kind": "measured", "score": 61, "strength": "partial", "readable": 96, "possible": 110,
+                "factors": [{ "key": "site-names-contract", "label": "…", "state": "met", "weight": 24 }] },
+  "build":    { "kind": "insufficient", "reason": "HEY has no recorded ship for this contract…" },
+  "coverage": { "kind": "measured", "score": 62, "strength": "partial" },
+  "overall":  { "kind": "measured", "score": 61, "strength": "partial" },
+  "blindSpots": ["Code activity — no repository is declared and the site linked none."],
+  "model": "scan-evidence-v1"
+}
+```
+
+**It measures HEY's evidence, never the project.** `identity` is how firmly the contract is tied to a
+named builder, `coverage` is how many of the places HEY looks actually answered, and `overall` is
+`45/35/20` over the bands that could be measured. A low reading means HEY could verify little. It is
+not a quality figure, not a risk figure, and nothing in it forecasts anything.
+
+**A band HEY could not measure carries `kind: "insufficient"` and a `reason`, never a zero.** `build`
+is the stored Build Momentum — the same number `/api/projects/{slug}` reports, never recomputed — and
+a contract HEY holds no recorded ship for has none, which is the ordinary case for a live scan.
+
+**A check HEY could not run leaves `possible` but not `readable`**, so a provider outage never scores
+against a project. `factors[].state` is `met`, `unmet` or `unreadable`, and the third is the one that
+means HEY could not look.
+
+`GET /api/v1/scan` is unchanged: the bot card carries no evidence block. Findings are
 facts with the place they were read from, and the absences are named as absences.
 
 **Three refusals before any of that** (documented 2026-09-19). The route is same-origin and JSON

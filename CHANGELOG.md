@@ -6,6 +6,14 @@ record.
 
 ## 2026-09-19
 
+- **`POST /api/scan` carries an evidence breakdown** (`scan-evidence-v1`): `identity`, `build`,
+  `coverage` and `overall`, each either a 0–100 reading with a strength word or an explicit
+  `insufficient` with the reason. It measures how much HEY could verify from public sources — not
+  the project's quality, not risk, and nothing about what a token might do. A band HEY could not
+  measure reports a sentence rather than a zero, `build` reuses the stored Build Momentum and is
+  never recomputed, and a check HEY could not run is excluded from the total instead of counted
+  against the project. `GET /api/v1/scan` is unchanged.
+
 - **A refused API key now says how to carry on.** A `401` used to answer only "That API key is not
   valid."; every read endpoint answers the same call without a key at 120 requests a minute, and
   the message now says so and points at the page that issues one. Nothing about who is refused
