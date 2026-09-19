@@ -282,3 +282,49 @@ describe('the whole breakdown', () => {
     expect(breakdown.blindSpots.length).toBeGreaterThan(0);
   });
 });
+
+/*
+ * A catalogue reading answers from HEY's own tables and never asks the chain,
+ * the explorer or the decoded calls. Reporting those as things HEY "could not
+ * see" would say HEY looked and failed, which is the one distinction this
+ * model exists to keep (2026-09-19).
+ */
+describe('a reading from HEY’s own tables', () => {
+  const stored: ScanEvidenceInput = {
+    source: 'catalogue',
+    contractOnChain: true,
+    siteDeclared: true,
+    siteAnswered: true,
+    siteNamesContract: true,
+    repoDeclared: true,
+    repoRead: true,
+    repoTiedToContract: true,
+    channelsDeclared: true,
+    listingRead: true,
+    recordedShips: 5,
+    buildMomentum: { score: 41, scoringVersion: 'hbm-v8' },
+  };
+
+  it('never names the explorer, the creation record or the decoded calls', () => {
+    const spots = blindSpotsOf(stored).join(' ');
+    expect(spots).not.toMatch(/explorer|decoded|four days|deployer/i);
+  });
+
+  it('leaves those checks out of identity rather than marking them unreadable', () => {
+    const band = identityBand(stored);
+    if (band.kind !== 'measured') throw new Error('unreachable');
+    expect(band.factors.map((f) => f.key)).not.toContain('source-published');
+    expect(band.factors.map((f) => f.key)).not.toContain('sole-deployer');
+    expect(band.score).toBe(100);
+  });
+
+  it('still names a blind spot that is real on this path', () => {
+    const noRepo = blindSpotsOf({ ...stored, repoDeclared: false, repoRead: undefined, repoTiedToContract: undefined });
+    expect(noRepo.join(' ')).toMatch(/no repository is declared/i);
+  });
+
+  it('keeps the scan path naming every channel it did ask', () => {
+    const scanned = blindSpotsOf({ ...bare, source: 'scan' });
+    expect(scanned.join(' ')).toMatch(/explorer/i);
+  });
+});

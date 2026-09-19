@@ -185,6 +185,17 @@ export function unmeasured(reason: string, factors: readonly EvidenceFactor[] = 
  * a matching name is not evidence of anything.
  */
 export type ScanEvidenceInput = {
+  /**
+   * Which reading produced this (2026-09-19).
+   *
+   * A live `scan` asks the chain, the explorer, the decoded calls and the
+   * declared links, so any of those can come back unreadable. A `catalogue`
+   * reading answers from HEY's own tables and never asks them at all — and
+   * reporting a channel as one HEY "could not see" when HEY never looked
+   * there erases the distinction this model exists to keep. Those channels
+   * are left out of coverage and out of the blind spots instead.
+   */
+  source?: 'scan' | 'catalogue' | undefined;
   /** Code was read at the address. False only in paths that never reach here. */
   contractOnChain: boolean;
   /** Explorer says the source is published and matches the bytecode. `undefined` = HEY could not reach it. */
@@ -234,16 +245,25 @@ const readState = (value: boolean | undefined): EvidenceState =>
  * A declared link is worth a little; a corroborated link is worth a lot.
  */
 export function identityBand(input: ScanEvidenceInput): EvidenceBand {
+  const chainSide = input.source !== 'catalogue';
   const factors: EvidenceFactor[] = [
     factor('contract', 'Code at this address', input.contractOnChain ? 'met' : 'unmet', 4),
-    factor('source-published', 'Source published on the explorer', readState(input.sourcePublished), 8),
-    factor('creation', 'Creation record readable', readState(input.creationRecord), 8),
-    factor(
-      'sole-deployer',
-      'Deployer has launched no other project HEY tracks',
-      input.otherProjectsFromDeployer === undefined ? 'unreadable' : input.otherProjectsFromDeployer === 0 ? 'met' : 'unmet',
-      8,
-    ),
+    ...(chainSide
+      ? [
+          factor('source-published', 'Source published on the explorer', readState(input.sourcePublished), 8),
+          factor('creation', 'Creation record readable', readState(input.creationRecord), 8),
+          factor(
+            'sole-deployer',
+            'Deployer has launched no other project HEY tracks',
+            input.otherProjectsFromDeployer === undefined
+              ? 'unreadable'
+              : input.otherProjectsFromDeployer === 0
+                ? 'met'
+                : 'unmet',
+            8,
+          ),
+        ]
+      : []),
     factor('site-declared', 'A website is declared', input.siteDeclared ? 'met' : 'unmet', 10),
     // Not declared is not unreadable: HEY looked at the listing and there was none.
     factor('site-answers', 'The declared website answers', input.siteDeclared ? readState(input.siteAnswered) : 'unmet', 10),
@@ -274,11 +294,16 @@ export function identityBand(input: ScanEvidenceInput): EvidenceBand {
  */
 export function coverageBand(input: ScanEvidenceInput): EvidenceBand {
   const seen = (value: boolean | undefined): EvidenceState => (value === true ? 'met' : 'unmet');
+  const chainSide = input.source !== 'catalogue';
   const factors: EvidenceFactor[] = [
     factor('chain', 'Contract read from the chain', input.contractOnChain ? 'met' : 'unmet', 1),
-    factor('explorer', 'Explorer source record', seen(input.sourcePublished !== undefined), 1),
-    factor('creation', 'Creation record', seen(input.creationRecord), 1),
-    factor('surface', 'Decoded contract calls', seen(input.surfaceRead), 1),
+    ...(chainSide
+      ? [
+          factor('explorer', 'Explorer source record', seen(input.sourcePublished !== undefined), 1),
+          factor('creation', 'Creation record', seen(input.creationRecord), 1),
+          factor('surface', 'Decoded contract calls', seen(input.surfaceRead), 1),
+        ]
+      : []),
     factor('site', 'A website HEY could read', seen(input.siteAnswered), 1),
     factor('repo', 'A repository HEY could read', seen(input.repoRead), 1),
     factor('listing', 'Token listing profile', seen(input.listingRead), 1),
@@ -360,17 +385,20 @@ export function overallBand(identity: EvidenceBand, build: EvidenceBand, coverag
  */
 export function blindSpotsOf(input: ScanEvidenceInput): string[] {
   const spots: string[] = [];
-  if (input.sourcePublished === undefined) spots.push('Whether the contract’s source is published — HEY could not reach the explorer.');
-  if (input.creationRecord === undefined || input.creationRecord === false)
+  const chainSide = input.source !== 'catalogue';
+  if (chainSide && input.sourcePublished === undefined)
+    spots.push('Whether the contract’s source is published — HEY could not reach the explorer.');
+  if (chainSide && (input.creationRecord === undefined || input.creationRecord === false))
     spots.push('Who deployed it — the decoded chain HEY reads holds about four days, so an older contract falls outside the window.');
-  if (input.otherProjectsFromDeployer === undefined) spots.push('Whether the deployer has launched anything else HEY tracks.');
+  if (chainSide && input.otherProjectsFromDeployer === undefined)
+    spots.push('Whether the deployer has launched anything else HEY tracks.');
   if (!input.siteDeclared) spots.push('A website — none is declared anywhere HEY can read.');
   else if (input.siteAnswered !== true) spots.push('The declared website — it did not answer, so HEY could not check whether it names this contract.');
   if (!input.repoDeclared) spots.push('Code activity — no repository is declared and the site linked none.');
   else if (input.repoRead !== true) spots.push('The declared repository — HEY could not read it.');
   else if (input.repoTiedToContract !== true)
     spots.push('Whether the repository belongs to this contract — HEY counts code activity only when the project links the repository from a site that also names the contract.');
-  if (input.surfaceRead !== true) spots.push('What the contract answers — HEY could not read the decoded calls.');
+  if (chainSide && input.surfaceRead !== true) spots.push('What the contract answers — HEY could not read the decoded calls.');
   if (input.recordedShips === 0) spots.push('Any shipped work — HEY records a ship from a source a project has registered, and this contract has none.');
   return spots;
 }
