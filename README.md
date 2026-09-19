@@ -58,7 +58,7 @@ end-to-end test asserts it.
 
 </details>
 
-Captured from production on 19 September 2026.
+Captured from production on 20 September 2026.
 
 ## In this repository
 
