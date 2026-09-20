@@ -75,11 +75,18 @@ export function ProjectLogo({
   if (logoUrl) {
     return (
       /*
-       * The image sits on top of the monogram. A remote logo can 404, time out
-       * or be blocked, and an <img> with an empty alt then paints nothing —
-       * so the monogram underneath shows through, with no script involved.
-       * A plain <img>: @hey/ui is framework-agnostic and must not depend on
-       * next/image, and project logos are remote URLs of unknown dimensions.
+       * The image sits on top of the monogram, so a logo that cannot be had
+       * leaves the monogram showing with no script involved. A plain <img>:
+       * @hey/ui is framework-agnostic and must not depend on next/image, and
+       * project logos are remote URLs of unknown dimensions.
+       *
+       * This used to say that an <img> with an empty alt "paints nothing"
+       * when it fails. Chrome paints its broken-image glyph instead, and for
+       * a year of Virtuals artwork exported at 8000×8000 — over the proxy's
+       * pixel ceiling — that glyph sat on top of a perfectly good monogram
+       * (2026-09-20). What makes the fallback work is that `/api/logo`
+       * answers a transparent pixel rather than a 404, so nothing here ever
+       * sees a failed load. A logo whose host is not proxied still can.
        */
       <span
         className={cn(shared, 'relative inline-block bg-hey-subtle', className)}
