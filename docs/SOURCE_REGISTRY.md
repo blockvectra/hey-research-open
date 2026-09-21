@@ -4,8 +4,9 @@ Every external source HEY reads, with what was actually observed when it was ver
 not what its documentation claims. A source is not integrated until it appears here.
 
 **Scope lock:** Robinhood Chain only, `chain_id = 4663`. Aggregators are queried for
-Robinhood Chain contracts and nothing else. One paid provider is present — Bitquery Pro, named
-in its own row below — and no other may be added without explicit founder approval.
+Robinhood Chain contracts and nothing else. One paid provider is present — Bitquery Pro and its
+historical trading pack, named in its own row below — and no other may be added without explicit
+founder approval.
 
 **Verified:** 2026-09-01. Re-verify before trusting any row: endpoints change without notice,
 and a stale registry is worse than none.
@@ -532,11 +533,48 @@ factory reader (`REFRESH_LAUNCH_STAGE`, `getLaunchedToken(token).phase`, daily, 
 
 ## Cost
 
-**One paid source.** Bitquery Pro, $79 a month billed yearly, points-metered: it decodes the
-trades, contract calls and balances no free endpoint on this chain exposes, and it is the only
-source for the 772 tokens no aggregator indexes. HEY spends roughly 9,500 of its ~33,000 daily
-points. This table used to list Bitquery under "deliberately not used" and this section used to
-say $0; both were written before the integration shipped on 2026-09-12 and were simply stale.
+**One paid source.** Bitquery Pro, $179 a month, points-metered: it decodes the trades, contract
+calls and balances no free endpoint on this chain exposes, and it is the only source for the 772
+tokens no aggregator indexes. HEY spends roughly 9,500 of its ~33,000 daily points. This table used
+to list Bitquery under "deliberately not used" and this section used to say $0; both were written
+before the integration shipped on 2026-09-12 and were simply stale.
+
+**What the $179 is** (2026-09-21): $79 for the Pro plan, billed yearly, plus a $100 historical
+trading pack for this chain. The pack lifts the plan's allowance to
+`archive:robinhood:{DEXTradeByTokens,DEXTrades,Calls,Events}` — the provider names them in its own
+refusal when a cube outside that list is asked for, which is how the list below was established
+rather than read off a marketing page. Probed live on 2026-09-21, from inside the worker so the
+token never left the server:
+
+| Probe | Result |
+|---|---|
+| `archive` DEXTradeByTokens, July | answers; 5.2M trades on a single day |
+| `realtime` over the same August window | empty — the realtime dataset is a few days deep |
+| `PriceInUSD` on archive | **zero everywhere**, WETH included. USD enrichment is realtime-only |
+| `Price` (quote asset) on archive | real. USD has to be derived from a daily quote-asset rate |
+| `Calls` on archive, filtered by contract | answers, with decoded function names |
+| `Events` on archive | answers, with named and typed arguments (`sqrtPriceX96`, `amount0`…) |
+| `DEXPools` on archive | **403.** Not in the pack, and not purchasable in either offered pack |
+
+Two consequences for anything built on it. Historical USD is HEY's own arithmetic, not the
+provider's, and must be labelled as such. And pool reserves over time have to be reconstructed from
+Mint/Burn/Swap events rather than read from `DEXPools` — more work, and arguably better provenance,
+since the figure is then computed from chain events HEY read itself.
+
+Nothing reads the archive yet. The pack was bought ahead of the work that needs it.
+
+**The $150 pack was deliberately declined.** It offers `Transfers`, `Balances`, `Holders`,
+`Transactions` and `Blocks` on archive. Holders already answers on `realtime` for this chain
+(verified 2026-09-14). Transfers and Balances history is per-address history, which cost rule 10
+forbids storing, and Transactions and Blocks archive is raw full-chain history, which rule 9
+forbids. Buying a capability the product rules forbid using is a standing temptation at $150 a
+month.
+
+**Envio was evaluated and declined** on the same day. Chain 4663 is supported (`robinhood`, tier
+STONE, height answered without a token), and HyperSync's plain HTTP query API would have fitted
+`packages/sources` with no native dependency. But decoded `Events` from a provider already wired
+beats raw logs HEY would decode itself, at no extra cost. HyperRPC was the weaker of the two
+options in any case: same token, `eth_getLogs` compatibility only.
 
 Every other integrated source is a free public endpoint. No API key is required for any of them;
 the one optional key (`GITHUB_PUBLIC_API_TOKEN`) is free to create and raises a rate limit rather

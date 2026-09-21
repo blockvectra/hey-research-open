@@ -52,7 +52,9 @@ const RESEND_KEY_PATTERN = /^re_[A-Za-z0-9_-]{8,}$/;
 const MAIL_FROM_PATTERN = /^[^<>@]{1,64}<[^\s<>@]{1,64}@[^\s<>@.]+(?:\.[^\s<>@.]+)+>$/;
 
 /** A checksummed or lowercase 20-byte EVM address; anything else is refused. */
-const evmAddress = z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'expected a 0x-prefixed 20-byte address');
+const evmAddress = z
+  .string()
+  .regex(/^0x[a-fA-F0-9]{40}$/, 'expected a 0x-prefixed 20-byte address');
 
 /**
  * Server-side environment contract.
@@ -65,365 +67,418 @@ const evmAddress = z.string().regex(/^0x[a-fA-F0-9]{40}$/, 'expected a 0x-prefix
 /** Signing secrets shorter than this are refused in production; `openssl rand -hex 32` gives 64. */
 export const MIN_SESSION_SECRET_LENGTH = 32;
 
-export const serverEnvSchema = z.object({
-  nodeEnv: optionalString.pipe(
-    z.enum(['development', 'test', 'production']).default('development'),
-  ),
-  appUrl: requiredUrlWithDefault(DEFAULT_APP_URL),
-  /**
-   * Where the published part of HEY's source lives (2026-09-11). Optional:
-   * the developers page shows the clone URL when it is set and says the
-   * repository is on its way when it is not.
-   */
-  publicRepoUrl: optionalUrl,
-  // Roles (MODERATOR, ADMIN) live on the users table and are granted with
-  // `pnpm data:grant-role`; there is no email allowlist (removed 2026-09-04).
-  /**
-   * Git commit the running image was built from, set by the image build
-   * (`HEY_BUILD_SHA`). Reported by `/api/health` so a deploy can be verified
-   * from outside; absent in local development.
-   */
-  buildSha: optionalString.transform((value) =>
-    value && /^[0-9a-f]{7,40}$/i.test(value) ? value.toLowerCase() : undefined,
-  ),
-
-  databaseUrl: optionalString.pipe(
-    z
-      .string({
-        required_error: 'DATABASE_URL is required. Copy .env.example to .env and run `pnpm db:up`.',
-      })
-      .min(1),
-  ),
-  /**
-   * Per-process `statement_timeout` for the shared pool, in milliseconds
-   * (audit fix, 2026-09-10). Nothing cancelled a runaway query before: the
-   * web sets a short one, the worker a long one for the nightly sweeps. Zero
-   * or unset means no timeout, which is what a migration or a one-off script
-   * should run with.
-   */
-  databaseStatementTimeoutMs: numberWithDefault(0).pipe(z.number().int().min(0)),
-
-  chain: z.object({
-    chainId: numberWithDefault(ROBINHOOD_CHAIN_ID).pipe(z.number().int().positive()),
-    /**
-     * Provider-specific slugs for the same chain; configuration, not hardcoded.
-     * Both DEX Screener and GeckoTerminal identify Robinhood Chain as `robinhood`,
-     * verified against their live network listings.
-     */
-    dexscreenerSlug: optionalString.transform((value) => value ?? 'robinhood').pipe(z.string()),
-    geckoterminalNetwork: optionalString
-      .transform((value) => value ?? 'robinhood')
-      .pipe(z.string()),
-    rpcUrl: optionalUrl,
-    rpcFallbackUrl: optionalUrl,
-    blockscoutBaseUrl: optionalUrl,
-    /**
-     * A Blockscout PRO API key (2026-09-12). When set, explorer reads go to
-     * api.blockscout.com with `chain_id` and `apikey`; the instance URL above
-     * keeps serving explorer links. The instance's own API sits behind a bot
-     * challenge for non-browser clients, so without a key those reads degrade.
-     */
-    blockscoutApiKey: optionalString,
-  }),
-
-  market: z.object({
-    dexscreenerBaseUrl: requiredUrlWithDefault(DEFAULT_DEXSCREENER_BASE_URL),
-    geckoterminalBaseUrl: requiredUrlWithDefault(DEFAULT_GECKOTERMINAL_BASE_URL),
-    /** CoinGecko demo API key (2026-09-12): raises the keyless limits; sent as a header. */
-    coingeckoApiKey: optionalString,
-    /**
-     * Bitquery API token (Market Lens, 2026-09-12). When set, the worker reads
-     * DEX and launchpad trades for tokens no aggregator lists a pool for;
-     * without it that job never runs. Worker only; a page never sees it.
-     */
-    bitqueryApiKey: optionalString,
-  }),
-
-  /** Signs builder session cookies. Required only for write flows. */
-  sessionSecret: optionalString,
-
-  github: z.object({
-    clientId: optionalString,
-    clientSecret: optionalString,
-    publicApiToken: optionalString,
-  }),
-
-  storage: z.object({
-    endpoint: optionalUrl,
-    bucket: optionalString,
-    accessKeyId: optionalString,
-    secretAccessKey: optionalString,
-  }),
-
-  ai: z.object({
-    provider: optionalString.pipe(z.enum(['disabled', 'anthropic', 'openai']).default('disabled')),
-    apiKey: optionalString,
-    dailyBudgetUsd: numberWithDefault(0).pipe(z.number().nonnegative()),
-  }),
-
-  /**
-   * Canonical `$HEY` token configuration (M13). The one place the token's
-   * identity lives: every token-aware code path reads it from here, and the
-   * official contract address is never written into source.
-   *
-   * Before launch: `status = prelaunch`, `tokenAddress = null`. A placeholder
-   * address is refused outright. After the founder's launch and on-chain
-   * verification, `status = live` with the verified address.
-   */
-  hey: z.object({
-    chainId: numberWithDefault(ROBINHOOD_CHAIN_ID).pipe(z.number().int().positive()),
-    status: optionalString.pipe(z.enum(['prelaunch', 'live']).default('prelaunch')),
-    tokenAddress: optionalString.pipe(evmAddress.nullable().default(null)),
-    treasuryAddress: optionalString.pipe(evmAddress.nullable().default(null)),
-    // V2 since 2026-09-09 (founder): bonding curve into a locked Uniswap v4 position.
-    ponsVersion: optionalString.pipe(z.enum(['v1', 'v2']).default('v2')),
-    ponsFactory: optionalString.pipe(evmAddress.nullable().default(null)),
-    /**
-     * The creator tax $HEY will launch with, in basis points (Pons V2 allows
-     * 0 to 1000). Null until the founder decides (2026-09-09): the token page
-     * says so, and verification records the on-chain value without enforcing one.
-     */
-    creatorTaxBps: optionalString.pipe(z.coerce.number().int().min(0).max(1000).nullable().default(null)),
-    ponsLaunchConfigId: optionalString
-      .transform((value) => (value === undefined ? null : Number(value)))
-      .pipe(z.number().int().nonnegative().nullable()),
-    ponsDexConfigId: optionalString
-      .transform((value) => (value === undefined ? null : Number(value)))
-      .pipe(z.number().int().nonnegative().nullable()),
-    /** First utility. Off until the token is live and the integration is verified. */
-    requestResearchEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    /**
-     * WalletConnect Cloud project id — a public identifier shipped to the
-     * browser, not a secret. Without it no wallet UI is rendered at all.
-     */
-    walletConnectProjectId: optionalString,
-    /**
-     * Prelaunch preview of the wallet flow: connect and network switching are
-     * live on the research card, payment is disabled and says why. Allowed
-     * while prelaunch precisely so the flow is tested before real funds move.
-     */
-    walletPreviewEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    /* Later utilities. Flags exist so each phase is switched on independently;
-       nothing consumes them yet beyond the /hey page's "planned" labels. */
-    bountiesEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    /** The monthly research-funding vote (M13-D). */
-    holderVoteEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    /** Early access to approved research notes for tiers that carry it (M13-F). */
-    earlyAccessEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    /** Bonds behind claims (M13-C): Scout claim, owner update, project submission. */
-    bondsEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    /** Blocks a receipt must be buried under before a payment counts (M13-B). */
-    paymentConfirmations: optionalString.pipe(z.coerce.number().int().min(0).max(10_000).default(30)),
-    scoutStakingEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    evidenceChallengesEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    apiCreditsEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-    /** Price of one research request in whole HEY; adjustable, never on-chain. */
-    requestResearchHeyAmount: numberWithDefault(DEFAULT_REQUEST_RESEARCH_HEY).pipe(
-      z.number().positive(),
+export const serverEnvSchema = z
+  .object({
+    nodeEnv: optionalString.pipe(
+      z.enum(['development', 'test', 'production']).default('development'),
     ),
-  }).superRefine((hey, context) => {
-    // A live token without an address, or an address without a live token,
-    // is a half-configured launch; refuse to start rather than guess.
-    if (hey.status === 'live' && hey.tokenAddress === null) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['tokenAddress'],
-        message: 'HEY_TOKEN_STATUS=live requires the verified HEY_TOKEN_ADDRESS',
-      });
-    }
-    if (hey.status === 'prelaunch' && hey.tokenAddress !== null) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['tokenAddress'],
-        message: 'HEY_TOKEN_ADDRESS must stay empty while HEY_TOKEN_STATUS=prelaunch',
-      });
-    }
-    if (hey.requestResearchEnabled && hey.status !== 'live') {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['requestResearchEnabled'],
-        message: 'HEY_REQUEST_RESEARCH_ENABLED needs HEY_TOKEN_STATUS=live',
-      });
-    }
-    if (hey.requestResearchEnabled && hey.treasuryAddress === null) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['treasuryAddress'],
-        message: 'HEY_REQUEST_RESEARCH_ENABLED needs HEY_TREASURY_ADDRESS (the payment recipient)',
-      });
-    }
-    // Bounties (M13-B) move real money: only with a live token and a treasury.
-    if (hey.bountiesEnabled && (hey.status !== 'live' || hey.treasuryAddress === null)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['bountiesEnabled'],
-        message: 'HEY_BOUNTIES_ENABLED needs HEY_TOKEN_STATUS=live and HEY_TREASURY_ADDRESS',
-      });
-    }
-    if (hey.holderVoteEnabled && hey.status !== 'live') {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['holderVoteEnabled'], message: 'HEY_HOLDER_VOTE_ENABLED needs HEY_TOKEN_STATUS=live' });
-    }
-    if (hey.earlyAccessEnabled && hey.status !== 'live') {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['earlyAccessEnabled'], message: 'HEY_EARLY_ACCESS_ENABLED needs HEY_TOKEN_STATUS=live' });
-    }
-    if (hey.apiCreditsEnabled && hey.status !== 'live') {
-      context.addIssue({ code: z.ZodIssueCode.custom, path: ['apiCreditsEnabled'], message: 'HEY_API_CREDITS_ENABLED needs HEY_TOKEN_STATUS=live' });
-    }
-    if (hey.bondsEnabled && (hey.status !== 'live' || hey.treasuryAddress === null)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['bondsEnabled'],
-        message: 'HEY_BONDS_ENABLED needs HEY_TOKEN_STATUS=live and HEY_TREASURY_ADDRESS',
-      });
-    }
-    for (const [flag, path, key] of [
-      [hey.scoutStakingEnabled, 'scoutStakingEnabled', 'HEY_SCOUT_STAKING_ENABLED'],
-      [hey.evidenceChallengesEnabled, 'evidenceChallengesEnabled', 'HEY_EVIDENCE_CHALLENGES_ENABLED'],
-    ] as const) {
-      // Designed, not built (M13 economy §22). A flag that is on with nothing
-      // behind it would advertise a utility that does not exist.
-      if (flag) {
-        // The path is the flag's own (2026-09-15). It read `bountiesEnabled`
-        // for both, so the issue named a variable the operator had not set.
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: [path],
-          message: `${key} has no implementation in this release and must stay false`,
-        });
-      }
-    }
-  }),
+    appUrl: requiredUrlWithDefault(DEFAULT_APP_URL),
+    /**
+     * Where the published part of HEY's source lives (2026-09-11). Optional:
+     * the developers page shows the clone URL when it is set and says the
+     * repository is on its way when it is not.
+     */
+    publicRepoUrl: optionalUrl,
+    // Roles (MODERATOR, ADMIN) live on the users table and are granted with
+    // `pnpm data:grant-role`; there is no email allowlist (removed 2026-09-04).
+    /**
+     * Git commit the running image was built from, set by the image build
+     * (`HEY_BUILD_SHA`). Reported by `/api/health` so a deploy can be verified
+     * from outside; absent in local development.
+     */
+    buildSha: optionalString.transform((value) =>
+      value && /^[0-9a-f]{7,40}$/i.test(value) ? value.toLowerCase() : undefined,
+    ),
 
-  /**
-   * Outbound email (2026-09-05).
-   *
-   * HEY had no mail provider for its first year and promised none. Resend is
-   * now configured, so the promise becomes a contract instead: three messages,
-   * every one of them the consequence of something the reader did, and one
-   * switch that turns the whole layer off.
-   *
-   * `enabled` defaults to false, so a developer checkout, CI and any
-   * deployment that forgets the block send nothing at all rather than
-   * accidentally mailing real people from a test database. When it is on the
-   * two other values must be real: a Resend key (`re_…`) and a From address
-   * that parses as `Name <local@domain>`, because a malformed From is
-   * accepted by the API and then silently rejected by every receiver.
-   */
-  mail: z
-    .object({
-      enabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+    databaseUrl: optionalString.pipe(
+      z
+        .string({
+          required_error:
+            'DATABASE_URL is required. Copy .env.example to .env and run `pnpm db:up`.',
+        })
+        .min(1),
+    ),
+    /**
+     * Per-process `statement_timeout` for the shared pool, in milliseconds
+     * (audit fix, 2026-09-10). Nothing cancelled a runaway query before: the
+     * web sets a short one, the worker a long one for the nightly sweeps. Zero
+     * or unset means no timeout, which is what a migration or a one-off script
+     * should run with.
+     */
+    databaseStatementTimeoutMs: numberWithDefault(0).pipe(z.number().int().min(0)),
+
+    chain: z.object({
+      chainId: numberWithDefault(ROBINHOOD_CHAIN_ID).pipe(z.number().int().positive()),
+      /**
+       * Provider-specific slugs for the same chain; configuration, not hardcoded.
+       * Both DEX Screener and GeckoTerminal identify Robinhood Chain as `robinhood`,
+       * verified against their live network listings.
+       */
+      dexscreenerSlug: optionalString.transform((value) => value ?? 'robinhood').pipe(z.string()),
+      geckoterminalNetwork: optionalString
+        .transform((value) => value ?? 'robinhood')
+        .pipe(z.string()),
+      rpcUrl: optionalUrl,
+      rpcFallbackUrl: optionalUrl,
+      blockscoutBaseUrl: optionalUrl,
+      /**
+       * A Blockscout PRO API key (2026-09-12). When set, explorer reads go to
+       * api.blockscout.com with `chain_id` and `apikey`; the instance URL above
+       * keeps serving explorer links. The instance's own API sits behind a bot
+       * challenge for non-browser clients, so without a key those reads degrade.
+       */
+      blockscoutApiKey: optionalString,
+    }),
+
+    market: z.object({
+      dexscreenerBaseUrl: requiredUrlWithDefault(DEFAULT_DEXSCREENER_BASE_URL),
+      geckoterminalBaseUrl: requiredUrlWithDefault(DEFAULT_GECKOTERMINAL_BASE_URL),
+      /** CoinGecko demo API key (2026-09-12): raises the keyless limits; sent as a header. */
+      coingeckoApiKey: optionalString,
+      /**
+       * Bitquery API token (Market Lens, 2026-09-12). When set, the worker reads
+       * DEX and launchpad trades for tokens no aggregator lists a pool for;
+       * without it that job never runs. Worker only; a page never sees it.
+       */
+      bitqueryApiKey: optionalString,
+    }),
+
+    /** Signs builder session cookies. Required only for write flows. */
+    sessionSecret: optionalString,
+
+    github: z.object({
+      clientId: optionalString,
+      clientSecret: optionalString,
+      publicApiToken: optionalString,
+    }),
+
+    storage: z.object({
+      endpoint: optionalUrl,
+      bucket: optionalString,
+      accessKeyId: optionalString,
+      secretAccessKey: optionalString,
+    }),
+
+    ai: z.object({
+      provider: optionalString.pipe(
+        z.enum(['disabled', 'anthropic', 'openai']).default('disabled'),
+      ),
       apiKey: optionalString,
-      from: optionalString,
-    })
-    .superRefine((mail, context) => {
-      if (!mail.enabled) return;
-      if (!mail.apiKey) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['apiKey'],
-          message: 'HEY_MAIL_ENABLED=true requires RESEND_API_KEY',
-        });
-      } else if (!RESEND_KEY_PATTERN.test(mail.apiKey)) {
-        // Never echo the value: the message says the shape, not the secret.
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['apiKey'],
-          message: 'RESEND_API_KEY does not look like a Resend key (it starts with `re_`)',
-        });
-      }
-      if (!mail.from) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['from'],
-          message: 'HEY_MAIL_ENABLED=true requires HEY_MAIL_FROM',
-        });
-      } else if (!MAIL_FROM_PATTERN.test(mail.from)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['from'],
-          message: 'HEY_MAIL_FROM must read `Name <local@domain>`',
-        });
-      }
+      dailyBudgetUsd: numberWithDefault(0).pipe(z.number().nonnegative()),
     }),
 
-  /**
-   * Ops alerts to a Telegram chat (2026-09-11). Both values or neither: a
-   * token without a chat, or a chat without a token, is a deployment mistake
-   * and is refused at boot rather than silently never alerting.
-   */
-  alerts: z
-    .object({
-      telegramBotToken: optionalString,
-      telegramChatId: optionalString,
-    })
-    .superRefine((alerts, context) => {
-      if (Boolean(alerts.telegramBotToken) !== Boolean(alerts.telegramChatId)) {
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['telegramChatId'],
-          message: 'HEY_TELEGRAM_BOT_TOKEN and HEY_TELEGRAM_CHAT_ID must be set together',
-        });
-      }
-      if (alerts.telegramBotToken && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(alerts.telegramBotToken)) {
-        // Never echo the value: the message says the shape, not the secret.
-        context.addIssue({
-          code: z.ZodIssueCode.custom,
-          path: ['telegramBotToken'],
-          message: 'HEY_TELEGRAM_BOT_TOKEN does not look like a bot token (`<digits>:<key>`)',
-        });
-      }
+    /**
+     * Canonical `$HEY` token configuration (M13). The one place the token's
+     * identity lives: every token-aware code path reads it from here, and the
+     * official contract address is never written into source.
+     *
+     * Before launch: `status = prelaunch`, `tokenAddress = null`. A placeholder
+     * address is refused outright. After the founder's launch and on-chain
+     * verification, `status = live` with the verified address.
+     */
+    hey: z
+      .object({
+        chainId: numberWithDefault(ROBINHOOD_CHAIN_ID).pipe(z.number().int().positive()),
+        status: optionalString.pipe(z.enum(['prelaunch', 'live']).default('prelaunch')),
+        tokenAddress: optionalString.pipe(evmAddress.nullable().default(null)),
+        treasuryAddress: optionalString.pipe(evmAddress.nullable().default(null)),
+        // V2 since 2026-09-09 (founder): bonding curve into a locked Uniswap v4 position.
+        ponsVersion: optionalString.pipe(z.enum(['v1', 'v2']).default('v2')),
+        ponsFactory: optionalString.pipe(evmAddress.nullable().default(null)),
+        /**
+         * The creator tax $HEY will launch with, in basis points (Pons V2 allows
+         * 0 to 1000). Null until the founder decides (2026-09-09): the token page
+         * says so, and verification records the on-chain value without enforcing one.
+         */
+        creatorTaxBps: optionalString.pipe(
+          z.coerce.number().int().min(0).max(1000).nullable().default(null),
+        ),
+        ponsLaunchConfigId: optionalString
+          .transform((value) => (value === undefined ? null : Number(value)))
+          .pipe(z.number().int().nonnegative().nullable()),
+        ponsDexConfigId: optionalString
+          .transform((value) => (value === undefined ? null : Number(value)))
+          .pipe(z.number().int().nonnegative().nullable()),
+        /** First utility. Off until the token is live and the integration is verified. */
+        requestResearchEnabled: optionalString
+          .transform((value) => value === 'true')
+          .pipe(z.boolean()),
+        /**
+         * WalletConnect Cloud project id — a public identifier shipped to the
+         * browser, not a secret. Without it no wallet UI is rendered at all.
+         */
+        walletConnectProjectId: optionalString,
+        /**
+         * Prelaunch preview of the wallet flow: connect and network switching are
+         * live on the research card, payment is disabled and says why. Allowed
+         * while prelaunch precisely so the flow is tested before real funds move.
+         */
+        walletPreviewEnabled: optionalString
+          .transform((value) => value === 'true')
+          .pipe(z.boolean()),
+        /* Later utilities. Flags exist so each phase is switched on independently;
+       nothing consumes them yet beyond the /hey page's "planned" labels. */
+        bountiesEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+        /** The monthly research-funding vote (M13-D). */
+        holderVoteEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+        /** Early access to approved research notes for tiers that carry it (M13-F). */
+        earlyAccessEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+        /**
+         * The Research Terminal, phase 01 (2026-09-21). Off by default and read on
+         * the server: the route reads real project data, so it must not resolve at
+         * all until the beta gate exists. Hiding a link is not access control.
+         */
+        terminalBetaEnabled: optionalString
+          .transform((value) => value === 'true')
+          .pipe(z.boolean()),
+        /** Bonds behind claims (M13-C): Scout claim, owner update, project submission. */
+        bondsEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+        /** Blocks a receipt must be buried under before a payment counts (M13-B). */
+        paymentConfirmations: optionalString.pipe(
+          z.coerce.number().int().min(0).max(10_000).default(30),
+        ),
+        scoutStakingEnabled: optionalString
+          .transform((value) => value === 'true')
+          .pipe(z.boolean()),
+        evidenceChallengesEnabled: optionalString
+          .transform((value) => value === 'true')
+          .pipe(z.boolean()),
+        apiCreditsEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+        /** Price of one research request in whole HEY; adjustable, never on-chain. */
+        requestResearchHeyAmount: numberWithDefault(DEFAULT_REQUEST_RESEARCH_HEY).pipe(
+          z.number().positive(),
+        ),
+      })
+      .superRefine((hey, context) => {
+        // A live token without an address, or an address without a live token,
+        // is a half-configured launch; refuse to start rather than guess.
+        if (hey.status === 'live' && hey.tokenAddress === null) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['tokenAddress'],
+            message: 'HEY_TOKEN_STATUS=live requires the verified HEY_TOKEN_ADDRESS',
+          });
+        }
+        if (hey.status === 'prelaunch' && hey.tokenAddress !== null) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['tokenAddress'],
+            message: 'HEY_TOKEN_ADDRESS must stay empty while HEY_TOKEN_STATUS=prelaunch',
+          });
+        }
+        if (hey.requestResearchEnabled && hey.status !== 'live') {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['requestResearchEnabled'],
+            message: 'HEY_REQUEST_RESEARCH_ENABLED needs HEY_TOKEN_STATUS=live',
+          });
+        }
+        if (hey.requestResearchEnabled && hey.treasuryAddress === null) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['treasuryAddress'],
+            message:
+              'HEY_REQUEST_RESEARCH_ENABLED needs HEY_TREASURY_ADDRESS (the payment recipient)',
+          });
+        }
+        // Bounties (M13-B) move real money: only with a live token and a treasury.
+        if (hey.bountiesEnabled && (hey.status !== 'live' || hey.treasuryAddress === null)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['bountiesEnabled'],
+            message: 'HEY_BOUNTIES_ENABLED needs HEY_TOKEN_STATUS=live and HEY_TREASURY_ADDRESS',
+          });
+        }
+        if (hey.holderVoteEnabled && hey.status !== 'live') {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['holderVoteEnabled'],
+            message: 'HEY_HOLDER_VOTE_ENABLED needs HEY_TOKEN_STATUS=live',
+          });
+        }
+        if (hey.earlyAccessEnabled && hey.status !== 'live') {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['earlyAccessEnabled'],
+            message: 'HEY_EARLY_ACCESS_ENABLED needs HEY_TOKEN_STATUS=live',
+          });
+        }
+        if (hey.apiCreditsEnabled && hey.status !== 'live') {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['apiCreditsEnabled'],
+            message: 'HEY_API_CREDITS_ENABLED needs HEY_TOKEN_STATUS=live',
+          });
+        }
+        if (hey.bondsEnabled && (hey.status !== 'live' || hey.treasuryAddress === null)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['bondsEnabled'],
+            message: 'HEY_BONDS_ENABLED needs HEY_TOKEN_STATUS=live and HEY_TREASURY_ADDRESS',
+          });
+        }
+        for (const [flag, path, key] of [
+          [hey.scoutStakingEnabled, 'scoutStakingEnabled', 'HEY_SCOUT_STAKING_ENABLED'],
+          [
+            hey.evidenceChallengesEnabled,
+            'evidenceChallengesEnabled',
+            'HEY_EVIDENCE_CHALLENGES_ENABLED',
+          ],
+        ] as const) {
+          // Designed, not built (M13 economy §22). A flag that is on with nothing
+          // behind it would advertise a utility that does not exist.
+          if (flag) {
+            // The path is the flag's own (2026-09-15). It read `bountiesEnabled`
+            // for both, so the issue named a variable the operator had not set.
+            context.addIssue({
+              code: z.ZodIssueCode.custom,
+              path: [path],
+              message: `${key} has no implementation in this release and must stay false`,
+            });
+          }
+        }
+      }),
+
+    /**
+     * Outbound email (2026-09-05).
+     *
+     * HEY had no mail provider for its first year and promised none. Resend is
+     * now configured, so the promise becomes a contract instead: three messages,
+     * every one of them the consequence of something the reader did, and one
+     * switch that turns the whole layer off.
+     *
+     * `enabled` defaults to false, so a developer checkout, CI and any
+     * deployment that forgets the block send nothing at all rather than
+     * accidentally mailing real people from a test database. When it is on the
+     * two other values must be real: a Resend key (`re_…`) and a From address
+     * that parses as `Name <local@domain>`, because a malformed From is
+     * accepted by the API and then silently rejected by every receiver.
+     */
+    mail: z
+      .object({
+        enabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+        apiKey: optionalString,
+        from: optionalString,
+      })
+      .superRefine((mail, context) => {
+        if (!mail.enabled) return;
+        if (!mail.apiKey) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['apiKey'],
+            message: 'HEY_MAIL_ENABLED=true requires RESEND_API_KEY',
+          });
+        } else if (!RESEND_KEY_PATTERN.test(mail.apiKey)) {
+          // Never echo the value: the message says the shape, not the secret.
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['apiKey'],
+            message: 'RESEND_API_KEY does not look like a Resend key (it starts with `re_`)',
+          });
+        }
+        if (!mail.from) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['from'],
+            message: 'HEY_MAIL_ENABLED=true requires HEY_MAIL_FROM',
+          });
+        } else if (!MAIL_FROM_PATTERN.test(mail.from)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['from'],
+            message: 'HEY_MAIL_FROM must read `Name <local@domain>`',
+          });
+        }
+      }),
+
+    /**
+     * Ops alerts to a Telegram chat (2026-09-11). Both values or neither: a
+     * token without a chat, or a chat without a token, is a deployment mistake
+     * and is refused at boot rather than silently never alerting.
+     */
+    alerts: z
+      .object({
+        telegramBotToken: optionalString,
+        telegramChatId: optionalString,
+      })
+      .superRefine((alerts, context) => {
+        if (Boolean(alerts.telegramBotToken) !== Boolean(alerts.telegramChatId)) {
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['telegramChatId'],
+            message: 'HEY_TELEGRAM_BOT_TOKEN and HEY_TELEGRAM_CHAT_ID must be set together',
+          });
+        }
+        if (
+          alerts.telegramBotToken &&
+          !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(alerts.telegramBotToken)
+        ) {
+          // Never echo the value: the message says the shape, not the secret.
+          context.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ['telegramBotToken'],
+            message: 'HEY_TELEGRAM_BOT_TOKEN does not look like a bot token (`<digits>:<key>`)',
+          });
+        }
+      }),
+
+    /**
+     * Google Search Console (2026-09-18, docs/ANALYTICS.md). Both optional:
+     * without them the `GSC_SYNC` job records "not configured" and the console
+     * shows its own coverage views. `credentialsJson` is the service-account
+     * key file as one value; it is parsed by the client, never here, so a
+     * malformed key surfaces as a job error and not as a boot failure.
+     */
+    searchConsole: z.object({
+      credentialsJson: optionalString,
+      site: optionalString,
     }),
 
-  /**
-   * Google Search Console (2026-09-18, docs/ANALYTICS.md). Both optional:
-   * without them the `GSC_SYNC` job records "not configured" and the console
-   * shows its own coverage views. `credentialsJson` is the service-account
-   * key file as one value; it is parsed by the client, never here, so a
-   * malformed key surfaces as a job error and not as a boot failure.
-   */
-  searchConsole: z.object({
-    credentialsJson: optionalString,
-    site: optionalString,
-  }),
-
-  worker: z.object({
-    heartbeatMs: numberWithDefault(DEFAULT_WORKER_HEARTBEAT_MS).pipe(z.number().int().positive()),
-    /** How often the worker polls the job table. */
-    pollIntervalMs: numberWithDefault(DEFAULT_WORKER_POLL_INTERVAL_MS).pipe(
-      z.number().int().positive(),
-    ),
-    /**
-     * How many claimed jobs run at once. Capped at the connection pool: more
-     * lanes than connections trades a job queue for a connection queue.
-     */
-    jobConcurrency: numberWithDefault(DEFAULT_JOB_CONCURRENCY).pipe(
-      z.number().int().positive().max(10),
-    ),
-    /** How many jobs a tick claims, enough to keep the lanes fed. */
-    jobClaimLimit: numberWithDefault(DEFAULT_JOB_CLAIM_LIMIT).pipe(z.number().int().positive()),
-    /** How often scheduled discovery is enqueued (PRD V4 section 35). */
-    discoveryIntervalMs: numberWithDefault(DEFAULT_DISCOVERY_INTERVAL_MS).pipe(
-      z.number().int().positive(),
-    ),
-    /** Set false to run the worker without the discovery scheduler. */
-    discoveryEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
-    /**
-     * Robinhood Stock Token API prices for tokenized equities (2026-09-04).
-     * Implemented and tested, off until the founder decides whether tokenized
-     * stocks are a HEY surface at all (docs/SOURCE_REGISTRY.md).
-     */
-    stockTokenPricesEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
-  }),
-}).superRefine((env, context) => {
-  // A short signing secret in production is a deployment mistake, not a choice (audit M10, 2026-09-11).
-  if (env.nodeEnv === 'production' && env.sessionSecret !== undefined && env.sessionSecret.length < MIN_SESSION_SECRET_LENGTH) {
-    context.addIssue({
-      code: z.ZodIssueCode.custom,
-      path: ['sessionSecret'],
-      message: `SESSION_SECRET must be at least ${MIN_SESSION_SECRET_LENGTH} characters in production; generate one with: openssl rand -hex 32`,
-    });
-  }
-});
+    worker: z.object({
+      heartbeatMs: numberWithDefault(DEFAULT_WORKER_HEARTBEAT_MS).pipe(z.number().int().positive()),
+      /** How often the worker polls the job table. */
+      pollIntervalMs: numberWithDefault(DEFAULT_WORKER_POLL_INTERVAL_MS).pipe(
+        z.number().int().positive(),
+      ),
+      /**
+       * How many claimed jobs run at once. Capped at the connection pool: more
+       * lanes than connections trades a job queue for a connection queue.
+       */
+      jobConcurrency: numberWithDefault(DEFAULT_JOB_CONCURRENCY).pipe(
+        z.number().int().positive().max(10),
+      ),
+      /** How many jobs a tick claims, enough to keep the lanes fed. */
+      jobClaimLimit: numberWithDefault(DEFAULT_JOB_CLAIM_LIMIT).pipe(z.number().int().positive()),
+      /** How often scheduled discovery is enqueued (PRD V4 section 35). */
+      discoveryIntervalMs: numberWithDefault(DEFAULT_DISCOVERY_INTERVAL_MS).pipe(
+        z.number().int().positive(),
+      ),
+      /** Set false to run the worker without the discovery scheduler. */
+      discoveryEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
+      /**
+       * Robinhood Stock Token API prices for tokenized equities (2026-09-04).
+       * Implemented and tested, off until the founder decides whether tokenized
+       * stocks are a HEY surface at all (docs/SOURCE_REGISTRY.md).
+       */
+      stockTokenPricesEnabled: optionalString
+        .transform((value) => value === 'true')
+        .pipe(z.boolean()),
+    }),
+  })
+  .superRefine((env, context) => {
+    // A short signing secret in production is a deployment mistake, not a choice (audit M10, 2026-09-11).
+    if (
+      env.nodeEnv === 'production' &&
+      env.sessionSecret !== undefined &&
+      env.sessionSecret.length < MIN_SESSION_SECRET_LENGTH
+    ) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['sessionSecret'],
+        message: `SESSION_SECRET must be at least ${MIN_SESSION_SECRET_LENGTH} characters in production; generate one with: openssl rand -hex 32`,
+      });
+    }
+  });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
@@ -488,6 +543,7 @@ function shapeEnv(raw: RawEnv) {
       paymentConfirmations: raw.HEY_PAYMENT_CONFIRMATIONS,
       bondsEnabled: raw.HEY_BONDS_ENABLED,
       earlyAccessEnabled: raw.HEY_EARLY_ACCESS_ENABLED,
+      terminalBetaEnabled: raw.HEY_TERMINAL_BETA_ENABLED,
       holderVoteEnabled: raw.HEY_HOLDER_VOTE_ENABLED,
       scoutStakingEnabled: raw.HEY_SCOUT_STAKING_ENABLED,
       evidenceChallengesEnabled: raw.HEY_EVIDENCE_CHALLENGES_ENABLED,
@@ -519,7 +575,7 @@ function shapeEnv(raw: RawEnv) {
 }
 
 /** Map a nested schema path back to the `.env` key a developer has to fix. */
-const ENV_KEY_BY_PATH: Record<string, string> = {
+export const ENV_KEY_BY_PATH: Record<string, string> = {
   nodeEnv: 'NODE_ENV',
   appUrl: 'APP_URL',
   publicRepoUrl: 'HEY_PUBLIC_REPO_URL',
@@ -565,6 +621,7 @@ const ENV_KEY_BY_PATH: Record<string, string> = {
   'hey.paymentConfirmations': 'HEY_PAYMENT_CONFIRMATIONS',
   'hey.bondsEnabled': 'HEY_BONDS_ENABLED',
   'hey.earlyAccessEnabled': 'HEY_EARLY_ACCESS_ENABLED',
+  'hey.terminalBetaEnabled': 'HEY_TERMINAL_BETA_ENABLED',
   'hey.holderVoteEnabled': 'HEY_HOLDER_VOTE_ENABLED',
   'hey.scoutStakingEnabled': 'HEY_SCOUT_STAKING_ENABLED',
   'hey.evidenceChallengesEnabled': 'HEY_EVIDENCE_CHALLENGES_ENABLED',
@@ -664,7 +721,12 @@ export function isAiEnabled(env: ServerEnv): boolean {
  */
 /** Bounties are open: the flag, a live token, and a treasury to pay from (M13-B). */
 export function isBountiesOpen(env: ServerEnv): boolean {
-  return env.hey.bountiesEnabled && env.hey.status === 'live' && env.hey.tokenAddress !== null && env.hey.treasuryAddress !== null;
+  return (
+    env.hey.bountiesEnabled &&
+    env.hey.status === 'live' &&
+    env.hey.tokenAddress !== null &&
+    env.hey.treasuryAddress !== null
+  );
 }
 
 /** The vote is open to run: the flag and a live token (M13-D). */
@@ -684,7 +746,12 @@ export function isApiKeysOpen(env: ServerEnv): boolean {
 
 /** Bonds are open: the flag, a live token, and a treasury to hold them (M13-C). */
 export function isBondsOpen(env: ServerEnv): boolean {
-  return env.hey.bondsEnabled && env.hey.status === 'live' && env.hey.tokenAddress !== null && env.hey.treasuryAddress !== null;
+  return (
+    env.hey.bondsEnabled &&
+    env.hey.status === 'live' &&
+    env.hey.tokenAddress !== null &&
+    env.hey.treasuryAddress !== null
+  );
 }
 
 export function isMailEnabled(env: ServerEnv): boolean {
@@ -706,8 +773,17 @@ export function isSearchConsoleConfigured(env: ServerEnv): boolean {
  * when a key is configured, else the instance itself; undefined when neither
  * is configured. Explorer links for people always use `chain.blockscoutBaseUrl`.
  */
-export function explorerApiFor(chain: { chainId: number; blockscoutBaseUrl?: string | undefined; blockscoutApiKey?: string | undefined }): { baseUrl: string; chainId?: number; apiKey?: string } | undefined {
-  if (chain.blockscoutApiKey) return { baseUrl: 'https://api.blockscout.com', chainId: chain.chainId, apiKey: chain.blockscoutApiKey };
+export function explorerApiFor(chain: {
+  chainId: number;
+  blockscoutBaseUrl?: string | undefined;
+  blockscoutApiKey?: string | undefined;
+}): { baseUrl: string; chainId?: number; apiKey?: string } | undefined {
+  if (chain.blockscoutApiKey)
+    return {
+      baseUrl: 'https://api.blockscout.com',
+      chainId: chain.chainId,
+      apiKey: chain.blockscoutApiKey,
+    };
   if (chain.blockscoutBaseUrl) return { baseUrl: chain.blockscoutBaseUrl };
   return undefined;
 }

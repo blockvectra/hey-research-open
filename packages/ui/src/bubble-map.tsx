@@ -53,7 +53,8 @@ export type BubbleNode = {
 export type BubbleEdge = { from: string; to: string; transfers: number };
 
 const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
-const pct = (value: number) => (value >= 10 ? value.toFixed(0) : value >= 1 ? value.toFixed(1) : value.toFixed(2));
+const pct = (value: number) =>
+  value >= 10 ? value.toFixed(0) : value >= 1 ? value.toFixed(1) : value.toFixed(2);
 
 /**
  * One hue per cluster, cycling. They are the product's own data colours, not a
@@ -69,7 +70,8 @@ export const CLUSTER_COLOURS = [
   'var(--color-blue-500)',
 ] as const;
 
-export const clusterColour = (cluster: number) => CLUSTER_COLOURS[(cluster - 1) % CLUSTER_COLOURS.length]!;
+export const clusterColour = (cluster: number) =>
+  CLUSTER_COLOURS[(cluster - 1) % CLUSTER_COLOURS.length]!;
 
 /** Stable ids: never generated, never counted (see the note above). */
 const SPHERE_ID = 'hey-bubble-sphere';
@@ -92,9 +94,19 @@ export function BubbleMap({
 }) {
   if (nodes.length === 0) {
     return (
-      <div className={cn('rounded-[10px] border border-dashed border-hey-border px-4 py-6 text-center', className)} data-testid={testId}>
-        <p className="text-[13.5px] text-hey-secondary">No distribution indexed for this token yet.</p>
-        <p className="mt-0.5 text-[12.5px] text-hey-muted">HEY reads the largest balances daily; the map appears once it has.</p>
+      <div
+        className={cn(
+          'rounded-[10px] border border-dashed border-hey-border px-4 py-6 text-center',
+          className,
+        )}
+        data-testid={testId}
+      >
+        <p className="text-[13.5px] text-hey-secondary">
+          No distribution indexed for this token yet.
+        </p>
+        <p className="mt-0.5 text-[12.5px] text-hey-muted">
+          HEY reads the largest balances daily; the map appears once it has.
+        </p>
       </div>
     );
   }
@@ -109,9 +121,14 @@ export function BubbleMap({
   const half = size / 2;
   /* Room for a rim label on an outer circle without clipping it. */
   const pad = 18;
-  const addressHref = (address: string) => (explorerBase ? `${explorerBase.replace(/\/$/, '')}/address/${address}` : undefined);
+  const addressHref = (address: string) =>
+    explorerBase ? `${explorerBase.replace(/\/$/, '')}/address/${address}` : undefined;
   const colourOf = (node: BubbleNode) =>
-    node.cluster !== undefined ? clusterColour(node.cluster) : node.label !== undefined ? 'var(--color-hey-muted)' : 'var(--color-hey-border-strong)';
+    node.cluster !== undefined
+      ? clusterColour(node.cluster)
+      : node.label !== undefined
+        ? 'var(--hey-muted)'
+        : 'var(--hey-border-strong)';
 
   return (
     <div className={className} data-testid={testId}>
@@ -121,7 +138,10 @@ export function BubbleMap({
         role="img"
         aria-label={`Token distribution, largest first: ${nodes
           .slice(0, 10)
-          .map((node) => `${node.label ?? short(node.address)} ${pct(node.sharePct)} per cent${node.cluster !== undefined ? `, cluster ${node.cluster}` : ''}`)
+          .map(
+            (node) =>
+              `${node.label ?? short(node.address)} ${pct(node.sharePct)} per cent${node.cluster !== undefined ? `, cluster ${node.cluster}` : ''}`,
+          )
           .join('; ')}`}
       >
         <defs>
@@ -137,7 +157,8 @@ export function BubbleMap({
         <g fill="none" strokeLinecap="round">
           {drawn.map((edge) => {
             const strength = Math.log10(edge.transfers + 1) / Math.log10(busiest + 1);
-            const inCluster = edge.from.cluster !== undefined && edge.from.cluster === edge.to.cluster;
+            const inCluster =
+              edge.from.cluster !== undefined && edge.from.cluster === edge.to.cluster;
             /* Rim to rim, not centre to centre: a line through a large disc reads as a spoke. */
             const dx = edge.to.x - edge.from.x;
             const dy = edge.to.y - edge.from.y;
@@ -149,7 +170,7 @@ export function BubbleMap({
                 y1={edge.from.y + (dy / distance) * edge.from.r}
                 x2={edge.to.x - (dx / distance) * edge.to.r}
                 y2={edge.to.y - (dy / distance) * edge.to.r}
-                stroke={inCluster ? clusterColour(edge.from.cluster!) : 'var(--color-hey-muted)'}
+                stroke={inCluster ? clusterColour(edge.from.cluster!) : 'var(--hey-muted)'}
                 strokeWidth={0.6 + strength * 1.6}
                 strokeOpacity={inCluster ? 0.3 + strength * 0.45 : 0.2 + strength * 0.25}
               >
@@ -182,7 +203,13 @@ export function BubbleMap({
                   {`#${node.rank} · ${node.label ?? short(node.address)} · ${pct(node.sharePct)}% of supply${clustered ? ` · cluster ${node.cluster}` : ''}`}
                 </title>
               </circle>
-              <circle cx={node.x} cy={node.y} r={node.r} fill={`url(#${SPHERE_ID})`} pointerEvents="none" />
+              <circle
+                cx={node.x}
+                cy={node.y}
+                r={node.r}
+                fill={`url(#${SPHERE_ID})`}
+                pointerEvents="none"
+              />
               {showPct ? (
                 <>
                   <text
@@ -193,7 +220,7 @@ export function BubbleMap({
                     className="tabular-nums"
                     fontSize={Math.min(28, Math.max(12, node.r * 0.42))}
                     fontWeight={600}
-                    fill="var(--color-hey-ink)"
+                    fill="var(--hey-ink)"
                     pointerEvents="none"
                   >
                     {pct(node.sharePct)}%
@@ -205,7 +232,7 @@ export function BubbleMap({
                     dominantBaseline="central"
                     className="tabular-nums"
                     fontSize={Math.min(13, Math.max(9, node.r * 0.19))}
-                    fill="var(--color-hey-ink)"
+                    fill="var(--hey-ink)"
                     fillOpacity={0.6}
                     pointerEvents="none"
                   >
@@ -220,7 +247,7 @@ export function BubbleMap({
                   dominantBaseline="central"
                   className="tabular-nums"
                   fontSize={Math.min(13, Math.max(8, node.r * 0.62))}
-                  fill="var(--color-hey-ink)"
+                  fill="var(--hey-ink)"
                   fillOpacity={0.7}
                   pointerEvents="none"
                 >
@@ -249,7 +276,9 @@ export function BubbleMap({
       <p className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11.5px] text-hey-muted">
         <span>circle area is the share of supply</span>
         <span>a number is its rank</span>
-        {drawn.length > 0 ? <span>a line is a transfer between two of them in the last few days</span> : null}
+        {drawn.length > 0 ? (
+          <span>a line is a transfer between two of them in the last few days</span>
+        ) : null}
       </p>
     </div>
   );
@@ -282,13 +311,19 @@ export function BubbleList({
           {clusters.slice(0, 4).map((cluster) => (
             <li key={cluster.id} className="flex items-baseline justify-between gap-3 text-[13px]">
               <span className="flex min-w-0 items-center gap-2">
-                <span aria-hidden="true" className="inline-block size-[9px] shrink-0 rounded-full" style={{ background: clusterColour(cluster.id) }} />
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-[9px] shrink-0 rounded-full"
+                  style={{ background: clusterColour(cluster.id) }}
+                />
                 <span className="truncate">
                   Cluster {cluster.id}
                   <span className="text-hey-muted"> · {cluster.addresses.length} addresses</span>
                 </span>
               </span>
-              {cluster.sharePct !== undefined ? <span className="tabular-nums">{pct(cluster.sharePct)}%</span> : null}
+              {cluster.sharePct !== undefined ? (
+                <span className="tabular-nums">{pct(cluster.sharePct)}%</span>
+              ) : null}
             </li>
           ))}
         </ul>
@@ -297,7 +332,9 @@ export function BubbleList({
         {shown.map((node) => (
           <li key={node.address} className="flex items-baseline justify-between gap-3 text-[13px]">
             <span className="flex min-w-0 items-baseline gap-2">
-              <span className="w-5 shrink-0 tabular-nums text-right text-[11.5px] text-hey-muted">{node.rank}</span>
+              <span className="w-5 shrink-0 tabular-nums text-right text-[11.5px] text-hey-muted">
+                {node.rank}
+              </span>
               {explorerBase ? (
                 <a
                   href={`${explorerBase.replace(/\/$/, '')}/address/${node.address}`}
@@ -308,10 +345,16 @@ export function BubbleList({
                   {node.label ?? short(node.address)}
                 </a>
               ) : (
-                <span className="truncate font-mono text-[12.5px]">{node.label ?? short(node.address)}</span>
+                <span className="truncate font-mono text-[12.5px]">
+                  {node.label ?? short(node.address)}
+                </span>
               )}
               {node.cluster !== undefined ? (
-                <span aria-hidden="true" className="inline-block size-[7px] shrink-0 rounded-full" style={{ background: clusterColour(node.cluster) }} />
+                <span
+                  aria-hidden="true"
+                  className="inline-block size-[7px] shrink-0 rounded-full"
+                  style={{ background: clusterColour(node.cluster) }}
+                />
               ) : null}
             </span>
             <span className="tabular-nums">{pct(node.sharePct)}%</span>

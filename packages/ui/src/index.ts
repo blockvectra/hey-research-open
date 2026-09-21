@@ -37,3 +37,5 @@ export * from './timeline';
 export * from './token-identity';
 export * from './market-charts';
 export * from './bubble-map';
+export * from './sparkline';
+export * from './terminal-chart';
