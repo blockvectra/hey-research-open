@@ -163,9 +163,20 @@ export type HeyProjectDetail = HeyProject & {
   tokenVerification?: { status: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH'; reason?: string; verifiedAt?: string };
   /** Events the token contract emitted, as HEY last read them from the chain. Context; never a ranking input. */
   onchainActivity?: {
-    events24h: number;
-    events7d: number;
+    /**
+     * Absent when HEY could not read the contract's events on any day in the
+     * window (2026-09-22). The decoded source does not index every contract,
+     * and a day with no indexed events beside real calls is a gap in what HEY
+     * can read — not a quiet contract. It used to be reported as `0`, on 147
+     * published projects, one of which took 448,951 calls the day it said
+     * none. Absent is unknown; a present `0` is a day HEY read and found none.
+     */
+    events24h?: number;
+    events7d?: number;
+    /** Days HEY holds a row for. */
     daysCovered: number;
+    /** Days HEY could read events from; below `daysCovered` when the decoder is blind. */
+    daysMeasured: number;
     truncated: boolean;
     observedAt: string;
     calls24h?: number;
