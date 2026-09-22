@@ -124,6 +124,15 @@ const compact = (v: number) =>
  * never a sample — and a candidate too close to one already kept is skipped so
  * two cards cannot overlap at any width.
  */
+/**
+ * The widest a candle body may be drawn, in viewBox units.
+ *
+ * 1000 units span the plot, so this is a hair over one per cent of it — the
+ * proportion a candle occupies on a chart showing a quarter's worth of days,
+ * which is what a reader recognises as a candle.
+ */
+const MAX_BODY_W = 12;
+
 const LABEL_LIMIT = 3;
 
 /**
@@ -300,7 +309,19 @@ export function DailyCandleChart({
    * candle chart draws; the wick keeps a one-pixel non-scaling stroke, so even
    * where a body renders below a pixel the day is still on the chart.
    */
-  const bodyW = r2(cw * 0.62);
+  /*
+   * A candle has a maximum width (2026-09-22).
+   *
+   * `cw` is the plot divided by the number of days, and the body was 62% of
+   * it with no ceiling — so a token HEY had read for fifteen days drew bodies
+   * 41 units wide, a thumb's width each, and the chart read as a bar chart of
+   * a fortnight rather than as a price. The founder's screenshot is that.
+   *
+   * The spacing still comes from the day count, so the candles stay on their
+   * own dates; only the body stops stretching to fill the gap. Below the cap
+   * nothing changes, which is every range from about seventy days up.
+   */
+  const bodyW = r2(Math.min(cw * 0.62, MAX_BODY_W));
 
   const maxVol = Math.max(...range.map((d) => d.volume ?? 0), 1);
   const { indexed, gaps: gapDays } = dayCoverage(days);
