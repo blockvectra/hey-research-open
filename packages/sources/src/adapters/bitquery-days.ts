@@ -3,7 +3,13 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from './bitquery';
+import {
+  BITQUERY_BATCH_SIZE,
+  BITQUERY_DEFAULT_BASE_URL,
+  BITQUERY_DEFAULT_DATASET,
+  BITQUERY_NETWORK,
+  type BitqueryDataset,
+} from './bitquery';
 
 /**
  * Bitquery, by the day (2026-09-13): the rows HEY's own daily index is built
@@ -18,8 +24,13 @@ import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from
  *   (a conditional sum on the tokens cube rather than a cube of its own),
  *   transactions and transfers.
  *
- * The realtime dataset holds four or five days, so the callers run daily and
- * keep what they read; a flat five points a cube on the Pro plan.
+ * The dataset is a parameter (2026-09-22). These queries were written against
+ * `realtime`, which reaches back four or five days — so the callers ran daily
+ * and kept what they read, and HEY's daily index could never be built for a
+ * token it discovered late. The historical add-on makes the same documents
+ * answer for any window; `combined` is the default and spans both.
+ *
+ * A flat five points a cube on the Pro plan.
  */
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const CACHE_TTL_SECONDS = 30 * 60;
@@ -50,8 +61,10 @@ export const ROBINHOOD_QUOTE_ASSETS = [
  * Every figure here is a count. No address is selected, stored or named
  * (CLAUDE.md product rule 1).
  */
-export const BITQUERY_TRADE_DAYS_QUERY = `query HeyTradeDays($addresses: [String!], $since: DateTime) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
+export const tradeDaysQuery = (
+  dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
+): string => `query HeyTradeDays($addresses: [String!], $since: DateTime) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     trades: DEXTradeByTokens(
       where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
       limit: { count: 5000 }
@@ -83,8 +96,13 @@ export const BITQUERY_TRADE_DAYS_QUERY = `query HeyTradeDays($addresses: [String
   }
 }`;
 
-export const BITQUERY_CHAIN_DAYS_QUERY = `query HeyChainDays($since: DateTime, $quotes: [String!]) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
+/** The default document, kept as a constant for the contract tests. */
+export const BITQUERY_TRADE_DAYS_QUERY = tradeDaysQuery();
+
+export const chainDaysQuery = (
+  dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
+): string => `query HeyChainDays($since: DateTime, $quotes: [String!]) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     trades: DEXTrades(where: { Block: { Time: { since: $since } } }, limit: { count: 100 }) {
       Block { Date }
       trades: count
@@ -105,6 +123,8 @@ export const BITQUERY_CHAIN_DAYS_QUERY = `query HeyChainDays($since: DateTime, $
     }
   }
 }`;
+
+export const BITQUERY_CHAIN_DAYS_QUERY = chainDaysQuery();
 
 const numberish = z.union([z.number(), z.string()]).nullish();
 const dayBlock = z.object({ Date: z.string() });
@@ -161,6 +181,8 @@ export type BitqueryTradeDaysInput = {
   since: Date;
   apiKey: string;
   baseUrl?: string;
+  /** Which slice of history to read. Defaults to `combined`, which spans both. */
+  dataset?: BitqueryDataset;
 };
 
 /** One token's one UTC day, as decoded trades saw it. */
@@ -188,7 +210,13 @@ export type BitqueryTokenDay = {
   transfers?: number;
 };
 
-export type BitqueryChainDaysInput = { since: Date; apiKey: string; baseUrl?: string; quoteAssets?: readonly string[] };
+export type BitqueryChainDaysInput = {
+  since: Date;
+  apiKey: string;
+  baseUrl?: string;
+  quoteAssets?: readonly string[];
+  dataset?: BitqueryDataset;
+};
 
 export type BitqueryChainDay = {
   day: string;
@@ -327,7 +355,7 @@ export function createBitqueryTradeDaysAdapter(): SourceAdapter<BitqueryTradeDay
       input.addresses.length > 0 && input.addresses.length <= BITQUERY_BATCH_SIZE && input.addresses.every((address) => ADDRESS.test(address)) && input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryTokenDay[]>> {
       const addresses = [...new Set(input.addresses.map((address) => address.toLowerCase()))];
-      return performSourceFetch(ctx, post(input, BITQUERY_TRADE_DAYS_QUERY, { addresses, since: input.since.toISOString() }), {
+      return performSourceFetch(ctx, post(input, tradeDaysQuery(input.dataset), { addresses, since: input.since.toISOString() }), {
         schema: tradeDaysResponseSchema,
         parse: (body) => JSON.parse(body),
         cacheTtlSeconds: CACHE_TTL_SECONDS,
@@ -350,7 +378,7 @@ export function createBitqueryChainDaysAdapter(): SourceAdapter<BitqueryChainDay
     canHandle: (input) => input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryChainDay[]>> {
       const quotes = [...(input.quoteAssets ?? ROBINHOOD_QUOTE_ASSETS)];
-      return performSourceFetch(ctx, post(input, BITQUERY_CHAIN_DAYS_QUERY, { since: input.since.toISOString(), quotes }), {
+      return performSourceFetch(ctx, post(input, chainDaysQuery(input.dataset), { since: input.since.toISOString(), quotes }), {
         schema: chainDaysResponseSchema,
         parse: (body) => JSON.parse(body),
         cacheTtlSeconds: CACHE_TTL_SECONDS,

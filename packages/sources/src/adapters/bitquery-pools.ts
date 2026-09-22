@@ -3,7 +3,10 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from './bitquery';
+import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK,
+  BITQUERY_DEFAULT_DATASET,
+  type BitqueryDataset,
+} from './bitquery';
 
 /**
  * A token's pools, and how much of it can actually be sold (2026-09-15).
@@ -34,8 +37,10 @@ const CACHE_TTL_SECONDS = 30 * 60;
 /** One per cent. The level a reader understands without being told what a basis point is. */
 export const DEPTH_BASIS_POINTS = 100;
 
-export const BITQUERY_POOLS_QUERY = `query HeyTokenPools($addresses: [String!], $since: DateTime) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
+export const poolsQuery = (
+  dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
+): string => `query HeyTokenPools($addresses: [String!], $since: DateTime) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     pools: DEXPoolEvents(
       where: {
         Block: { Time: { since: $since } }
@@ -116,6 +121,8 @@ const responseSchema = z.object({
 });
 
 export type BitqueryPoolsInput = {
+  /** Which slice of history to read. Defaults to `combined`. */
+  dataset?: BitqueryDataset;
   /** Token contracts, at most `BITQUERY_BATCH_SIZE`; the caller chunks. */
   addresses: readonly string[];
   /** Pool state at or after this moment; the newest reading in the window wins. */
@@ -234,7 +241,7 @@ export function createBitqueryPoolsAdapter(): SourceAdapter<BitqueryPoolsInput, 
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
           method: 'POST',
           headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${input.apiKey}` },
-          body: JSON.stringify({ query: BITQUERY_POOLS_QUERY, variables: { addresses, since: input.since.toISOString() } }),
+          body: JSON.stringify({ query: poolsQuery(input.dataset), variables: { addresses, since: input.since.toISOString() } }),
           allowedContentTypes: ['application/json'],
         },
         {
@@ -250,3 +257,6 @@ export function createBitqueryPoolsAdapter(): SourceAdapter<BitqueryPoolsInput, 
     },
   };
 }
+
+/** The default document, kept as a constant for the contract tests. */
+export const BITQUERY_POOLS_QUERY = poolsQuery();

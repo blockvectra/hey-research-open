@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { readFixture, stubFetch, testContext } from '../testing';
 import {
   BITQUERY_DEPLOYMENT_QUERY,
+  deploymentQuery,
   createBitqueryDeploymentAdapter,
   normalizeBitqueryDeployment,
 } from './bitquery-deployment';
@@ -30,8 +31,20 @@ describe('bitquery deployment', () => {
     expect(BITQUERY_DEPLOYMENT_QUERY).toContain('Create: true');
     expect(BITQUERY_DEPLOYMENT_QUERY).toContain('To: { is: $address }');
     expect(BITQUERY_DEPLOYMENT_QUERY).toContain('orderBy: { ascending: Block_Time }');
-    // The realtime dataset is the only one HEY may read on this chain.
-    expect(BITQUERY_DEPLOYMENT_QUERY).toContain('dataset: realtime');
+    /*
+     * The default document spans the archive (2026-09-22).
+     *
+     * This asserted `realtime`, which was true when it was written — the
+     * archive answered 403 on the plan HEY had. The founder then bought the
+     * historical add-on and this assertion quietly kept the code on a dataset
+     * that reaches back about four days, so /scan could not find the creating
+     * call for any contract older than that. Probed on 2026-09-22: realtime
+     * returned nothing for early August, archive and combined returned the
+     * trades.
+     */
+    expect(BITQUERY_DEPLOYMENT_QUERY).toContain('dataset: combined');
+    expect(deploymentQuery('realtime')).toContain('dataset: realtime');
+    expect(deploymentQuery('archive')).toContain('dataset: archive');
   });
 
   it('separates what executed the creation from the account that sent it', () => {

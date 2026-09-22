@@ -2,7 +2,10 @@ import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK,
+  BITQUERY_DEFAULT_DATASET,
+  type BitqueryDataset,
+} from './bitquery';
 
 /**
  * Who deployed a contract, read from the chain's own calls (2026-09-15).
@@ -43,8 +46,10 @@ const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 /** A creation never changes, so the only reason to re-ask is a cache that expired. */
 const CACHE_TTL_SECONDS = 6 * 60 * 60;
 
-export const BITQUERY_DEPLOYMENT_QUERY = `query HeyDeployment($address: String!) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
+export const deploymentQuery = (
+  dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
+): string => `query HeyDeployment($address: String!) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     Calls(
       where: { Call: { Create: true, To: { is: $address } } }
       limit: { count: 1 }
@@ -75,6 +80,8 @@ const responseSchema = z.object({
 });
 
 export type BitqueryDeploymentInput = {
+  /** Which slice of history to read. Defaults to `combined`. */
+  dataset?: BitqueryDataset;
   address: string;
   apiKey: string;
   baseUrl?: string;
@@ -143,7 +150,7 @@ export function createBitqueryDeploymentAdapter(): SourceAdapter<
             'content-type': 'application/json',
             authorization: `Bearer ${input.apiKey}`,
           },
-          body: JSON.stringify({ query: BITQUERY_DEPLOYMENT_QUERY, variables: { address: wanted } }),
+          body: JSON.stringify({ query: deploymentQuery(input.dataset), variables: { address: wanted } }),
           allowedContentTypes: ['application/json'],
         },
         {
@@ -159,3 +166,6 @@ export function createBitqueryDeploymentAdapter(): SourceAdapter<
     },
   };
 }
+
+/** The default document, kept as a constant for the contract tests. */
+export const BITQUERY_DEPLOYMENT_QUERY = deploymentQuery();

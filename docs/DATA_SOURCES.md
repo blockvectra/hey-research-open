@@ -14,6 +14,15 @@ depends on a live API.
 > 2026-09-15; the split is intentional, not an oversight in either direction.
 
 
+> **2026-09-22 — the archive is bought and was never asked.** The founder
+> purchased the Robinhood Historical Trading Data add-on. Probed live for a
+> window in early August: `dataset: realtime` returned nothing, `archive` and
+> `combined` both returned real trades. Every Bitquery document in the codebase
+> had been pinned to `realtime` since the 403 of 2026-09-12, and two adapter
+> tests asserted it, so the add-on went unread. The queries now take a dataset,
+> defaulting to `combined`; `data:trade-days-backfill` walks history with
+> `archive`.
+
 ## Adapters
 
 | Adapter | Purpose | Cache TTL | Notes |
@@ -161,7 +170,7 @@ three or four method names and two event names, so a contract well above that ha
 call. Still never asked: holders, balances, or any per-account figure — a unit test asserts the
 document never names `Transaction_From`, `Call_From`, `Holder` or `Balance`.
 
-What was checked on `network: robinhood` on 2026-09-14 and is *not* available: `dataset: archive`
+What was checked on `network: robinhood` on 2026-09-14 and was *not* available then: `dataset: archive`
 and `combined` are refused on this plan ("your plan only allows realtime"), and realtime's oldest
 block that day was five days old, so there is no long history from this source at any price we
 pay today. `TokenSupplyUpdates` does not exist on the schema. The prediction-market cubes exist but
@@ -178,7 +187,7 @@ that balance first and last changed, and how many times. What is still never ask
 for an account, anything across tokens, or anything at all about an address that does not hold this
 one token.
 
-`Holders` is documented as requiring the archive dataset, which this plan is refused; it answers on
+`Holders` is documented as requiring the archive dataset, which this plan was refused on 2026-09-14; it answers on
 `realtime` for `network: robinhood` regardless, verified 2026-09-14. Blockscout's holder endpoint
 answers "Network not supported" on the PRO base for chain 4663, so Bitquery is the only source for
 this. The realtime window reaches back about five days, which bounds the edges: a line on the map

@@ -17,11 +17,20 @@ import { toNumber } from '../market';
  * protocol it happened on. Nothing about holders or balances is asked for,
  * ever (CLAUDE.md product rule 1).
  *
- * The `realtime` dataset is the one the Pro plan allows (`combined` spans the
- * archive and is refused with a 403 on that plan — verified 2026-09-12); it
- * holds recent history, which is all a 24 h window needs. The token is an
- * OAuth access token (`ory_…`), sent as a bearer; the old `X-API-KEY` header
- * answers 402 on the v2 endpoint.
+ * The dataset is no longer hardcoded (2026-09-22). `realtime` was the only one
+ * the plan allowed — `combined` spans the archive and answered 403, verified
+ * 2026-09-12 — and every query in this package was written against it. The
+ * founder then bought the Robinhood Historical Trading Data add-on, and
+ * nothing was updated: ten queries kept asking for a dataset that reaches back
+ * about four days while the archive the add-on unlocked sat unread.
+ *
+ * Probed live on 2026-09-22 for a window in early August: `realtime` returned
+ * nothing, `archive` and `combined` both returned real trades. So the default
+ * is now `combined`, which spans both and is a strict superset of what these
+ * queries used to see.
+ *
+ * The token is an OAuth access token (`ory_…`), sent as a bearer; the old
+ * `X-API-KEY` header answers 402 on the v2 endpoint.
  *
  * `DEXTradeByTokens` groups by token and protocol, so a token trading on two
  * venues comes back as two rows; the normaliser sums volume and trades across
@@ -49,6 +58,17 @@ export const BITQUERY_SPACING_MS = 1_000;
 
 /** The day's trades are what the status reads; a reading an hour old is fine. */
 const CACHE_TTL_SECONDS = 60 * 60;
+
+/**
+ * Which slice of chain history a query may see.
+ *
+ * `realtime` reaches back about four days and is right for a job that only
+ * needs the last day. `archive` is the historical add-on. `combined` spans
+ * both and is the default, so a query written for a recent window keeps
+ * working and a query given an older window starts finding things.
+ */
+export type BitqueryDataset = 'realtime' | 'archive' | 'combined';
+export const BITQUERY_DEFAULT_DATASET: BitqueryDataset = 'combined';
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
