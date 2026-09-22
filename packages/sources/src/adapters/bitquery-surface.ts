@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_FULL_DATASET, BITQUERY_NETWORK, type BitqueryDataset } from './bitquery';
 
 /**
  * What a contract actually answers, from the decoded chain (2026-09-15).
@@ -33,8 +33,15 @@ import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from './bitquery';
  * count is a count of distinct senders and is never resolved to an address,
  * never stored, and never attributed to anyone.
  *
- * The realtime dataset reaches back about four days, so every count is "in the
- * window HEY can read" and the copy must say so. One cube, five points.
+ * It ran on `realtime` — about four and a half days — which answers the wrong
+ * question (2026-09-22). "Which methods does this contract answer" is a
+ * property of the code, not of the last four days, so a real protocol that
+ * happened to be quiet this week read as having no surface at all.
+ *
+ * `Calls` and `Events` are both archive-granted and this document reads no
+ * USD field, so `combined` spans the chain's whole history at the same cost.
+ * The counts are still "in the window HEY can read"; the window is now the
+ * chain.
  */
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 /** A contract's surface changes only when somebody deploys a new one. */
@@ -57,8 +64,8 @@ const ERC20_SURFACE = new Set([
   'decreaseAllowance',
 ]);
 
-export const BITQUERY_SURFACE_QUERY = `query HeySurface($address: String!, $limit: Int!) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
+export const surfaceQuery = (dataset: BitqueryDataset = BITQUERY_FULL_DATASET) => `query HeySurface($address: String!, $limit: Int!) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     methods: Calls(
       where: { Call: { To: { is: $address } } }
       limit: { count: $limit }
@@ -82,6 +89,9 @@ export const BITQUERY_SURFACE_QUERY = `query HeySurface($address: String!, $limi
     }
   }
 }`;
+
+/** The frozen `realtime` form, kept so a test can compare the two shapes. */
+export const BITQUERY_SURFACE_QUERY = surfaceQuery('realtime');
 
 const countOf = (value: string | number | null | undefined): number => {
   const n = typeof value === 'number' ? value : Number(value ?? 0);
@@ -186,7 +196,7 @@ export function createBitquerySurfaceAdapter(): SourceAdapter<
             authorization: `Bearer ${input.apiKey}`,
           },
           body: JSON.stringify({
-            query: BITQUERY_SURFACE_QUERY,
+            query: surfaceQuery(),
             variables: { address: input.address.toLowerCase(), limit: METHOD_LIMIT },
           }),
           allowedContentTypes: ['application/json'],

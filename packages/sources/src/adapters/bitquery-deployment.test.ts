@@ -43,14 +43,19 @@ describe('bitquery deployment', () => {
      * trades.
      */
     /*
-     * The default is `realtime`, which every document may read. This one is
-     * also eligible for the archive — it asks only for `Calls`, which the
-     * historical add-on covers — so a caller may widen it deliberately. Before
-     * that change, /scan could not find the creating call for any contract
-     * older than about four days.
+     * The default is the full span, and that is the point of this document
+     * (2026-09-22). It asks only for `Calls`, which the historical add-on
+     * covers, and it reads no USD field — the one thing `combined` cannot
+     * compute. On `realtime` it could not find the creating call for any
+     * contract older than about four and a half days, so `/scan` answered
+     * "who built this" with nothing for all but the newest launches, on a
+     * chain whose catalogue is months old.
      */
-    expect(BITQUERY_DEPLOYMENT_QUERY).toContain('dataset: realtime');
+    expect(BITQUERY_DEPLOYMENT_QUERY).toContain('dataset: combined');
     expect(deploymentQuery('archive')).toContain('dataset: archive');
+    expect(deploymentQuery('realtime')).toContain('dataset: realtime');
+    /* No USD field anywhere, which is what makes the wider dataset safe here. */
+    expect(BITQUERY_DEPLOYMENT_QUERY).not.toContain('InUSD');
   });
 
   it('separates what executed the creation from the account that sent it', () => {

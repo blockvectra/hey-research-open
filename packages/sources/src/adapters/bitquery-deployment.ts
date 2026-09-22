@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK,
-  BITQUERY_DEFAULT_DATASET,
+  BITQUERY_FULL_DATASET,
   type BitqueryDataset,
 } from './bitquery';
 
@@ -37,17 +37,23 @@ import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK,
  * with the factory at `Call.From`, the deployer at `Transaction.From`, and the
  * block time of the creation, in one cube at five points.
  *
- * **The realtime dataset reaches back about four days**, which is the shape
- * this is for: the scan exists to answer for a launch that just happened. An
- * older contract returns nothing, and nothing means "not in the window HEY can
- * read" — never "this was not deployed".
+ * It ran on `realtime`, which reaches back about four and a half days, on a
+ * chain whose catalogue is months old (2026-09-22). A contract deployed five
+ * days ago returned nothing, and "nothing" is indistinguishable from "never
+ * deployed" — so the single most useful line a reader gets from `/scan`, who
+ * built this, was blank for all but the newest launches.
+ *
+ * A creation is a historical fact by definition, `Calls` is archive-granted,
+ * and this document reads no USD field, so `combined` costs nothing and
+ * answers for every contract back to the chain's genesis. An empty result now
+ * means what the copy always claimed it meant.
  */
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 /** A creation never changes, so the only reason to re-ask is a cache that expired. */
 const CACHE_TTL_SECONDS = 6 * 60 * 60;
 
 export const deploymentQuery = (
-  dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
+  dataset: BitqueryDataset = BITQUERY_FULL_DATASET,
 ): string => `query HeyDeployment($address: String!) {
   EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     Calls(

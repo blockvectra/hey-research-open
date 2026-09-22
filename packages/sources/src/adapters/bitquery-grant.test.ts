@@ -43,7 +43,21 @@ describe('the Bitquery archive grant', () => {
      * is per template literal, not per file.
      */
     const documents = [...source.matchAll(/`query [\s\S]*?`;/g)].map((match) => match[0]);
-    const archiveDocs = documents.filter((doc) => doc.includes('dataset: ${dataset}'));
+    /*
+     * Two ways a document can reach past `realtime`, and until 2026-09-22 the
+     * fence saw only the first.
+     *
+     * A parameterised document takes whatever a caller passes, so it must be
+     * granted for every cube. A document that *hardcodes* `archive` or
+     * `combined` is the same risk with none of the flexibility — and eight of
+     * the ten documents here hardcode their dataset, so the fence was reading
+     * two of them. Anything pinned to `realtime` needs no grant at all.
+     */
+    const archiveDocs = documents.filter(
+      (doc) =>
+        doc.includes('dataset: ${dataset}') ||
+        /dataset: (archive|combined)\b/.test(doc),
+    );
     if (archiveDocs.length === 0) continue;
 
     it(`${name} asks the archive only for cubes the plan grants`, () => {

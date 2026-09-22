@@ -25,9 +25,10 @@ import { toNumber } from '../market';
  * about four days while the archive the add-on unlocked sat unread.
  *
  * Probed live on 2026-09-22 for a window in early August: `realtime` returned
- * nothing, `archive` and `combined` both returned real trades. So the default
- * is now `combined`, which spans both and is a strict superset of what these
- * queries used to see.
+ * nothing, `archive` and `combined` both returned real trades. The default
+ * stayed `realtime` all the same, because it is the only dataset every
+ * document may read — see `BITQUERY_DEFAULT_DATASET` below. A document whose
+ * every cube is granted opts in to `BITQUERY_FULL_DATASET` deliberately.
  *
  * The token is an OAuth access token (`ory_…`), sent as a bearer; the old
  * `X-API-KEY` header answers 402 on the v2 endpoint.
@@ -80,6 +81,30 @@ const CACHE_TTL_SECONDS = 60 * 60;
  */
 export type BitqueryDataset = 'realtime' | 'archive' | 'combined';
 export const BITQUERY_DEFAULT_DATASET: BitqueryDataset = 'realtime';
+
+/**
+ * The dataset to use when every cube in a document is granted (2026-09-22).
+ *
+ * Measured, not assumed. Asked for the newest row each dataset holds:
+ * `realtime` reached back only to 2026-09-18 — **4.5 days** — while `archive`
+ * reached block 1, the chain's genesis on 2026-04-30, and was ten minutes
+ * behind the head. `combined` spans both and was current to the second. So
+ * for a granted document `combined` is a strict superset of `realtime`, and
+ * `archive` alone needlessly gives up the last ten minutes.
+ *
+ * **It is not a free upgrade, and switching a query to it without reading
+ * this is a real defect.** USD amounts are computed on the realtime pipeline
+ * only: `sum(of: Trade_Side_AmountInUSD)` returns a genuine figure on
+ * `realtime` and **`0`** on both `archive` and `combined`. Verified on
+ * 2026-09-22 over the same window — realtime put WETH on top at 2.6e12, while
+ * combined put a token with one trade on top, every volume `0`. A query that
+ * orders by USD volume therefore does not merely lose precision on the
+ * archive: it returns the least-traded tokens first. Order by `count` — which
+ * the provider's own guidance prefers anyway, since a thin pool can print an
+ * enormous dollar figure from a single swap — and treat a USD sum from these
+ * datasets as absent, never as zero.
+ */
+export const BITQUERY_FULL_DATASET: BitqueryDataset = 'combined';
 
 /** The cubes the historical add-on covers, as the provider names them. */
 export const BITQUERY_ARCHIVE_CUBES = [
@@ -305,17 +330,34 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
 
 /*
  * Network-wide discovery (2026-09-12): every token that traded on Robinhood
- * Chain in a window, by USD volume, a page at a time. HEY had 1,657 tokens
- * with twenty or more traders in the week that no launchpad, registry or
- * aggregator had ever shown it, and 2,260 Pons launches it held without a
- * name; this page is how both are found and named. Symbol and name are the
- * chain's own token metadata as Bitquery decoded it.
+ * Chain in a window, a page at a time. HEY had 1,657 tokens with twenty or
+ * more traders in the week that no launchpad, registry or aggregator had ever
+ * shown it, and 2,260 Pons launches it held without a name; this page is how
+ * both are found and named. Symbol and name are the chain's own token
+ * metadata as Bitquery decoded it.
+ *
+ * This is the only chain-wide question HEY asks Bitquery — every other
+ * document starts from a token HEY already holds — so the two things it got
+ * wrong were the two that mattered most (2026-09-22).
+ *
+ * It ran on `realtime` while asking for seven days. Realtime holds about
+ * four and a half, and does not error when a window reaches past its floor;
+ * it just returns fewer rows. So roughly three of the seven days it asked
+ * for did not exist, silently, and every figure reasoned about as "a week"
+ * was really four days. `DEXTradeByTokens` is archive-granted, so the window
+ * was never the constraint — the dataset was.
+ *
+ * And it ordered by `volume_usd`, which the archive pipeline does not
+ * compute: on `combined` every USD sum comes back `0`, so that ordering
+ * would have returned the *least*-traded tokens first. It now ranks by trade
+ * count, which is also what the provider recommends — a thin pool can print
+ * an enormous dollar figure from one swap.
  */
-export const BITQUERY_DISCOVERY_QUERY = `query HeyTradedTokens($since: DateTime, $count: Int, $offset: Int) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
+export const discoveryQuery = (dataset: BitqueryDataset = BITQUERY_FULL_DATASET) => `query HeyTradedTokens($since: DateTime, $count: Int, $offset: Int) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     DEXTradeByTokens(
       where: { Block: { Time: { since: $since } } }
-      orderBy: { descendingByField: "volume_usd" }
+      orderBy: { descendingByField: "trades" }
       limit: { count: $count, offset: $offset }
     ) {
       Trade {
@@ -328,6 +370,9 @@ export const BITQUERY_DISCOVERY_QUERY = `query HeyTradedTokens($since: DateTime,
     }
   }
 }`;
+
+/** The frozen `realtime` form, kept so a test can compare the two shapes. */
+export const BITQUERY_DISCOVERY_QUERY = discoveryQuery('realtime');
 
 const discoveryRowSchema = z.object({
   Trade: z.object({
@@ -346,6 +391,8 @@ const discoveryResponseSchema = z.object({
 
 export type BitqueryDiscoveryInput = {
   since: Date;
+  /** Defaults to `BITQUERY_FULL_DATASET`; only a granted document may ask for it. */
+  dataset?: BitqueryDataset;
   /** Rows per page (token × venue), at most 1,000. */
   count: number;
   offset: number;
@@ -360,7 +407,12 @@ export type BitqueryTradedToken = {
   decimals?: number;
   /** Summed across venues in the window. */
   trades: number;
-  volumeUsd: number;
+  /**
+   * Summed across venues, when the dataset computes it at all. Absent on
+   * `archive` and `combined`, where the provider returns `0` for every row —
+   * an absent figure, never a measured zero (CLAUDE.md: unknown != zero).
+   */
+  volumeUsd?: number;
   /** Distinct sending addresses on the busiest venue; a count, never a list (CLAUDE.md product rule 1). */
   traders: number;
   venue?: string;
@@ -373,10 +425,12 @@ export function normalizeBitqueryTradedTokens(rows: readonly z.infer<typeof disc
   for (const row of rows) {
     const address = row.Trade.Currency.SmartContract.toLowerCase();
     if (!ADDRESS.test(address)) continue;
-    const current = byToken.get(address) ?? { reading: { contractAddress: address, trades: 0, volumeUsd: 0, traders: 0 }, venueTrades: new Map<string, number>() };
+    const current = byToken.get(address) ?? { reading: { contractAddress: address, trades: 0, traders: 0 }, venueTrades: new Map<string, number>() };
     const trades = whole(row.trades);
     current.reading.trades += trades;
-    current.reading.volumeUsd += Math.max(0, toNumber(row.volume_usd) ?? 0);
+    /* A zero here is the archive not computing USD, not a token that traded for nothing. */
+    const volume = Math.max(0, toNumber(row.volume_usd) ?? 0);
+    if (volume > 0) current.reading.volumeUsd = (current.reading.volumeUsd ?? 0) + volume;
     current.reading.traders = Math.max(current.reading.traders, whole(row.traders));
     if (row.Trade.Currency.Symbol && !current.reading.symbol) current.reading.symbol = row.Trade.Currency.Symbol;
     if (row.Trade.Currency.Name && !current.reading.name) current.reading.name = row.Trade.Currency.Name;
@@ -409,7 +463,10 @@ export function createBitqueryDiscoveryAdapter(): SourceAdapter<BitqueryDiscover
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
           method: 'POST',
           headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${input.apiKey}` },
-          body: JSON.stringify({ query: BITQUERY_DISCOVERY_QUERY, variables: { since: input.since.toISOString(), count: input.count, offset: input.offset } }),
+          body: JSON.stringify({
+            query: discoveryQuery(input.dataset ?? BITQUERY_FULL_DATASET),
+            variables: { since: input.since.toISOString(), count: input.count, offset: input.offset },
+          }),
           allowedContentTypes: ['application/json'],
         },
         {

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { hasData } from '../adapter';
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createBitqueryDiscoveryAdapter } from './bitquery';
+import { createBitqueryDiscoveryAdapter, discoveryQuery, normalizeBitqueryTradedTokens } from './bitquery';
 
 const input = { since: new Date('2026-09-05T00:00:00Z'), count: 1000, offset: 2000, apiKey: 'test-token' };
 
@@ -34,5 +34,56 @@ describe('Bitquery discovery adapter', () => {
     expect(tokens[0]).toMatchObject({ symbol: 'ANTHROPICx1L', name: 'Anthropic x1 Long', decimals: 18, trades: 472991, traders: 15534, venue: 'uniswap_v4', venueFamily: 'Uniswap' });
     expect(tokens[0]?.volumeUsd).toBeCloseTo(75026176.5, 1);
     expect(tokens[1]).toMatchObject({ symbol: 'Maple', venue: 'pons_v2', traders: 3643 });
+  });
+});
+
+describe('the dataset the discovery sweep reads', () => {
+  it('spans the chain rather than the last four days', () => {
+    /*
+     * This is the only chain-wide question HEY asks Bitquery. On `realtime`
+     * it asked for seven days of a dataset that holds about four and a half,
+     * and realtime does not error when a window reaches past its floor — it
+     * returns fewer rows. Three of the seven days did not exist, silently.
+     */
+    expect(discoveryQuery()).toContain('dataset: combined');
+    expect(discoveryQuery('realtime')).toContain('dataset: realtime');
+  });
+
+  it('ranks by trade count, because the wider dataset reports no USD', () => {
+    /*
+     * The trap that makes the dataset switch a real change rather than a flag
+     * flip. Measured 2026-09-22 over one window: `realtime` put WETH on top at
+     * 2.6e12 USD; `combined` returned `0` for every USD sum and put a token
+     * with a single trade on top. Ordering by USD volume on the wider dataset
+     * does not lose precision — it inverts the ranking.
+     */
+    expect(discoveryQuery()).toContain('orderBy: { descendingByField: "trades" }');
+    expect(discoveryQuery()).not.toContain('descendingByField: "volume_usd"');
+  });
+
+  it('treats a zero USD sum as absent, never as a token that traded for nothing', () => {
+    const [token] = normalizeBitqueryTradedTokens([
+      {
+        Trade: { Currency: { SmartContract: '0xB33eb16782776b4D738c0Fd643577cb0284Db610', Symbol: 'HEY', Name: 'Hey', Decimals: 18 }, Dex: { ProtocolName: 'uniswap_v4', ProtocolFamily: 'Uniswap' } },
+        trades: '42',
+        volume_usd: '0',
+        traders: '7',
+      },
+    ]);
+    expect(token?.trades).toBe(42);
+    expect(token?.traders).toBe(7);
+    expect(token).not.toHaveProperty('volumeUsd');
+  });
+
+  it('still sums a real USD figure when the dataset computes one', () => {
+    const [token] = normalizeBitqueryTradedTokens([
+      {
+        Trade: { Currency: { SmartContract: '0xB33eb16782776b4D738c0Fd643577cb0284Db610', Symbol: 'HEY', Name: 'Hey', Decimals: 18 }, Dex: { ProtocolName: 'uniswap_v4', ProtocolFamily: 'Uniswap' } },
+        trades: '42',
+        volume_usd: '1250.5',
+        traders: '7',
+      },
+    ]);
+    expect(token?.volumeUsd).toBe(1250.5);
   });
 });
