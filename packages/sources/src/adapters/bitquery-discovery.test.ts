@@ -4,7 +4,13 @@ import { hasData } from '../adapter';
 import { readFixture, stubFetch, testContext } from '../testing';
 import { createBitqueryDiscoveryAdapter, discoveryQuery, normalizeBitqueryTradedTokens } from './bitquery';
 
-const input = { since: new Date('2026-09-05T00:00:00Z'), count: 1000, offset: 2000, apiKey: 'test-token' };
+const input = {
+  since: new Date('2026-09-05T00:00:00Z'),
+  till: new Date('2026-09-12T00:00:00Z'),
+  count: 1000,
+  offset: 2000,
+  apiKey: 'test-token',
+};
 
 describe('Bitquery discovery adapter', () => {
   const adapter = createBitqueryDiscoveryAdapter();
@@ -20,7 +26,7 @@ describe('Bitquery discovery adapter', () => {
     const stub = stubFetch({ status: 200, body: readFixture('bitquery-traded-tokens.json'), headers: { 'content-type': 'application/json' } });
     await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
     const body = JSON.parse(String(stub.requests[0]?.init?.body)) as { query: string; variables: Record<string, unknown> };
-    expect(body.variables).toEqual({ since: '2026-09-05T00:00:00.000Z', count: 1000, offset: 2000 });
+    expect(body.variables).toEqual({ since: '2026-09-05T00:00:00.000Z', till: '2026-09-12T00:00:00.000Z', count: 1000, offset: 2000 });
     expect(body.query).not.toMatch(/Balance|Holder|BalanceUpdates/);
     expect(body.query).toContain('count(distinct: Transaction_From)');
   });
@@ -85,5 +91,23 @@ describe('the dataset the discovery sweep reads', () => {
       },
     ]);
     expect(token?.volumeUsd).toBe(1250.5);
+  });
+});
+
+describe('the slice the sweep asks for', () => {
+  it('bounds both ends, because the provider serves only the first ten thousand rows of one', async () => {
+    /*
+     * Measured 2026-09-22: an offset of 11,000 returns an empty page for a
+     * thirty-day window however many tokens the chain holds. The ceiling is
+     * per query, so a bounded slice is the only way past it — and at offset
+     * 9,500 each weekly slice still returned tokens with 45 to 232 distinct
+     * traders, which the single-window form could never have reached.
+     */
+    const stub = stubFetch({ status: 200, body: readFixture('bitquery-traded-tokens.json'), headers: { 'content-type': 'application/json' } });
+    await createBitqueryDiscoveryAdapter().fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+    const body = JSON.parse(String(stub.requests[0]?.init?.body)) as { query: string; variables: Record<string, unknown> };
+    expect(body.variables.since).toBe('2026-09-05T00:00:00.000Z');
+    expect(body.variables.till).toBe('2026-09-12T00:00:00.000Z');
+    expect(body.query).toContain('since: $since, till: $till');
   });
 });

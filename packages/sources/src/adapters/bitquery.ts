@@ -353,10 +353,10 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
  * count, which is also what the provider recommends — a thin pool can print
  * an enormous dollar figure from one swap.
  */
-export const discoveryQuery = (dataset: BitqueryDataset = BITQUERY_FULL_DATASET) => `query HeyTradedTokens($since: DateTime, $count: Int, $offset: Int) {
+export const discoveryQuery = (dataset: BitqueryDataset = BITQUERY_FULL_DATASET) => `query HeyTradedTokens($since: DateTime, $till: DateTime, $count: Int, $offset: Int) {
   EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     DEXTradeByTokens(
-      where: { Block: { Time: { since: $since } } }
+      where: { Block: { Time: { since: $since, till: $till } } }
       orderBy: { descendingByField: "trades" }
       limit: { count: $count, offset: $offset }
     ) {
@@ -391,6 +391,15 @@ const discoveryResponseSchema = z.object({
 
 export type BitqueryDiscoveryInput = {
   since: Date;
+  /**
+   * The end of the slice. Required, because the provider stops serving rows
+   * past an offset of about ten thousand: one thirty-day window can only ever
+   * reveal its top ten thousand token-venue rows, while the same thirty days
+   * asked a week at a time reveals that many per week. Measured 2026-09-22 —
+   * at offset 9,500 each weekly slice still returned tokens with 45 to 232
+   * distinct traders, all far above the sweep's own floor.
+   */
+  till: Date;
   /** Defaults to `BITQUERY_FULL_DATASET`; only a granted document may ask for it. */
   dataset?: BitqueryDataset;
   /** Rows per page (token × venue), at most 1,000. */
@@ -465,7 +474,12 @@ export function createBitqueryDiscoveryAdapter(): SourceAdapter<BitqueryDiscover
           headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${input.apiKey}` },
           body: JSON.stringify({
             query: discoveryQuery(input.dataset ?? BITQUERY_FULL_DATASET),
-            variables: { since: input.since.toISOString(), count: input.count, offset: input.offset },
+            variables: {
+              since: input.since.toISOString(),
+              till: input.till.toISOString(),
+              count: input.count,
+              offset: input.offset,
+            },
           }),
           allowedContentTypes: ['application/json'],
         },
