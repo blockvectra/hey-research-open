@@ -1,0 +1,1 @@
+[{"jsonrpc":"2.0","id":1,"result":"0x0000000000000000000000000bd7d308f8e1639fab988df18a8011f41eacad73"},{"jsonrpc":"2.0","id":2,"result":"0x000000000000000000000000c30c5c95afd582b47f11f39b0cb2e01db2142e06"},{"jsonrpc":"2.0","id":3,"error":{"code":3,"message":"execution reverted","data":"0x"}},{"jsonrpc":"2.0","id":4,"error":{"code":3,"message":"execution reverted","data":"0x"}}]

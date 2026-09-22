@@ -34,6 +34,7 @@ export * from './adapters/bitquery-pools';
 export * from './adapters/bitquery-surface';
 export * from './adapters/erc20-supply';
 export * from './adapters/rpc-logs';
+export * from './adapters/hoodlock';
 export * from './http/explorer-api';
 export * from './adapters/explorer-etherscan';
 export * from './adapters/sourcify';

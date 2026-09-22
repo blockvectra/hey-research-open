@@ -13,6 +13,7 @@ import {
 import { ProjectLogo } from './project-logo';
 import { ActivityChip, type ActivityStatusValue, StillBuildingBadge } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
+import { TokenLockChip, type TokenLockFacts } from './token-lock';
 
 /**
  * Project card (Card V7, 2026-09-03; UI/UX V6 "Robinhood Pulse Minimal").
@@ -74,6 +75,12 @@ export type ProjectCardData = {
   onchainEvents24h?: number;
   /** Canonical token identity. Absent for a project without a token. */
   token?: { chainId: number; contractAddress: string };
+  /**
+   * Supply held at HoodLock, when HEY found a live lock. Absent is the
+   * ordinary case and is never drawn as a failing check — context, never a
+   * verdict (CLAUDE.md product rule 3).
+   */
+  tokenLock?: TokenLockFacts;
   launchedVia?: { name: string; url?: string };
   officialX?: { handle: string; url: string };
   websiteUrl?: string;
@@ -357,11 +364,16 @@ export function ProjectCard({
           ) : null}
 
           {/* 5: contract address — identity, never a ticker */}
-          <ContractAddress
-            address={project.token!.contractAddress}
-            chainId={project.token!.chainId}
-            className="-ml-1.5"
-          />
+          <div className="-ml-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+            <ContractAddress address={project.token!.contractAddress} chainId={project.token!.chainId} />
+            {/*
+             * The locker, beside the contract rather than on a line of its
+             * own: which supply is locked is part of the token's identity,
+             * and the card's design contract is eight facts, not nine.
+             * It wraps instead of squeezing the address at 375px.
+             */}
+            {project.tokenLock ? <TokenLockChip lock={project.tokenLock} /> : null}
+          </div>
 
           {/* One line about the token, under its identity (founder, 2026-09-03). */}
           {description ? (

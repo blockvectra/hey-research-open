@@ -47,6 +47,12 @@ export type HeyProject = {
   venue?: string;
   /** Trades in the reading's last day and the price move over it, from the same provider as `marketCap`. Counts of trades, never of accounts. */
   trades24h?: { buys: number; sells: number; source?: string; observedAt?: string };
+  /**
+   * Supply held at HoodLock, when HEY found a live lock. Absent means HEY
+   * found none, which is the ordinary case and is not a finding about the
+   * project. Context, never a score or a safety verdict.
+   */
+  tokenLock?: { supplyPct?: number; until?: string; pairLocked: boolean };
   priceChange24hPct?: number;
   /** Whether HEY holds a repository, org, changelog or feed to read building from; false explains an UNKNOWN status. */
   hasBuilderSource?: boolean;

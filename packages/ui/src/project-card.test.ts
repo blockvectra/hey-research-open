@@ -272,3 +272,42 @@ describe('isAddressShaped', () => {
     expect(isAddressShaped('0x000000000000000000000000000000000000dEaD')).toBe(true);
   });
 });
+
+describe('token lock', () => {
+  it('names the locker and the share, and never the word liquidity', () => {
+    const html = render({ ...tokenBacked, tokenLock: { supplyPct: 2.53, until: '2027-09-09', pairLocked: false } });
+    expect(html).toContain('2.53% HoodLock');
+    expect(html).toContain('9 Sep 2027');
+    /*
+     * `apps/web/e2e/cards.spec.ts` asserts a card never contains the word
+     * "liquidity". The lock copy says "pair" for the same reason, and this
+     * pins it at the component level so the break is found here first.
+     */
+    expect(html).not.toMatch(/liquidity/i);
+  });
+
+  it('names the locker without inventing a share HEY does not know', () => {
+    const html = render({ ...tokenBacked, tokenLock: { until: '2027-09-09', pairLocked: false } });
+    expect(html).toContain('HoodLock');
+    expect(html).not.toContain('%');
+    expect(html).not.toContain('0%');
+  });
+
+  it('says a pair is locked only when one is', () => {
+    const locked = render({ ...tokenBacked, tokenLock: { supplyPct: 10, until: '2027-01-01', pairLocked: true } });
+    expect(locked).toMatch(/pair holding this token is locked/i);
+    const plain = render({ ...tokenBacked, tokenLock: { supplyPct: 10, until: '2027-01-01', pairLocked: false } });
+    expect(plain).not.toMatch(/pair holding this token is locked/i);
+  });
+
+  it('draws nothing at all when HEY found no lock, rather than an unlocked state', () => {
+    const html = render(tokenBacked);
+    expect(html).not.toContain('data-testid="token-lock"');
+    expect(html).not.toMatch(/unlocked|not locked|no lock/i);
+  });
+
+  it('never shows a lock chip on a project with no token', () => {
+    const { token: _token, tokenLock: _lock, ...tokenless } = { ...tokenBacked, tokenLock: { supplyPct: 5, until: '2027-01-01', pairLocked: false } };
+    expect(render(tokenless as ProjectCardData)).not.toContain('data-testid="token-lock"');
+  });
+});
