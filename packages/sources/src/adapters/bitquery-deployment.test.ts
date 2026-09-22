@@ -42,8 +42,14 @@ describe('bitquery deployment', () => {
      * returned nothing for early August, archive and combined returned the
      * trades.
      */
-    expect(BITQUERY_DEPLOYMENT_QUERY).toContain('dataset: combined');
-    expect(deploymentQuery('realtime')).toContain('dataset: realtime');
+    /*
+     * The default is `realtime`, which every document may read. This one is
+     * also eligible for the archive — it asks only for `Calls`, which the
+     * historical add-on covers — so a caller may widen it deliberately. Before
+     * that change, /scan could not find the creating call for any contract
+     * older than about four days.
+     */
+    expect(BITQUERY_DEPLOYMENT_QUERY).toContain('dataset: realtime');
     expect(deploymentQuery('archive')).toContain('dataset: archive');
   });
 

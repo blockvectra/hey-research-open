@@ -61,6 +61,19 @@ export const ROBINHOOD_QUOTE_ASSETS = [
  * Every figure here is a count. No address is selected, stored or named
  * (CLAUDE.md product rule 1).
  */
+/**
+ * The document, for a given dataset.
+ *
+ * The `transfers:` cube is dropped on `archive` (2026-09-22). The historical
+ * add-on is granted per cube — `DEXTradeByTokens`, `DEXTrades`, `Calls`,
+ * `Events` — and `Transfers` is not among them, so a single Transfers cube
+ * anywhere in the document fails the whole request with a 403. The trade and
+ * breadth cubes are the ones a price history is built from; transfer counts
+ * are context the daily sweep already collects inside the realtime window.
+ *
+ * Found by running it: the first backfill attempt asked for all three cubes on
+ * `archive` and the provider answered with the grant, verbatim.
+ */
 export const tradeDaysQuery = (
   dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
 ): string => `query HeyTradeDays($addresses: [String!], $since: DateTime) {
@@ -85,13 +98,17 @@ export const tradeDaysQuery = (
       sellers: count(distinct: Transaction_From, if: { Trade: { Side: { Type: { is: sell } } } })
       pools: count(distinct: Trade_Dex_SmartContract)
     }
-    transfers: Transfers(
+    ${
+      dataset === 'realtime'
+        ? `transfers: Transfers(
       where: { Transfer: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
       limit: { count: 2000 }
     ) {
       Block { Date }
       Transfer { Currency { SmartContract } }
       transfers: count
+    }`
+        : ''
     }
   }
 }`;
@@ -99,10 +116,12 @@ export const tradeDaysQuery = (
 /** The default document, kept as a constant for the contract tests. */
 export const BITQUERY_TRADE_DAYS_QUERY = tradeDaysQuery();
 
-export const chainDaysQuery = (
-  dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
-): string => `query HeyChainDays($since: DateTime, $quotes: [String!]) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
+/*
+ * Realtime only, and not a parameter: this document reads `Transactions` and
+ * `Transfers`, neither of which the historical add-on covers.
+ */
+export const chainDaysQuery = (): string => `query HeyChainDays($since: DateTime, $quotes: [String!]) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
     trades: DEXTrades(where: { Block: { Time: { since: $since } } }, limit: { count: 100 }) {
       Block { Date }
       trades: count
@@ -215,7 +234,6 @@ export type BitqueryChainDaysInput = {
   apiKey: string;
   baseUrl?: string;
   quoteAssets?: readonly string[];
-  dataset?: BitqueryDataset;
 };
 
 export type BitqueryChainDay = {
@@ -378,7 +396,7 @@ export function createBitqueryChainDaysAdapter(): SourceAdapter<BitqueryChainDay
     canHandle: (input) => input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryChainDay[]>> {
       const quotes = [...(input.quoteAssets ?? ROBINHOOD_QUOTE_ASSETS)];
-      return performSourceFetch(ctx, post(input, chainDaysQuery(input.dataset), { since: input.since.toISOString(), quotes }), {
+      return performSourceFetch(ctx, post(input, chainDaysQuery(), { since: input.since.toISOString(), quotes }), {
         schema: chainDaysResponseSchema,
         parse: (body) => JSON.parse(body),
         cacheTtlSeconds: CACHE_TTL_SECONDS,

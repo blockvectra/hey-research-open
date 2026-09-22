@@ -3,9 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK,
-  BITQUERY_DEFAULT_DATASET,
-  type BitqueryDataset,
+import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK
 } from './bitquery';
 
 /**
@@ -46,10 +44,12 @@ import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK,
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const CACHE_TTL_SECONDS = 30 * 60;
 
-export const contractActivityQuery = (
-  dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
-): string => `query HeyContractActivity($addresses: [String!], $since: DateTime) {
-  EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
+/*
+ * Not a parameter: this document asks for a cube the historical add-on does
+ * not cover, so it can only ever read `realtime` (see `BITQUERY_ARCHIVE_CUBES`).
+ */
+export const BITQUERY_CONTRACT_ACTIVITY_QUERY = `query HeyContractActivity($addresses: [String!], $since: DateTime) {
+  EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
     calls: Calls(
       where: { Block: { Time: { since: $since } }, Call: { To: { in: $addresses } } }
       limit: { count: 5000 }
@@ -103,8 +103,6 @@ const responseSchema = z.object({
 });
 
 export type BitqueryContractActivityInput = {
-  /** Which slice of history to read. Defaults to `combined`. */
-  dataset?: BitqueryDataset;
   /** Contract addresses, at most `BITQUERY_BATCH_SIZE`; the caller chunks. */
   addresses: readonly string[];
   /** Activity at or after this moment is counted, grouped by the UTC day it fell on. */
@@ -186,7 +184,7 @@ export function createBitqueryContractActivityAdapter(): SourceAdapter<BitqueryC
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
           method: 'POST',
           headers: { accept: 'application/json', 'content-type': 'application/json', authorization: `Bearer ${input.apiKey}` },
-          body: JSON.stringify({ query: contractActivityQuery(input.dataset), variables: { addresses, since: input.since.toISOString() } }),
+          body: JSON.stringify({ query: BITQUERY_CONTRACT_ACTIVITY_QUERY, variables: { addresses, since: input.since.toISOString() } }),
           allowedContentTypes: ['application/json'],
         },
         {
@@ -202,6 +200,3 @@ export function createBitqueryContractActivityAdapter(): SourceAdapter<BitqueryC
     },
   };
 }
-
-/** The default document, kept as a constant for the contract tests. */
-export const BITQUERY_CONTRACT_ACTIVITY_QUERY = contractActivityQuery();

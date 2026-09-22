@@ -62,13 +62,32 @@ const CACHE_TTL_SECONDS = 60 * 60;
 /**
  * Which slice of chain history a query may see.
  *
- * `realtime` reaches back about four days and is right for a job that only
- * needs the last day. `archive` is the historical add-on. `combined` spans
- * both and is the default, so a query written for a recent window keeps
- * working and a query given an older window starts finding things.
+ * `realtime` reaches back about four days and is what every job here reads.
+ * `archive` is the historical add-on — and the add-on is **per cube**, not
+ * per plan. Asked on 2026-09-22, the provider states the grant verbatim:
+ *
+ *   realtime, archive:robinhood:DEXTradeByTokens, archive:robinhood:DEXTrades,
+ *   archive:robinhood:Calls, archive:robinhood:Events
+ *
+ * So a document may read the archive only if **every** cube in it is on that
+ * list. `Transfers`, `Transactions`, `DEXPoolEvents`, `DEXPoolSlippages` and
+ * `Holders` are not, and one of them anywhere in a document fails the whole
+ * request with a 403. `combined` is stricter still: it spans both datasets and
+ * needs the grant for both, so it fails for exactly the same documents.
+ *
+ * Hence the default is `realtime`, which every document may read. A caller
+ * asks for `archive` deliberately, and only for a document that qualifies.
  */
 export type BitqueryDataset = 'realtime' | 'archive' | 'combined';
-export const BITQUERY_DEFAULT_DATASET: BitqueryDataset = 'combined';
+export const BITQUERY_DEFAULT_DATASET: BitqueryDataset = 'realtime';
+
+/** The cubes the historical add-on covers, as the provider names them. */
+export const BITQUERY_ARCHIVE_CUBES = [
+  'DEXTradeByTokens',
+  'DEXTrades',
+  'Calls',
+  'Events',
+] as const;
 
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 
