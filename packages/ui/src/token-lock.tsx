@@ -1,5 +1,3 @@
-import { Lock } from 'lucide-react';
-
 import { cn } from './cn';
 
 /**
@@ -26,6 +24,9 @@ export type TokenLockFacts = {
   /** Whether a pair holding this token is locked too. */
   pairLocked: boolean;
 };
+
+/** The locker's own mark, in `apps/web/public`. */
+const HOODLOCK_MARK = '/hoodlock-mark.png';
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -64,14 +65,47 @@ export function tokenLockHelp(lock: TokenLockFacts): string {
  * identity, not a ninth. `shrink-0` because a long ticker already competes
  * for the row at 375px.
  */
-export function TokenLockChip({ lock, className }: { lock: TokenLockFacts; className?: string }) {
+export function TokenLockChip({
+  lock,
+  /*
+   * A default parameter, not a baked class, because `cn` is a plain joiner
+   * and not tailwind-merge: a caller passing `text-hey-ink` next to a baked
+   * `text-hey-muted` gets both, and stylesheet order decides which wins
+   * rather than the caller. This is the third place in this codebase that
+   * bug would have landed, so the tone is a value the caller replaces.
+   */
+  tone = 'text-xs text-hey-muted',
+  className,
+}: {
+  lock: TokenLockFacts;
+  tone?: string;
+  className?: string;
+}) {
   return (
     <span
-      className={cn('relative inline-flex shrink-0 items-center gap-1 text-xs font-medium text-hey-muted', className)}
+      className={cn('relative inline-flex shrink-0 items-center gap-1 font-medium', tone, className)}
       data-testid="token-lock"
       title={tokenLockHelp(lock)}
     >
-      <Lock aria-hidden className="size-3" />
+      {/*
+       * HoodLock's own mark rather than a generic padlock (founder,
+       * 2026-09-22): the point of the chip is that a reader recognises which
+       * locker holds the supply without reading anything. Served from
+       * `/hoodlock-mark.png` the way `HeyLogo` serves its own, at 48px for a
+       * 16px slot so it stays sharp on a retina screen.
+       *
+       * `alt=""` because the words beside it already say HoodLock — a screen
+       * reader that announced the mark too would say the name twice.
+       */}
+      <img
+        src={HOODLOCK_MARK}
+        alt=""
+        width={16}
+        height={16}
+        loading="lazy"
+        decoding="async"
+        className="size-4 shrink-0"
+      />
       {lock.supplyPct === undefined ? 'HoodLock' : `${lock.supplyPct}% HoodLock`}
       <span className="sr-only">{tokenLockHelp(lock)}</span>
     </span>

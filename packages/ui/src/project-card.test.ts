@@ -293,6 +293,15 @@ describe('token lock', () => {
     expect(html).not.toContain('0%');
   });
 
+  it("carries HoodLock's own mark, so the locker is recognisable without reading", () => {
+    const html = render({ ...tokenBacked, tokenLock: { supplyPct: 2.53, until: '2027-09-09', pairLocked: false } });
+    expect(html).toContain('/hoodlock-mark.png');
+    /* Decorative: the words beside it already say HoodLock, so a reader is not told twice. */
+    expect(html).toMatch(/<img[^>]+hoodlock-mark\.png[^>]+alt=""/);
+    /* And the generic padlock it replaced is gone. */
+    expect(html).not.toContain('lucide-lock');
+  });
+
   it('says a pair is locked only when one is', () => {
     const locked = render({ ...tokenBacked, tokenLock: { supplyPct: 10, until: '2027-01-01', pairLocked: true } });
     expect(locked).toMatch(/pair holding this token is locked/i);

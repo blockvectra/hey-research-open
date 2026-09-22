@@ -1,7 +1,10 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { Container } from './container';
 import { Sparkline } from './sparkline';
+import { TokenLockChip } from './token-lock';
 
 /**
  * A caller's sizing class must survive (2026-09-22).
@@ -54,5 +57,20 @@ describe('a caller-supplied sizing class is the only one emitted', () => {
   it('Container falls back to the shell width', () => {
     const element = Container({ children: null });
     expect(matching(element, /^max-w-/)).toEqual(['max-w-shell']);
+  });
+});
+
+describe('TokenLockChip tone', () => {
+  it('lets a caller replace the tone instead of fighting it', () => {
+    const html = renderToStaticMarkup(
+      createElement(TokenLockChip, {
+        lock: { supplyPct: 2.53, until: '2027-09-09', pairLocked: false },
+        tone: 'text-[14px] text-hey-ink',
+      }),
+    );
+    const classes = /class="([^"]+)"/.exec(html)?.[1] ?? '';
+    /* `cn` is a plain joiner: two colour classes would leave stylesheet order to decide. */
+    expect(classes.match(/text-hey-(ink|muted|secondary)/g)).toEqual(['text-hey-ink']);
+    expect(classes).not.toContain('text-hey-muted');
   });
 });
