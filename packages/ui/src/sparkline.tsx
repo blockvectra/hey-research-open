@@ -23,16 +23,26 @@ export function Sparkline({
   label,
   className,
   tone = 'var(--hey-accent-ui)',
+  max: fixedMax,
 }: {
   days: readonly SparkDay[];
   /** Read to a screen reader in place of the drawing. Say what it counts. */
   label: string;
   className?: string;
   tone?: string;
+  /**
+   * The top of the scale, where the series already has one (2026-09-22).
+   *
+   * Without it the drawing stretches to whatever the project itself reached,
+   * so a Build Momentum moving 11.0 to 11.4 climbs the full height — beside a
+   * figure reading "64 / 100". A count has no natural ceiling and keeps the
+   * default; a score has one and should be drawn against it.
+   */
+  max?: number;
 }) {
   if (days.length === 0) return null;
 
-  const max = Math.max(...days.map((day) => day.value), 1);
+  const max = fixedMax ?? Math.max(...days.map((day) => day.value), 1);
   const W = 240;
   const H = 32;
   const gap = days.length > 60 ? 0.5 : 1;

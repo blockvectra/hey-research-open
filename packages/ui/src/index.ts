@@ -39,3 +39,4 @@ export * from './market-charts';
 export * from './bubble-map';
 export * from './sparkline';
 export * from './terminal-chart';
+export * from './daily-series-chart';

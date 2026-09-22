@@ -108,6 +108,54 @@ export function dayCoverage(days: readonly CandleDay[]): {
 
 const money = (v: number) => (v >= 1 ? `$${v.toFixed(2)}` : `$${v.toPrecision(3)}`);
 const shortDay = (day: string) => day.slice(5).replace('-', '/');
+const compact = (v: number) =>
+  v >= 1_000_000
+    ? `${(v / 1_000_000).toFixed(0)}M`
+    : v >= 1_000
+      ? `${(v / 1_000).toFixed(0)}K`
+      : `${Math.round(v)}`;
+
+/**
+ * How many events get a written label, and how far apart they must sit.
+ *
+ * The reference labels three out of a chart holding dozens. That restraint is
+ * the design: a callout on every marker is a wall of cards, and the dots carry
+ * the rest with their titles. Selection is newest-first and deterministic —
+ * never a sample — and a candidate too close to one already kept is skipped so
+ * two cards cannot overlap at any width.
+ */
+const LABEL_LIMIT = 3;
+const LABEL_MIN_GAP = 0.17;
+
+/**
+ * Which markers get a written callout.
+ *
+ * Exported because it shipped wrong once and nothing caught it: the loop ran
+ * from the end of a newest-first list, so it labelled the three OLDEST events
+ * while the timeline under the chart listed the five newest — two of the three
+ * cards named events that appeared nowhere else on the page, inside a
+ * container marked `aria-hidden`.
+ *
+ * The rules, in order: newest first; never two cards closer than
+ * `LABEL_MIN_GAP` of the range, so they cannot overlap at any width; nothing
+ * in the leftmost sliver, where a card would hang off the plot.
+ */
+export function pickLabels(
+  marked: readonly ChartEvent[],
+  indexOf: ReadonlyMap<string, number>,
+  columns: number,
+): { event: ChartEvent; index: number }[] {
+  const span = Math.max(1, columns - 1);
+  const labelled: { event: ChartEvent; index: number }[] = [];
+  for (let i = 0; i < marked.length && labelled.length < LABEL_LIMIT; i += 1) {
+    const event = marked[i]!;
+    const index = indexOf.get(event.day);
+    if (index === undefined) continue;
+    const clear = labelled.every((kept) => Math.abs(kept.index - index) / span >= LABEL_MIN_GAP);
+    if (clear && index / span > 0.06) labelled.push({ event, index });
+  }
+  return labelled;
+}
 
 export function DailyCandleChart({
   days,
@@ -136,48 +184,96 @@ export function DailyCandleChart({
   const highs = priced.map((d) => d.high ?? d.close!);
   const lo = Math.min(...lows);
   const hi = Math.max(...highs);
-  const span = hi - lo || hi || 1;
+  /*
+   * A symmetric pad when every close is identical, so a flat series sits in
+   * the middle of the plot rather than glued to the bottom axis with the whole
+   * height empty above it — `(v - lo)` is zero for every point, so no choice of
+   * span alone can lift it.
+   */
+  const flat = hi === lo;
+  const pad = flat ? Math.abs(hi) * 0.02 || 1 : 0;
+  const lo2 = lo - pad;
+  const hi2 = hi + pad;
+  const span = hi2 - lo2 || 1;
 
   /*
-   * No text lives inside this drawing (2026-09-21).
+   * No text lives inside this drawing.
    *
    * Every label used to be an SVG `<text>` sized in the 1000-unit coordinate
    * space. On a 390px phone the chart gets about 310 real pixels, a scale of
    * roughly 0.31, so 11-unit type rendered at about 3.4 real pixels and the
-   * axis, the ticks and the price tag were all illegible. The rest of this
-   * package solved that long ago — `market-charts.tsx` contains zero `<text>`
-   * nodes and puts every label in ordinary page text — and this is that same
-   * treatment. HTML labels scale with the reader's own font size, so they are
-   * legible at any width and respect a browser zoom.
+   * axis, the ticks and the price tag were all illegible. HTML labels scale
+   * with the reader's own font size instead, so they stay legible at any width
+   * and respect a browser zoom. The SVG is the plot and nothing else.
    *
-   * The geometry follows: the SVG is the plot and nothing else, with no gutter
-   * reserved for prices and no strip reserved for an axis.
+   * The proportions are the reference's (2026-09-22): its chart card is 1010
+   * wide by 410 tall with the price scale on the right, a volume band about a
+   * sixth of the height under the candles, and the date row beneath that.
    */
   const W = 1000;
-  const H = 340;
+  const H = 400;
   const padL = 4;
   const padR = 4;
-  const padT = 46;
-  const volH = 46;
-  const gap = 8;
+  const padT = 12;
+  const volH = 64;
+  const gap = 10;
   const plotH = H - padT - volH - gap;
   const plotW = W - padL - padR;
   const cw = plotW / range.length;
-  const y = (v: number) => padT + plotH - ((v - lo) / span) * plotH;
-  const cx = (i: number) => padL + cw * i + cw / 2;
-  /** Where a value sits as a share of the drawing's height, for an HTML label. */
+  /*
+   * Coordinates are rounded to two decimals (perf review, 2026-09-22).
+   *
+   * Unrounded, every attribute renders at full float precision —
+   * `x="6.951200000000001"` — and at the four-hundred-day range that is around
+   * fifteen characters where five would do. Raw bytes barely move; the gzipped
+   * payload drops by about forty per cent, because a stream of short repeating
+   * decimals compresses and a stream of float noise does not. At a 1000x400
+   * viewBox two decimals is far below a rendered pixel, so nothing moves.
+   */
+  const r2 = (v: number) => Math.round(v * 100) / 100;
+  const y = (v: number) => r2(padT + plotH - ((v - lo2) / span) * plotH);
+  const cx = (i: number) => r2(padL + cw * i + cw / 2);
+  /** Where a value sits as a share of the drawing, for an HTML label over it. */
   const yPct = (v: number) => `${(y(v) / H) * 100}%`;
+  const xPct = (i: number) => `${(cx(i) / W) * 100}%`;
+
+  /*
+   * A candle body is a share of its column, not a fixed number of pixels.
+   *
+   * The previous cut held the body at a constant real-pixel width so it stayed
+   * visible on a phone. That is right at ninety days and wrong at four hundred,
+   * where a 6px body in a 2.5px column overlaps its neighbours into a solid
+   * block. A proportional body is what the reference draws and what every
+   * candle chart draws; the wick keeps a one-pixel non-scaling stroke, so even
+   * where a body renders below a pixel the day is still on the chart.
+   */
+  const bodyW = r2(cw * 0.62);
 
   const maxVol = Math.max(...range.map((d) => d.volume ?? 0), 1);
   const { indexed, gaps: gapDays } = dayCoverage(days);
   const last = priced[priced.length - 1]!;
   const indexOf = new Map(range.map((d, i) => [d.day, i]));
+  /*
+   * Where a marker sits. A day HEY actually read anchors to its own high; a
+   * day it did not read anchors to the middle of the plot, NOT to `hi` — that
+   * fallback put a build event at the all-time peak directly above a grey "no
+   * reading" column, which is the chart asserting a correlation with a price
+   * it never observed.
+   */
+  const mid = lo2 + span / 2;
+  const highOf = new Map(range.map((d) => [d.day, d.high ?? d.close ?? mid] as const));
 
-  const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => lo + span * f);
-  const ticks = [0, Math.floor((range.length - 1) / 2), range.length - 1];
+  const grid = [0, 0.25, 0.5, 0.75, 1].map((f) => lo2 + span * f);
+  const tickCount = Math.min(6, range.length);
+  const ticks = Array.from({ length: tickCount }, (_, i) =>
+    Math.round((i * (range.length - 1)) / Math.max(1, tickCount - 1)),
+  );
 
   /* Stack markers that land on the same day so none is hidden behind another. */
   const placed = new Map<string, number>();
+  const marked = events.filter((e) => e.precision !== 'week' && indexOf.has(e.day));
+
+  const labelled = pickLabels(marked, indexOf, range.length);
 
   return (
     <figure className={cn('m-0', className)}>
@@ -186,9 +282,16 @@ export function DailyCandleChart({
           <svg
             viewBox={`0 0 ${W} ${H}`}
             preserveAspectRatio="none"
-            className="block h-[220px] w-full sm:h-[300px] lg:h-[340px]"
+            className="block h-[240px] w-full sm:h-[320px] lg:h-[380px]"
             role="img"
-            aria-label={`Daily candles over ${range.length} days, ${gapDays} without a reading, with ${events.length} builder events`}
+            /*
+             * `role="img"` makes the drawing a leaf, so every `<title>` inside
+             * it is a mouse tooltip and nothing more, and the axis columns are
+             * `aria-hidden` because they repeat the drawing. That leaves this
+             * sentence as the whole of the chart for a screen reader, so it
+             * carries the ranges rather than only the counts.
+             */
+            aria-label={`Daily candles from ${range[0]!.day} to ${range[range.length - 1]!.day}, ${money(lo)} to ${money(hi)}, last close ${money(last.close!)}. ${gapDays} of ${range.length} days without a reading. ${events.length} builder events marked; each is listed on the Build events tab.`}
           >
             {grid.map((v) => (
               <line
@@ -208,9 +311,9 @@ export function DailyCandleChart({
                 return (
                   <rect
                     key={d.day}
-                    x={padL + cw * i}
+                    x={r2(padL + cw * i)}
                     y={padT}
-                    width={cw}
+                    width={r2(cw)}
                     height={plotH}
                     fill="var(--hey-subtle)"
                     opacity={0.7}
@@ -238,16 +341,7 @@ export function DailyCandleChart({
               const tone = up ? 'var(--hey-market-up)' : 'var(--hey-market-down)';
               const top = y(Math.max(open, d.close));
               const bottom = y(Math.min(open, d.close));
-              const vh = ((d.volume ?? 0) / maxVol) * volH;
-              /*
-               * Candles are drawn as strokes, not fills, so `non-scaling-stroke`
-               * can hold their width in real pixels (2026-09-21). A filled
-               * rectangle shrinks with the drawing: at ninety days on a phone a
-               * body came out around 1.9 real pixels, and across the whole range
-               * around 0.6. A stroke's width is set by CSS instead, which is how
-               * `hey-candle` can be thinner on a phone and thicker on a desktop
-               * with no client JavaScript and no second render.
-               */
+              const vh = r2(((d.volume ?? 0) / maxVol) * volH);
               return (
                 <g key={d.day}>
                   <line
@@ -259,29 +353,23 @@ export function DailyCandleChart({
                     strokeWidth={1}
                     vectorEffect="non-scaling-stroke"
                   />
-                  <line
-                    className="hey-candle"
-                    x1={cx(i)}
-                    x2={cx(i)}
-                    y1={top}
-                    y2={Math.max(top + 0.5, bottom)}
-                    stroke={tone}
-                    vectorEffect="non-scaling-stroke"
-                    strokeLinecap="butt"
+                  <rect
+                    x={cx(i) - bodyW / 2}
+                    y={top}
+                    width={bodyW}
+                    height={Math.max(bottom - top, 0.8)}
+                    fill={tone}
                   >
                     <title>{`${d.day} — open ${money(open)}, high ${money(high)}, low ${money(low)}, close ${money(d.close)} · ${d.readings} reading${d.readings === 1 ? '' : 's'}`}</title>
-                  </line>
+                  </rect>
                   {vh > 0 ? (
-                    <line
-                      className="hey-candle"
-                      x1={cx(i)}
-                      x2={cx(i)}
-                      y1={padT + plotH + gap + volH}
-                      y2={padT + plotH + gap + volH - vh}
-                      stroke="var(--hey-ink)"
-                      opacity={0.12}
-                      vectorEffect="non-scaling-stroke"
-                      strokeLinecap="butt"
+                    <rect
+                      x={cx(i) - bodyW / 2}
+                      y={padT + plotH + gap + volH - vh}
+                      width={bodyW}
+                      height={vh}
+                      fill="var(--hey-ink)"
+                      opacity={0.14}
                     />
                   ) : null}
                 </g>
@@ -298,9 +386,9 @@ export function DailyCandleChart({
                 return (
                   <rect
                     key={`band-${e.id}`}
-                    x={padL + cw * from}
+                    x={r2(padL + cw * from)}
                     y={padT}
-                    width={width}
+                    width={r2(width)}
                     height={plotH}
                     fill={LAYER_TONE.code}
                     opacity={0.08}
@@ -310,63 +398,101 @@ export function DailyCandleChart({
                 );
               })}
 
-            {events
-              .filter((e) => e.precision !== 'week' && indexOf.has(e.day))
-              .map((e) => {
-                const i = indexOf.get(e.day)!;
-                const stack = placed.get(e.day) ?? 0;
-                placed.set(e.day, stack + 1);
-                const anchorY = padT + 14 + stack * 15;
-                const tone = LAYER_TONE[e.layer] ?? 'var(--hey-muted)';
-                const hollow = e.precision === 'day';
-                return (
-                  <g key={e.id}>
+            {marked.map((e) => {
+              const i = indexOf.get(e.day)!;
+              const stack = placed.get(e.day) ?? 0;
+              placed.set(e.day, stack + 1);
+              /*
+               * The marker sits on the day's own high, the way the reference
+               * puts it on the price action, rather than in a band reserved
+               * across the top. Same-day events stack upward from there, and
+               * the whole stack is clamped inside the plot.
+               */
+              const anchorY = r2(Math.max(padT + 5, y(highOf.get(e.day) ?? mid) - 11 - stack * 13));
+              const tone = LAYER_TONE[e.layer] ?? 'var(--hey-muted)';
+              const hollow = e.precision === 'day';
+              return (
+                <g key={e.id}>
+                  {/*
+                    A marker is a dot of stroke, not a circle, so its size is in
+                    real pixels. A 5-unit radius came out near 1.5 real pixels on
+                    a phone, which is not a marker. Date-precision events keep
+                    their hollow centre: the outer dot is the layer's tone, and a
+                    narrower dot of the surface colour sits on top of it.
+                  */}
+                  <line
+                    className="hey-marker"
+                    x1={cx(i)}
+                    x2={cx(i)}
+                    y1={anchorY}
+                    y2={anchorY + 0.01}
+                    stroke={tone}
+                    strokeLinecap="round"
+                    vectorEffect="non-scaling-stroke"
+                    strokeDasharray={e.precision === 'unknown' ? '1 2' : undefined}
+                  >
+                    <title>{`${e.title} — ${e.timeLabel} · ${e.precisionLabel}`}</title>
+                  </line>
+                  {hollow ? (
                     <line
-                      x1={cx(i)}
-                      x2={cx(i)}
-                      y1={anchorY}
-                      y2={padT + plotH}
-                      stroke={tone}
-                      strokeWidth={1}
-                      opacity={0.32}
-                      vectorEffect="non-scaling-stroke"
-                    />
-                    {/*
-                  A marker is a dot of stroke, not a circle, so its size is in
-                  real pixels. A 5-unit radius came out near 1.5 real pixels on
-                  a phone, which is not a marker. Date-precision events keep
-                  their hollow centre: the outer dot is the layer's tone, and a
-                  narrower dot of the surface colour sits on top of it.
-                */}
-                    <line
-                      className="hey-marker"
+                      className="hey-marker-core"
                       x1={cx(i)}
                       x2={cx(i)}
                       y1={anchorY}
                       y2={anchorY + 0.01}
-                      stroke={tone}
+                      stroke="var(--hey-surface)"
                       strokeLinecap="round"
                       vectorEffect="non-scaling-stroke"
-                      strokeDasharray={e.precision === 'unknown' ? '1 2' : undefined}
-                    >
-                      <title>{`${e.title} — ${e.timeLabel} · ${e.precisionLabel}`}</title>
-                    </line>
-                    {hollow ? (
-                      <line
-                        className="hey-marker-core"
-                        x1={cx(i)}
-                        x2={cx(i)}
-                        y1={anchorY}
-                        y2={anchorY + 0.01}
-                        stroke="var(--hey-surface)"
-                        strokeLinecap="round"
-                        vectorEffect="non-scaling-stroke"
-                      />
-                    ) : null}
-                  </g>
-                );
-              })}
+                    />
+                  ) : null}
+                </g>
+              );
+            })}
           </svg>
+
+          {/*
+            Written callouts for a few markers, as page text over the drawing.
+            This is the reference's one real legibility idea: a dot tells a
+            reader something happened, a card tells them what. Hidden below
+            `sm`, where three cards over a 310px plot would cover the candles
+            they annotate — the phone reads them in the timeline underneath.
+          */}
+          <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden sm:block">
+            {labelled.map(({ event, index }) => {
+              const fraction = index / Math.max(1, range.length - 1);
+              const anchorY = Math.max(padT + 5, y(highOf.get(event.day) ?? mid) - 11);
+              const tone = LAYER_TONE[event.layer] ?? 'var(--hey-muted)';
+              /*
+               * A card above a marker near the top of the plot lands outside
+               * the chart entirely. Past the top fifth it hangs below its
+               * marker instead, so a callout is always inside the drawing it
+               * annotates.
+               */
+              const below = anchorY < padT + plotH * 0.2;
+              return (
+                <span
+                  key={event.id}
+                  className="absolute border border-hey-border bg-hey-surface px-2 py-1.5 shadow-sm"
+                  style={{
+                    left: xPct(index),
+                    top: `calc(${(anchorY / H) * 100}% ${below ? '+ 14px' : '- 8px'})`,
+                    transform: `translate(${fraction > 0.78 ? '-100%' : '-12px'}, ${below ? '0' : '-100%'})`,
+                    borderRadius: 'var(--hey-radius-control)',
+                  }}
+                >
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full" style={{ background: tone }} />
+                    <span className="hey-telemetry text-[9px] leading-none text-hey-ink">
+                      {event.layer}
+                    </span>
+                  </span>
+                  <span className="mt-1 block max-w-[13rem] truncate text-[11px] leading-none text-hey-secondary">
+                    {event.title}
+                  </span>
+                </span>
+              );
+            })}
+          </div>
 
           {/*
             The last close, positioned over the drawing as page text. It used
@@ -381,10 +507,15 @@ export function DailyCandleChart({
           </span>
         </div>
 
-        {/* The price scale, as text that scales with the reader rather than the drawing. */}
+        {/*
+          The scales, as text that scales with the reader rather than with the
+          drawing: prices against the candles, then the volume band's own top
+          and floor. The reference labels the volume band too, and without it a
+          reader has no idea whether those bars mean thousands or millions.
+        */}
         <div
           aria-hidden="true"
-          className="relative w-[3.4rem] shrink-0 text-[11px] tabular-nums text-hey-muted"
+          className="relative w-[3.6rem] shrink-0 text-[11px] tabular-nums text-hey-muted"
           style={{ fontFamily: 'var(--font-mono)' }}
         >
           {grid.map((v) => (
@@ -392,20 +523,47 @@ export function DailyCandleChart({
               {money(v)}
             </span>
           ))}
+          {maxVol > 1 ? (
+            <>
+              {/* Offset a little below the band's top so it clears the last price tick. */}
+              <span
+                className="absolute left-0"
+                style={{ top: `${((padT + plotH + gap + 6) / H) * 100}%` }}
+              >
+                {compact(maxVol)}
+              </span>
+              <span
+                className="absolute left-0 -translate-y-full"
+                style={{ top: `${((padT + plotH + gap + volH) / H) * 100}%` }}
+              >
+                0
+              </span>
+            </>
+          ) : null}
         </div>
       </div>
 
       {/* The date axis, likewise. */}
       <div
         aria-hidden="true"
-        className="mt-1.5 flex justify-between pr-[5.4rem] text-[11px] tabular-nums text-hey-muted"
+        className="mt-1.5 flex justify-between pr-[3.6rem] text-[11px] tabular-nums text-hey-muted"
         style={{ fontFamily: 'var(--font-mono)' }}
       >
-        {ticks.map((i) => (
-          <span key={i}>{shortDay(range[i]!.day)}</span>
+        {ticks.map((i, n) => (
+          <span key={`${i}-${n}`}>{shortDay(range[i]!.day)}</span>
         ))}
       </div>
-      <figcaption className="hey-telemetry mt-2 normal-case tracking-normal">
+      {/*
+        Not `.hey-telemetry` with `normal-case` on top: globals.css is imported
+        after Tailwind, so the utility and the class tie on specificity and the
+        class wins — the caption rendered as a whole sentence in 11px
+        letterspaced uppercase. The same trap is documented for hex addresses
+        in `views.tsx`.
+      */}
+      <figcaption
+        className="mt-2 text-[11px] text-hey-muted"
+        style={{ fontFamily: 'var(--font-mono)' }}
+      >
         {`HEY index · 1D · ${indexed} days indexed · ${gapDays} without a reading`}
         {source ? ` · ${source}` : ''}
         {' · nothing here is a buy signal'}
