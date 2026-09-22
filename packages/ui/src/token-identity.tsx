@@ -100,9 +100,15 @@ export function ContractAddress({
         data-track="link.copied"
         data-outcome="contract"
         className={cn(
-          // 28px drawn, 40px to the thumb: the ring extends the target without moving the row.
+          /*
+           * 28px drawn, 40px to the thumb: the ring extends the target without
+           * moving the row. Vertically only — a 6px bleed on all four sides
+           * put the explorer's box 2px inside the copy button's drawn edge,
+           * and being later in the DOM it won, so pressing the right of the
+           * copy icon opened the explorer instead (layout audit, 2026-09-22).
+           */
           'relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-hey-muted',
-          'before:absolute before:-inset-1.5 before:content-[""]',
+          'before:absolute before:-inset-y-1.5 before:-inset-x-0.5 before:content-[""]',
           'hover:bg-hey-subtle hover:text-hey-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hey-ink/30',
           copied && 'text-status-shipping',
         )}
@@ -122,7 +128,7 @@ export function ContractAddress({
         title="Open in explorer"
         data-track="source.clicked"
         data-outcome="explorer"
-        className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-hey-muted before:absolute before:-inset-1.5 before:content-[''] hover:bg-hey-subtle hover:text-hey-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hey-ink/30"
+        className="relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-hey-muted before:absolute before:-inset-y-1.5 before:-inset-x-0.5 before:content-[''] hover:bg-hey-subtle hover:text-hey-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hey-ink/30"
       >
         <ExternalLink aria-hidden="true" size={14} strokeWidth={1.75} />
       </a>

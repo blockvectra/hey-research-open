@@ -32,7 +32,8 @@ describe('pickLabels', () => {
    * events the timeline below never mentioned.
    */
   it('labels the newest events, not the oldest', () => {
-    const newestFirst = [event('newest', 'd90'), event('middle', 'd60'), event('oldest', 'd30')];
+    /* Spaced past LABEL_MIN_GAP, so the ordering is what is under test. */
+    const newestFirst = [event('newest', 'd92'), event('middle', 'd50'), event('oldest', 'd7')];
     expect(pickLabels(newestFirst, indexOf, columns).map((l) => l.event.id)).toEqual([
       'newest',
       'middle',
@@ -41,8 +42,34 @@ describe('pickLabels', () => {
   });
 
   it('never labels more than three', () => {
-    const many = Array.from({ length: 20 }, (_, i) => event(`e${i}`, `d${95 - i * 4}`));
+    const many = Array.from({ length: 20 }, (_, i) => event(`e${i}`, `d${90 - i * 5}`));
     expect(pickLabels(many, indexOf, columns)).toHaveLength(3);
+  });
+
+  /*
+   * The gap is one card's width at the narrowest plot that draws cards, not a
+   * bare fraction (2026-09-22). It shipped as a flat 0.17 under a comment
+   * promising two cards "cannot overlap at any width" — but 0.17 of a 470px
+   * plot is 80px of separation for a card up to 162px wide, so the promise
+   * failed precisely on the narrowest screen that shows them.
+   */
+  it('keeps two callouts at least one card apart', () => {
+    const spread = Array.from({ length: 12 }, (_, i) => event(`e${i}`, `d${90 - i * 5}`));
+    const picked = pickLabels(spread, indexOf, columns);
+    const CARD_FRACTION = (144 + 16 + 2) / 470;
+    for (const a of picked)
+      for (const b of picked)
+        if (a !== b)
+          expect(Math.abs(a.index - b.index) / (columns - 1)).toBeGreaterThanOrEqual(CARD_FRACTION);
+  });
+
+  /*
+   * The rightmost sliver is reserved too. The last-close badge is pinned to
+   * the plot's right edge, and a callout there — always a strong candidate,
+   * since selection is newest-first — landed underneath it.
+   */
+  it('leaves the rightmost sliver alone', () => {
+    expect(pickLabels([event('edge', 'd98')], indexOf, columns)).toEqual([]);
   });
 
   /* Two cards closer than the minimum gap would overlap at every width. */

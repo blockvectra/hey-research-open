@@ -29,14 +29,25 @@ export function BuildTimeline({
   return (
     <ol className={cn('relative space-y-6', className)}>
       {items.map((item) => (
-        <li key={item.id} id={`ship-${item.id}`} className="relative pl-6 scroll-mt-24">
+        <li
+          key={item.id}
+          id={`ship-${item.id}`}
+          className="relative scroll-mt-24 pl-6 last:[&>span:nth-child(2)]:hidden"
+        >
           <span
             aria-hidden="true"
             className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-hey-accent"
           />
+          {/*
+            `last:hidden` never matched (layout audit, 2026-09-22): `last:` is
+            `&:last-child`, and this span is the second of five children of the
+            <li>, so the final entry drew a connector hanging a full item's
+            height below itself with nothing to connect to. The rule belongs on
+            the <li>.
+          */}
           <span
             aria-hidden="true"
-            className="absolute left-[3px] top-5 h-full w-px bg-hey-border last:hidden"
+            className="absolute left-[3px] top-5 h-full w-px bg-hey-border"
           />
 
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">

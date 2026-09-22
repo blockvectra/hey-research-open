@@ -30,6 +30,19 @@ function span(seconds: number): string {
   return `${Math.floor(days / 365)}y`;
 }
 
+/**
+ * A token price, at the precision the number deserves rather than a fixed two
+ * places.
+ *
+ * Written four times before it lived here (copy audit, 2026-09-22): in the
+ * workspace header, on the Market tab, inside the candle chart, and on the
+ * public market page — and the four had already drifted, so $1234.5 printed
+ * as `$1234.50` in the Terminal and `$1,234.5` one click away.
+ */
+export function formatTokenPrice(value: number): string {
+  return value >= 1 ? `$${value.toFixed(2)}` : `$${value.toPrecision(3)}`;
+}
+
 /** Compact USD, because a card has room for `$24K` and not for `$24,013.55`. */
 export function formatUsdCompact(value: number | undefined): string | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;

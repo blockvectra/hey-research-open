@@ -125,7 +125,47 @@ const compact = (v: number) =>
  * two cards cannot overlap at any width.
  */
 const LABEL_LIMIT = 3;
-const LABEL_MIN_GAP = 0.17;
+
+/**
+ * The widest the callout card can be: `max-w-[9rem]` + `px-2` + its borders.
+ * Kept beside the class that sets it, because the gap below is derived from it
+ * and the two silently disagree otherwise.
+ *
+ * 9rem rather than the 13rem it shipped at: once the gap is honest about the
+ * card's real width, a wider card costs the third callout. The reference shows
+ * three, the dot and the timeline carry the full title, and three short
+ * annotations read better than two long ones.
+ */
+const LABEL_CARD_PX = 144 + 16 + 2;
+
+/**
+ * The narrowest plot that ever draws a callout. Cards are `hidden sm:block`,
+ * so the floor is the `sm` breakpoint: 640px viewport, less the shell's 24px
+ * gutters, the card body's 20px padding, the 4.6rem price column and its 8px
+ * gap — about 470px of drawing.
+ */
+const LABEL_MIN_PLOT_PX = 470;
+
+/**
+ * Two callouts may not sit closer than one card's width (geometry audit,
+ * 2026-09-22).
+ *
+ * This was a flat `0.17`, and the comment above claimed that made overlap
+ * impossible at any width. It did not: 0.17 is a fraction of the column span,
+ * which is a fraction of the *plot's* pixel width, while the card's width is
+ * fixed in pixels. At the narrowest plot that draws cards, 0.17 buys 83px of
+ * separation for a card that can be 162px wide — so the guarantee failed
+ * exactly where it mattered most, on the narrowest screen that shows cards.
+ */
+const LABEL_MIN_GAP = LABEL_CARD_PX / LABEL_MIN_PLOT_PX;
+
+/**
+ * The slivers at each end where a card cannot go: it would hang off the plot
+ * on the left, and collide with the last-close badge on the right. An event in
+ * either sliver keeps its dot and its row in the timeline; only its card goes.
+ */
+const LABEL_EDGE_LEFT = 0.06;
+const LABEL_EDGE_RIGHT = 0.94;
 
 /**
  * Which markers get a written callout.
@@ -137,8 +177,9 @@ const LABEL_MIN_GAP = 0.17;
  * container marked `aria-hidden`.
  *
  * The rules, in order: newest first; never two cards closer than
- * `LABEL_MIN_GAP` of the range, so they cannot overlap at any width; nothing
- * in the leftmost sliver, where a card would hang off the plot.
+ * `LABEL_MIN_GAP` of the range, which is one card's width at the narrowest
+ * plot that draws them; and nothing in either end sliver, where a card would
+ * hang off the plot or land under the last-close badge.
  */
 export function pickLabels(
   marked: readonly ChartEvent[],
@@ -152,7 +193,9 @@ export function pickLabels(
     const index = indexOf.get(event.day);
     if (index === undefined) continue;
     const clear = labelled.every((kept) => Math.abs(kept.index - index) / span >= LABEL_MIN_GAP);
-    if (clear && index / span > 0.06) labelled.push({ event, index });
+    const fraction = index / span;
+    if (clear && fraction > LABEL_EDGE_LEFT && fraction < LABEL_EDGE_RIGHT)
+      labelled.push({ event, index });
   }
   return labelled;
 }
@@ -180,8 +223,18 @@ export function DailyCandleChart({
   }
 
   const range = fullRange(days);
-  const lows = priced.map((d) => d.low ?? d.close!).filter((v) => v > 0);
-  const highs = priced.map((d) => d.high ?? d.close!);
+  /*
+   * Both bounds are filtered, and both fall back to the closes (geometry
+   * audit, 2026-09-22). `lows` was filtered for `v > 0` and `highs` was not,
+   * and neither had a fallback: a provider that reported `low: 0` on every day
+   * — the very case the filter exists for — left `lows` empty, and
+   * `Math.min(...[])` is `Infinity`. That made `span` `-Infinity` and every
+   * y-coordinate on the chart `NaN`: not a wrong scale, no scale at all.
+   */
+  const closes = priced.map((d) => d.close!).filter((v) => v > 0);
+  const positive = (values: number[]) => (values.length > 0 ? values : closes);
+  const lows = positive(priced.map((d) => d.low ?? d.close!).filter((v) => v > 0));
+  const highs = positive(priced.map((d) => d.high ?? d.close!).filter((v) => v > 0));
   const lo = Math.min(...lows);
   const hi = Math.max(...highs);
   /*
@@ -269,9 +322,50 @@ export function DailyCandleChart({
     Math.round((i * (range.length - 1)) / Math.max(1, tickCount - 1)),
   );
 
-  /* Stack markers that land on the same day so none is hidden behind another. */
-  const placed = new Map<string, number>();
   const marked = events.filter((e) => e.precision !== 'week' && indexOf.has(e.day));
+
+  /*
+   * Where every marker sits, resolved once (geometry audit, 2026-09-22).
+   *
+   * The stack index used to be counted inside the render loop and the callout
+   * cards recomputed their own anchor without it, so a labelled event that was
+   * not the first of its day got a card drawn thirteen units below its own
+   * dot. The two could not be kept in step because only one of them was
+   * counting. They now read the same map.
+   *
+   * `marked` is not guaranteed to be day-contiguous either: an event with
+   * unknown precision is displayed on the day HEY detected it while the query
+   * that produced the list sorted on the day it was published, so two events
+   * from one day can arrive with a third between them. Keying the stack by
+   * event id rather than by arrival order is what makes that harmless.
+   */
+  const stackOf = new Map<string, number>();
+  const perDay = new Map<string, number>();
+  for (const event of marked) {
+    const seen = perDay.get(event.day) ?? 0;
+    stackOf.set(event.id, seen);
+    perDay.set(event.day, seen + 1);
+  }
+
+  /**
+   * A marker's y, with the whole stack fitted above the plot's ceiling.
+   *
+   * The offset used to be a flat `stack * 13` clamped at `padT + 5`. On a day
+   * whose high was already near the top — a busy day that is also a price high,
+   * which is the most interesting case on the chart — every level of the stack
+   * hit the clamp and drew on the identical pixel, so three ships rendered as
+   * one dot. The offset now compresses to whatever room is left instead, so
+   * the markers stay distinct however little of it there is.
+   */
+  const markerY = (event: ChartEvent, stack: number) => {
+    const base = y(highOf.get(event.day) ?? mid) - 11;
+    const ceiling = padT + 5;
+    const count = perDay.get(event.day) ?? 1;
+    if (stack === 0) return r2(Math.max(ceiling, base));
+    const room = Math.max(0, base - ceiling);
+    const step = Math.min(13, room / Math.max(1, count - 1));
+    return r2(Math.max(ceiling, base - stack * step));
+  };
 
   const labelled = pickLabels(marked, indexOf, range.length);
 
@@ -354,7 +448,7 @@ export function DailyCandleChart({
                     vectorEffect="non-scaling-stroke"
                   />
                   <rect
-                    x={cx(i) - bodyW / 2}
+                    x={r2(cx(i) - bodyW / 2)}
                     y={top}
                     width={bodyW}
                     height={Math.max(bottom - top, 0.8)}
@@ -364,7 +458,7 @@ export function DailyCandleChart({
                   </rect>
                   {vh > 0 ? (
                     <rect
-                      x={cx(i) - bodyW / 2}
+                      x={r2(cx(i) - bodyW / 2)}
                       y={padT + plotH + gap + volH - vh}
                       width={bodyW}
                       height={vh}
@@ -400,15 +494,14 @@ export function DailyCandleChart({
 
             {marked.map((e) => {
               const i = indexOf.get(e.day)!;
-              const stack = placed.get(e.day) ?? 0;
-              placed.set(e.day, stack + 1);
+              const stack = stackOf.get(e.id) ?? 0;
               /*
                * The marker sits on the day's own high, the way the reference
                * puts it on the price action, rather than in a band reserved
                * across the top. Same-day events stack upward from there, and
-               * the whole stack is clamped inside the plot.
+               * the whole stack is fitted inside the plot.
                */
-              const anchorY = r2(Math.max(padT + 5, y(highOf.get(e.day) ?? mid) - 11 - stack * 13));
+              const anchorY = markerY(e, stack);
               const tone = LAYER_TONE[e.layer] ?? 'var(--hey-muted)';
               const hollow = e.precision === 'day';
               return (
@@ -460,7 +553,7 @@ export function DailyCandleChart({
           <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden sm:block">
             {labelled.map(({ event, index }) => {
               const fraction = index / Math.max(1, range.length - 1);
-              const anchorY = Math.max(padT + 5, y(highOf.get(event.day) ?? mid) - 11);
+              const anchorY = markerY(event, stackOf.get(event.id) ?? 0);
               const tone = LAYER_TONE[event.layer] ?? 'var(--hey-muted)';
               /*
                * A card above a marker near the top of the plot lands outside
@@ -486,7 +579,7 @@ export function DailyCandleChart({
                       {event.layer}
                     </span>
                   </span>
-                  <span className="mt-1 block max-w-[13rem] truncate text-[11px] leading-none text-hey-secondary">
+                  <span className="mt-1 block max-w-[9rem] truncate text-[11px] leading-none text-hey-secondary">
                     {event.title}
                   </span>
                 </span>
@@ -515,7 +608,7 @@ export function DailyCandleChart({
         */}
         <div
           aria-hidden="true"
-          className="relative w-[3.6rem] shrink-0 text-[11px] tabular-nums text-hey-muted"
+          className="relative w-[4.6rem] shrink-0 text-[11px] tabular-nums text-hey-muted"
           style={{ fontFamily: 'var(--font-mono)' }}
         >
           {grid.map((v) => (
@@ -546,7 +639,7 @@ export function DailyCandleChart({
       {/* The date axis, likewise. */}
       <div
         aria-hidden="true"
-        className="mt-1.5 flex justify-between pr-[3.6rem] text-[11px] tabular-nums text-hey-muted"
+        className="mt-1.5 flex justify-between pr-[calc(4.6rem+0.5rem)] text-[11px] tabular-nums text-hey-muted"
         style={{ fontFamily: 'var(--font-mono)' }}
       >
         {ticks.map((i, n) => (

@@ -165,7 +165,7 @@ export function DailySeriesChart({
 
         <div
           aria-hidden="true"
-          className="relative w-[3.6rem] shrink-0 text-[11px] tabular-nums text-hey-muted"
+          className="relative w-[4.6rem] shrink-0 text-[11px] tabular-nums text-hey-muted"
           style={{ fontFamily: 'var(--font-mono)' }}
         >
           {grid.map((v) => (
@@ -178,7 +178,7 @@ export function DailySeriesChart({
 
       <div
         aria-hidden="true"
-        className="mt-1.5 flex justify-between pr-[3.6rem] text-[11px] tabular-nums text-hey-muted"
+        className="mt-1.5 flex justify-between pr-[calc(4.6rem+0.5rem)] text-[11px] tabular-nums text-hey-muted"
         style={{ fontFamily: 'var(--font-mono)' }}
       >
         {ticks.map((i, n) => (

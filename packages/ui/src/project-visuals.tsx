@@ -276,10 +276,20 @@ export function BuildMomentumPanel({
   score,
   components,
   className,
+  heading = true,
 }: {
   score: number;
   components: readonly { label: string; value: number }[];
   className?: string;
+  /**
+   * Whether the panel states the score itself.
+   *
+   * False where the surface around it already does (copy audit, 2026-09-22).
+   * The Terminal Overview printed Build Momentum three times on one screen —
+   * a figure tile, the card title, and this eyebrow — and two of them
+   * disagreed, because the tile showed 65.7 and the eyebrow rounded to 66.
+   */
+  heading?: boolean;
 }) {
   const strongest = components.reduce(
     (best, component, index) => (component.value > (components[best]?.value ?? -1) ? index : best),
@@ -287,30 +297,49 @@ export function BuildMomentumPanel({
   );
 
   return (
-    <section className={className} aria-labelledby="build-momentum">
-      <p className="hey-eyebrow text-hey-muted">
-        Build Momentum <span className="text-hey-border-strong">/</span>{' '}
-        <span id="build-momentum" className="tabular-nums text-hey-ink">
-          {Math.round(score)}
-        </span>
-      </p>
+    <section className={className} aria-label="Build Momentum">
+      {/*
+        `aria-label`, not `aria-labelledby` pointing at the number
+        (accessibility audit, 2026-09-22). A named <section> is a region
+        landmark, and the id wrapped only `{score}` — so a screen reader's
+        landmark list for this page contained a region called "64". The id was
+        hardcoded too, so two panels on one document would have collided.
+      */}
+      {heading ? (
+        <p className="hey-eyebrow text-hey-muted">
+          Build Momentum <span className="text-hey-border-strong">/</span>{' '}
+          <span className="tabular-nums text-hey-ink">{Math.round(score)}</span>
+        </p>
+      ) : null}
 
-      <dl className="mt-5 space-y-3.5">
+      {/*
+        The bar lives inside the <dd>, not in a third sibling. A <div> inside a
+        <dl> may hold only <dt> and <dd>, and putting the track beside them
+        broke list traversal in some assistive technology.
+
+        Its colours are the surface's own accent and border rather than
+        `bg-gold-500` / `bg-blue-500`: those are the legacy brand pair, and V7
+        replaced Research Blue with builder green, so on the Terminal the
+        "strongest" mark measured 1.25:1 against its own track — colour-alone
+        encoding that was also very nearly invisible. Weight carries it now,
+        and the strongest component is named in text.
+      */}
+      <dl className={cn('space-y-3.5', heading && 'mt-5')}>
         {components.map((component, index) => (
           <div key={component.label} className="grid grid-cols-[1fr_auto] items-baseline gap-x-4">
-            <dt className="hey-telemetry text-hey-secondary">{component.label}</dt>
-            <dd className="hey-telemetry tabular-nums text-hey-ink">
+            <dt className="hey-telemetry col-start-1 row-start-1 text-hey-secondary">
+              {component.label}
+            </dt>
+            <dd className="hey-telemetry relative col-start-2 row-start-1 tabular-nums text-hey-ink">
               {Math.round(component.value)}
+              {index === strongest ? <span className="sr-only"> — strongest component</span> : null}
             </dd>
-            <div className="col-span-2 mt-1.5 h-1.5 bg-paper-deep">
-              <div
-                className={cn(
-                  'h-full',
-                  index === strongest ? 'bg-gold-500' : 'bg-blue-500',
-                )}
+            <dd className="col-span-2 row-start-2 mt-1.5 h-1.5 bg-hey-subtle">
+              <span
+                className={cn('block h-full', index === strongest ? 'bg-hey-ink' : 'bg-hey-accent')}
                 style={{ width: `${Math.min(100, Math.max(0, component.value))}%` }}
               />
-            </div>
+            </dd>
           </div>
         ))}
       </dl>

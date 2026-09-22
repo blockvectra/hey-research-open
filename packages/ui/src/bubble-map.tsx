@@ -61,11 +61,19 @@ const pct = (value: number) =>
  * new palette: a cluster is a group, not a severity, so none of them may read
  * as a warning.
  */
+/*
+ * The two status hues read their `--hey-*` sources, not the `@theme inline`
+ * aliases (geometry audit, 2026-09-22). An alias resolves against `:root` and
+ * misses a `[data-surface]` override when it is used in an SVG attribute or an
+ * inline style, which is how these are used. Nothing overrides them under V7
+ * today, so this is not yet visible — it is the one file still holding the
+ * pattern the candle chart was bitten by, and it would go wrong silently.
+ */
 export const CLUSTER_COLOURS = [
   'var(--color-narrative-trading)',
-  'var(--color-status-shipping)',
+  'var(--hey-status-shipping)',
   'var(--color-narrative-infra)',
-  'var(--color-status-quiet)',
+  'var(--hey-status-quiet)',
   'var(--color-narrative-defi)',
   'var(--color-blue-500)',
 ] as const;
@@ -183,8 +191,20 @@ export function BubbleMap({
         {nodes.map((node) => {
           const hue = colourOf(node);
           const clustered = node.cluster !== undefined;
-          const showPct = node.r >= 24;
-          const showRank = node.r >= 13;
+          /*
+           * The thresholds are the ones that stay legible once the drawing is
+           * scaled (responsive + geometry audits, 2026-09-22). This is the one
+           * chart in the package that still sets type in viewBox units, and on
+           * a 375px phone the whole 596-unit canvas renders at about half
+           * scale — so the old `r >= 13` rank floor came out near four real
+           * pixels, the same illegibility the candle chart moved all of its
+           * labels to HTML to escape. Raising the floors means a small bubble
+           * carries no numeral; its rank and share are in `BubbleList` beside
+           * the map, spelled out, which is where a reader can actually read
+           * them.
+           */
+          const showPct = node.r >= 40;
+          const showRank = node.r >= 26;
           const href = addressHref(node.address);
           const body = (
             <>
@@ -256,14 +276,25 @@ export function BubbleMap({
               ) : null}
             </>
           );
+          /*
+           * The link is out of the tab order (accessibility audit,
+           * 2026-09-22). `role="img"` on the <svg> prunes everything inside it
+           * from the accessibility tree, including these anchors and their
+           * labels — but an SVG anchor stays focusable in the DOM. So a
+           * keyboard reader tabbed through up to fifty stops that announced
+           * nothing at all before reaching anything else on the page. The same
+           * addresses sit in `BubbleList` below, as real links with real
+           * names; that is the interactive surface.
+           */
           return href ? (
             <a
               key={node.address}
               href={href}
+              tabIndex={-1}
+              aria-hidden="true"
               target="_blank"
               rel="noreferrer"
               className="opacity-100 transition-opacity hover:opacity-75"
-              aria-label={`${node.label ?? short(node.address)} on the block explorer`}
             >
               {body}
             </a>

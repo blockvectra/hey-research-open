@@ -21,7 +21,23 @@ export type SparkDay = { day: string; value: number };
 export function Sparkline({
   days,
   label,
-  className,
+  /*
+   * Sizing, in full, from the caller (2026-09-22).
+   *
+   * This used to be `cn('block h-8 w-full', className)`. `cn` is a plain
+   * string joiner, not tailwind-merge, so a caller asking for `h-8 w-28`
+   * emitted BOTH `w-full` and `w-28` and the winner was decided by the order
+   * Tailwind happened to write them into the stylesheet — `.w-full` comes
+   * after `.w-28` there, so the caller's width was silently dead. On the
+   * Market tab's rail that made the drawing 100% of its flex row while
+   * `shrink-0` forbade it to shrink, and the bars painted 83px out through
+   * the right edge of the card.
+   *
+   * A default parameter instead of a baked class: a caller that says nothing
+   * still gets `h-8 w-full`, and a caller that asks for a width gets the
+   * width it asked for.
+   */
+  className = 'h-8 w-full',
   tone = 'var(--hey-accent-ui)',
   max: fixedMax,
 }: {
@@ -51,7 +67,7 @@ export function Sparkline({
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
-      className={cn('block h-8 w-full', className)}
+      className={cn('block', className)}
       preserveAspectRatio="none"
       role="img"
       aria-label={label}
