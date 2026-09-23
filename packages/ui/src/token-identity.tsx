@@ -81,12 +81,34 @@ export function ContractAddress({
       data-chain-id={chainId}
       data-address={address}
     >
+      {/*
+       * The whole address as text, the short form as the picture
+       * (2026-09-23).
+       *
+       * `0x8f6e…0b07` was the only rendering of the contract anywhere in the
+       * body, so the full string existed on the page solely inside a
+       * `title`, a data attribute and the structured data — none of which is
+       * indexed as text. Pasting a contract address into a search engine is
+       * the highest-intent question in this product's whole surface (*who
+       * built this thing?*), and HEY is the only site that can answer it,
+       * and it could not be matched.
+       *
+       * A screen reader was in the same position, worse: it read the ellipsis
+       * aloud and gave a listener four hex digits of a forty-digit identity.
+       * One `sr-only` span fixes both, and the sighted reader keeps the short
+       * form, which is the one a human can actually check against a wallet.
+       * The wrapper is `relative`, so the absolute positioning has an
+       * ancestor and cannot push the document wide.
+       */}
       <code
         title={address}
         className="min-w-0 truncate rounded-[4px] bg-hey-subtle px-1.5 py-0.5 text-[11.5px] tracking-[0.03em] text-hey-secondary [font-family:var(--font-mono)]"
       >
         {shortenAddress(address)}
       </code>
+      {/* Outside the <code>, so selecting or copying the visible chip still
+          yields the short form and only the short form. */}
+      <span className="sr-only">{address}</span>
       <button
         type="button"
         onClick={(event) => {
@@ -100,12 +122,12 @@ export function ContractAddress({
         data-track="link.copied"
         data-outcome="contract"
         className={cn(
-          /*
-           * 28px drawn, 40px to the thumb: the ring extends the target without
-           * moving the row. Vertically only — a 6px bleed on all four sides
-           * put the explorer's box 2px inside the copy button's drawn edge,
-           * and being later in the DOM it won, so pressing the right of the
-           * copy icon opened the explorer instead (layout audit, 2026-09-22).
+        /*
+         * 28px drawn, 40px to the thumb: the ring extends the target without
+         * moving the row. Vertically only — a 6px bleed on all four sides
+         * put the explorer's box 2px inside the copy button's drawn edge,
+         * and being later in the DOM it won, so pressing the right of the
+         * copy icon opened the explorer instead (layout audit, 2026-09-22).
            */
           'relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-hey-muted',
           'before:absolute before:-inset-y-1.5 before:-inset-x-0.5 before:content-[""]',
