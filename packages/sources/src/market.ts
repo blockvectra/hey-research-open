@@ -45,9 +45,26 @@ export type MarketContext = {
 export function pickDeepestLiquidity<T extends { liquidityUsd?: number }>(
   candidates: readonly T[],
 ): T | undefined {
+  /*
+   * A pool with no reported depth is not a deeper pool (2026-09-23).
+   *
+   * `(x ?? 0) > (best ?? 0)` with a strict comparison meant that when no pair
+   * reported `liquidity.usd` — or when two tied, which a fresh launch does at
+   * zero — the provider's array order decided the price. Measured against a
+   * two-pair payload where neither reports depth, this returned the first
+   * listed at $0.001 over the other at $0.9: a 900× error chosen by nothing.
+   *
+   * A pair that reports depth now always beats one that does not, and among
+   * pairs that report none the answer is at least stable rather than
+   * whatever order the provider happened to serialise.
+   */
   return candidates.reduce<T | undefined>((best, candidate) => {
     if (!best) return candidate;
-    return (candidate.liquidityUsd ?? 0) > (best.liquidityUsd ?? 0) ? candidate : best;
+    const mine = candidate.liquidityUsd;
+    const theirs = best.liquidityUsd;
+    if (mine === undefined) return best;
+    if (theirs === undefined) return candidate;
+    return mine > theirs ? candidate : best;
   }, undefined);
 }
 

@@ -88,9 +88,27 @@ export function createDexscreenerAdapter(): SourceAdapter<DexscreenerInput, Mark
              * search and profile adapters already do.
              */
             const all = (raw.pairs ?? []).filter((pair) => !input.chainSlug || !pair.chainId || pair.chainId === input.chainSlug);
+            /*
+             * Only pools where the tracked contract is the base token
+             * (2026-09-23).
+             *
+             * This fell back to every pool on the chain when none matched,
+             * and the comment for it said "if the provider omits the base
+             * token entirely, take what it gave" — but the predicate is an
+             * address *mismatch*, not an absence. So when the tracked token
+             * appeared as a pool's quote asset, HEY took the other token's
+             * price, valuation, symbol, name and logo and published them as
+             * this token's market. Worse than a wrong number: the identity
+             * backfill writes symbol and name under `coalesce` and the logo
+             * only when null, so neither is ever corrected.
+             *
+             * A pool that quotes this token says nothing about this token's
+             * price. Nothing is the right answer, and `requireData` below
+             * turns it into a clean `missing` (CLAUDE.md rule 19: identity is
+             * the contract, never the symbol).
+             */
             const ours = all.filter((pair) => pair.baseToken?.address?.toLowerCase() === input.tokenAddress.toLowerCase());
-            const mine = ours.length > 0 ? ours : all;
-            const pairs = mine.map((pair) => ({
+            const pairs = ours.map((pair) => ({
               pair,
               liquidityUsd: toNumber(pair.liquidity?.usd),
             }));
@@ -109,13 +127,13 @@ export function createDexscreenerAdapter(): SourceAdapter<DexscreenerInput, Mark
               ...opt('fdvUsd', toNumber(pair.fdv)),
               // Depth, volume and trade counts belong to the token's whole
               // market; price, valuation and venue to the pool that quotes it.
-              ...opt('liquidityUsd', sumAcrossPools(mine, (row) => toNumber(row.liquidity?.usd))),
-              ...opt('volume24hUsd', sumAcrossPools(mine, (row) => toNumber(row.volume?.h24))),
+              ...opt('liquidityUsd', sumAcrossPools(ours, (row) => toNumber(row.liquidity?.usd))),
+              ...opt('volume24hUsd', sumAcrossPools(ours, (row) => toNumber(row.volume?.h24))),
               ...opt('pairAddress', pair.pairAddress),
               ...opt('pairUrl', pair.url),
               ...opt('venue', pair.dexId),
-              ...opt('buys24h', sumAcrossPools(mine, (row) => toNumber(row.txns?.h24?.buys))),
-              ...opt('sells24h', sumAcrossPools(mine, (row) => toNumber(row.txns?.h24?.sells))),
+              ...opt('buys24h', sumAcrossPools(ours, (row) => toNumber(row.txns?.h24?.buys))),
+              ...opt('sells24h', sumAcrossPools(ours, (row) => toNumber(row.txns?.h24?.sells))),
               ...opt('priceChange1hPct', toNumber(pair.priceChange?.h1)),
               ...opt('priceChange6hPct', toNumber(pair.priceChange?.h6)),
               ...opt('priceChange24hPct', toNumber(pair.priceChange?.h24)),
