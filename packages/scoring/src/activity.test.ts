@@ -63,6 +63,18 @@ describe('activity status', () => {
     expect(deriveActivityStatus({ events: [code(33), code(40)], now, hasSourceCoverage: true }).status).toBe('ACTIVE');
   });
 
+  it('counts one prerelease per week, and never collapses a full release (hbm-v11)', () => {
+    const pre = (days: number) => ship(days, { verificationStatus: 'SOURCE_LINKED', prerelease: true });
+    // Days 33–36 ago are one ISO week: four nightlies are one update.
+    const fourNightlies = derive([pre(33), pre(34), pre(35), pre(36)]);
+    expect(fourNightlies.meaningfulEventCount).toBe(1);
+    expect(fourNightlies.status).toBe('QUIET');
+    // Prereleases in two weeks are two updates.
+    expect(derive([pre(33), pre(40)]).meaningfulEventCount).toBe(2);
+    // Full releases in one week each count, and a prerelease beside them still counts once.
+    expect(derive([ship(33), ship(34), pre(35), pre(36)]).meaningfulEventCount).toBe(3);
+  });
+
   it('is ACTIVE on two meaningful updates inside 45 days', () => {
     expect(derive([ship(40), ship(44)]).status).toBe('ACTIVE');
   });

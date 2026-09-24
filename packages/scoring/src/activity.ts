@@ -19,6 +19,8 @@ export type ScoredEvent = {
   publishedAt: Date;
   sourceKind: ShipSourceKind;
   moderationStatus?: string;
+  /** A GitHub prerelease (hbm-v11): collapsed to one per UTC ISO week, like code activity. */
+  prerelease?: boolean;
 };
 
 export type ActivityInput = {
@@ -100,14 +102,22 @@ export function isoWeekIndex(date: Date): number {
   return Math.floor((day + 3) / 7);
 }
 
-/** One `CODE_ACTIVITY` per UTC ISO week; the input is newest first, so the newest of a week is kept. */
+/**
+ * One `CODE_ACTIVITY` per UTC ISO week, and — since hbm-v11 (2026-09-25) —
+ * one GitHub prerelease per UTC ISO week, each kind on its own; the input is
+ * newest first, so the newest of a week is kept. A nightly or release
+ * candidate cut every day is one week of building, not seven releases: in
+ * production one project carried sixty prereleases in thirty days. A full
+ * release is never collapsed.
+ */
 export function collapseSameWeekCodeActivity(sorted: readonly ScoredEvent[]): ScoredEvent[] {
-  const seenWeeks = new Set<number>();
+  const seen = new Set<string>();
   return sorted.filter((event) => {
-    if (event.eventType !== 'CODE_ACTIVITY') return true;
-    const week = isoWeekIndex(event.publishedAt);
-    if (seenWeeks.has(week)) return false;
-    seenWeeks.add(week);
+    const kind = event.eventType === 'CODE_ACTIVITY' ? 'code' : event.prerelease === true ? 'prerelease' : undefined;
+    if (!kind) return true;
+    const key = `${kind}:${isoWeekIndex(event.publishedAt)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
     return true;
   });
 }

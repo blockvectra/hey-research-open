@@ -86,7 +86,16 @@
  * is also context-only today). No weight, threshold or Build Momentum figure
  * changes.
  */
-export const SCORING_VERSION = 'hbm-v10' as const;
+/*
+ * hbm-v11 (2026-09-25, founder's rule): a GitHub prerelease counts at most
+ * once per project per UTC ISO week, the same collapse as code activity
+ * (`collapseSameWeekCodeActivity`, and `buildingEvidenceSql` for every SQL
+ * count). A full release is never collapsed. In production 62 projects held
+ * 492 prereleases — one carried sixty in thirty days — each counted as a
+ * release. No weight or threshold changes; only projects publishing more than
+ * one prerelease in a week move, downward.
+ */
+export const SCORING_VERSION = 'hbm-v11' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];
