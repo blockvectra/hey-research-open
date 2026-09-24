@@ -9,6 +9,9 @@
  * a stored URL, a log line or an error: `redactApiKey` strips it wherever a
  * request URL is echoed back.
  */
+/** Robinhood Chain's public explorer, where people follow a link (2026-09-24: one constant, not a literal per page). */
+export const ROBINHOOD_EXPLORER_URL = 'https://robinhoodchain.blockscout.com';
+
 export type ExplorerApi = {
   /** `https://robinhoodchain.blockscout.com` or `https://api.blockscout.com`. */
   baseUrl: string;
