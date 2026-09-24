@@ -1,7 +1,9 @@
 import { HeyApiError, errorFromResponse } from './error';
 import { itemsOf, nextOffsetPages, totalPages } from './paging';
 import type {
+  HeyAskAnswer,
   HeyBountiesQuery,
+  HeyContractChanges,
   HeyBountyDetail,
   HeyBountyPage,
   HeyBuildersPage,
@@ -193,6 +195,8 @@ export class HeyClient {
       this.get(`/api/projects/${encodeURIComponent(slug)}/market`, { days: options.days }),
     /** `GET /api/projects/{slug}/intelligence`. */
     intelligence: (slug: string): Promise<HeyProjectIntelligence> => this.get(`/api/projects/${encodeURIComponent(slug)}/intelligence`),
+    /** `GET /api/projects/{slug}/ask?q=`: a question matched to the evidence HEY holds, every line tagged. */
+    ask: (slug: string, question: string): Promise<HeyAskAnswer> => this.get(`/api/projects/${encodeURIComponent(slug)}/ask`, { q: question }),
     /** Every page, following `nextOffset` from `query.offset`. */
     pages: (query: HeyProjectsQuery = {}): AsyncIterable<HeyPage<HeyProject>> =>
       nextOffsetPages((offset) => this.projects.list({ ...query, offset }), query.offset ?? 0),
@@ -257,6 +261,11 @@ export class HeyClient {
     /** `GET /api/bounties/{id}`. */
     get: (id: string): Promise<HeyBountyDetail> => this.get(`/api/bounties/${encodeURIComponent(id)}`),
   };
+
+  /** `GET /api/chain/contract-changes`: evidence-backed contract changes; `days` 1–90, default 30. */
+  contractChanges(options: { days?: number } = {}): Promise<HeyContractChanges> {
+    return this.get('/api/chain/contract-changes', { days: options.days });
+  }
 
   /** `GET /api/chain`: Robinhood Chain day by day; `days` 1–400, default 14. */
   chain(options: { days?: number } = {}): Promise<HeyChain> {

@@ -11,6 +11,10 @@ export { itemsOf, nextOffsetPages, totalPages } from './paging';
 export { SDK_VERSION } from './version';
 export type {
   HeyActivityStatus,
+  HeyAskAnswer,
+  HeyAskLine,
+  HeyContractChange,
+  HeyContractChanges,
   HeyBountiesQuery,
   HeyBounty,
   HeyBountyDetail,

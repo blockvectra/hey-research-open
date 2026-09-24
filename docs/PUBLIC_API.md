@@ -573,6 +573,25 @@ never from a price. Every figure is measured or carries a `state` that says why 
 
 `observedSince` is when HEY began watching the project, the floor under every window.
 
+## `GET /api/projects/{slug}/ask?q=` (2026-09-24)
+
+Ask HEY's evidence answer: `q` (3–280 characters, English or Malay) matched to
+the parts of HEY's record it is about. `sections[]` each carry a `question`
+and `lines[]` of `{ tag: FACT | DERIVED | UNKNOWN, text, source? }`. `notice`
+is present when the question asked for a price view or a buy/sell call, and
+says HEY gives neither. `fallback: true` means HEY could not place the
+question and answered with what changed and what it does not know. No model
+is involved. `400` without `q`, `404` for an unpublished slug.
+
+## `GET /api/chain/contract-changes?days=30` (2026-09-24)
+
+Evidence-backed contract changes on published projects, newest first, `days`
+1–90. Two shapes in `items[]`: `CONTRACT_UPGRADE` / `CONTRACT_DEPLOY_FOLLOWUP`
+per project with `count` and the `latest` event and its source; and
+`VERIFIED` / `UNVERIFIED` / `INTERFACE_CHANGED` per contract address with the
+function and event signatures added and removed, `detectedAt` (when HEY saw
+it, not when it happened) and the explorer `source`.
+
 ## `GET /api/chain` (2026-09-13)
 
 Robinhood Chain day by day, aggregates only. `days` (1–400, default 14). Each row: `dexTrades`,

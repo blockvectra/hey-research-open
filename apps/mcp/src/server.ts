@@ -11,6 +11,8 @@ import {
   type HeyProject,
   type HeyProjectDetail,
   type HeyProjectIntelligence,
+  type HeyAskAnswer,
+  type HeyContractChanges,
   type HeyShip,
   type HeySignalPage,
   type HeyThisWeek,
@@ -25,6 +27,8 @@ import {
   renderChain,
   renderProject,
   renderProjectIntelligence,
+  renderAskAnswer,
+  renderContractChanges,
   renderProjects,
   renderShips,
   renderSignals,
@@ -260,6 +264,44 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
       try {
         const intel = await client.get<HeyProjectIntelligence>(`/api/projects/${encodeURIComponent(slug)}/intelligence`);
         return text(renderProjectIntelligence(intel));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'ask_hey',
+    [
+      'Ask a free-text question about one Robinhood Chain project (English or Malay). HEY matches it to the parts of its record it is about —',
+      'what changed, releases, contract changes, token evidence, Build Momentum, period comparison, what HEY does not know — and answers',
+      'only from that record, every line tagged FACT, DERIVED or UNKNOWN with its source. It records building only and offers no view on price.',
+    ].join(' '),
+    {
+      slug: z.string().min(1).describe('The project slug (e.g. "agentos").'),
+      question: z.string().min(3).max(280).describe('The question, in the reader\'s own words.'),
+    },
+    async ({ slug, question }) => {
+      try {
+        const answer = await client.get<HeyAskAnswer>(`/api/projects/${encodeURIComponent(slug)}/ask`, { q: question });
+        return text(renderAskAnswer(answer));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'contract_changes',
+    [
+      'Evidence-backed contract changes on Robinhood Chain projects: proxy upgrades, follow-up deployments by a project\'s deployer,',
+      'contracts that became verified, and interface changes (functions or events added or removed) HEY saw on the explorer. Newest first.',
+    ].join(' '),
+    { days: z.number().int().min(1).max(90).optional().describe('Days to read; default 30.') },
+    async ({ days }) => {
+      try {
+        const page = await client.get<HeyContractChanges>('/api/chain/contract-changes', { days });
+        return text(renderContractChanges(page));
       } catch (error) {
         return failure(error);
       }

@@ -165,6 +165,8 @@ export const serverEnvSchema = z
       ),
       apiKey: optionalString,
       dailyBudgetUsd: numberWithDefault(0).pipe(z.number().nonnegative()),
+      /** The model Ask HEY composes with when AI is on (2026-09-24). */
+      model: optionalString.pipe(z.string().default('claude-sonnet-5')),
     }),
 
     /**
@@ -524,6 +526,7 @@ function shapeEnv(raw: RawEnv) {
       provider: raw.AI_PROVIDER,
       apiKey: raw.AI_API_KEY,
       dailyBudgetUsd: raw.AI_DAILY_BUDGET_USD,
+      model: raw.AI_MODEL,
     },
     hey: {
       chainId: raw.HEY_CHAIN_ID,
@@ -604,6 +607,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'ai.provider': 'AI_PROVIDER',
   'ai.apiKey': 'AI_API_KEY',
   'ai.dailyBudgetUsd': 'AI_DAILY_BUDGET_USD',
+  'ai.model': 'AI_MODEL',
   'hey.chainId': 'HEY_CHAIN_ID',
   'hey.status': 'HEY_TOKEN_STATUS',
   'hey.tokenAddress': 'HEY_TOKEN_ADDRESS',

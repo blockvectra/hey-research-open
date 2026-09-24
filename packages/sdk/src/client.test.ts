@@ -149,6 +149,7 @@ describe('HeyClient typed methods', () => {
     await client.projects.get('a b/../c');
     await client.projects.market('agentos', { days: 90 });
     await client.projects.intelligence('agentos');
+    await client.projects.ask('agentos', 'what changed?');
     await client.ships.list({ sort: 'detected', detectedSince: '2026-09-01T00:00:00.000Z' });
     await client.signals.list({ group: 'development', include: 'published' });
     await client.signals.get('sig 1');
@@ -160,6 +161,7 @@ describe('HeyClient typed methods', () => {
     await client.reports.weekly.list();
     await client.reports.weekly.get('2026-W37');
     await client.chain({ days: 7 });
+    await client.contractChanges({ days: 30 });
     await client.thisWeek();
     await client.status();
 
@@ -169,6 +171,7 @@ describe('HeyClient typed methods', () => {
       '/api/projects/a%20b%2F..%2Fc',
       '/api/projects/agentos/market?days=90',
       '/api/projects/agentos/intelligence',
+      '/api/projects/agentos/ask?q=what+changed%3F',
       '/api/ships?sort=detected&detectedSince=2026-09-01T00%3A00%3A00.000Z',
       '/api/signals?group=development&include=published',
       '/api/signals/sig%201',
@@ -180,6 +183,7 @@ describe('HeyClient typed methods', () => {
       '/api/reports/weekly',
       '/api/reports/weekly/2026-W37',
       '/api/chain?days=7',
+      '/api/chain/contract-changes?days=30',
       '/api/this-week',
       '/api/status',
     ]);

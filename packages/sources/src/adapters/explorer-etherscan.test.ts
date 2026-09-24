@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createAddressTxListAdapter, createContractCreationAdapter, createContractSourceAdapter } from './explorer-etherscan';
+import { abiSignatures, createAddressTxListAdapter, createContractCreationAdapter, createContractSourceAdapter } from './explorer-etherscan';
 
 const api = { baseUrl: 'https://api.blockscout.com', chainId: 4663, apiKey: 'proapi_secret' };
 const TOKEN = '0xb33eb16782776b4d738c0fd643577cb0284db610';
@@ -82,5 +82,36 @@ describe('explorer etherscan-style reads (Blockscout PRO)', () => {
     const stub = stubFetch({ status: 200, body: readFixture('explorer-getsourcecode.json') });
     const result = await createContractSourceAdapter().fetch({ ...api, address: '0xcb199e9bbd4a3e52331eb1e90d17e6d3746b5fc6' }, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.data).toEqual({ address: '0xcb199e9bbd4a3e52331eb1e90d17e6d3746b5fc6', verified: true, name: 'HoodlockVault' });
+  });
+
+  it('reads a verified contract’s ABI as canonical function and event signatures (2026-09-24)', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('explorer-getsourcecode-abi.json') });
+    const result = await createContractSourceAdapter().fetch({ ...api, address: '0xcb199e9bbd4a3e52331eb1e90d17e6d3746b5fc6' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.data).toMatchObject({ verified: true, name: 'PonsV2LauncherToken', compiler: 'v0.8.35+commit.47b9dedd' });
+    const abi = result.data!.abi!;
+    expect(abi.functions.length).toBeGreaterThan(3);
+    expect(abi.functions).toEqual([...abi.functions].sort());
+    for (const signature of [...abi.functions, ...abi.events]) expect(signature).toMatch(/^[A-Za-z_$][\w$]*\([^\s]*\)$/);
+  });
+
+  it('holds no ABI for an unverified contract', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('explorer-getsourcecode-unverified.json') });
+    const result = await createContractSourceAdapter().fetch({ ...api, address: '0x000000000000000000000000000000000000dead' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.data).toEqual({ address: '0x000000000000000000000000000000000000dead', verified: false });
+  });
+});
+
+describe('abiSignatures', () => {
+  it('expands tuples and keeps array suffixes, ignoring constructors and errors', () => {
+    const abi = JSON.stringify([
+      { type: 'constructor', inputs: [{ type: 'string' }] },
+      { type: 'function', name: 'swap', inputs: [{ type: 'tuple', components: [{ type: 'address' }, { type: 'uint256' }] }, { type: 'bytes32[]' }] },
+      { type: 'function', name: 'batch', inputs: [{ type: 'tuple[]', components: [{ type: 'uint8' }] }] },
+      { type: 'event', name: 'Swapped', inputs: [{ type: 'address', indexed: true }, { type: 'uint256' }] },
+      { type: 'error', name: 'Nope', inputs: [] },
+    ]);
+    expect(abiSignatures(abi)).toEqual({ functions: ['batch((uint8)[])', 'swap((address,uint256),bytes32[])'], events: ['Swapped(address,uint256)'] });
+    expect(abiSignatures('Contract source code not verified')).toBeUndefined();
+    expect(abiSignatures('[not json')).toBeUndefined();
   });
 });

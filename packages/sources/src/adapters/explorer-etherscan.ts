@@ -173,9 +173,61 @@ export function createAddressTxListAdapter(): SourceAdapter<AddressTxListInput, 
 }
 
 export type ContractSourceInput = ExplorerApi & { address: string };
-export type ContractSource = { address: string; verified: boolean; name?: string };
+/**
+ * What the explorer holds for a contract's source (2026-09-24: the ABI too).
+ *
+ * `abi` is present only for a verified contract whose ABI parsed, as the
+ * canonical signatures of its functions and events — `transfer(address,uint256)`,
+ * `Transfer(address,address,uint256)` — sorted, which is the form two reads
+ * can be compared in. The ABI is never stored whole.
+ */
+export type ContractSource = {
+  address: string;
+  verified: boolean;
+  name?: string;
+  compiler?: string;
+  abi?: { functions: string[]; events: string[] };
+};
 
-const sourceSchema = envelope(z.object({ ContractName: z.string().nullish(), SourceCode: z.string().nullish(), ABI: z.string().nullish() }));
+const sourceSchema = envelope(
+  z.object({
+    ContractName: z.string().nullish(),
+    SourceCode: z.string().nullish(),
+    ABI: z.string().nullish(),
+    CompilerVersion: z.string().nullish(),
+  }),
+);
+
+type AbiParam = { type: string; components?: AbiParam[] | undefined };
+const abiParam: z.ZodType<AbiParam> = z.lazy(() => z.object({ type: z.string(), components: z.array(abiParam).optional() }));
+const abiSchema = z.array(
+  z
+    .object({ type: z.string().optional(), name: z.string().optional(), inputs: z.array(abiParam).optional() })
+    .passthrough(),
+);
+
+/** The canonical type of one parameter: tuples expand to their components, array suffixes kept. */
+function canonicalType(param: AbiParam): string {
+  if (!param.type.startsWith('tuple')) return param.type;
+  return `(${(param.components ?? []).map(canonicalType).join(',')})${param.type.slice('tuple'.length)}`;
+}
+
+/** Function and event signatures from an ABI string, or undefined when it is not an ABI. */
+export function abiSignatures(raw: string | null | undefined): { functions: string[]; events: string[] } | undefined {
+  if (!raw || !raw.trim().startsWith('[')) return undefined;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return undefined;
+  }
+  const items = abiSchema.safeParse(parsed);
+  if (!items.success) return undefined;
+  const signature = (item: { name?: string | undefined; inputs?: AbiParam[] | undefined }) => `${item.name ?? ''}(${(item.inputs ?? []).map(canonicalType).join(',')})`;
+  const functions = [...new Set(items.data.filter((item) => item.type === 'function' && item.name).map(signature))].sort();
+  const events = [...new Set(items.data.filter((item) => item.type === 'event' && item.name).map(signature))].sort();
+  return { functions, events };
+}
 
 /** What a verified contract is called; an unverified one answers with an empty name. */
 export function createContractSourceAdapter(): SourceAdapter<ContractSourceInput, ContractSource> {
@@ -197,7 +249,17 @@ export function createContractSourceAdapter(): SourceAdapter<ContractSourceInput
             const first = rows(raw.result)[0];
             const name = first?.ContractName?.trim();
             const verified = Boolean(first?.SourceCode && first.SourceCode.length > 0);
-            return { address: input.address.toLowerCase(), verified, ...(name ? { name } : {}) };
+            const parsedAbi = verified ? abiSignatures(first?.ABI) : undefined;
+            // An empty ABI says nothing to compare; it is left out rather than stored as "no functions".
+            const abi = parsedAbi && parsedAbi.functions.length + parsedAbi.events.length > 0 ? parsedAbi : undefined;
+            const compiler = first?.CompilerVersion?.trim();
+            return {
+              address: input.address.toLowerCase(),
+              verified,
+              ...(name ? { name } : {}),
+              ...(verified && compiler ? { compiler } : {}),
+              ...(abi ? { abi } : {}),
+            };
           },
         },
       );

@@ -2,12 +2,14 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import type { HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip, HeyThisWeek } from '@hey-research/sdk';
+import type { HeyAskAnswer, HeyContractChanges, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip, HeyThisWeek } from '@hey-research/sdk';
 import {
   STILL_BUILDING_MEANING,
   ago,
   projectLine,
   renderBuilders,
+  renderAskAnswer,
+  renderContractChanges,
   renderProject,
   renderProjectIntelligence,
   renderProjects,
@@ -514,5 +516,37 @@ describe('renderProjectIntelligence (2026-09-24)', () => {
     expect(text).toMatch(/UNKNOWN market attention/);
     expect(text).toMatch(/UNKNOWN Build Momentum change over 30 days: HEY holds no earlier reading/);
     expect(renderProjectIntelligence(base)).toMatch(/UNKNOWN development intelligence/);
+  });
+});
+
+describe('renderAskAnswer and renderContractChanges (2026-09-24)', () => {
+  it('keeps each line’s tag and source, and the price notice first', () => {
+    const answer: HeyAskAnswer = {
+      project: { slug: 'agentos', name: 'AgentOS', url: 'https://heyresearch.xyz/project/agentos' },
+      question: 'should I buy before the release?',
+      notice: { tag: 'FACT', text: 'HEY does not predict prices or say whether to buy or sell.' },
+      fallback: false,
+      sections: [{ question: 'What releases occurred?', lines: [{ tag: 'FACT', text: '2026-09-21 · v2.0', source: 'https://github.com/a/b' }, { tag: 'UNKNOWN', text: 'Release cadence: not enough releases yet.' }] }],
+      disclaimer: 'Not investment advice.',
+    };
+    const text = renderAskAnswer(answer);
+    expect(text.indexOf('FACT HEY does not predict')).toBeLessThan(text.indexOf('## What releases occurred?'));
+    expect(text).toContain('FACT 2026-09-21 · v2.0 (source: https://github.com/a/b)');
+    expect(text).toContain('UNKNOWN Release cadence');
+  });
+
+  it('names counted deployments and the signatures an interface gained or lost', () => {
+    const page: HeyContractChanges = {
+      days: 30,
+      items: [
+        { kind: 'CONTRACT_DEPLOY_FOLLOWUP', project: { slug: 'equifold', name: 'Equifold' }, count: 208, latest: { title: 'Deployed a new contract: 0x0407…efa4', publishedAt: '2026-09-23T00:00:00.000Z' } },
+        { kind: 'INTERFACE_CHANGED', project: { slug: 'vault', name: 'Vault' }, address: '0xabc', functionsAdded: ['withdraw(uint256)'], functionsRemoved: [], eventsAdded: [], eventsRemoved: [], detectedAt: '2026-09-22T00:00:00.000Z', source: 'https://explorer/address/0xabc' },
+      ],
+      disclaimer: 'd',
+    };
+    const text = renderContractChanges(page);
+    expect(text).toContain('Equifold (equifold): 208 new contracts');
+    expect(text).toContain('functions added: withdraw(uint256)');
+    expect(renderContractChanges({ days: 7, items: [], disclaimer: 'd' })).toMatch(/No evidence-backed contract change in the last 7 days/);
   });
 });

@@ -807,3 +807,39 @@ export type HeyBountiesQuery = {
   /** 1–50; default 50. */
   limit?: number;
 };
+
+/* ------------------------------------------------------ ask and contracts */
+
+/** `GET /api/projects/{slug}/ask?q=` and `GET /api/chain/contract-changes` (2026-09-24). */
+export type HeyAskLine = { tag: 'FACT' | 'DERIVED' | 'UNKNOWN'; text: string; source?: string };
+export type HeyAskAnswer = {
+  project: { slug: string; name: string; url: string };
+  question: string;
+  /** Present when the question asked for something HEY does not give (a price call, a buy or sell). */
+  notice?: HeyAskLine;
+  /** True when HEY could not tell what the question is about and answered with what changed and what it does not know. */
+  fallback: boolean;
+  sections: { question: string; lines: HeyAskLine[] }[];
+  disclaimer: string;
+};
+
+export type HeyContractChange =
+  | {
+      kind: 'CONTRACT_UPGRADE' | 'CONTRACT_DEPLOY_FOLLOWUP';
+      project: { slug: string; name: string };
+      count: number;
+      latest: { title: string; publishedAt: string; source?: string };
+    }
+  | {
+      kind: 'VERIFIED' | 'UNVERIFIED' | 'INTERFACE_CHANGED';
+      project: { slug: string; name: string };
+      address: string;
+      functionsAdded: string[];
+      functionsRemoved: string[];
+      eventsAdded: string[];
+      eventsRemoved: string[];
+      detectedAt: string;
+      source: string;
+    };
+export type HeyContractChanges = { days: number; items: HeyContractChange[]; disclaimer: string };
+

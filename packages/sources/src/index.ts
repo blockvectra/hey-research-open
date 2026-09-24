@@ -58,3 +58,4 @@ export * from './adapters/robinhood-stock-tokens';
 export * from './adapters/github-code-search';
 export * from './adapters/github-contents';
 export * from './adapters/npm';
+export * from './adapters/anthropic-messages';

@@ -8,6 +8,8 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ### Added
 
+- `projects.ask(slug, question)` (`HeyAskAnswer`) and `contractChanges({ days })`
+  (`HeyContractChanges`), 2026-09-24.
 - `HeyProjectIntelligence.development` (`HeyDevelopmentIntelligence`): derived
   builder intelligence under rules `intel-v1` — velocity, release cadence,
   consistency, discovery lag, market attention and 30-day changes. Optional;

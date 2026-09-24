@@ -8,6 +8,9 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ### Added
 
+- `ask_hey` and `contract_changes` (2026-09-24): Ask HEY's evidence answer to a
+  free-text question, and evidence-backed contract changes including ABI
+  interface changes.
 - `project_intelligence`: one project's derived development intelligence
   (rules `intel-v1`) from `GET /api/projects/{slug}/intelligence` — build
   velocity, release cadence, consistency, discovery lag, market attention as

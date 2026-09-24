@@ -9,7 +9,7 @@ import type {
   HeyTokenMarket,
   HeyWeeklyReport,
 } from '@hey-research/sdk';
-import type { HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip } from '@hey-research/sdk';
+import type { HeyAskAnswer, HeyContractChanges, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip } from '@hey-research/sdk';
 
 /**
  * HEY's answers, as text a model reads (2026-09-05).
@@ -637,4 +637,43 @@ export function renderProjectIntelligence(intel: HeyProjectIntelligence): string
   );
   lines.push('', `Rules ${dev.rulesVersion}, computed ${dev.computedAt}. Continued building is not a buy signal.`, intel.disclaimer);
   return lines.join('\n');
+}
+
+/** Ask HEY's evidence answer (2026-09-24): each line keeps its FACT / DERIVED / UNKNOWN tag and its source. */
+export function renderAskAnswer(answer: HeyAskAnswer): string {
+  const lines: string[] = [`# Ask HEY about ${answer.project.name}`, answer.project.url, '', `Question: ${answer.question}`];
+  if (answer.notice) lines.push(`${answer.notice.tag} ${answer.notice.text}`);
+  if (answer.fallback) lines.push('HEY could not tell which part of its record this is about; here is what changed and what it does not know.');
+  for (const section of answer.sections) {
+    lines.push('', `## ${section.question}`);
+    for (const line of section.lines) lines.push(`${line.tag} ${line.text}${line.source ? ` (source: ${line.source})` : ''}`);
+  }
+  lines.push('', answer.disclaimer);
+  return lines.join('\n');
+}
+
+/** Evidence-backed contract changes on Robinhood Chain (2026-09-24). */
+export function renderContractChanges(page: HeyContractChanges): string {
+  if (page.items.length === 0) return `No evidence-backed contract change in the last ${page.days} days.\n\n${page.disclaimer}`;
+  const lines = page.items.map((item) => {
+    if (!('address' in item)) {
+      const what = item.kind === 'CONTRACT_UPGRADE' ? (item.count === 1 ? 'upgrade' : `${item.count} upgrades`) : item.count === 1 ? 'new contract' : `${item.count} new contracts`;
+      return `- ${item.project.name} (${item.project.slug}): ${what}; latest ${item.latest.title}, ${item.latest.publishedAt.slice(0, 10)}${item.latest.source ? ` — ${item.latest.source}` : ''}`;
+    }
+    const detail =
+      item.kind === 'VERIFIED'
+        ? 'source verified on the explorer'
+        : item.kind === 'UNVERIFIED'
+          ? 'no longer shown as verified'
+          : [
+              item.functionsAdded.length ? `functions added: ${item.functionsAdded.join(', ')}` : '',
+              item.functionsRemoved.length ? `functions removed: ${item.functionsRemoved.join(', ')}` : '',
+              item.eventsAdded.length ? `events added: ${item.eventsAdded.join(', ')}` : '',
+              item.eventsRemoved.length ? `events removed: ${item.eventsRemoved.join(', ')}` : '',
+            ]
+              .filter(Boolean)
+              .join('; ');
+    return `- ${item.project.name} (${item.project.slug}) ${item.address}: ${detail}; seen by HEY ${item.detectedAt.slice(0, 10)} — ${item.source}`;
+  });
+  return `Contract changes on Robinhood Chain, last ${page.days} days (evidence only; a change is a fact about a contract, not a judgement of it):\n${lines.join('\n')}\n\n${page.disclaimer}`;
 }
