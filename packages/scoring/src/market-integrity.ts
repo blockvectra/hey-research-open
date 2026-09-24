@@ -24,7 +24,16 @@ import { TOKEN_MARKET, type TokenMarketStatusValue } from './token-market';
  * is a fact HEY measured; "rugged" is a verdict about intent that on-chain
  * evidence cannot establish, and HEY does not make it.
  */
-export const MARKET_INTEGRITY_RULES_VERSION = 'mi-v1';
+/*
+ * mi-v2 (2026-09-25, after the first production run): a fall that coincides
+ * with a change of the index's winning source is two sources disagreeing, not
+ * a collapse (eel-on-musk: DEX Screener's pool at $5.0K, then another
+ * aggregator's pair at $10, while the chain's own pool reading held $5,011
+ * throughout; piacentini: a launch curve's reserve, then a DEX pool); and
+ * when the chain still reports half the level in the token's pools, the
+ * liquidity is there — a conflict to review, not a migration or a collapse.
+ */
+export const MARKET_INTEGRITY_RULES_VERSION = 'mi-v2';
 
 export const MARKET_INTEGRITY = {
   /** A market is established once liquidity held at least this much … */
@@ -115,6 +124,8 @@ export type IntegrityDay = {
   volumeUsd: number | null;
   /** Decoded trades that day; null when the trade read did not answer. */
   trades: number | null;
+  /** The source that won the day's liquidity figure, when known. */
+  source?: string | null;
 };
 
 /** A pool the token has been read in (`market_snapshots.pair_address`). Same token, so same identity. */
@@ -213,7 +224,7 @@ export type MarketIntegrity = {
   } | null;
   lock: { state: LockState; locks: number; nextUnlockAt: Date | null; precededCollapse: boolean };
   linked: { moves: number; nearCollapse: readonly IntegrityLinkedMove[] };
-  dataConflict: { kind: 'STATUS_REMOVED_INDEX_LIVE' | 'READINGS_DISAGREE'; detail: string } | null;
+  dataConflict: { kind: 'STATUS_REMOVED_INDEX_LIVE' | 'READINGS_DISAGREE' | 'SOURCE_CHANGED_AT_FALL' | 'CHAIN_STILL_HOLDS'; detail: string } | null;
   exitPattern: { level: ExitPatternLevel; reasons: readonly string[]; supporting: readonly string[] };
   conflicts: readonly BuilderMarketConflict[];
   events: readonly IntegrityEventDraft[];
@@ -307,6 +318,35 @@ export function evaluateMarketIntegrity(input: MarketIntegrityInput): MarketInte
       rapidCollapse = deteriorationStartDay !== null && collapseDay !== null && daysBetween(deteriorationStartDay, collapseDay) <= C.rapidDays;
     }
   }
+  /*
+   * Like with like (mi-v2): the level the market held and the level it fell to
+   * must come from the same source. A fall that starts on the day the winning
+   * source changed is two sources disagreeing.
+   */
+  let sourceChange: { from: string; to: string; day: string } | null = null;
+  if (collapse !== 'NONE' && peak && deteriorationStartDay) {
+    const sourceOn = (day: string) => liquid.find((d) => d.day === day)?.source ?? null;
+    const from = sourceOn(peak.day);
+    const firstLow = liquid.find((d) => d.day === deteriorationStartDay);
+    const to = firstLow?.source ?? null;
+    if (from && to && from !== to) sourceChange = { from, to, day: deteriorationStartDay };
+  }
+  const chainHolds =
+    peak !== null &&
+    input.chainPools !== null &&
+    input.chainPools.liquidityUsd !== null &&
+    daysBetween(input.chainPools.day, today) <= C.staleIndexDays &&
+    input.chainPools.liquidityUsd >= peak.usd * C.migrationStrongShare;
+  const chainSinglePoolHolds = chainHolds && (input.chainPools?.pools ?? 0) <= 1;
+  const measuredCollapse = collapse;
+  const measuredFrom = deteriorationStartDay;
+  // A fall HEY cannot compare like with like is no collapse: the level, its day and its speed are all withdrawn.
+  if (sourceChange || (collapse !== 'NONE' && chainSinglePoolHolds)) {
+    collapse = 'NONE';
+    collapseDay = null;
+    deteriorationStartDay = null;
+    rapidCollapse = false;
+  }
   const collapsed = collapse === 'COLLAPSE' || collapse === 'SEVERE';
 
   // Trading breadth: the busiest seven days against the last seven.
@@ -376,7 +416,12 @@ export function evaluateMarketIntegrity(input: MarketIntegrityInput): MarketInte
 
   // Two current figures that describe different markets.
   let dataConflict: MarketIntegrity['dataConflict'] = null;
-  if (last && !indexStale && peak) {
+  if (sourceChange) {
+    dataConflict = { kind: 'SOURCE_CHANGED_AT_FALL', detail: `the fall starts ${sourceChange.day}, the day the winning source changed from ${sourceChange.from} to ${sourceChange.to}` };
+  } else if (measuredCollapse !== 'NONE' && chainSinglePoolHolds && input.chainPools && input.chainPools.liquidityUsd !== null) {
+    dataConflict = { kind: 'CHAIN_STILL_HOLDS', detail: `the index shows a fall from ${measuredFrom ?? 'recently'}, but the chain's own reading on ${input.chainPools.day} is ${usd(input.chainPools.liquidityUsd)} in the token's pool` };
+  }
+  if (!dataConflict && last && !indexStale && peak) {
     const statusGone = input.marketStatus === 'LIQUIDITY_REMOVED' || input.marketStatus === 'NO_LIQUIDITY';
     if (statusGone && last.liquidityUsd >= Math.max(C.establishedMinUsd, peak.usd * C.deteriorationShare)) {
       dataConflict = { kind: 'STATUS_REMOVED_INDEX_LIVE', detail: `status ${input.marketStatus} while the daily index closed ${last.day} at ${usd(last.liquidityUsd)}` };
@@ -450,7 +495,8 @@ export function evaluateMarketIntegrity(input: MarketIntegrityInput): MarketInte
     }
     if (rapidCollapse && deteriorationStartDay && collapseDay) {
       supporting.push('rapid');
-      reasons.push(`The fall from half the peak to under a tenth took ${daysBetween(deteriorationStartDay, collapseDay)} day(s).`);
+      const took = daysBetween(deteriorationStartDay, collapseDay);
+      reasons.push(took === 0 ? 'Liquidity went from over half the level to under a tenth between two daily readings.' : `The fall from half the level to under a tenth took ${took} day${took === 1 ? '' : 's'}.`);
     }
     if (precededCollapse) {
       supporting.push('lock');
@@ -468,7 +514,16 @@ export function evaluateMarketIntegrity(input: MarketIntegrityInput): MarketInte
   // Builder × market: when the two stories stop matching.
   const activityStatus = input.builder.activityStatus;
   const building = activityStatus !== null && BUILDING.has(activityStatus);
-  const marketGone = input.marketStatus === 'LIQUIDITY_REMOVED' || input.marketStatus === 'MARKET_ABANDONED' || (established && collapsed && !migrated);
+  /*
+   * "Gone" only when nothing HEY holds says otherwise (mi-v2): a status of
+   * removed beside an index that is live, a chain reading that still holds the
+   * level, or liquidity that moved to another pool of the same token is a
+   * disagreement to review — not a market that is gone.
+   */
+  const marketGone =
+    !migrated &&
+    !dataConflict &&
+    (input.marketStatus === 'LIQUIDITY_REMOVED' || input.marketStatus === 'MARKET_ABANDONED' || (established && collapsed));
   const liveMarket = input.marketStatus === 'ACTIVE_MARKET' && LIVE_REASONS.has(input.marketStatusReason ?? '');
   const conflicts: BuilderMarketConflict[] = [];
   const shipsAfter = (day: string | null, releaseOnly = false) =>

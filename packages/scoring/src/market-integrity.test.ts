@@ -194,6 +194,26 @@ describe('market integrity: the market side', () => {
     expect(result.reviewReasons).toContain('data_conflict');
   });
 
+  it('a fall that starts the day the winning source changed is two sources disagreeing, not a collapse (eel-on-musk, mi-v2)', () => {
+    const days = series([5_000, 5_050, 5_070, 5_020, 5_019, 10, 10, 10]).map((d, i) => ({ ...d, source: i < 5 ? 'dexscreener' : 'geckoterminal' }));
+    const result = evaluateMarketIntegrity(input({ marketStatus: 'LIQUIDITY_REMOVED', days, builder: { activityStatus: 'SHIPPING', ships: [] } }));
+    expect(result.collapse).toBe('NONE');
+    expect(result.dataConflict?.kind).toBe('SOURCE_CHANGED_AT_FALL');
+    expect(result.exitPattern.level).toBe('NONE');
+    expect(result.events.some((e) => e.kind === 'LIQUIDITY_COLLAPSE')).toBe(false);
+    expect(result.reviewReasons).toContain('data_conflict');
+  });
+
+  it('when the chain still reports the level in the token’s one pool, the index fall is withdrawn and held for review (mi-v2)', () => {
+    const result = evaluateMarketIntegrity(
+      input({ marketStatus: 'LIQUIDITY_REMOVED', chainPools: { day: day(0), pools: 1, liquidityUsd: 79_000 }, days: series(CRASH, CRASH_TRADES) }),
+    );
+    expect(result.collapse).toBe('NONE');
+    expect(result.history.collapseDay).toBeNull();
+    expect(result.dataConflict?.kind).toBe('CHAIN_STILL_HOLDS');
+    expect(result.exitPattern.level).toBe('NONE');
+  });
+
   it('a stale index (market-data outage) confirms nothing', () => {
     const days = series([...HEALTHY, 400, 350]).map((d) => ({ ...d, day: new Date(new Date(`${d.day}T00:00:00Z`).getTime() - 10 * 86_400_000).toISOString().slice(0, 10) }));
     const result = evaluateMarketIntegrity(input({ marketStatus: 'MARKET_ABANDONED', days }));
@@ -219,6 +239,22 @@ describe('market integrity: builder × market', () => {
     );
     expect(result.conflicts).toEqual(expect.arrayContaining(['BUILDER_ACTIVE_MARKET_GONE', 'RECENT_SHIP_AFTER_LIQUIDITY_REMOVAL']));
     expect(result.reviewReasons).toContain('builder_active_market_gone');
+  });
+
+  it('no "market gone" while HEY holds a reading that says otherwise: live index, or a pool the liquidity moved to (mi-v2)', () => {
+    const live = evaluateMarketIntegrity(input({ marketStatus: 'LIQUIDITY_REMOVED', days: series(HEALTHY), builder: { activityStatus: 'SHIPPING', ships: [ship(-1)] } }));
+    expect(live.dataConflict?.kind).toBe('STATUS_REMOVED_INDEX_LIVE');
+    expect(live.conflicts).not.toContain('BUILDER_ACTIVE_MARKET_GONE');
+    const moved = evaluateMarketIntegrity(
+      input({
+        marketStatus: 'LIQUIDITY_REMOVED',
+        days: series(CRASH, CRASH_TRADES),
+        pools: [{ pairAddress: '0xnew', venue: null, firstSeenAt: new Date(`${day(CRASH_DAY)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 60_000, lastLiquidityUsd: 60_000 }],
+        builder: { activityStatus: 'SHIPPING', ships: [ship(-1)] },
+      }),
+    );
+    expect(moved.migration?.kind).toBe('POOL');
+    expect(moved.conflicts).not.toContain('BUILDER_ACTIVE_MARKET_GONE');
   });
 
   it('a dead market and a dormant builder is no conflict: the two stories match', () => {
