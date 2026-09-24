@@ -8,6 +8,9 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ### Added
 
+- `shipping_in_silence`, `builder_comebacks`, `upcoming_unlocks`,
+  `project_timeline` and `compare_projects` (2026-09-24): the Terminal command
+  centre over MCP.
 - `ask_hey` and `contract_changes` (2026-09-24): Ask HEY's evidence answer to a
   free-text question, and evidence-backed contract changes including ABI
   interface changes.

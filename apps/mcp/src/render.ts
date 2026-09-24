@@ -9,7 +9,7 @@ import type {
   HeyTokenMarket,
   HeyWeeklyReport,
 } from '@hey-research/sdk';
-import type { HeyAskAnswer, HeyContractChanges, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip } from '@hey-research/sdk';
+import type { HeyAskAnswer, HeyComebacks, HeyCompare, HeyContractChanges, HeySilentBuilders, HeyTimeline, HeyUnlocks, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip } from '@hey-research/sdk';
 
 /**
  * HEY's answers, as text a model reads (2026-09-05).
@@ -676,4 +676,46 @@ export function renderContractChanges(page: HeyContractChanges): string {
     return `- ${item.project.name} (${item.project.slug}) ${item.address}: ${detail}; seen by HEY ${item.detectedAt.slice(0, 10)} — ${item.source}`;
   });
   return `Contract changes on Robinhood Chain, last ${page.days} days (evidence only; a change is a fact about a contract, not a judgement of it):\n${lines.join('\n')}\n\n${page.disclaimer}`;
+}
+
+const day = (iso: string | undefined) => (iso ? iso.slice(0, 10) : undefined);
+
+/** Shipping in silence (2026-09-24): building, comparatively little market attention. Not a buy signal. */
+export function renderSilentBuilders(page: HeySilentBuilders): string {
+  if (page.items.length === 0) return `No project meets the bar right now.\nMethod: ${page.method}\n\n${page.disclaimer}`;
+  const lines = page.items.map((item) => `- ${item.name}${item.symbol ? ` ($${item.symbol})` : ''} — ${item.meaningfulShips30d} verified ships in 30 days${item.marketAttention ? `, market attention ${item.marketAttention.toLowerCase().replace('_', ' ')}` : ''}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`);
+  return `Building with comparatively little market attention (${page.items.length}):\n${lines.join('\n')}\nMethod: ${page.method}\nContinued building is not a buy signal.\n\n${page.disclaimer}`;
+}
+
+export function renderComebacks(page: HeyComebacks): string {
+  if (page.items.length === 0) return `No project is resuming right now.\n\n${page.disclaimer}`;
+  return `Builder comebacks (${page.items.length}):\n${page.items.map((item) => `- ${item.name}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`).join('\n')}\nMethod: ${page.method}\n\n${page.disclaimer}`;
+}
+
+export function renderUnlocks(page: HeyUnlocks): string {
+  if (page.items.length === 0) return `No HoodLock lock reaches its unlock date in the next ${page.days} days.\n\n${page.disclaimer}`;
+  const lines = page.items.map((item) => `- SCHEDULED ${item.unlockAt.slice(0, 16).replace('T', ' ')} UTC · ${item.project.name} · lock #${item.lockId}${item.assetKind === 'LP' ? ' · LP position' : item.lockedTokens !== undefined ? ` · ${item.lockedTokens.toLocaleString('en-US')} tokens` : ''}${item.shareOfSupplyPct !== undefined ? ` (${item.shareOfSupplyPct}% of recorded supply)` : ''} — proof ${item.proof}`);
+  return `Scheduled HoodLock unlocks, next ${page.days} days (an unlock date is when supply may move, not that it will):\n${lines.join('\n')}\n\n${page.disclaimer}`;
+}
+
+export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
+  const lines = timeline.items.slice(0, limit).map((item) => `- ${item.precision} ${item.at.slice(0, 10)} · ${item.kind.replace(/_/g, ' ')} · ${item.title}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}`);
+  const more = timeline.items.length > limit ? `\n…and ${timeline.items.length - limit} earlier entries.` : '';
+  return `# ${timeline.project.name} — timeline (lens: ${timeline.lens})\n${timeline.project.url}\n${lines.length ? lines.join('\n') : 'Nothing HEY holds falls under this lens.'}${more}\n\n${timeline.disclaimer}`;
+}
+
+export function renderCompare(page: HeyCompare): string {
+  const rows = page.projects.map((project) =>
+    [
+      `## ${project.name} — ${project.url}`,
+      `FACT activity status: ${project.activityStatus.toLowerCase().replace(/_/g, ' ')}${project.lastMeaningfulShipAt ? `; last meaningful ship ${day(project.lastMeaningfulShipAt)}` : ''}`,
+      project.buildMomentum === undefined ? 'UNKNOWN Build Momentum: not measured' : `FACT Build Momentum ${Math.round(project.buildMomentum)}`,
+      project.velocity ? `DERIVED velocity: ${project.velocity.state.toLowerCase()} (${project.velocity.current}${project.velocity.previous === null ? '' : ` vs ${project.velocity.previous}`})` : 'UNKNOWN velocity',
+      project.cadence?.medianIntervalDays !== undefined ? `DERIVED release cadence: every ${project.cadence.medianIntervalDays} days` : 'UNKNOWN release cadence',
+      `FACT verified builder: ${project.verifiedBuilder ? 'yes' : 'no'}; sources ${project.sources.verified} verified of ${project.sources.total}`,
+      project.marketCapUsd === undefined ? 'UNKNOWN market cap' : `FACT market cap ${project.marketCapUsd.toLocaleString('en-US')} USD (context)`,
+    ].join('\n'),
+  );
+  const missing = page.missing.length ? `\nNot published: ${page.missing.join(', ')}.` : '';
+  return `${rows.join('\n\n')}${missing}\n\n${page.method}\n${page.disclaimer}`;
 }

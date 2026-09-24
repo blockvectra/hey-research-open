@@ -10,6 +10,14 @@ export { HeyApiError, retryAfterSeconds, type HeyApiErrorCode, type HeyApiErrorO
 export { itemsOf, nextOffsetPages, totalPages } from './paging';
 export { SDK_VERSION } from './version';
 export type {
+  HeyCentreProject,
+  HeySilentBuilders,
+  HeyComebacks,
+  HeyUnlocks,
+  HeyBuildMarket,
+  HeyTimelineEntry,
+  HeyTimeline,
+  HeyCompare,
   HeyActivityStatus,
   HeyAskAnswer,
   HeyAskLine,

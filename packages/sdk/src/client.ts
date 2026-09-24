@@ -2,6 +2,12 @@ import { HeyApiError, errorFromResponse } from './error';
 import { itemsOf, nextOffsetPages, totalPages } from './paging';
 import type {
   HeyAskAnswer,
+  HeyBuildMarket,
+  HeyComebacks,
+  HeyCompare,
+  HeySilentBuilders,
+  HeyTimeline,
+  HeyUnlocks,
   HeyBountiesQuery,
   HeyContractChanges,
   HeyBountyDetail,
@@ -197,6 +203,10 @@ export class HeyClient {
     intelligence: (slug: string): Promise<HeyProjectIntelligence> => this.get(`/api/projects/${encodeURIComponent(slug)}/intelligence`),
     /** `GET /api/projects/{slug}/ask?q=`: a question matched to the evidence HEY holds, every line tagged. */
     ask: (slug: string, question: string): Promise<HeyAskAnswer> => this.get(`/api/projects/${encodeURIComponent(slug)}/ask`, { q: question }),
+    /** `GET /api/projects/{slug}/timeline?lens=`: every kind of evidence on one axis. */
+    timeline: (slug: string, options: { lens?: string } = {}): Promise<HeyTimeline> => this.get(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens: options.lens }),
+    /** `GET /api/compare?slugs=`: two to four projects side by side, no winner. */
+    compare: (slugs: readonly string[]): Promise<HeyCompare> => this.get('/api/compare', { slugs: slugs.join(',') }),
     /** Every page, following `nextOffset` from `query.offset`. */
     pages: (query: HeyProjectsQuery = {}): AsyncIterable<HeyPage<HeyProject>> =>
       nextOffsetPages((offset) => this.projects.list({ ...query, offset }), query.offset ?? 0),
@@ -261,6 +271,26 @@ export class HeyClient {
     /** `GET /api/bounties/{id}`. */
     get: (id: string): Promise<HeyBountyDetail> => this.get(`/api/bounties/${encodeURIComponent(id)}`),
   };
+
+  /** `GET /api/chain/silence`: building with comparatively little market attention. */
+  silence(): Promise<HeySilentBuilders> {
+    return this.get('/api/chain/silence');
+  }
+
+  /** `GET /api/chain/comebacks`: projects whose status is RESUMED. */
+  comebacks(): Promise<HeyComebacks> {
+    return this.get('/api/chain/comebacks');
+  }
+
+  /** `GET /api/chain/unlocks`: HoodLock's scheduled unlocks; `days` 1–365, default 30. */
+  unlocks(options: { days?: number } = {}): Promise<HeyUnlocks> {
+    return this.get('/api/chain/unlocks', { days: options.days });
+  }
+
+  /** `GET /api/chain/build-market`: Build Momentum against market attention, a map. */
+  buildMarket(): Promise<HeyBuildMarket> {
+    return this.get('/api/chain/build-market');
+  }
 
   /** `GET /api/chain/contract-changes`: evidence-backed contract changes; `days` 1–90, default 30. */
   contractChanges(options: { days?: number } = {}): Promise<HeyContractChanges> {

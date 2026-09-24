@@ -2,13 +2,16 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import type { HeyAskAnswer, HeyContractChanges, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip, HeyThisWeek } from '@hey-research/sdk';
+import type { HeyAskAnswer, HeyCompare, HeyContractChanges, HeySilentBuilders, HeyUnlocks, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip, HeyThisWeek } from '@hey-research/sdk';
 import {
   STILL_BUILDING_MEANING,
   ago,
   projectLine,
   renderBuilders,
   renderAskAnswer,
+  renderCompare,
+  renderSilentBuilders,
+  renderUnlocks,
   renderContractChanges,
   renderProject,
   renderProjectIntelligence,
@@ -548,5 +551,36 @@ describe('renderAskAnswer and renderContractChanges (2026-09-24)', () => {
     expect(text).toContain('Equifold (equifold): 208 new contracts');
     expect(text).toContain('functions added: withdraw(uint256)');
     expect(renderContractChanges({ days: 7, items: [], disclaimer: 'd' })).toMatch(/No evidence-backed contract change in the last 7 days/);
+  });
+});
+
+describe('command centre renderers (2026-09-24)', () => {
+  it('names quiet builders without a price view, and says so', () => {
+    const page: HeySilentBuilders = { items: [{ slug: 'a', name: 'A', activityStatus: 'SHIPPING', url: 'https://h/project/a', meaningfulShips30d: 2, marketAttention: 'VERY_LOW' }], method: 'm', disclaimer: 'd' };
+    const text = renderSilentBuilders(page);
+    expect(text).toContain('A — 2 verified ships in 30 days, market attention very low');
+    expect(text).toContain('not a buy signal');
+  });
+
+  it('marks unlocks SCHEDULED with their proof', () => {
+    const page: HeyUnlocks = { days: 30, items: [{ project: { slug: 'a', name: 'A', activityStatus: 'ACTIVE', url: 'u' }, lockId: 7, unlockAt: '2026-10-01T00:00:00.000Z', assetKind: 'TOKEN', lockedTokens: 1000, shareOfSupplyPct: 10, proof: 'https://hoodlock.tech/proof/lock/7', precision: 'SCHEDULED' }], disclaimer: 'd' };
+    expect(renderUnlocks(page)).toContain('SCHEDULED 2026-10-01 00:00 UTC · A · lock #7 · 1,000 tokens (10% of recorded supply) — proof https://hoodlock.tech/proof/lock/7');
+  });
+
+  it('compares with UNKNOWN where a figure is not measured, and names no winner', () => {
+    const page: HeyCompare = {
+      projects: [
+        { slug: 'a', name: 'A', url: 'u', activityStatus: 'SHIPPING', verifiedBuilder: true, sources: { verified: 1, total: 2 } },
+        { slug: 'b', name: 'B', url: 'u', activityStatus: 'QUIET', buildMomentum: 12, verifiedBuilder: false, sources: { verified: 0, total: 1 }, marketCapUsd: 5000 },
+      ],
+      missing: ['c'],
+      method: 'No winner.',
+      disclaimer: 'd',
+    };
+    const text = renderCompare(page);
+    expect(text).toContain('UNKNOWN Build Momentum: not measured');
+    expect(text).toContain('FACT Build Momentum 12');
+    expect(text).toContain('Not published: c.');
+    expect(text.toLowerCase()).not.toMatch(/winner is|better|best/);
   });
 });

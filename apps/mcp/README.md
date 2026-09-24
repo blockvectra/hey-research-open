@@ -57,6 +57,11 @@ Any other MCP client: run `npx -y @hey-research/mcp` over stdio.
 | `project_intelligence` | How one project builds over time: velocity, release cadence, consistency, how fast HEY saw its ships, market attention as context, and 30-day changes — each line tagged FACT, DERIVED or UNKNOWN. |
 | `ask_hey` | A free-text question about one project, answered only from HEY's record; every line FACT, DERIVED or UNKNOWN. |
 | `contract_changes` | Upgrades, follow-up deployments, newly verified contracts and interface changes, with evidence. |
+| `shipping_in_silence` | Building with comparatively little market attention — HEY's Under the Radar decision. |
+| `builder_comebacks` | Projects shipping again after 60+ quiet days. |
+| `upcoming_unlocks` | HoodLock's scheduled unlocks with proof links. |
+| `project_timeline` | One project's evidence on one axis, with time precision and lenses. |
+| `compare_projects` | Two to four projects side by side, no winner. |
 | `chain_activity` | Robinhood Chain day by day — trades, volume, launches, projects published, ships. Aggregates only. |
 | `list_signals` | HEY Signal: measured changes — development spikes and slowdowns, releases, deployments, liquidity moves — each with its figures and source. |
 | `list_builders` | The Builder Radar: ranked by verified development, on-chain use and research standing, never by price. |

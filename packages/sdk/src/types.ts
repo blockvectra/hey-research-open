@@ -843,3 +843,74 @@ export type HeyContractChange =
     };
 export type HeyContractChanges = { days: number; items: HeyContractChange[]; disclaimer: string };
 
+
+/* ------------------------------------------------------- command centre */
+
+/** The Terminal command centre over the API (2026-09-24). */
+export type HeyCentreProject = { slug: string; name: string; symbol?: string; activityStatus: string; lastShipAt?: string; url: string };
+
+export type HeySilentBuilders = {
+  items: (HeyCentreProject & { meaningfulShips30d: number; marketAttention?: 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIGH' })[];
+  method: string;
+  disclaimer: string;
+};
+
+export type HeyComebacks = { items: HeyCentreProject[]; method: string; disclaimer: string };
+
+export type HeyUnlocks = {
+  days: number;
+  items: {
+    project: HeyCentreProject;
+    lockId: number;
+    unlockAt: string;
+    assetKind: 'TOKEN' | 'LP';
+    lockedTokens?: number;
+    shareOfSupplyPct?: number;
+    proof: string;
+    precision: 'SCHEDULED';
+  }[];
+  disclaimer: string;
+};
+
+export type HeyBuildMarket = { items: (HeyCentreProject & { buildMomentum: number; marketAttentionPercentile: number })[]; method: string; disclaimer: string };
+
+export type HeyTimelineEntry = {
+  id: string;
+  kind: string;
+  at: string;
+  precision: 'EXACT' | 'DATE' | 'WEEK' | 'OBSERVED' | 'SCHEDULED';
+  title: string;
+  summary?: string;
+  recordedAt?: string;
+  discoveryLagHours?: number;
+  eventType?: string;
+  verification?: string;
+  countsAsBuilding: boolean;
+  source?: string;
+  marketAround?: { before?: { day: string; marketCapUsd?: number; priceUsd?: number }; after?: { day: string; marketCapUsd?: number; priceUsd?: number } };
+};
+
+export type HeyTimeline = { project: { slug: string; name: string; url: string }; lens: string; items: HeyTimelineEntry[]; disclaimer: string };
+
+export type HeyCompare = {
+  projects: {
+    slug: string;
+    name: string;
+    url: string;
+    activityStatus: string;
+    lastMeaningfulShipAt?: string;
+    buildMomentum?: number;
+    verifiedBuilder: boolean;
+    sources: { verified: number; total: number };
+    tokenMarketStatus?: string;
+    marketCapUsd?: number;
+    liquidityUsd?: number;
+    velocity?: { state: string; current: number; previous: number | null };
+    cadence?: { state: string; medianIntervalDays?: number };
+    consistency?: { activeWeeks: number | null; windowWeeks: number };
+    marketAttention?: string;
+  }[];
+  missing: string[];
+  method: string;
+  disclaimer: string;
+};

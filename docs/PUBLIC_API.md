@@ -592,6 +592,21 @@ per project with `count` and the `latest` event and its source; and
 function and event signatures added and removed, `detectedAt` (when HEY saw
 it, not when it happened) and the explorer `source`.
 
+## The Terminal command centre (2026-09-24)
+
+The same reads the Terminal's command centre uses, keyless and cached like the
+rest of the API. Every list carries its `method` in words; none is ordered by
+price, and none names a winner.
+
+| Route | Answers |
+|---|---|
+| `GET /api/chain/silence` | projects building with comparatively little market attention (HEY's stored Under the Radar decision), each with `meaningfulShips30d` and `marketAttention` |
+| `GET /api/chain/comebacks` | projects whose activity status is RESUMED |
+| `GET /api/chain/unlocks?days=30` | HoodLock's own schedule: locks still holding that unlock within `days` (1–365), each `precision: SCHEDULED` with a `proof` link |
+| `GET /api/chain/build-market` | Build Momentum and market-attention percentile for researched projects, in slug order — a map, not a ranking |
+| `GET /api/projects/{slug}/timeline?lens=` | every kind of evidence on one axis with `precision` (EXACT, DATE, WEEK, OBSERVED, SCHEDULED), `recordedAt`, `discoveryLagHours`, `countsAsBuilding`, `source` and `marketAround` (context, not cause). Lenses: everything, build, code, onchain, market, locks |
+| `GET /api/compare?slugs=a,b` | two to four projects side by side with the project page's gates; `missing` names slugs that are not published; `400` for fewer than two |
+
 ## `GET /api/chain` (2026-09-13)
 
 Robinhood Chain day by day, aggregates only. `days` (1–400, default 14). Each row: `dexTrades`,

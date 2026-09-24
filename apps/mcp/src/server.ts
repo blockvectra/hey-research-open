@@ -12,6 +12,11 @@ import {
   type HeyProjectDetail,
   type HeyProjectIntelligence,
   type HeyAskAnswer,
+  type HeyComebacks,
+  type HeyCompare,
+  type HeySilentBuilders,
+  type HeyTimeline,
+  type HeyUnlocks,
   type HeyContractChanges,
   type HeyShip,
   type HeySignalPage,
@@ -28,6 +33,11 @@ import {
   renderProject,
   renderProjectIntelligence,
   renderAskAnswer,
+  renderComebacks,
+  renderCompare,
+  renderSilentBuilders,
+  renderTimeline,
+  renderUnlocks,
   renderContractChanges,
   renderProjects,
   renderShips,
@@ -302,6 +312,74 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
       try {
         const page = await client.get<HeyContractChanges>('/api/chain/contract-changes', { days });
         return text(renderContractChanges(page));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'shipping_in_silence',
+    'Robinhood Chain projects with verified recent shipping whose live market draws comparatively little attention — HEY\'s Under the Radar decision. Newest ship first; never ordered by price, and not a recommendation.',
+    {},
+    async () => {
+      try {
+        return text(renderSilentBuilders(await client.get<HeySilentBuilders>('/api/chain/silence')));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'builder_comebacks',
+    'Robinhood Chain projects shipping again after 60 or more days without observed activity (activity status RESUMED).',
+    {},
+    async () => {
+      try {
+        return text(renderComebacks(await client.get<HeyComebacks>('/api/chain/comebacks')));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'upcoming_unlocks',
+    'Scheduled HoodLock unlocks on Robinhood Chain from the locker\'s own records: locks still holding that reach their unlock time in the window, with proof links.',
+    { days: z.number().int().min(1).max(365).optional().describe('Days ahead; default 30.') },
+    async ({ days }) => {
+      try {
+        return text(renderUnlocks(await client.get<HeyUnlocks>('/api/chain/unlocks', { days })));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'project_timeline',
+    'One project\'s research timeline: builds, releases, code, contract deploys, upgrades and interface changes, token verification, locks and scheduled unlocks — each with how precisely HEY knows its time. Lenses: everything, build, code, onchain, market, locks.',
+    {
+      slug: z.string().min(1).describe('The project slug.'),
+      lens: z.enum(['everything', 'build', 'code', 'onchain', 'market', 'locks']).optional(),
+    },
+    async ({ slug, lens }) => {
+      try {
+        return text(renderTimeline(await client.get<HeyTimeline>(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens })));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'compare_projects',
+    'Two to four Robinhood Chain projects side by side: activity status, last ship, Build Momentum, velocity, cadence, verification and market context — each line FACT, DERIVED or UNKNOWN. No winner and no recommendation.',
+    { slugs: z.array(z.string().min(1)).min(2).max(4).describe('Two to four project slugs.') },
+    async ({ slugs }) => {
+      try {
+        return text(renderCompare(await client.get<HeyCompare>('/api/compare', { slugs: slugs.join(',') })));
       } catch (error) {
         return failure(error);
       }

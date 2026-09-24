@@ -150,6 +150,8 @@ describe('HeyClient typed methods', () => {
     await client.projects.market('agentos', { days: 90 });
     await client.projects.intelligence('agentos');
     await client.projects.ask('agentos', 'what changed?');
+    await client.projects.timeline('agentos', { lens: 'locks' });
+    await client.projects.compare(['agentos', 'darkroute']);
     await client.ships.list({ sort: 'detected', detectedSince: '2026-09-01T00:00:00.000Z' });
     await client.signals.list({ group: 'development', include: 'published' });
     await client.signals.get('sig 1');
@@ -162,6 +164,10 @@ describe('HeyClient typed methods', () => {
     await client.reports.weekly.get('2026-W37');
     await client.chain({ days: 7 });
     await client.contractChanges({ days: 30 });
+    await client.silence();
+    await client.comebacks();
+    await client.unlocks({ days: 90 });
+    await client.buildMarket();
     await client.thisWeek();
     await client.status();
 
@@ -172,6 +178,8 @@ describe('HeyClient typed methods', () => {
       '/api/projects/agentos/market?days=90',
       '/api/projects/agentos/intelligence',
       '/api/projects/agentos/ask?q=what+changed%3F',
+      '/api/projects/agentos/timeline?lens=locks',
+      '/api/compare?slugs=agentos%2Cdarkroute',
       '/api/ships?sort=detected&detectedSince=2026-09-01T00%3A00%3A00.000Z',
       '/api/signals?group=development&include=published',
       '/api/signals/sig%201',
@@ -184,6 +192,10 @@ describe('HeyClient typed methods', () => {
       '/api/reports/weekly/2026-W37',
       '/api/chain?days=7',
       '/api/chain/contract-changes?days=30',
+      '/api/chain/silence',
+      '/api/chain/comebacks',
+      '/api/chain/unlocks?days=90',
+      '/api/chain/build-market',
       '/api/this-week',
       '/api/status',
     ]);

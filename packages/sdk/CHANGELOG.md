@@ -8,6 +8,8 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ### Added
 
+- `silence()`, `comebacks()`, `unlocks()`, `buildMarket()`,
+  `projects.timeline()` and `projects.compare()` (2026-09-24).
 - `projects.ask(slug, question)` (`HeyAskAnswer`) and `contractChanges({ days })`
   (`HeyContractChanges`), 2026-09-24.
 - `HeyProjectIntelligence.development` (`HeyDevelopmentIntelligence`): derived
