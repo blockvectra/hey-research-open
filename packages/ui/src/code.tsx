@@ -16,7 +16,8 @@ export type CodeActivityData =
       score: number;
       activeDevDays: number;
       windowDays: number;
-      contributors: number;
+      /** Null where no day of the window recorded one — never zero. */
+      contributors: number | null;
       releases: number;
       lastCodeUpdate?: Date;
       dimensions: { label: string; value: number; weight: number; measured: boolean }[];
@@ -68,7 +69,10 @@ export function PublicCodeCard({
           label="Days with recorded activity"
           value={`${data.activeDevDays} / ${data.windowDays}`}
         />
-        <Row label="Contributors" value={data.contributors > 0 ? String(data.contributors) : '—'} />
+        <Row
+          label="Contributors"
+          value={data.contributors === null || data.contributors === 0 ? '—' : String(data.contributors)}
+        />
         <Row label="Releases" value={String(data.releases)} />
         <Row
           label="Last code update"

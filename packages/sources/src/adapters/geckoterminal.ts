@@ -86,11 +86,32 @@ export function createGeckoterminalAdapter(): SourceAdapter<GeckoterminalInput, 
              * take what it gave rather than dropping the reading.
              */
             const wanted = input.tokenAddress.toLowerCase();
-            const sided = list.filter((pool) => {
-              const id = pool.relationships?.base_token?.data?.id?.toLowerCase();
-              return !id || id.endsWith(`_${wanted}`) || id === wanted;
-            });
-            const mine = sided.length > 0 ? sided : list.every((pool) => !pool.relationships?.base_token?.data?.id) ? list : [];
+            const baseOf = (pool: (typeof list)[number]): string | undefined =>
+              pool.relationships?.base_token?.data?.id?.toLowerCase();
+            const isMine = (id: string | undefined): boolean =>
+              id !== undefined && (id.endsWith(`_${wanted}`) || id === wanted);
+            /*
+             * A pool that names its base token and a pool that does not are
+             * not equal candidates (2026-09-24).
+             *
+             * These were filtered together — `!id || matches` — so a payload
+             * carrying one pool that names this token and four that name
+             * nothing put all five into the depth comparison, and the deepest
+             * of the four unverifiable ones could win and publish its price,
+             * symbol, name and logo as this token's. That is the narrower form
+             * of the defect the DEX Screener adapter lost on 2026-09-23, and
+             * it lands in the same place: the identity backfill writes symbol
+             * and name under `coalesce` and the logo only when null, so it is
+             * never corrected afterwards.
+             *
+             * A positively matched pool always wins. The all-unknown fallback
+             * below is kept and is the case its own condition describes — the
+             * provider said nothing about sides at all, for any pool, so there
+             * is nothing to prefer.
+             */
+            const matched = list.filter((pool) => isMine(baseOf(pool)));
+            const mine =
+              matched.length > 0 ? matched : list.every((pool) => baseOf(pool) === undefined) ? list : [];
             const pools = mine.map((pool) => ({
               pool,
               liquidityUsd: toNumber(pool.attributes.reserve_in_usd),
