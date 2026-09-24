@@ -15,6 +15,7 @@ import {
   type HeyAccelerating,
   type HeyProjectSurface,
   type HeyComebacks,
+  type HeyMarketIntegrity,
   type HeyMarketMoves,
   type HeyCompare,
   type HeySilentBuilders,
@@ -38,6 +39,7 @@ import {
   renderAskAnswer,
   renderAccelerating,
   renderComebacks,
+  renderMarketIntegrity,
   renderMarketMoves,
   renderCompare,
   renderSilentBuilders,
@@ -346,6 +348,19 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
     async () => {
       try {
         return text(renderAccelerating(await client.get<HeyAccelerating>('/api/chain/accelerating')));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'market_integrity',
+    "For one Robinhood Chain project: what happened to its tracked token market — liquidity against the level it held, trading, a pool migration — beside its builder activity, and where the two disagree. It describes the token market, never whether development stopped, and never calls a project a rug or safe.",
+    { slug: z.string().min(1).describe('The project slug.') },
+    async ({ slug }) => {
+      try {
+        return text(renderMarketIntegrity(await client.get<HeyMarketIntegrity>(`/api/projects/${encodeURIComponent(slug)}/market-integrity`)));
       } catch (error) {
         return failure(error);
       }

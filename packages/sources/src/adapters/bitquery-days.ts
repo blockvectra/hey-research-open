@@ -224,6 +224,12 @@ export type BitqueryTokenDay = {
   /** The day's last trade price in USD, when any trade carried one. */
   closeUsd?: number;
   transfers?: number;
+  /**
+   * False when only the transfers cube answered for this token-day (10-agent
+   * audit, 2026-09-25): its trade counts are then unknown, not zero. A
+   * transfers-only row used to store `trades: 0` over Sigint's busy day.
+   */
+  tradesAnswered?: boolean;
 };
 
 export type BitqueryChainDaysInput = {
@@ -316,7 +322,7 @@ export function normalizeBitqueryTokenDays(
     const address = row.Transfer.Currency.SmartContract.toLowerCase();
     const day = row.Block.Date;
     if (!ADDRESS.test(address) || !DAY.test(day)) continue;
-    const current = byKey.get(keyOf(address, day)) ?? { contractAddress: address, day, trades: 0, buys: 0, sells: 0, buyVolumeUsd: 0, sellVolumeUsd: 0 };
+    const current = byKey.get(keyOf(address, day)) ?? { contractAddress: address, day, trades: 0, buys: 0, sells: 0, buyVolumeUsd: 0, sellVolumeUsd: 0, tradesAnswered: false };
     current.transfers = (current.transfers ?? 0) + whole(row.transfers);
     byKey.set(keyOf(address, day), current);
   }

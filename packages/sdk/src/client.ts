@@ -7,6 +7,7 @@ import type {
   HeyCompare,
   HeySilentBuilders,
   HeyAccelerating,
+  HeyMarketIntegrity,
   HeyMarketMoves,
   HeyTimeline,
   HeyUnlocks,
@@ -207,6 +208,8 @@ export class HeyClient {
     ask: (slug: string, question: string): Promise<HeyAskAnswer> => this.get(`/api/projects/${encodeURIComponent(slug)}/ask`, { q: question }),
     /** `GET /api/projects/{slug}/timeline?lens=`: every kind of evidence on one axis. */
     timeline: (slug: string, options: { lens?: string } = {}): Promise<HeyTimeline> => this.get(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens: options.lens }),
+    /** `GET /api/projects/{slug}/market-integrity`: the tracked token market beside the builder activity, and their conflicts (404 until published). */
+    marketIntegrity: (slug: string): Promise<HeyMarketIntegrity> => this.get(`/api/projects/${encodeURIComponent(slug)}/market-integrity`),
     /** `GET /api/projects/{slug}/market-moves?days=&min=`: day-on-day market moves with what shipped in the week up to each — a sequence, never a cause. */
     marketMoves: (slug: string, options: { days?: number; min?: number } = {}): Promise<HeyMarketMoves> =>
       this.get(`/api/projects/${encodeURIComponent(slug)}/market-moves`, { days: options.days, min: options.min }),

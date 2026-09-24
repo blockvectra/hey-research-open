@@ -234,6 +234,23 @@ export const serverEnvSchema = z
           .transform((value) => value === 'true')
           .pipe(z.boolean()),
         /**
+         * Market Integrity exposure (2026-09-25), fail closed. The worker always
+         * evaluates and stores it; this decides who sees it. Unset or anything
+         * unrecognised is `internal` (the admin review only); `terminal` adds the
+         * Terminal beta; `public` adds the project page, the API and the MCP
+         * server. The rollout order the founder set: internal, admin, Terminal,
+         * then public once the false-positive rate is known.
+         */
+        marketIntegrityExposure: optionalString.transform((value): 'internal' | 'terminal' | 'public' =>
+          value === 'terminal' || value === 'public' ? value : 'internal',
+        ),
+        /**
+         * Whether an exit-pattern classification is named outside the admin
+         * review (2026-09-25). Off unless exactly "true": no page labels an exit
+         * pattern until the evidence model has been audited.
+         */
+        marketIntegrityExitLabels: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+        /**
          * Kill switches for three reader features (2026-09-24): Ask HEY, the
          * comparison, and the watchlist. On unless set to exactly "false", so a
          * missing value never switches a shipped feature off; off answers 404
@@ -556,6 +573,8 @@ function shapeEnv(raw: RawEnv) {
       bondsEnabled: raw.HEY_BONDS_ENABLED,
       earlyAccessEnabled: raw.HEY_EARLY_ACCESS_ENABLED,
       terminalBetaEnabled: raw.HEY_TERMINAL_BETA_ENABLED,
+      marketIntegrityExposure: raw.HEY_MARKET_INTEGRITY,
+      marketIntegrityExitLabels: raw.HEY_MARKET_INTEGRITY_EXIT_LABELS,
       askEnabled: raw.HEY_ASK_ENABLED,
       compareEnabled: raw.HEY_COMPARE_ENABLED,
       watchlistEnabled: raw.HEY_WATCHLIST_ENABLED,
@@ -638,6 +657,8 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'hey.bondsEnabled': 'HEY_BONDS_ENABLED',
   'hey.earlyAccessEnabled': 'HEY_EARLY_ACCESS_ENABLED',
   'hey.terminalBetaEnabled': 'HEY_TERMINAL_BETA_ENABLED',
+  'hey.marketIntegrityExposure': 'HEY_MARKET_INTEGRITY',
+  'hey.marketIntegrityExitLabels': 'HEY_MARKET_INTEGRITY_EXIT_LABELS',
   'hey.askEnabled': 'HEY_ASK_ENABLED',
   'hey.compareEnabled': 'HEY_COMPARE_ENABLED',
   'hey.watchlistEnabled': 'HEY_WATCHLIST_ENABLED',
@@ -726,6 +747,22 @@ export function resetServerEnvCache(): void {
  */
 export function isBuilderAuthConfigured(env: ServerEnv): boolean {
   return Boolean(env.sessionSecret && env.github.clientId && env.github.clientSecret);
+}
+
+/**
+ * Whether a surface may show Market Integrity (2026-09-25). The admin review
+ * always may; the Terminal from `terminal`; the project page, the API and the
+ * MCP server only at `public`. Fail closed: the default is `internal`.
+ */
+export function marketIntegrityVisible(env: ServerEnv, surface: 'admin' | 'terminal' | 'public'): boolean {
+  if (surface === 'admin') return true;
+  const level = env.hey.marketIntegrityExposure;
+  return surface === 'terminal' ? level === 'terminal' || level === 'public' : level === 'public';
+}
+
+/** Whether an exit-pattern classification may be named on that surface: the admin review, or a visible surface with the labels flag on. */
+export function marketIntegrityExitLabelsVisible(env: ServerEnv, surface: 'admin' | 'terminal' | 'public'): boolean {
+  return surface === 'admin' || (env.hey.marketIntegrityExitLabels && marketIntegrityVisible(env, surface));
 }
 
 /** AI must be opt-in; every caller checks this before doing enrichment work. */

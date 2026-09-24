@@ -3,6 +3,7 @@ import type {
   HeyBountyPage,
   HeyBuildersPage,
   HeyChain,
+  HeyMarketIntegrity,
   HeyMarketMoves,
   HeySignalPage,
   HeyThisWeek,
@@ -698,6 +699,30 @@ export function renderAccelerating(page: HeyAccelerating): string {
   if (page.items.length === 0) return `No builder is shipping measurably faster right now.\nMethod: ${page.method}\n\n${page.disclaimer}`;
   const lines = page.items.map((item) => `- DERIVED ${item.name}${item.symbol ? ` ($${item.symbol})` : ''} — ${item.velocity.current} meaningful events in ${item.velocity.windowDays} days vs ${item.velocity.previous ?? 'none'} before${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`);
   return `Shipping faster (${page.items.length}):\n${lines.join('\n')}\nMethod: ${page.method}\n\n${page.disclaimer}`;
+}
+
+/**
+ * Market Integrity for one project (2026-09-25): the builder line first, the
+ * market facts second, the conflicts third — each tagged FACT, DERIVED or
+ * UNKNOWN — and always the sentence that the market is not the builder.
+ */
+export function renderMarketIntegrity(page: HeyMarketIntegrity): string {
+  const builder = `FACT builder activity: ${page.builderActivity.status?.toLowerCase() ?? 'unknown'}${page.builderActivity.lastMeaningfulShipAt ? `, last meaningful ship ${page.builderActivity.lastMeaningfulShipAt.slice(0, 10)}` : ''}`;
+  const m = page.marketIntegrity;
+  if (!m) return `# ${page.slug} — market integrity\n${page.url}\n${builder}\nUNKNOWN HEY holds no market-integrity evaluation for this project (no tracked token, or not evaluated yet).\n\n${page.note}`;
+  const lines = [
+    `FACT token market: ${m.state.toLowerCase().replace(/_/g, ' ')}`,
+    m.liquidityPeakUsd !== null && m.liquidityNowUsd !== null
+      ? `DERIVED liquidity ${Math.round(m.liquidityPeakUsd).toLocaleString('en-US')} USD (held, ${m.liquidityPeakDay}) → ${Math.round(m.liquidityNowUsd).toLocaleString('en-US')} USD (${m.liquidityNowDay})${m.liquidityChangePct !== null ? `, ${m.liquidityChangePct}%` : ''}`
+      : 'UNKNOWN no established liquidity level to measure against',
+    ...(m.collapseDay ? [`DERIVED liquidity under a tenth of that level since ${m.collapseDay} (two consecutive daily readings)`] : []),
+    ...(m.lastTradeDay ? [`FACT last trade recorded ${m.lastTradeDay}`] : []),
+    m.migrationDetected && m.migration ? `DERIVED liquidity appears to have moved (${m.migration.kind.toLowerCase()}, ${m.migration.confidence} confidence)` : m.collapse === 'COLLAPSE' || m.collapse === 'SEVERE' ? 'DERIVED no verified replacement pool for the same token found' : '',
+    ...(m.sourcesDisagree ? ['UNKNOWN two market sources disagree; HEY holds this for review'] : []),
+    ...(m.exitPattern && m.exitPattern.level !== 'NONE' ? [`DERIVED potential exit pattern (an evidence classification, not a finding about intent): ${m.exitPattern.reasons.join(' ')}`] : []),
+    ...page.conflicts.map((conflict) => `DERIVED signal conflict: ${conflict.text}`),
+  ].filter(Boolean);
+  return `# ${page.slug} — market integrity (rules ${m.rulesVersion})\n${page.url}\n${builder}\n${lines.join('\n')}\n\n${page.note}`;
 }
 
 export function renderMarketMoves(page: HeyMarketMoves): string {

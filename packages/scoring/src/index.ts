@@ -8,3 +8,5 @@ export * from './version';
 export * from './token-market';
 export * from './scan-evidence';
 export * from './intelligence';
+export * from './momentum';
+export * from './market-integrity';

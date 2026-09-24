@@ -19,7 +19,14 @@ import { shippingStreak } from './hbm';
  * not persisted scores, but an API consumer comparing two answers needs to
  * know when the definitions moved.
  */
-export const INTELLIGENCE_RULES_VERSION = 'intel-v1' as const;
+/*
+ * intel-v2 (2026-09-25, 10-agent audit): "when HEY began watching" is the
+ * later of the first sighting and HEY's first recording for the project, for
+ * velocity and consistency as it already was for discovery lag; a comparison
+ * reading must sit within two days of the window's start; and no market
+ * attention is reported for a market that is not live.
+ */
+export const INTELLIGENCE_RULES_VERSION = 'intel-v2' as const;
 
 const DAY_MS = 86_400_000;
 const WEEK_MS = 7 * DAY_MS;
@@ -77,8 +84,9 @@ export function buildVelocity(events: readonly ScoredEvent[], now: Date, observe
   const window = windowDays * DAY_MS;
   const meaningful = meaningfulEvents(events, now);
   const age = (event: ScoredEvent) => now.getTime() - event.publishedAt.getTime();
-  const current = meaningful.filter((event) => age(event) < window).length;
-  const previousCount = meaningful.filter((event) => age(event) >= window && age(event) < 2 * window).length;
+  // At most `windowDays` old counts, as Under the Radar and Still Building count it (2026-09-25).
+  const current = meaningful.filter((event) => age(event) <= window).length;
+  const previousCount = meaningful.filter((event) => age(event) > window && age(event) <= 2 * window).length;
 
   if (observedSince.getTime() > now.getTime() - 2 * window) {
     return { windowDays, current, previous: null, changePct: null, state: 'NEW' };
@@ -145,15 +153,15 @@ const oneDecimal = (value: number) => Math.round(value * 10) / 10;
  */
 export function releaseCadence(events: readonly ScoredEvent[], now: Date): ReleaseCadence {
   const since = now.getTime() - CADENCE.lookbackDays * DAY_MS;
-  const days = [
-    ...new Set(
-      meaningfulEvents(events, now)
-        .filter((event) => RELEASES.has(event.eventType) && event.publishedAt.getTime() >= since)
-        .map((event) => Math.floor(event.publishedAt.getTime() / DAY_MS)),
-    ),
-  ].sort((a, b) => a - b);
-  const last = days.at(-1);
-  const daysSinceLastRelease = last === undefined ? null : Math.floor(now.getTime() / DAY_MS) - last;
+  const releases = meaningfulEvents(events, now).filter((event) => RELEASES.has(event.eventType) && event.publishedAt.getTime() >= since);
+  const days = [...new Set(releases.map((event) => Math.floor(event.publishedAt.getTime() / DAY_MS)))].sort((a, b) => a - b);
+  const lastAt = releases.reduce((max, event) => Math.max(max, event.publishedAt.getTime()), Number.NEGATIVE_INFINITY);
+  /*
+   * Elapsed days, like `daysSinceMeaningfulShip` beside it (10-agent audit,
+   * 2026-09-25): a release at 23:30 read "1 day ago" at 00:30 here and
+   * "0 days" there. Release *days* stay calendar days for the intervals.
+   */
+  const daysSinceLastRelease = Number.isFinite(lastAt) ? Math.floor((now.getTime() - lastAt) / DAY_MS) : null;
   const intervals = days.slice(1).map((day, index) => day - days[index]!);
   if (intervals.length < CADENCE.minIntervals) {
     return { state: 'INSUFFICIENT_RELEASES', releases: days.length, lookbackDays: CADENCE.lookbackDays, daysSinceLastRelease };

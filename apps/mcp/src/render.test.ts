@@ -479,7 +479,7 @@ describe('renderProjectIntelligence (2026-09-24)', () => {
     disclaimer: 'Not investment advice.',
   };
   const development: NonNullable<HeyProjectIntelligence['development']> = {
-    rulesVersion: 'intel-v1',
+    rulesVersion: 'intel-v2',
     computedAt: '2026-09-24T12:00:00.000Z',
     observedSince: '2026-03-01T00:00:00.000Z',
     velocity: { windowDays: 30, current: 6, previous: 2, changePct: 200, state: 'ACCELERATING' },
@@ -617,5 +617,28 @@ describe('acceleration and market moves (2026-09-24)', () => {
   it('says unknown, not zero, without a daily index', () => {
     const text = renderMarketMoves({ project: { slug: 'm', name: 'M', url: 'u' }, threshold: { minChangePct: 25, lookbackDays: 7, windowDays: 90 }, daysRead: 0, items: [], method: 'm', disclaimer: 'd' });
     expect(text).toContain('UNKNOWN HEY holds too few daily market readings');
+  });
+});
+
+describe('market integrity rendering (2026-09-25)', () => {
+  it('puts the builder first, tags every line, and never says rug, scam or safe', async () => {
+    const { renderMarketIntegrity } = await import('./render');
+    const out = renderMarketIntegrity({
+      slug: 'drained',
+      url: 'https://heyresearch.xyz/project/drained',
+      builderActivity: { status: 'SHIPPING', lastMeaningfulShipAt: '2026-09-24T10:00:00Z' },
+      note: 'Market integrity describes the tracked token market, not whether development has stopped.',
+      marketIntegrity: {
+        rulesVersion: 'mi-v1', evaluatedAt: '2026-09-25T00:00:00Z', state: 'LIQUIDITY_REMOVED', marketActive: false, established: true, collapse: 'SEVERE',
+        liquidityPeakUsd: 82_000, liquidityPeakDay: '2026-09-10', liquidityNowUsd: 1_129, liquidityNowDay: '2026-09-24', liquidityChangePct: -98.6,
+        deteriorationStartDay: '2026-09-20', collapseDay: '2026-09-21', lastTradeDay: '2026-09-20', migrationDetected: false, migration: null, lockState: 'NONE', sourcesDisagree: false,
+      },
+      conflicts: [{ type: 'BUILDER_ACTIVE_MARKET_GONE', text: 'HEY observed recent builder activity while the tracked token market had already lost most of its liquidity.' }],
+      events: [],
+    });
+    expect(out.split('\n')[2]).toMatch(/^FACT builder activity: shipping/);
+    expect(out).toContain('DERIVED no verified replacement pool');
+    expect(out).toContain('not whether development has stopped');
+    expect(out.toLowerCase()).not.toMatch(/\brug|scam|\bsafe\b/);
   });
 });

@@ -95,7 +95,18 @@
  * release. No weight or threshold changes; only projects publishing more than
  * one prerelease in a week move, downward.
  */
-export const SCORING_VERSION = 'hbm-v11' as const;
+/*
+ * hbm-v12 (2026-09-25, 10-agent audit): two repairs, no weight or threshold
+ * change. (1) hbm-v11's weekly prerelease rule now reaches the score: the
+ * scorer selected the prerelease flag but never passed it on, so every row
+ * stamped hbm-v11 was computed without it (26 projects, 227 extra same-week
+ * prereleases in production). (2) The Still Building decline is measured on
+ * one basis: the history high was FDV while the current value was market cap
+ * first, which overstated every decline where circulating supply is below
+ * total supply (giga: 98.4% printed, 71.9% by price). The decline now reads
+ * the price, scaled into the current reading's valuation basis.
+ */
+export const SCORING_VERSION = 'hbm-v12' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

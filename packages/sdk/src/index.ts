@@ -13,6 +13,7 @@ export type {
   HeyCentreProject,
   HeySilentBuilders,
   HeyAccelerating,
+  HeyMarketIntegrity,
   HeyMarketMoves,
   HeyComebacks,
   HeyUnlocks,

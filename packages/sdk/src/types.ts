@@ -437,7 +437,7 @@ export type HeyBuildersPage = {
 export type HeyBuilderRadarDay = { day: string; rank: number; overall: number; development: number; onchain: number; research: number };
 
 /**
- * Derived builder intelligence (2026-09-24, rules `intel-v1`): read from the
+ * Derived builder intelligence (2026-09-24, rules `intel-v2` since 2026-09-25): read from the
  * same meaningful events as the activity status, never from a price. Every
  * figure is measured or explicitly not — a `state` that says why, and null.
  * Units: counts of meaningful events, days, weeks, hours, USD.
@@ -863,6 +863,42 @@ export type HeyAccelerating = {
   items: (HeyCentreProject & { velocity: { windowDays: number; current: number; previous: number | null; changePct: number | null } })[];
   method: string;
   disclaimer: string;
+};
+
+/**
+ * Market Integrity (2026-09-25): what happened to a project's tracked token
+ * market, beside its builder activity, and where the two disagree. Published
+ * only once HEY's exposure flag reaches the public API; until then the route
+ * answers 404. `exitPattern` appears only where HEY names one.
+ */
+export type HeyMarketIntegrity = {
+  slug: string;
+  url: string;
+  builderActivity: { status: string | null; lastMeaningfulShipAt: string | null };
+  note: string;
+  marketIntegrity: {
+    rulesVersion: string;
+    evaluatedAt: string;
+    state: string;
+    marketActive: boolean;
+    established: boolean;
+    collapse: 'NONE' | 'DECLINE' | 'COLLAPSE' | 'SEVERE';
+    liquidityPeakUsd: number | null;
+    liquidityPeakDay: string | null;
+    liquidityNowUsd: number | null;
+    liquidityNowDay: string | null;
+    liquidityChangePct: number | null;
+    deteriorationStartDay: string | null;
+    collapseDay: string | null;
+    lastTradeDay: string | null;
+    migrationDetected: boolean;
+    migration: { kind: string; confidence: string; windowStart: string; windowEnd: string } | null;
+    lockState: string;
+    sourcesDisagree: boolean;
+    exitPattern?: { level: string; reasons: string[] };
+  } | null;
+  conflicts: { type: string; text: string }[];
+  events: { kind: string; label: string; at: string; precision: 'exact' | 'day' | 'window'; until: string | null; detectedAt: string; confidence: string }[];
 };
 
 export type HeyMarketMoves = {
