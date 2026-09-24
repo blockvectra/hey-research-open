@@ -1,8 +1,27 @@
 import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
+import { SourceError } from '../errors';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
+
+/**
+ * A GraphQL `errors` answer as a typed source error (2026-09-24).
+ *
+ * Every Bitquery adapter threw a plain Error here, which the fetch layer files
+ * as NETWORK — so a spent points allowance read as an outage and was retried
+ * as one, and a query the provider rejects read the same. A spent allowance or
+ * a throttle is RATE_LIMITED (the caller waits), a provider-side timeout or
+ * internal error is UPSTREAM_ERROR (worth a later retry), and anything else —
+ * a field that does not exist, a cube outside the grant — is INVALID_RESPONSE.
+ * The message still names what the provider said.
+ */
+export function bitqueryAnswerError(errors: readonly { message: string }[]): SourceError {
+  const message = `bitquery: ${errors.map((error) => error.message).join('; ').slice(0, 300)}`;
+  if (/points|quota|limit (?:exceeded|reached)|too many requests|rate.?limit/i.test(message)) return new SourceError('RATE_LIMITED', message);
+  if (/time(?:d)? ?out|internal (?:server )?error|temporar|unavailable/i.test(message)) return new SourceError('UPSTREAM_ERROR', message);
+  return new SourceError('INVALID_RESPONSE', message);
+}
 
 /**
  * Bitquery: decoded DEX and launchpad trades on Robinhood Chain (Market
@@ -318,7 +337,7 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
           normalize: (raw) => {
             // A GraphQL error is an answer HEY cannot use, and it must be legible: the message names the field.
             if (raw.errors && raw.errors.length > 0) {
-              throw new Error(`bitquery: ${raw.errors.map((error) => error.message).join('; ').slice(0, 300)}`);
+              throw bitqueryAnswerError(raw.errors);
             }
             return readBitqueryTrades(raw.data?.EVM?.week ?? [], input.since);
           },
@@ -489,7 +508,7 @@ export function createBitqueryDiscoveryAdapter(): SourceAdapter<BitqueryDiscover
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (raw) => {
             if (raw.errors && raw.errors.length > 0) {
-              throw new Error(`bitquery: ${raw.errors.map((error) => error.message).join('; ').slice(0, 300)}`);
+              throw bitqueryAnswerError(raw.errors);
             }
             return normalizeBitqueryTradedTokens(raw.data?.EVM?.DEXTradeByTokens ?? []);
           },

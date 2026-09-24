@@ -73,7 +73,20 @@
  * threshold or Build Momentum figure moves; only the badge, and only for
  * those tokens.
  */
-export const SCORING_VERSION = 'hbm-v9' as const;
+/*
+ * hbm-v10 (2026-09-24): a GitHub organisation source is no longer coverage.
+ * The source refresh reads repositories, feeds and changelogs — never an
+ * organisation page — yet an organisation source was stamped "last checked"
+ * when it was created and counted as a source HEY had looked at, so a project
+ * whose only GitHub link was its organisation could be called DORMANT ("we
+ * looked and saw nothing") when HEY had never looked. In production 30
+ * published projects were DORMANT and 3 QUIET on that basis; they read
+ * UNKNOWN until a repository, feed or changelog is found. A disputed or
+ * retracted source is not coverage either (no production outcome moves: each
+ * is also context-only today). No weight, threshold or Build Momentum figure
+ * changes.
+ */
+export const SCORING_VERSION = 'hbm-v10' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

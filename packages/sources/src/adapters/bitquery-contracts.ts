@@ -3,8 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK
-} from './bitquery';
+import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, bitqueryAnswerError } from './bitquery';
 
 /**
  * Contract usage, a hundred contracts at a time (2026-09-14).
@@ -192,7 +191,7 @@ export function createBitqueryContractActivityAdapter(): SourceAdapter<BitqueryC
           parse: (body) => JSON.parse(body),
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (response) => {
-            if (response.errors?.length) throw new Error(response.errors.map((error) => error.message).join('; '));
+            if (response.errors?.length) throw bitqueryAnswerError(response.errors);
             return normalizeBitqueryContractDays(response.data?.EVM ?? {});
           },
         },

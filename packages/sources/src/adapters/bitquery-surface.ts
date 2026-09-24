@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_FULL_DATASET, BITQUERY_NETWORK, type BitqueryDataset } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_FULL_DATASET, BITQUERY_NETWORK, bitqueryAnswerError, type BitqueryDataset } from './bitquery';
 
 /**
  * What a contract actually answers, from the decoded chain (2026-09-15).
@@ -207,7 +207,7 @@ export function createBitquerySurfaceAdapter(): SourceAdapter<
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (response) => {
             if (response.errors?.length)
-              throw new Error(response.errors.map((error) => error.message).join('; '));
+              throw bitqueryAnswerError(response.errors);
             return normalizeBitquerySurface(response.data);
           },
         },

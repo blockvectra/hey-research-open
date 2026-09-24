@@ -2,10 +2,7 @@ import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK,
-  BITQUERY_FULL_DATASET,
-  type BitqueryDataset,
-} from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_FULL_DATASET, BITQUERY_NETWORK, bitqueryAnswerError, type BitqueryDataset } from './bitquery';
 
 /**
  * Who deployed a contract, read from the chain's own calls (2026-09-15).
@@ -164,7 +161,7 @@ export function createBitqueryDeploymentAdapter(): SourceAdapter<
           parse: (body) => JSON.parse(body),
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (response) => {
-            if (response.errors?.length) throw new Error(response.errors.map((error) => error.message).join('; '));
+            if (response.errors?.length) throw bitqueryAnswerError(response.errors);
             return normalizeBitqueryDeployment(response.data?.EVM?.Calls, wanted);
           },
         },

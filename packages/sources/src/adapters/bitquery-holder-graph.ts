@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, bitqueryAnswerError } from './bitquery';
 
 /**
  * The graph half of the bubble map: every transfer edge between a known set of
@@ -145,7 +145,7 @@ export function createBitqueryHolderGraphAdapter(): SourceAdapter<BitqueryHolder
           parse: (body) => JSON.parse(body),
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (response) => {
-            if (response.errors?.length) throw new Error(response.errors.map((error) => error.message).join('; '));
+            if (response.errors?.length) throw bitqueryAnswerError(response.errors);
             return normalizeBitqueryHolderGraph(response.data?.EVM ?? {}, addresses);
           },
         },
