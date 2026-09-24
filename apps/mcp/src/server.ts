@@ -13,6 +13,7 @@ import {
   type HeyProjectIntelligence,
   type HeyAskAnswer,
   type HeyAccelerating,
+  type HeyProjectSurface,
   type HeyComebacks,
   type HeyMarketMoves,
   type HeyCompare,
@@ -73,7 +74,7 @@ import { MCP_VERSION } from './version';
 const NOT_ADVICE =
   'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data. No tool here returns holder data of any kind.';
 
-/** The activity surfaces the site itself offers. */
+/** The activity surfaces the site itself offers; held to the SDK's list, which the contract test holds to the domain's. */
 const SURFACES = [
   'building-with-token',
   'still-building',
@@ -84,7 +85,10 @@ const SURFACES = [
   'back-from-dormancy',
   'utility',
   'memes',
-] as const;
+] as const satisfies readonly HeyProjectSurface[];
+// And every one of them: a surface the SDK knows and this list lacks fails the build.
+const ALL_SURFACES: [Exclude<HeyProjectSurface, (typeof SURFACES)[number]>] extends [never] ? true : false = true;
+void ALL_SURFACES;
 
 const KINDS = ['UTILITY', 'MEME', 'HYBRID', 'INFRASTRUCTURE', 'RWA', 'APPLICATION', 'OTHER'] as const;
 const STATUSES = ['SHIPPING', 'ACTIVE', 'QUIET', 'DORMANT', 'RESUMED', 'UNKNOWN'] as const;
