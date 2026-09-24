@@ -66,23 +66,24 @@ export type BuildVelocity = {
 
 /**
  * Is meaningful development accelerating, stable or slowing: the last thirty
- * days against the thirty before, on the canonical meaningful events.
+ * days against the thirty before (or any aligned pair of windows the reader
+ * picks, 2026-09-24), on the canonical meaningful events.
  *
  * `observedSince` is when HEY started watching the project. A previous window
  * that begins before it is partial — an empty stretch there is HEY not
  * looking, not the builder resting — so such a project is `NEW`.
  */
-export function buildVelocity(events: readonly ScoredEvent[], now: Date, observedSince: Date): BuildVelocity {
-  const window = VELOCITY.windowDays * DAY_MS;
+export function buildVelocity(events: readonly ScoredEvent[], now: Date, observedSince: Date, windowDays: number = VELOCITY.windowDays): BuildVelocity {
+  const window = windowDays * DAY_MS;
   const meaningful = meaningfulEvents(events, now);
   const age = (event: ScoredEvent) => now.getTime() - event.publishedAt.getTime();
   const current = meaningful.filter((event) => age(event) < window).length;
   const previousCount = meaningful.filter((event) => age(event) >= window && age(event) < 2 * window).length;
 
   if (observedSince.getTime() > now.getTime() - 2 * window) {
-    return { windowDays: VELOCITY.windowDays, current, previous: null, changePct: null, state: 'NEW' };
+    return { windowDays, current, previous: null, changePct: null, state: 'NEW' };
   }
-  const base = { windowDays: VELOCITY.windowDays, current, previous: previousCount };
+  const base = { windowDays, current, previous: previousCount };
   if (current === 0 && previousCount === 0) return { ...base, changePct: null, state: 'NO_RECENT_ACTIVITY' };
   if (previousCount === 0) {
     return { ...base, changePct: null, state: current >= VELOCITY.minAbsoluteChange ? 'ACCELERATING' : 'STABLE' };

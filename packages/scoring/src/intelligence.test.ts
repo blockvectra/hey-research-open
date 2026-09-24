@@ -42,6 +42,13 @@ describe('buildVelocity', () => {
     expect(buildVelocity([], now, longAgo)).toEqual({ windowDays: 30, current: 0, previous: 0, changePct: null, state: 'NO_RECENT_ACTIVITY' });
   });
 
+  it('compares any aligned pair of windows the reader picks (2026-09-24)', () => {
+    const events = [ship(1), ship(2), ship(3), ship(9)];
+    expect(buildVelocity(events, now, longAgo, 7)).toEqual({ windowDays: 7, current: 3, previous: 1, changePct: 200, state: 'ACCELERATING' });
+    // A 90-day window needs 180 days watched before it compares.
+    expect(buildVelocity(events, now, ago(120), 90).state).toBe('NEW');
+  });
+
   it('calls a project HEY has watched for under sixty days new, not accelerating', () => {
     expect(buildVelocity([ship(2), ship(4), ship(6)], now, ago(20))).toEqual({ windowDays: 30, current: 3, previous: null, changePct: null, state: 'NEW' });
   });
