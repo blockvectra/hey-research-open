@@ -6,6 +6,14 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ## Unreleased
 
+### Added
+
+- `project_intelligence`: one project's derived development intelligence
+  (rules `intel-v1`) from `GET /api/projects/{slug}/intelligence` — build
+  velocity, release cadence, consistency, discovery lag, market attention as
+  context, and 30-day changes. Every line says whether it is a FACT, a DERIVED
+  figure or UNKNOWN.
+
 ### Changed
 
 - `HEY_API_URL` must be https, unless the host is localhost. The API key rides

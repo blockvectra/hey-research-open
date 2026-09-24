@@ -9,7 +9,7 @@ import type {
   HeyTokenMarket,
   HeyWeeklyReport,
 } from '@hey-research/sdk';
-import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip } from '@hey-research/sdk';
+import type { HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip } from '@hey-research/sdk';
 
 /**
  * HEY's answers, as text a model reads (2026-09-05).
@@ -582,5 +582,59 @@ export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
   }
   if (p.deployedAt) lines.push(`- Contract deployed ${p.deployedAt.slice(0, 10)}, read from the block.`);
   lines.push(`- ${p.url}`, '', lookup.disclaimer);
+  return lines.join('\n');
+}
+
+/**
+ * One project's development intelligence (2026-09-24), each line tagged with
+ * what kind of statement it is: FACT (a recorded value), DERIVED (a rule HEY
+ * applied to recorded values, rules version named) or UNKNOWN (HEY does not
+ * hold enough to say). No line is a recommendation.
+ */
+export function renderProjectIntelligence(intel: HeyProjectIntelligence): string {
+  const project = intel.project;
+  const lines: string[] = [`# ${project.name}${project.symbol ? ` ($${project.symbol})` : ''} — development intelligence`, project.url, ''];
+  lines.push(`FACT activity status: ${project.activityStatus.toLowerCase().replace(/_/g, ' ')}${project.lastShippedAt ? `; last meaningful ship ${project.lastShippedAt}` : ''}.`);
+  const dev = intel.development;
+  if (!dev) {
+    lines.push('UNKNOWN development intelligence: HEY could not read this project\'s record.', '', intel.disclaimer);
+    return lines.join('\n');
+  }
+  const v = dev.velocity;
+  lines.push(
+    v.state === 'NEW'
+      ? `UNKNOWN build velocity: HEY has watched this project since ${dev.observedSince.slice(0, 10)}, under the 60 days a comparison needs (${v.current} meaningful events in the last ${v.windowDays} days).`
+      : v.state === 'NO_RECENT_ACTIVITY'
+        ? `DERIVED build velocity: no meaningful events in either of the last two ${v.windowDays}-day windows.`
+        : `DERIVED build velocity: ${v.state.toLowerCase()} — ${v.current} meaningful events in the last ${v.windowDays} days against ${v.previous} in the ${v.windowDays} before${v.changePct === null ? '' : ` (${v.changePct > 0 ? '+' : ''}${v.changePct}%)`}.`,
+  );
+  const c = dev.cadence;
+  lines.push(
+    c.state === 'MEASURED'
+      ? `DERIVED release cadence: a release day every ${c.medianIntervalDays} days (median, ${c.releases} release days in ${c.lookbackDays})${c.direction ? `; ${c.direction.toLowerCase()} than before (${c.previousIntervalDays} → ${c.currentIntervalDays} days)` : ''}; last release ${c.daysSinceLastRelease} days ago.`
+      : `UNKNOWN release cadence: ${c.releases} release day${c.releases === 1 ? '' : 's'} in ${c.lookbackDays} days; three are needed.`,
+  );
+  const k = dev.consistency;
+  lines.push(
+    `${k.activeWeeks === null ? 'UNKNOWN' : 'DERIVED'} consistency: ${k.activeWeeks === null ? `HEY has watched fewer than ${k.windowWeeks} weeks` : `active in ${k.activeWeeks} of the last ${k.windowWeeks} weeks`}; streak ${k.currentStreakWeeks} weeks (longest ${k.longestStreakWeeks}); ${k.daysSinceMeaningfulShip === null ? 'no meaningful ship recorded' : `${k.daysSinceMeaningfulShip} days since the last meaningful ship`}${k.longestSilenceDays === null ? '' : `; longest silence ${k.longestSilenceDays} days`}; ${k.resumptions} comeback${k.resumptions === 1 ? '' : 's'} after 60+ quiet days.`,
+  );
+  const l = dev.discoveryLag;
+  lines.push(
+    l.state === 'MEASURED'
+      ? `DERIVED discovery lag: HEY recorded this project's events a median ${l.medianHours} hours after publication (${l.samples} events, ${l.windowDays} days).`
+      : `UNKNOWN discovery lag: ${l.samples} events published while HEY was watching in the last ${l.windowDays} days; three are needed.`,
+  );
+  lines.push(dev.marketAttention === null ? 'UNKNOWN market attention: no live market reading.' : `DERIVED market attention (context only, never an input to the lines above): ${dev.marketAttention.toLowerCase().replace(/_/g, ' ')}.`);
+  const m = dev.changes.buildMomentum;
+  const q = dev.changes.liquidityUsd;
+  lines.push(
+    m.current === null || m.previous === null
+      ? `UNKNOWN Build Momentum change over ${dev.changes.windowDays} days: HEY holds ${m.current === null ? 'no current' : 'no earlier'} reading.`
+      : `FACT Build Momentum ${m.previous} → ${m.current} over ${dev.changes.windowDays} days${m.sameRules ? '' : ' (the two readings carry different scoring versions)'}.`,
+    q.current === null || q.previous === null
+      ? `UNKNOWN liquidity change over ${dev.changes.windowDays} days.`
+      : `FACT liquidity ${money(q.previous)} → ${money(q.current)} over ${dev.changes.windowDays} days.`,
+  );
+  lines.push('', `Rules ${dev.rulesVersion}, computed ${dev.computedAt}. Continued building is not a buy signal.`, intel.disclaimer);
   return lines.join('\n');
 }

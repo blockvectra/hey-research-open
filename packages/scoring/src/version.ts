@@ -66,7 +66,14 @@
  * calls liquidity "removed" on a peak-relative fall when what is left is
  * under `TOKEN_MARKET.removedMaxAbsoluteUsd`.
  */
-export const SCORING_VERSION = 'hbm-v8' as const;
+/*
+ * hbm-v9 (2026-09-24): Under the Radar refuses a token whose market is dead
+ * (`marketIsLive`: no liquidity, liquidity removed, abandoned, or a launch
+ * pool never traded), as Still Building has since 2026-09-11. No weight,
+ * threshold or Build Momentum figure moves; only the badge, and only for
+ * those tokens.
+ */
+export const SCORING_VERSION = 'hbm-v9' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

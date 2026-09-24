@@ -7,3 +7,4 @@ export * from './math';
 export * from './version';
 export * from './token-market';
 export * from './scan-evidence';
+export * from './intelligence';

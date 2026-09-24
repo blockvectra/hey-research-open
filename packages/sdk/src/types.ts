@@ -436,6 +436,61 @@ export type HeyBuildersPage = {
 /** One day of a project's Builder Radar standing. */
 export type HeyBuilderRadarDay = { day: string; rank: number; overall: number; development: number; onchain: number; research: number };
 
+/**
+ * Derived builder intelligence (2026-09-24, rules `intel-v1`): read from the
+ * same meaningful events as the activity status, never from a price. Every
+ * figure is measured or explicitly not — a `state` that says why, and null.
+ * Units: counts of meaningful events, days, weeks, hours, USD.
+ */
+export type HeyDevelopmentIntelligence = {
+  rulesVersion: string;
+  computedAt: string;
+  /** When HEY began watching the project: the floor under every window. */
+  observedSince: string;
+  /** Meaningful events in the last 30 days against the 30 before; `previous` is null while HEY has watched for under 60 days. */
+  velocity: {
+    windowDays: number;
+    current: number;
+    previous: number | null;
+    changePct: number | null;
+    state: 'ACCELERATING' | 'STABLE' | 'SLOWING' | 'NEW' | 'NO_RECENT_ACTIVITY';
+  };
+  /** Days between release days over the last 365; needs three release days. */
+  cadence:
+    | { state: 'INSUFFICIENT_RELEASES'; releases: number; lookbackDays: number; daysSinceLastRelease: number | null }
+    | {
+        state: 'MEASURED';
+        releases: number;
+        lookbackDays: number;
+        medianIntervalDays: number;
+        currentIntervalDays: number | null;
+        previousIntervalDays: number | null;
+        direction: 'FASTER' | 'STEADY' | 'SLOWER' | null;
+        daysSinceLastRelease: number;
+      };
+  consistency: {
+    activeWeeks: number | null;
+    windowWeeks: number;
+    currentStreakWeeks: number;
+    longestStreakWeeks: number;
+    daysSinceMeaningfulShip: number | null;
+    longestSilenceDays: number | null;
+    resumptions: number;
+  };
+  /** Hours from publication to HEY recording it, over events published while HEY was watching. */
+  discoveryLag:
+    | { state: 'INSUFFICIENT_SAMPLES'; samples: number; windowDays: number }
+    | { state: 'MEASURED'; samples: number; windowDays: number; medianHours: number; maxHours: number };
+  /** Market context only, never an input to the figures above; null without a live market reading. */
+  marketAttention: 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIGH' | null;
+  /** Now against thirty days ago; a side with no reading is null. */
+  changes: {
+    windowDays: number;
+    buildMomentum: { current: number | null; previous: number | null; sameRules: boolean };
+    liquidityUsd: { current: number | null; previous: number | null };
+  };
+};
+
 /** `GET /api/projects/{slug}/intelligence`: the card, its signals, its Radar standing and the market summary in one answer. */
 export type HeyProjectIntelligence = {
   project: HeyProject;
@@ -444,6 +499,8 @@ export type HeyProjectIntelligence = {
   builderRadar?: HeyBuilderRadarDay & { history: HeyBuilderRadarDay[] };
   /** Absent for a project without a token. */
   market?: HeyIntelligenceMarket;
+  /** Absent when HEY could not read the project's record. */
+  development?: HeyDevelopmentIntelligence;
   urls: { page: string; detail: string; market?: string };
   disclaimer: string;
 };

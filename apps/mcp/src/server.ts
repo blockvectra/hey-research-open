@@ -10,6 +10,7 @@ import {
   type HeyPage,
   type HeyProject,
   type HeyProjectDetail,
+  type HeyProjectIntelligence,
   type HeyShip,
   type HeySignalPage,
   type HeyThisWeek,
@@ -23,6 +24,7 @@ import {
   renderBuilders,
   renderChain,
   renderProject,
+  renderProjectIntelligence,
   renderProjects,
   renderShips,
   renderSignals,
@@ -238,6 +240,26 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
           `/api/projects/${encodeURIComponent(slug)}`,
         );
         return text(renderProject(project, at()));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'project_intelligence',
+    [
+      'How one Robinhood Chain project builds over time, from HEY\'s own records: build velocity (last 30 days against the 30 before),',
+      'release cadence, consistency and streaks, how fast HEY recorded its ships, market attention as context, and what changed in 30 days.',
+      'Each line says whether it is a FACT, a DERIVED figure or UNKNOWN. Use it for "is X accelerating", "how often does X ship", "what changed on X".',
+    ].join(' '),
+    {
+      slug: z.string().min(1).describe('The project slug, as returned by the other tools (e.g. "agentos").'),
+    },
+    async ({ slug }) => {
+      try {
+        const intel = await client.get<HeyProjectIntelligence>(`/api/projects/${encodeURIComponent(slug)}/intelligence`);
+        return text(renderProjectIntelligence(intel));
       } catch (error) {
         return failure(error);
       }

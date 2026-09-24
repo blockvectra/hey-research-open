@@ -2,13 +2,14 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import type { HeyPage, HeyProject, HeyProjectDetail, HeyShip, HeyThisWeek } from '@hey-research/sdk';
+import type { HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip, HeyThisWeek } from '@hey-research/sdk';
 import {
   STILL_BUILDING_MEANING,
   ago,
   projectLine,
   renderBuilders,
   renderProject,
+  renderProjectIntelligence,
   renderProjects,
   renderShips,
   renderSignals,
@@ -460,5 +461,58 @@ describe('Still Building evidence (round-7 audit 2026-09-18)', () => {
   it('prints the bare badge when the API sent no evidence, and never invents one', () => {
     expect(projectLine(project({ stillBuilding: true }), NOW)).toMatch(/STILL BUILDING(?! \()/);
     expect(projectLine(project({ stillBuilding: true }), NOW)).not.toContain('HEY-tracked high');
+  });
+});
+
+describe('renderProjectIntelligence (2026-09-24)', () => {
+  const base: HeyProjectIntelligence = {
+    project: project({ lastShippedAt: '2026-09-23T10:00:00.000Z' }),
+    signals: [],
+    urls: { page: 'https://heyresearch.xyz/project/agentos', detail: 'https://heyresearch.xyz/api/projects/agentos' },
+    disclaimer: 'Not investment advice.',
+  };
+  const development: NonNullable<HeyProjectIntelligence['development']> = {
+    rulesVersion: 'intel-v1',
+    computedAt: '2026-09-24T12:00:00.000Z',
+    observedSince: '2026-03-01T00:00:00.000Z',
+    velocity: { windowDays: 30, current: 6, previous: 2, changePct: 200, state: 'ACCELERATING' },
+    cadence: { state: 'MEASURED', releases: 8, lookbackDays: 365, medianIntervalDays: 6, currentIntervalDays: 3.5, previousIntervalDays: 18, direction: 'FASTER', daysSinceLastRelease: 1 },
+    consistency: { activeWeeks: 9, windowWeeks: 12, currentStreakWeeks: 4, longestStreakWeeks: 6, daysSinceMeaningfulShip: 1, longestSilenceDays: 40, resumptions: 0 },
+    discoveryLag: { state: 'MEASURED', samples: 7, windowDays: 90, medianHours: 3, maxHours: 20 },
+    marketAttention: 'VERY_LOW',
+    changes: { windowDays: 30, buildMomentum: { current: 64, previous: 41, sameRules: true }, liquidityUsd: { current: 85_000, previous: 82_000 } },
+  };
+
+  it('tags every line as a fact, a derived figure or unknown', () => {
+    const text = renderProjectIntelligence({ ...base, development });
+    expect(text).toContain('DERIVED build velocity: accelerating — 6 meaningful events in the last 30 days against 2 in the 30 before (+200%).');
+    expect(text).toContain('DERIVED release cadence: a release day every 6 days');
+    expect(text).toContain('FACT Build Momentum 41 → 64 over 30 days.');
+    expect(text).toMatch(/market attention \(context only, never an input/);
+    expect(text).toContain('not a buy signal');
+    const body = text.split('\n').filter((line) => /^(FACT|DERIVED|UNKNOWN) /.test(line));
+    expect(body.length).toBeGreaterThanOrEqual(8);
+  });
+
+  it('says unknown, not zero, where HEY does not hold enough', () => {
+    const text = renderProjectIntelligence({
+      ...base,
+      development: {
+        ...development,
+        velocity: { windowDays: 30, current: 1, previous: null, changePct: null, state: 'NEW' },
+        cadence: { state: 'INSUFFICIENT_RELEASES', releases: 1, lookbackDays: 365, daysSinceLastRelease: 3 },
+        consistency: { ...development.consistency, activeWeeks: null },
+        discoveryLag: { state: 'INSUFFICIENT_SAMPLES', samples: 1, windowDays: 90 },
+        marketAttention: null,
+        changes: { windowDays: 30, buildMomentum: { current: 12, previous: null, sameRules: false }, liquidityUsd: { current: null, previous: null } },
+      },
+    });
+    expect(text).toMatch(/UNKNOWN build velocity/);
+    expect(text).toMatch(/UNKNOWN release cadence: 1 release day in 365 days; three are needed/);
+    expect(text).toMatch(/UNKNOWN consistency/);
+    expect(text).toMatch(/UNKNOWN discovery lag/);
+    expect(text).toMatch(/UNKNOWN market attention/);
+    expect(text).toMatch(/UNKNOWN Build Momentum change over 30 days: HEY holds no earlier reading/);
+    expect(renderProjectIntelligence(base)).toMatch(/UNKNOWN development intelligence/);
   });
 });

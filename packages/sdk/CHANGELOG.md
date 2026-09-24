@@ -6,6 +6,13 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ## Unreleased
 
+### Added
+
+- `HeyProjectIntelligence.development` (`HeyDevelopmentIntelligence`): derived
+  builder intelligence under rules `intel-v1` — velocity, release cadence,
+  consistency, discovery lag, market attention and 30-day changes. Optional;
+  every unmeasured figure is a stated `state` or `null`, never a zero.
+
 ### Changed
 
 - The client no longer follows redirects. `fetch` replays request headers across

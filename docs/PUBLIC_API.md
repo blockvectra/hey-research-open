@@ -558,6 +558,21 @@ Building, Under the Radar, the week's signals. `final` is true once the week has
 One project's intelligence in one answer: the card, its signals (90 days), its Builder Radar
 rank and 30-day history, and — for a token project — the market summary with the contract checks.
 
+Since 2026-09-24 it also carries `development`: derived builder intelligence under rules
+`intel-v1` (`rulesVersion`), computed from the same meaningful events as the activity status and
+never from a price. Every figure is measured or carries a `state` that says why it is not.
+
+| Field | Meaning | Unknown when |
+|---|---|---|
+| `velocity` | meaningful events in the last 30 days (`current`) against the 30 before (`previous`), `changePct`, `state` ACCELERATING / STABLE / SLOWING / NO_RECENT_ACTIVITY | `state: NEW` — HEY has watched the project under 60 days; `previous` and `changePct` are null. A zero denominator gives `changePct: null`, never infinity |
+| `cadence` | median days between release days over 365 days (same-day releases count once), newer vs older half, `direction` FASTER / STEADY / SLOWER | `state: INSUFFICIENT_RELEASES` — fewer than three release days |
+| `consistency` | active weeks of the last 12, current and longest streak (weeks), days since the last meaningful ship, longest silence (days), comebacks after 60+ quiet days | `activeWeeks: null` — watched under 12 weeks; day counts null with no meaningful event |
+| `discoveryLag` | median and maximum hours from publication to HEY recording an event, over 90 days | `state: INSUFFICIENT_SAMPLES` — fewer than three events published while HEY was watching (backfilled history is excluded) |
+| `marketAttention` | the market-context percentile the Discovery Gap uses, as VERY_LOW … HIGH. Context only; it feeds none of the above | `null` without a live market reading |
+| `changes` | Build Momentum and liquidity now against the newest reading at least 30 days old; `sameRules` is false when the two carry different scoring versions | either side null when HEY holds no reading for it |
+
+`observedSince` is when HEY began watching the project, the floor under every window.
+
 ## `GET /api/chain` (2026-09-13)
 
 Robinhood Chain day by day, aggregates only. `days` (1–400, default 14). Each row: `dexTrades`,

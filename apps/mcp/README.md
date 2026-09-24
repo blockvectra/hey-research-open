@@ -54,6 +54,7 @@ Any other MCP client: run `npx -y @hey-research/mcp` over stdio.
 | `lookup_token` | One project by contract address: is anyone building it, ships in 30 days, the last ship and its source. `unknown` is an answer, not an error. |
 | `get_project` | Everything HEY holds on one project: sources with provenance, token identity, market context with its provider, HEY's own measures. |
 | `get_token_market` | One token's market in depth from HEY's daily index: price, liquidity, volume and trades by day, lifecycle, contract checks. |
+| `project_intelligence` | How one project builds over time: velocity, release cadence, consistency, how fast HEY saw its ships, market attention as context, and 30-day changes — each line tagged FACT, DERIVED or UNKNOWN. |
 | `chain_activity` | Robinhood Chain day by day — trades, volume, launches, projects published, ships. Aggregates only. |
 | `list_signals` | HEY Signal: measured changes — development spikes and slowdowns, releases, deployments, liquidity moves — each with its figures and source. |
 | `list_builders` | The Builder Radar: ranked by verified development, on-chain use and research standing, never by price. |

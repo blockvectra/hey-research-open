@@ -2,7 +2,7 @@
 
 HEY answers one question: **which projects on Robinhood Chain are still building, what have
 they shipped, and which of them is nobody looking at?** That is the shape of a question
-someone asks an assistant, so HEY is available as an MCP server — twelve tools an assistant
+someone asks an assistant, so HEY is available as an MCP server — thirteen tools an assistant
 can call while answering.
 
 It runs **beside the assistant**, not on HEY's servers. It holds no database and no
@@ -52,7 +52,7 @@ Set `HEY_API_URL` to read a different instance (`http://localhost:3000` while de
 to read with your key's allowance (M13-E); the server never prints the key.
 It defaults to `https://heyresearch.xyz`.
 
-## The twelve tools
+## The thirteen tools
 
 | Tool | The question it answers |
 |---|---|
@@ -67,6 +67,7 @@ It defaults to `https://heyresearch.xyz`.
 | `list_signals` | "What changed on the chain this week? Any news on X?" — HEY Signal with figures before and after, source and confidence (2026-09-13) |
 | `list_builders` | "Who are the top builders? Most improved? Who is building on Pons?" — the Builder Radar, never ranked by price (2026-09-13) |
 | `weekly_report` | "What happened on Robinhood Chain in week 37?" — the archived weekly report (2026-09-13) |
+| `project_intelligence` | "Is X accelerating? How often does it ship? What changed on X this month?" — build velocity, release cadence, consistency, how fast HEY saw its ships, market attention as context, and 30-day changes; every line tagged FACT, DERIVED or UNKNOWN (2026-09-24) |
 | `chain_activity` | "How active is Robinhood Chain?" — DEX trades, volume, tokens and pools traded, transactions, launches recorded, projects published and ships, day by day (2026-09-13) |
 
 `list_projects` takes HEY's own discovery surfaces as `surface`:
