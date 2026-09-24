@@ -28,7 +28,10 @@ import {
  * `realtime`, which reaches back four or five days — so the callers ran daily
  * and kept what they read, and HEY's daily index could never be built for a
  * token it discovered late. The historical add-on makes the same documents
- * answer for any window; `combined` is the default and spans both.
+ * answer for any window. The default stays `realtime`
+ * (BITQUERY_DEFAULT_DATASET), because only realtime computes USD sums;
+ * `archive` and `combined` answer them as 0, so a history read keeps counts
+ * and leaves volume unknown (2026-09-24).
  *
  * A flat five points a cube on the Pro plan.
  */
@@ -200,7 +203,7 @@ export type BitqueryTradeDaysInput = {
   since: Date;
   apiKey: string;
   baseUrl?: string;
-  /** Which slice of history to read. Defaults to `combined`, which spans both. */
+  /** Which slice of history to read. Defaults to `realtime`, the only dataset that computes USD. */
   dataset?: BitqueryDataset;
 };
 

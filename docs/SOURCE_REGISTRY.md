@@ -561,7 +561,7 @@ provider's, and must be labelled as such. And pool reserves over time have to be
 Mint/Burn/Swap events rather than read from `DEXPools` — more work, and arguably better provenance,
 since the figure is then computed from chain events HEY read itself.
 
-Nothing reads the archive yet. The pack was bought ahead of the work that needs it.
+Since 2026-09-22 discovery, deployment reads and the trade-days backfill read the archive (`combined` or `archive`). Its USD sums answer 0, so since 2026-09-24 a history read keeps trade counts and leaves USD volume unknown; migration 0119 turned the zeros the first backfill wrote back into unknown.
 
 **The $150 pack was deliberately declined.** It offers `Transfers`, `Balances`, `Holders`,
 `Transactions` and `Blocks` on archive. Holders already answers on `realtime` for this chain

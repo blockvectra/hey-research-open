@@ -132,7 +132,7 @@ resold. What is asked: `DEXTradeByTokens` only — price, volume, trade count, v
 request: the day (volume, trade count) and the week (the last trade's price for a token that
 traded recently but not today). What is never
 asked: holders, balances, wallets (CLAUDE.md product rule 1). Discovery (`DISCOVER_BITQUERY_TRADES`,
-daily, ≤ 12 pages): every token that traded this week with twenty or more traders becomes a named
+daily, up to 10 pages per 7-day slice over 30 days; the manual script defaults to 12): every token that traded this week with twenty or more traders becomes a named
 `token_candidates` row and is chain-verified by the trade; promotion and the quality gate decide
 what becomes a page, exactly as for every other source. The market job (`REFRESH_MARKET_BITQUERY`,
 every 6 h, ≤ 5,000 tokens a run) targets tokens with no pool at the last check or a launch-pool
