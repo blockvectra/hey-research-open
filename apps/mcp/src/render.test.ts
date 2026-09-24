@@ -7,20 +7,22 @@ import {
   STILL_BUILDING_MEANING,
   ago,
   projectLine,
-  renderBuilders,
+  renderAccelerating,
   renderAskAnswer,
+  renderBuilders,
   renderCompare,
-  renderSilentBuilders,
-  renderUnlocks,
   renderContractChanges,
+  renderMarketMoves,
   renderProject,
   renderProjectIntelligence,
   renderProjects,
   renderShips,
   renderSignals,
+  renderSilentBuilders,
   renderThisWeek,
   renderTokenLookup,
   renderTokenMarket,
+  renderUnlocks,
   renderWeeklyReport,
   stillBuildingEvidence,
 } from './render';
@@ -584,5 +586,36 @@ describe('command centre renderers (2026-09-24)', () => {
     expect(text).toContain('FACT Build Momentum 12');
     expect(text).toContain('Not published: c.');
     expect(text.toLowerCase()).not.toMatch(/winner is|better|best/);
+  });
+});
+
+describe('acceleration and market moves (2026-09-24)', () => {
+  it('names builders shipping faster as derived, with both windows', () => {
+    const text = renderAccelerating({
+      items: [{ slug: 'faster', name: 'Faster', activityStatus: 'SHIPPING', lastShipAt: '2026-09-22T00:00:00.000Z', url: 'https://heyresearch.xyz/project/faster', velocity: { windowDays: 30, current: 5, previous: 1, changePct: 400 } }],
+      method: 'Build velocity ACCELERATING.',
+      disclaimer: 'Not advice.',
+    });
+    expect(text).toContain('DERIVED Faster — 5 meaningful events in 30 days vs 1 before');
+    expect(text).not.toMatch(/\bbuy\b(?! signal)/i);
+  });
+
+  it('lists a move with what came before it, and says it is a sequence', () => {
+    const text = renderMarketMoves({
+      project: { slug: 'mover', name: 'Mover', url: 'https://heyresearch.xyz/project/mover' },
+      threshold: { minChangePct: 25, lookbackDays: 7, windowDays: 90 },
+      daysRead: 30,
+      items: [{ day: '2026-09-14', previousDay: '2026-09-13', changePct: 50, marketCapUsd: 156000, previousMarketCapUsd: 104000, eventsBefore: [{ title: 'v2 released', eventType: 'GITHUB_RELEASE', publishedAt: '2026-09-11T10:00:00.000Z', verification: 'PUBLICLY_VERIFIED', source: 'https://github.com/x/y' }] }],
+      method: 'Day-on-day moves.',
+      disclaimer: 'Not advice.',
+    });
+    expect(text).toContain('FACT 2026-09-14: market cap +50% on 2026-09-13 (104,000 → 156,000 USD)');
+    expect(text).toContain('FACT 2026-09-11 · v2 released — https://github.com/x/y');
+    expect(text).toContain('A sequence, never a cause.');
+  });
+
+  it('says unknown, not zero, without a daily index', () => {
+    const text = renderMarketMoves({ project: { slug: 'm', name: 'M', url: 'u' }, threshold: { minChangePct: 25, lookbackDays: 7, windowDays: 90 }, daysRead: 0, items: [], method: 'm', disclaimer: 'd' });
+    expect(text).toContain('UNKNOWN HEY holds too few daily market readings');
   });
 });

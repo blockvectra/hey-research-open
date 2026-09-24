@@ -1,7 +1,9 @@
 import type {
+  HeyAccelerating,
   HeyBountyPage,
   HeyBuildersPage,
   HeyChain,
+  HeyMarketMoves,
   HeySignalPage,
   HeyThisWeek,
   HeyThisWeekProject,
@@ -690,6 +692,25 @@ export function renderSilentBuilders(page: HeySilentBuilders): string {
   if (page.items.length === 0) return `No project meets the bar right now.\nMethod: ${page.method}\n\n${page.disclaimer}`;
   const lines = page.items.map((item) => `- ${item.name}${item.symbol ? ` ($${item.symbol})` : ''} — ${item.meaningfulShips30d} verified ships in 30 days${item.marketAttention ? `, market attention ${item.marketAttention.toLowerCase().replace('_', ' ')}` : ''}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`);
   return `Building with comparatively little market attention (${page.items.length}):\n${lines.join('\n')}\nMethod: ${page.method}\nContinued building is not a buy signal.\n\n${page.disclaimer}`;
+}
+
+export function renderAccelerating(page: HeyAccelerating): string {
+  if (page.items.length === 0) return `No builder is shipping measurably faster right now.\nMethod: ${page.method}\n\n${page.disclaimer}`;
+  const lines = page.items.map((item) => `- DERIVED ${item.name}${item.symbol ? ` ($${item.symbol})` : ''} — ${item.velocity.current} meaningful events in ${item.velocity.windowDays} days vs ${item.velocity.previous ?? 'none'} before${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`);
+  return `Shipping faster (${page.items.length}):\n${lines.join('\n')}\nMethod: ${page.method}\n\n${page.disclaimer}`;
+}
+
+export function renderMarketMoves(page: HeyMarketMoves): string {
+  const head = `# ${page.project.name} — market moves and what came before (${page.threshold.windowDays} days, moves of ${page.threshold.minChangePct}% or more)\n${page.project.url}`;
+  if (page.daysRead < 2) return `${head}\nUNKNOWN HEY holds too few daily market readings for this project to measure a move.\n\n${page.disclaimer}`;
+  if (page.items.length === 0) return `${head}\nFACT no day-on-day move of ${page.threshold.minChangePct}% or more in ${page.daysRead} recorded days.\n\n${page.method}\n${page.disclaimer}`;
+  const blocks = page.items.map((move) => {
+    const events = move.eventsBefore.length
+      ? move.eventsBefore.map((event) => `  - FACT ${event.publishedAt.slice(0, 10)} · ${event.title}${event.source ? ` — ${event.source}` : ''}`).join('\n')
+      : `  - FACT no corroborated building event in the ${page.threshold.lookbackDays} days up to it`;
+    return `- FACT ${move.day}: market cap ${move.changePct > 0 ? '+' : ''}${move.changePct}% on ${move.previousDay} (${Math.round(move.previousMarketCapUsd).toLocaleString('en-US')} → ${Math.round(move.marketCapUsd).toLocaleString('en-US')} USD)\n${events}`;
+  });
+  return `${head}\n${blocks.join('\n')}\n\nA sequence, never a cause. ${page.method}\n${page.disclaimer}`;
 }
 
 export function renderComebacks(page: HeyComebacks): string {

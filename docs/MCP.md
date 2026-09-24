@@ -2,7 +2,7 @@
 
 HEY answers one question: **which projects on Robinhood Chain are still building, what have
 they shipped, and which of them is nobody looking at?** That is the shape of a question
-someone asks an assistant, so HEY is available as an MCP server — twenty tools an assistant
+someone asks an assistant, so HEY is available as an MCP server — twenty-two tools an assistant
 can call while answering.
 
 It runs **beside the assistant**, not on HEY's servers. It holds no database and no
@@ -52,7 +52,7 @@ Set `HEY_API_URL` to read a different instance (`http://localhost:3000` while de
 to read with your key's allowance (M13-E); the server never prints the key.
 It defaults to `https://heyresearch.xyz`.
 
-## The twenty tools
+## The twenty-two tools
 
 | Tool | The question it answers |
 |---|---|
@@ -71,6 +71,8 @@ It defaults to `https://heyresearch.xyz`.
 | `ask_hey` | "What did X ship? Why did its momentum move? Did the contract change?" — a free-text question (English or Malay) answered only from HEY's record, every line FACT, DERIVED or UNKNOWN with its source (2026-09-24) |
 | `contract_changes` | "Which contracts were upgraded, redeployed, verified or changed their interface?" — evidence-backed, newest first (2026-09-24) |
 | `shipping_in_silence` | "Who is building quietly?" — verified shipping with comparatively little market attention; not a recommendation (2026-09-24) |
+| `accelerating_builders` | "Who is shipping faster?" — the last 30 days against the 30 before, by the velocity rule each project page shows; a research list, not a recommendation (2026-09-24) |
+| `events_before_market_change` | "Did anything ship before that move?" — each day-on-day market-cap move of 25% or more with the corroborated ships in the week up to it; a sequence, never a cause (2026-09-24) |
 | `builder_comebacks` | "Who came back?" — projects shipping again after 60+ quiet days (2026-09-24) |
 | `upcoming_unlocks` | "What unlocks soon?" — HoodLock's own schedule, SCHEDULED, with proof (2026-09-24) |
 | `project_timeline` | "Show me X's history" — every evidence kind on one axis, with time precision and lenses (2026-09-24) |

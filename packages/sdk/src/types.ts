@@ -859,6 +859,28 @@ export type HeySilentBuilders = {
   disclaimer: string;
 };
 
+export type HeyAccelerating = {
+  items: (HeyCentreProject & { velocity: { windowDays: number; current: number; previous: number | null; changePct: number | null } })[];
+  method: string;
+  disclaimer: string;
+};
+
+export type HeyMarketMoves = {
+  project: { slug: string; name: string; url: string };
+  threshold: { minChangePct: number; lookbackDays: number; windowDays: number };
+  daysRead: number;
+  items: {
+    day: string;
+    previousDay: string;
+    changePct: number;
+    marketCapUsd: number;
+    previousMarketCapUsd: number;
+    eventsBefore: { title: string; eventType: string; publishedAt: string; verification: string; source?: string }[];
+  }[];
+  method: string;
+  disclaimer: string;
+};
+
 export type HeyComebacks = { items: HeyCentreProject[]; method: string; disclaimer: string };
 
 export type HeyUnlocks = {

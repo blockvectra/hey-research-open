@@ -12,6 +12,8 @@ export { SDK_VERSION } from './version';
 export type {
   HeyCentreProject,
   HeySilentBuilders,
+  HeyAccelerating,
+  HeyMarketMoves,
   HeyComebacks,
   HeyUnlocks,
   HeyBuildMarket,

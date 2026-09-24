@@ -12,7 +12,9 @@ import {
   type HeyProjectDetail,
   type HeyProjectIntelligence,
   type HeyAskAnswer,
+  type HeyAccelerating,
   type HeyComebacks,
+  type HeyMarketMoves,
   type HeyCompare,
   type HeySilentBuilders,
   type HeyTimeline,
@@ -33,7 +35,9 @@ import {
   renderProject,
   renderProjectIntelligence,
   renderAskAnswer,
+  renderAccelerating,
   renderComebacks,
+  renderMarketMoves,
   renderCompare,
   renderSilentBuilders,
   renderTimeline,
@@ -325,6 +329,36 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
     async () => {
       try {
         return text(renderSilentBuilders(await client.get<HeySilentBuilders>('/api/chain/silence')));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'accelerating_builders',
+    'Robinhood Chain builders whose meaningful shipping is accelerating: the last 30 days against the 30 before, by the same velocity rule each project page shows. Most events first; a research list, not a recommendation.',
+    {},
+    async () => {
+      try {
+        return text(renderAccelerating(await client.get<HeyAccelerating>('/api/chain/accelerating')));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
+    'events_before_market_change',
+    'For one Robinhood Chain project: each day-on-day move in HEY\'s recorded market-cap close, with the corroborated building events published in the week up to it. A sequence, never a cause — HEY does not say an event moved a market.',
+    {
+      slug: z.string().min(1).describe('The project slug.'),
+      days: z.number().int().min(7).max(365).optional().describe('How far back to look; default 90.'),
+      min_change_pct: z.number().int().min(5).max(500).optional().describe('Smallest day-on-day move, in percent either way; default 25.'),
+    },
+    async ({ slug, days, min_change_pct }) => {
+      try {
+        return text(renderMarketMoves(await client.get<HeyMarketMoves>(`/api/projects/${encodeURIComponent(slug)}/market-moves`, { days, min: min_change_pct })));
       } catch (error) {
         return failure(error);
       }

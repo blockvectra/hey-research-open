@@ -165,6 +165,8 @@ describe('HeyClient typed methods', () => {
     await client.chain({ days: 7 });
     await client.contractChanges({ days: 30 });
     await client.silence();
+    await client.accelerating();
+    await client.projects.marketMoves('agentos', { days: 60, min: 30 });
     await client.comebacks();
     await client.unlocks({ days: 90 });
     await client.buildMarket();
@@ -193,6 +195,8 @@ describe('HeyClient typed methods', () => {
       '/api/chain?days=7',
       '/api/chain/contract-changes?days=30',
       '/api/chain/silence',
+      '/api/chain/accelerating',
+      '/api/projects/agentos/market-moves?days=60&min=30',
       '/api/chain/comebacks',
       '/api/chain/unlocks?days=90',
       '/api/chain/build-market',

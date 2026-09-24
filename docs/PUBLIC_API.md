@@ -601,10 +601,12 @@ price, and none names a winner.
 | Route | Answers |
 |---|---|
 | `GET /api/chain/silence` | projects building with comparatively little market attention (HEY's stored Under the Radar decision), each with `meaningfulShips30d` and `marketAttention` |
+| `GET /api/chain/accelerating` | builders whose velocity is ACCELERATING by the project page's own rule (last 30 days ≥ 1.5× the 30 before and at least two more; watched 60 days or longer), each with `velocity` |
 | `GET /api/chain/comebacks` | projects whose activity status is RESUMED |
 | `GET /api/chain/unlocks?days=30` | HoodLock's own schedule: locks still holding that unlock within `days` (1–365), each `precision: SCHEDULED` with a `proof` link |
 | `GET /api/chain/build-market` | Build Momentum and market-attention percentile for researched projects, in slug order — a map, not a ranking |
 | `GET /api/projects/{slug}/timeline?lens=` | every kind of evidence on one axis with `precision` (EXACT, DATE, WEEK, OBSERVED, SCHEDULED), `recordedAt`, `discoveryLagHours`, `countsAsBuilding`, `source` and `marketAround` (context, not cause). Lenses: everything, build, code, onchain, market, locks |
+| `GET /api/projects/{slug}/market-moves?days=90&min=25` | day-on-day moves of at least `min`% in HEY's recorded market-cap close (consecutive days only), each with the corroborated building events published in the 7 days up to that close — a sequence, never a cause; `daysRead` says how much index there was |
 | `GET /api/compare?slugs=a,b` | two to four projects side by side with the project page's gates; `missing` names slugs that are not published; `400` for fewer than two |
 
 ## `GET /api/chain` (2026-09-13)

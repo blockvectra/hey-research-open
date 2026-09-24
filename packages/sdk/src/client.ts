@@ -6,6 +6,8 @@ import type {
   HeyComebacks,
   HeyCompare,
   HeySilentBuilders,
+  HeyAccelerating,
+  HeyMarketMoves,
   HeyTimeline,
   HeyUnlocks,
   HeyBountiesQuery,
@@ -205,6 +207,9 @@ export class HeyClient {
     ask: (slug: string, question: string): Promise<HeyAskAnswer> => this.get(`/api/projects/${encodeURIComponent(slug)}/ask`, { q: question }),
     /** `GET /api/projects/{slug}/timeline?lens=`: every kind of evidence on one axis. */
     timeline: (slug: string, options: { lens?: string } = {}): Promise<HeyTimeline> => this.get(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens: options.lens }),
+    /** `GET /api/projects/{slug}/market-moves?days=&min=`: day-on-day market moves with what shipped in the week up to each — a sequence, never a cause. */
+    marketMoves: (slug: string, options: { days?: number; min?: number } = {}): Promise<HeyMarketMoves> =>
+      this.get(`/api/projects/${encodeURIComponent(slug)}/market-moves`, { days: options.days, min: options.min }),
     /** `GET /api/compare?slugs=`: two to four projects side by side, no winner. */
     compare: (slugs: readonly string[]): Promise<HeyCompare> => this.get('/api/compare', { slugs: slugs.join(',') }),
     /** Every page, following `nextOffset` from `query.offset`. */
@@ -271,6 +276,11 @@ export class HeyClient {
     /** `GET /api/bounties/{id}`. */
     get: (id: string): Promise<HeyBountyDetail> => this.get(`/api/bounties/${encodeURIComponent(id)}`),
   };
+
+  /** `GET /api/chain/accelerating`: builders whose meaningful shipping is accelerating, by the project page's own rule. */
+  accelerating(): Promise<HeyAccelerating> {
+    return this.get('/api/chain/accelerating');
+  }
 
   /** `GET /api/chain/silence`: building with comparatively little market attention. */
   silence(): Promise<HeySilentBuilders> {
