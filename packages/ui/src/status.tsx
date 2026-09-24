@@ -115,6 +115,8 @@ export function ActivityChip({
         className,
       )}
       title={help}
+      // The canonical value behind the words, so every surface can be checked against the API (2026-09-25).
+      data-activity-status={status}
     >
       <Icon aria-hidden="true" size={15} strokeWidth={1.9} />
       {label}
