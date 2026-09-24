@@ -635,6 +635,11 @@ export function renderProjectIntelligence(intel: HeyProjectIntelligence): string
       ? `UNKNOWN liquidity change over ${dev.changes.windowDays} days.`
       : `FACT liquidity ${money(q.previous)} → ${money(q.current)} over ${dev.changes.windowDays} days.`,
   );
+  // Older answers (before 2026-09-24) carry neither field.
+  const a = dev.changes.marketAttention;
+  if (a?.current && a.previous) lines.push(`DERIVED market attention ${a.previous.toLowerCase().replace(/_/g, ' ')} → ${a.current.toLowerCase().replace(/_/g, ' ')} over ${dev.changes.windowDays} days (context only).`);
+  const rhythm = dev.changes.cadenceDays;
+  if (rhythm && rhythm.current !== null && rhythm.previous !== null) lines.push(`DERIVED release cadence every ${rhythm.previous} → every ${rhythm.current} days over ${dev.changes.windowDays} days.`);
   lines.push('', `Rules ${dev.rulesVersion}, computed ${dev.computedAt}. Continued building is not a buy signal.`, intel.disclaimer);
   return lines.join('\n');
 }

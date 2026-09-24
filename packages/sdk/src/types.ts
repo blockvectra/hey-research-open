@@ -488,6 +488,10 @@ export type HeyDevelopmentIntelligence = {
     windowDays: number;
     buildMomentum: { current: number | null; previous: number | null; sameRules: boolean };
     liquidityUsd: { current: number | null; previous: number | null };
+    /** Market attention band then and now; the daily series began 2026-09-24, so `previous` is null until it reaches back far enough. */
+    marketAttention: { current: 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIGH' | null; previous: 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIGH' | null };
+    /** Median days between release days, now and as HEY knew it at the start of the window. */
+    cadenceDays: { current: number | null; previous: number | null };
   };
 };
 

@@ -485,7 +485,7 @@ describe('renderProjectIntelligence (2026-09-24)', () => {
     consistency: { activeWeeks: 9, windowWeeks: 12, currentStreakWeeks: 4, longestStreakWeeks: 6, daysSinceMeaningfulShip: 1, longestSilenceDays: 40, resumptions: 0 },
     discoveryLag: { state: 'MEASURED', samples: 7, windowDays: 90, medianHours: 3, maxHours: 20 },
     marketAttention: 'VERY_LOW',
-    changes: { windowDays: 30, buildMomentum: { current: 64, previous: 41, sameRules: true }, liquidityUsd: { current: 85_000, previous: 82_000 } },
+    changes: { windowDays: 30, buildMomentum: { current: 64, previous: 41, sameRules: true }, liquidityUsd: { current: 85_000, previous: 82_000 }, marketAttention: { current: 'VERY_LOW', previous: 'TYPICAL' }, cadenceDays: { current: 6, previous: 12 } },
   };
 
   it('tags every line as a fact, a derived figure or unknown', () => {
@@ -494,6 +494,8 @@ describe('renderProjectIntelligence (2026-09-24)', () => {
     expect(text).toContain('DERIVED release cadence: a release day every 6 days');
     expect(text).toContain('FACT Build Momentum 41 → 64 over 30 days.');
     expect(text).toMatch(/market attention \(context only, never an input/);
+    expect(text).toContain('DERIVED market attention typical → very low over 30 days (context only).');
+    expect(text).toContain('DERIVED release cadence every 12 → every 6 days over 30 days.');
     expect(text).toContain('not a buy signal');
     const body = text.split('\n').filter((line) => /^(FACT|DERIVED|UNKNOWN) /.test(line));
     expect(body.length).toBeGreaterThanOrEqual(8);
@@ -509,7 +511,7 @@ describe('renderProjectIntelligence (2026-09-24)', () => {
         consistency: { ...development.consistency, activeWeeks: null },
         discoveryLag: { state: 'INSUFFICIENT_SAMPLES', samples: 1, windowDays: 90 },
         marketAttention: null,
-        changes: { windowDays: 30, buildMomentum: { current: 12, previous: null, sameRules: false }, liquidityUsd: { current: null, previous: null } },
+        changes: { windowDays: 30, buildMomentum: { current: 12, previous: null, sameRules: false }, liquidityUsd: { current: null, previous: null }, marketAttention: { current: null, previous: null }, cadenceDays: { current: null, previous: null } },
       },
     });
     expect(text).toMatch(/UNKNOWN build velocity/);

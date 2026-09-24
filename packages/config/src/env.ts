@@ -233,6 +233,15 @@ export const serverEnvSchema = z
         terminalBetaEnabled: optionalString
           .transform((value) => value === 'true')
           .pipe(z.boolean()),
+        /**
+         * Kill switches for three reader features (2026-09-24): Ask HEY, the
+         * comparison, and the watchlist. On unless set to exactly "false", so a
+         * missing value never switches a shipped feature off; off answers 404
+         * on the pages and the API rather than hiding a link.
+         */
+        askEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
+        compareEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
+        watchlistEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
         /** Bonds behind claims (M13-C): Scout claim, owner update, project submission. */
         bondsEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
         /** Blocks a receipt must be buried under before a payment counts (M13-B). */
@@ -547,6 +556,9 @@ function shapeEnv(raw: RawEnv) {
       bondsEnabled: raw.HEY_BONDS_ENABLED,
       earlyAccessEnabled: raw.HEY_EARLY_ACCESS_ENABLED,
       terminalBetaEnabled: raw.HEY_TERMINAL_BETA_ENABLED,
+      askEnabled: raw.HEY_ASK_ENABLED,
+      compareEnabled: raw.HEY_COMPARE_ENABLED,
+      watchlistEnabled: raw.HEY_WATCHLIST_ENABLED,
       holderVoteEnabled: raw.HEY_HOLDER_VOTE_ENABLED,
       scoutStakingEnabled: raw.HEY_SCOUT_STAKING_ENABLED,
       evidenceChallengesEnabled: raw.HEY_EVIDENCE_CHALLENGES_ENABLED,
@@ -626,6 +638,9 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'hey.bondsEnabled': 'HEY_BONDS_ENABLED',
   'hey.earlyAccessEnabled': 'HEY_EARLY_ACCESS_ENABLED',
   'hey.terminalBetaEnabled': 'HEY_TERMINAL_BETA_ENABLED',
+  'hey.askEnabled': 'HEY_ASK_ENABLED',
+  'hey.compareEnabled': 'HEY_COMPARE_ENABLED',
+  'hey.watchlistEnabled': 'HEY_WATCHLIST_ENABLED',
   'hey.holderVoteEnabled': 'HEY_HOLDER_VOTE_ENABLED',
   'hey.scoutStakingEnabled': 'HEY_SCOUT_STAKING_ENABLED',
   'hey.evidenceChallengesEnabled': 'HEY_EVIDENCE_CHALLENGES_ENABLED',
