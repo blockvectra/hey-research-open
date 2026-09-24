@@ -24,12 +24,18 @@ describe('token market: trade readings', () => {
     expect(classifyTokenMarket({ now, trades: { observedAt: hoursAgo(30), volume24hUsd: 340 } })).toEqual({ status: 'INSUFFICIENT_DATA', reason: 'no_readings' });
   });
 
-  it('never lets a trade reading override a depth reading', () => {
+  it('lets a trade reading say trades happened, never what depth is (2026-09-25)', () => {
+    // Before: the pool reading's zero won, and the page said "no trades" beside
+    // the $9,999 HEY had decoded. Volume is a count of trades; either reading may state it.
     const classified = classifyTokenMarket({
       now,
       latest: { observedAt: hoursAgo(1), liquidityUsd: 12_000, volume24hUsd: 0, fdvUsd: 900_000 },
       trades: { observedAt: hoursAgo(1), volume24hUsd: 9_999 },
     });
-    expect(classified).toEqual({ status: 'TRADING_INACTIVE', reason: 'no_volume_24h' });
+    expect(classified).toEqual({ status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' });
+    // Depth still comes only from the depth reading: trades do not rescue a drained pool.
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: hoursAgo(1), liquidityUsd: 0, volume24hUsd: 0 }, peakLiquidityUsd: 50_000, trades: { observedAt: hoursAgo(1), volume24hUsd: 9_999 } }).status,
+    ).toBe('LIQUIDITY_REMOVED');
   });
 });

@@ -9,6 +9,7 @@ import {
   formatUsdCompact,
   formatVerification,
   plainText,
+  valuationLabel,
 } from './format';
 import { ProjectLogo } from './project-logo';
 import { ActivityChip, type ActivityStatusValue, StillBuildingBadge } from './status';
@@ -50,6 +51,8 @@ export type ProjectCardData = {
   projectKind: string;
   activityStatus: ActivityStatusValue;
   marketCapUsd?: number;
+  /** The reading's fully diluted valuation; equal to `marketCapUsd` when it stands in for one, and then the card says so. */
+  fdvUsd?: number;
   /** The tracked token's market state (2026-09-11); a dead pool shows "No active market" instead of a cap. */
   tokenMarketStatus?: string;
   tokenMarketReason?: string;
@@ -336,7 +339,8 @@ export function ProjectCard({
         <>
           {/* 4: market cap, from stored snapshots only */}
           <p className="flex items-baseline justify-between gap-3 text-[14px]" data-testid="market-cap">
-            <span className="text-hey-secondary">Market cap</span>
+            {/* Named for what it is (parity audit, 2026-09-25): equal to the FDV, it is an FDV. */}
+            <span className="text-hey-secondary">{valuationLabel(project.marketCapUsd, project.fdvUsd)}</span>
             {deadMarket ? (
               <span className="text-hey-muted" title="The tracked token has no active market. Context only; it never affects activity status.">
                 No active market

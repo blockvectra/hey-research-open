@@ -116,3 +116,25 @@ describe('formatUsdCompact', () => {
     expect(formatUsdCompact(Number.POSITIVE_INFINITY)).toBeUndefined();
   });
 });
+
+describe('date-only values read by calendar day (2026-09-25)', () => {
+  it('never invents an hour for a value stored at midnight UTC', async () => {
+    const { formatRelativeTime } = await import('./format');
+    const now = new Date('2026-09-24T20:00:00Z');
+    expect(formatRelativeTime(new Date('2026-09-24T00:00:00.000Z'), now)).toBe('today');
+    expect(formatRelativeTime(new Date('2026-09-23T00:00:00.000Z'), now)).toBe('yesterday');
+    expect(formatRelativeTime(new Date('2026-09-20T00:00:00.000Z'), now)).toBe('4d ago');
+    // An exact time keeps its hour.
+    expect(formatRelativeTime(new Date('2026-09-24T00:00:01.000Z'), now)).toBe('19h ago');
+  });
+});
+
+describe('formatSharePct', () => {
+  it('never prints a real lock as 0% (2026-09-25)', async () => {
+    const { formatSharePct } = await import('./format');
+    expect(formatSharePct(0.004076)).toBe('<0.01');
+    expect(formatSharePct(6.18)).toBe('6.18');
+    expect(formatSharePct(12.5)).toBe('12.5');
+    expect(formatSharePct(0)).toBe('0');
+  });
+});

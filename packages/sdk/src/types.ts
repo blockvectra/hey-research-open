@@ -63,7 +63,8 @@ export type HeyProject = {
   /** The drawdown behind a `stillBuilding: true`: the decline HEY tracked and the verified ships since it began. Absent when the claim is not being made. */
   stillBuildingEvidence?: { drawdownPercent: number; shipsSinceDecline?: number };
   /** Market context only, with the provider that reported it and when. Context, never a ranking input. */
-  marketCap?: { usd: number; source: string; observedAt?: string };
+  /** `kind: 'fdv'` when the provider reported no circulating figure and the fully diluted valuation stands in. */
+  marketCap?: { usd: number; source: string; observedAt?: string; kind?: 'marketCap' | 'fdv' };
   /** The same reading's liquidity and 24 h volume. Absent means that source reports no such figure — never zero. */
   liquidity?: { usd: number; source?: string; observedAt?: string };
   volume24h?: { usd: number; source?: string; observedAt?: string };
@@ -218,6 +219,8 @@ export type HeyTokenMarket = {
   current?: {
     priceUsd?: number;
     marketCapUsd?: number;
+    /** Fully diluted valuation from the same reading; equal to `marketCapUsd` when it stands in for one (2026-09-25). */
+    fdvUsd?: number;
     liquidityUsd?: number;
     volume24hUsd?: number;
     buys24h?: number;
@@ -658,7 +661,7 @@ export type HeyStatusSource = {
   /** `factories` rolls the per-factory rows into one line. */
   group: 'launchpads' | 'listings' | 'market' | 'factories';
   /** `retired`: HEY stopped reading the source on purpose. */
-  state: 'fresh' | 'stale' | 'never' | 'retired';
+  state: 'fresh' | 'degraded' | 'stale' | 'never' | 'retired';
   lastSuccessAt: string | null;
   lastAttemptAt?: string | null;
   /** A provider's status word — never a URL or a key. */

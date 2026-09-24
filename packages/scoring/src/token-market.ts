@@ -73,6 +73,16 @@ export type TokenMarketEvidence = {
    * when one exists.
    */
   trades?: { observedAt: Date; volume24hUsd: number };
+  /**
+   * The deepest liquidity HEY saw in the last day in a pool *other* than the
+   * one the latest reading describes, or across all pools in HEY's own chain
+   * pool index (truthfulness audit, 2026-09-25). A provider that follows a
+   * dead pool reads dust while the token's real pool holds $14K; judged on
+   * that one reading, eleven tokens were publicly "liquidity no longer
+   * detected" with a market still trading. A drain is only a drain when no
+   * pool HEY can see still holds the market.
+   */
+  otherPools?: { observedAt: Date; liquidityUsd: number; volume24hUsd?: number };
 };
 
 export type TokenMarketClassification = {
@@ -109,13 +119,36 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
       : { status: 'INSUFFICIENT_DATA', reason: 'readings_stale' };
   }
 
-  const liquidity = latest.liquidityUsd;
-  if (latest.fdvUsd !== undefined && latest.fdvUsd > 0 && liquidity >= latest.fdvUsd * TOKEN_MARKET.ownSupplyShareOfFdv) {
+  /*
+   * The day's volume from every reading that has one (2026-09-25): the pool
+   * reading's own figure, and a fresh decoded trade record, which counts
+   * trades in every pool. The larger wins — "no trades" on a page that shows
+   * $54 of volume beside it was the pool reading's zero overruling the chain.
+   * Unknown stays unknown: neither reading reports volume → undefined.
+   */
+  const freshTrades = evidence.trades && now.getTime() - evidence.trades.observedAt.getTime() <= DAY_MS ? evidence.trades.volume24hUsd : undefined;
+  const volume = latest.volume24hUsd === undefined ? freshTrades : freshTrades === undefined ? latest.volume24hUsd : Math.max(latest.volume24hUsd, freshTrades);
+
+  if (latest.fdvUsd !== undefined && latest.fdvUsd > 0 && latest.liquidityUsd >= latest.fdvUsd * TOKEN_MARKET.ownSupplyShareOfFdv) {
     // A launch pool still holding the supply: trades are the only market fact it carries.
-    if (latest.volume24hUsd !== undefined && latest.volume24hUsd > TOKEN_MARKET.inactiveVolumeUsd) {
+    if (volume !== undefined && volume > TOKEN_MARKET.inactiveVolumeUsd) {
       return { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading' };
     }
+    // No volume figure from any reading is not "no trades" (reconciliation row 1, 2026-09-25):
+    // it was the dead-market reason, applied to ~650 launch pools HEY never saw a volume for.
+    if (volume === undefined) return { status: 'INSUFFICIENT_DATA', reason: 'launch_pool_volume_unknown' };
     return { status: 'TRADING_INACTIVE', reason: 'launch_pool_no_trades' };
+  }
+
+  const other = evidence.otherPools && now.getTime() - evidence.otherPools.observedAt.getTime() <= DAY_MS ? evidence.otherPools.liquidityUsd : undefined;
+  const heldElsewhere = other !== undefined && other > latest.liquidityUsd;
+  const liquidity = heldElsewhere ? other : latest.liquidityUsd;
+  if (heldElsewhere && latest.liquidityUsd < TOKEN_MARKET.lowLiquidityUsd && liquidity >= TOKEN_MARKET.lowLiquidityUsd) {
+    // The reading's own pool is thin or empty; another pool holds the market, and its volume counts too.
+    const otherVolume = evidence.otherPools?.volume24hUsd;
+    const pooled = otherVolume === undefined ? volume : volume === undefined ? otherVolume : Math.max(volume, otherVolume);
+    if (pooled !== undefined && pooled <= TOKEN_MARKET.inactiveVolumeUsd) return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
+    return { status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' };
   }
   if (liquidity <= TOKEN_MARKET.dustLiquidityUsd) {
     return hadMarket ? { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_gone_after_market' } : { status: 'NO_LIQUIDITY', reason: 'no_liquidity' };
@@ -133,7 +166,7 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
   ) {
     return { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' };
   }
-  if (latest.volume24hUsd !== undefined && latest.volume24hUsd <= TOKEN_MARKET.inactiveVolumeUsd) {
+  if (volume !== undefined && volume <= TOKEN_MARKET.inactiveVolumeUsd) {
     return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
   }
   return { status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' };

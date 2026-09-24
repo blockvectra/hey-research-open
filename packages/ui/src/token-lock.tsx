@@ -1,4 +1,5 @@
 import { cn } from './cn';
+import { formatSharePct } from './format';
 
 /**
  * Supply a project has locked at HoodLock (2026-09-22).
@@ -52,7 +53,7 @@ export function lockUntilLabel(until: string): string {
 export function tokenLockHelp(lock: TokenLockFacts): string {
   /* "Pair", never "liquidity": the card's own e2e guard forbids that word, and pair is the more exact one anyway. */
   if (!lock.until) return 'A pair holding this token is locked at HoodLock. Context HEY read from the locker, not a verdict.';
-  const share = lock.supplyPct === undefined ? 'Token supply is' : `${lock.supplyPct}% of the token supply is`;
+  const share = lock.supplyPct === undefined ? 'Token supply is' : `${formatSharePct(lock.supplyPct)}% of the token supply is`;
   const pair = lock.pairLocked ? ' A pair holding this token is locked too.' : '';
   return `${share} held in a HoodLock lock until ${lockUntilLabel(lock.until)}. Context HEY read from the locker, not a verdict.${pair}`;
 }
@@ -106,7 +107,7 @@ export function TokenLockChip({
         decoding="async"
         className="size-4 shrink-0"
       />
-      {lock.supplyPct === undefined ? 'HoodLock' : `${lock.supplyPct}% HoodLock`}
+      {lock.supplyPct === undefined ? 'HoodLock' : `${formatSharePct(lock.supplyPct)}% HoodLock`}
       <span className="sr-only">{tokenLockHelp(lock)}</span>
     </span>
   );

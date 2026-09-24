@@ -14,9 +14,24 @@ export function formatRelativeTime(date: Date, now: Date = new Date()): string {
    * reads as already lapsed.
    */
   if (delta < 0) return `in ${span(-delta)}`;
+  /*
+   * A date is a date (10-agent audit, 2026-09-25). A source that gives only a
+   * day is stored at 00:00 UTC — the rule `precisionOf` reads — and printing
+   * it as "20h ago" claimed an hour nobody reported. Such a value reads by
+   * UTC calendar day instead: today, yesterday, 3d ago.
+   */
+  if (isMidnightUtc(date)) {
+    const days = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - date.getTime()) / 86_400_000);
+    if (days <= 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 30) return `${days}d ago`;
+  }
   if (delta < 60) return 'just now';
   return `${span(delta)} ago`;
 }
+
+const isMidnightUtc = (date: Date): boolean =>
+  date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;
 
 function span(seconds: number): string {
   const minutes = seconds / 60;
@@ -212,4 +227,31 @@ export function plainText(value: string | null | undefined): string {
       .replace(/[\s\u00a0]+/g, ' ')
       .trim()
   );
+}
+
+/**
+ * Whether a valuation is a fully diluted one (parity audit, 2026-09-25): the
+ * one rule the project page, the Terminal and the header already used, now
+ * shared. A provider with no circulating supply sends the same number as its
+ * market cap and its FDV; that number is an FDV, and is never called a market
+ * cap (the founder's 2026-09-23 rule). Five surfaces had each chosen a label
+ * on their own; 672 of 1,058 live valuations were FDV-only.
+ */
+export function isFullyDiluted(valueUsd: number | null | undefined, fdvUsd: number | null | undefined): boolean {
+  return valueUsd !== null && valueUsd !== undefined && fdvUsd !== null && fdvUsd !== undefined && fdvUsd === valueUsd;
+}
+
+/** The name a valuation is printed under. */
+export function valuationLabel(valueUsd: number | null | undefined, fdvUsd: number | null | undefined, short = false): string {
+  return isFullyDiluted(valueUsd, fdvUsd) ? (short ? 'FDV' : 'Fully diluted valuation') : 'Market cap';
+}
+
+/**
+ * A share of supply in per cent, for a sentence (truthfulness audit,
+ * 2026-09-25): two decimals with trailing zeros dropped, and "<0.01" for a
+ * real share too small to show — never "0" for tokens HEY saw locked.
+ */
+export function formatSharePct(value: number): string {
+  if (value > 0 && value < 0.01) return '<0.01';
+  return String(Math.round(value * 100) / 100);
 }

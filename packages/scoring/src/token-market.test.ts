@@ -76,4 +76,35 @@ describe('token market status', () => {
     expect(marketIsLive('MARKET_ABANDONED')).toBe(false);
     expect(marketIsLive('INSUFFICIENT_DATA')).toBe(true);
   });
+
+  it('judges a drain against every pool HEY can see, not one provider\'s pool (2026-09-25)', () => {
+    // Priviet: the provider followed a dead v4 pool ($1.04) while the real pool held $14K.
+    const priviet = classifyTokenMarket({
+      now,
+      latest: { observedAt: at(0), liquidityUsd: 1.04, volume24hUsd: 0.44 },
+      peakLiquidityUsd: 48_000,
+      otherPools: { observedAt: at(0.2), liquidityUsd: 14_344 },
+      trades: { observedAt: at(0.2), volume24hUsd: 10_600 },
+    });
+    expect(priviet).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
+    // A day-old other pool no longer speaks for today.
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(2), liquidityUsd: 14_000 } }),
+    ).toMatchObject({ status: 'LIQUIDITY_REMOVED' });
+    // Every pool drained: still a drain.
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(0), liquidityUsd: 40 } }),
+    ).toMatchObject({ status: 'LIQUIDITY_REMOVED' });
+  });
+
+  it('reads a launch pool with no volume figure as unknown, and counts the chain\'s trades (2026-09-25)', () => {
+    const pool = { observedAt: at(0), liquidityUsd: 42_032_764, fdvUsd: 41_998_844 };
+    const unknown = classifyTokenMarket({ now, latest: pool, peakLiquidityUsd: 42_032_764 });
+    expect(unknown).toMatchObject({ status: 'INSUFFICIENT_DATA', reason: 'launch_pool_volume_unknown' });
+    expect(marketIsLive(unknown.status, unknown.reason)).toBe(true);
+    // A pool reading of zero does not overrule $56 of decoded trades on the same day.
+    expect(
+      classifyTokenMarket({ now, latest: { ...pool, volume24hUsd: 0 }, peakLiquidityUsd: 42_032_764, trades: { observedAt: at(0.1), volume24hUsd: 56.26 } }),
+    ).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'launch_pool_trading' });
+  });
 });

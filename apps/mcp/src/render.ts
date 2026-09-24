@@ -112,7 +112,7 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.primaryNarrative) parts.push(project.primaryNarrative.name);
   if (project.launchedVia) parts.push(`via ${project.launchedVia.name}`);
   // Context, and only ever with the provider that reported it.
-  if (project.marketCap) parts.push(`${money(project.marketCap.usd)} mcap (${project.marketCap.source})`);
+  if (project.marketCap) parts.push(`${money(project.marketCap.usd)} ${project.marketCap.kind === 'fdv' ? 'FDV' : 'mcap'} (${project.marketCap.source})`);
   if (project.liquidity) parts.push(`${money(project.liquidity.usd)} liquidity (${project.liquidity.source})`);
   if (project.volume24h) parts.push(`${money(project.volume24h.usd)} 24h volume (${project.volume24h.source})`);
   if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
@@ -223,7 +223,8 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
   if (project.market) {
     const m = project.market;
     const figures = [
-      m.marketCapUsd === undefined ? undefined : `market cap ${money(m.marketCapUsd)}`,
+      // A market cap equal to the FDV is the FDV standing in; print it once, by its name.
+      m.marketCapUsd === undefined || m.marketCapUsd === m.fdvUsd ? undefined : `market cap ${money(m.marketCapUsd)}`,
       m.fdvUsd === undefined ? undefined : `FDV ${money(m.fdvUsd)}`,
       m.liquidityUsd === undefined ? undefined : `liquidity ${money(m.liquidityUsd)}`,
       m.volume24hUsd === undefined ? undefined : `24h volume ${money(m.volume24hUsd)}`,
@@ -334,7 +335,7 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     const c = market.current;
     const parts = [
       c.priceUsd === undefined ? undefined : `price $${c.priceUsd >= 1 ? c.priceUsd.toFixed(2) : c.priceUsd.toPrecision(3)}`,
-      c.marketCapUsd === undefined ? undefined : `market cap ${money(c.marketCapUsd)}`,
+      c.marketCapUsd === undefined ? undefined : `${c.marketCapUsd === c.fdvUsd ? 'FDV' : 'market cap'} ${money(c.marketCapUsd)}`,
       c.liquidityUsd === undefined ? undefined : `liquidity ${money(c.liquidityUsd)}`,
       c.volume24hUsd === undefined ? undefined : `24h volume ${money(c.volume24hUsd)}`,
       c.buys24h === undefined || c.sells24h === undefined ? undefined : `${c.buys24h} buys / ${c.sells24h} sells in 24h`,
