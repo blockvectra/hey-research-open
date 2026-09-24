@@ -117,6 +117,8 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
                 if (!committedAt) return undefined;
 
                 const login = entry.author?.login ?? undefined;
+                // The commit's own author name, for a bot with no linked GitHub account (2026-09-24).
+                const authorName = entry.commit.author?.name ?? undefined;
                 const message = (entry.commit.message ?? '').split('\n')[0] ?? '';
 
                 return {
@@ -126,6 +128,7 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
                   isBot:
                     entry.author?.type === 'Bot' ||
                     (login !== undefined && BOT_LOGIN.test(login)) ||
+                    (authorName !== undefined && BOT_LOGIN.test(authorName)) ||
                     BOT_MESSAGE.test(message),
                   ...opt('authorLogin', login),
                 } satisfies GithubCommit;

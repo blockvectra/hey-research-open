@@ -35,6 +35,16 @@ describe('GitHub commits adapter', () => {
     expect(bots).toEqual(['ddd4444', 'eee5555']);
   });
 
+  it('flags a bot commit whose author has no linked GitHub account, by the commit author name', async () => {
+    const body = JSON.stringify([
+      { sha: 'bot0001', commit: { message: 'update lockfile', author: { name: 'renovate[bot]', date: '2026-09-20T10:00:00Z' } }, author: null },
+      { sha: 'hum0001', commit: { message: 'fix: pool math', author: { name: 'Ada', date: '2026-09-20T11:00:00Z' } }, author: null },
+    ]);
+    const stub = stubFetch({ status: 200, body });
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.data?.commits.filter((commit) => commit.isBot).map((commit) => commit.sha)).toEqual(['bot0001']);
+  });
+
   it('drops commits with no usable date', async () => {
     const stub = stubFetch({ status: 200, body: readFixture('github-commits.json') });
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
