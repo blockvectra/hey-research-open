@@ -58,43 +58,55 @@ const pct = (value: number) =>
   value >= 10 ? value.toFixed(0) : value >= 1 ? value.toFixed(1) : value > 0 && value < 0.01 ? '<0.01' : value.toFixed(2);
 
 /**
- * One hue per cluster, cycling. They are the product's own data colours, not a
- * new palette: a cluster is a group, not a severity, so none of them may read
- * as a warning.
- */
-/*
- * The two status hues read their `--hey-*` sources, not the `@theme inline`
- * aliases (geometry audit, 2026-09-22). An alias resolves against `:root` and
- * misses a `[data-surface]` override when it is used in an SVG attribute or an
- * inline style, which is how these are used. Nothing overrides them under V7
- * today, so this is not yet visible — it is the one file still holding the
- * pattern the candle chart was bitten by, and it would go wrong silently.
+ * One hue per cluster, cycling (redesigned 2026-09-26). A cluster is a group,
+ * not a severity and not a builder state, so none of these is a warning tone
+ * or the builder green; and the hue is only ever an outline. The fill stays
+ * flat and neutral, so the map never reads as a heat map of good and bad.
  */
 export const CLUSTER_COLOURS = [
   'var(--color-narrative-trading)',
-  'var(--hey-status-shipping)',
   'var(--color-narrative-infra)',
-  'var(--hey-status-quiet)',
+  'var(--color-narrative-ai)',
+  'var(--color-narrative-rwa)',
+  'var(--color-narrative-meme)',
   'var(--color-narrative-defi)',
-  'var(--color-blue-500)',
 ] as const;
 
 export const clusterColour = (cluster: number) =>
   CLUSTER_COLOURS[(cluster - 1) % CLUSTER_COLOURS.length]!;
 
 /** Stable ids: never generated, never counted (see the note above). */
-const SPHERE_ID = 'hey-bubble-sphere';
+const HATCH_ID = 'hey-bubble-hatch';
+
+/** The drawing's own bounds plus a margin, so the map is as tall as its circles and no taller. */
+export function bubbleBounds(
+  nodes: readonly Pick<BubbleNode, 'x' | 'y' | 'r'>[],
+  margin = 24,
+): { x: number; y: number; width: number; height: number } {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const node of nodes) {
+    minX = Math.min(minX, node.x - node.r);
+    minY = Math.min(minY, node.y - node.r);
+    maxX = Math.max(maxX, node.x + node.r);
+    maxY = Math.max(maxY, node.y + node.r);
+  }
+  if (!Number.isFinite(minX)) return { x: 0, y: 0, width: 1, height: 1 };
+  return { x: minX - margin, y: minY - margin, width: maxX - minX + margin * 2, height: maxY - minY + margin * 2 };
+}
 
 export function BubbleMap({
   nodes,
   edges = [],
-  size = 560,
   explorerBase,
   className,
   testId,
 }: {
   nodes: readonly BubbleNode[];
   edges?: readonly BubbleEdge[];
+  /** Kept for callers that pass it; the drawing now fits its own circles. */
   size?: number;
   /** Block explorer origin, e.g. `https://robinhoodchain.blockscout.com`. Absent means no links. */
   explorerBase?: string;
@@ -103,19 +115,9 @@ export function BubbleMap({
 }) {
   if (nodes.length === 0) {
     return (
-      <div
-        className={cn(
-          'rounded-[10px] border border-dashed border-hey-border px-4 py-6 text-center',
-          className,
-        )}
-        data-testid={testId}
-      >
-        <p className="text-[13.5px] text-hey-secondary">
-          No distribution indexed for this token yet.
-        </p>
-        <p className="mt-0.5 text-[12.5px] text-hey-muted">
-          HEY reads the largest balances daily; the map appears once it has.
-        </p>
+      <div className={cn('py-2', className)} data-testid={testId}>
+        <p className="text-t-ui text-hey-secondary">No distribution indexed for this token yet.</p>
+        <p className="mt-0.5 text-t-meta text-hey-muted">HEY reads the largest balances daily; the map appears once it has.</p>
       </div>
     );
   }
@@ -127,23 +129,18 @@ export function BubbleMap({
     return from && to ? [{ from, to, transfers: edge.transfers }] : [];
   });
   const busiest = drawn.reduce((max, edge) => Math.max(max, edge.transfers), 1);
-  const half = size / 2;
-  /* Room for a rim label on an outer circle without clipping it. */
-  const pad = 18;
+  const box = bubbleBounds(nodes);
   const addressHref = (address: string) =>
     explorerBase ? `${explorerBase.replace(/\/$/, '')}/address/${address}` : undefined;
-  const colourOf = (node: BubbleNode) =>
-    node.cluster !== undefined
-      ? clusterColour(node.cluster)
-      : node.label !== undefined
-        ? 'var(--hey-muted)'
-        : 'var(--hey-border-strong)';
+  const named = nodes.some((node) => node.label !== undefined);
+  const clustered = nodes.some((node) => node.cluster !== undefined);
 
   return (
     <div className={className} data-testid={testId}>
       <svg
-        viewBox={`${-half - pad} ${-half - pad} ${size + pad * 2} ${size + pad * 2}`}
-        className="h-auto w-full"
+        viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
+        className="mx-auto block h-auto w-full"
+        style={{ maxWidth: Math.round(box.width) }}
         role="img"
         aria-label={`Token distribution, largest first: ${nodes
           .slice(0, 10)
@@ -154,20 +151,18 @@ export function BubbleMap({
           .join('; ')}`}
       >
         <defs>
-          {/* One light source for every sphere, so the circles read as objects rather than flat discs. */}
-          <radialGradient id={SPHERE_ID} cx="36%" cy="30%" r="75%">
-            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.30" />
-            <stop offset="55%" stopColor="#ffffff" stopOpacity="0.05" />
-            <stop offset="100%" stopColor="#000000" stopOpacity="0.14" />
-          </radialGradient>
+          {/* A pool, a locker or a burn: hatched, so it reads as "not an ordinary balance" without a colour. */}
+          <pattern id={HATCH_ID} width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="var(--hey-subtle)" />
+            <line x1="0" y1="0" x2="0" y2="6" stroke="var(--hey-muted)" strokeWidth="1.6" strokeOpacity="0.55" />
+          </pattern>
         </defs>
 
         {/* Edges under the circles, thin and quiet: the clusters are the story, not the wiring. */}
         <g fill="none" strokeLinecap="round">
           {drawn.map((edge) => {
             const strength = Math.log10(edge.transfers + 1) / Math.log10(busiest + 1);
-            const inCluster =
-              edge.from.cluster !== undefined && edge.from.cluster === edge.to.cluster;
+            const inCluster = edge.from.cluster !== undefined && edge.from.cluster === edge.to.cluster;
             /* Rim to rim, not centre to centre: a line through a large disc reads as a spoke. */
             const dx = edge.to.x - edge.from.x;
             const dy = edge.to.y - edge.from.y;
@@ -180,8 +175,8 @@ export function BubbleMap({
                 x2={edge.to.x - (dx / distance) * edge.to.r}
                 y2={edge.to.y - (dy / distance) * edge.to.r}
                 stroke={inCluster ? clusterColour(edge.from.cluster!) : 'var(--hey-muted)'}
-                strokeWidth={0.6 + strength * 1.6}
-                strokeOpacity={inCluster ? 0.3 + strength * 0.45 : 0.2 + strength * 0.25}
+                strokeWidth={0.6 + strength * 1.4}
+                strokeOpacity={inCluster ? 0.35 + strength * 0.4 : 0.25 + strength * 0.25}
               >
                 <title>{`${short(edge.from.address)} sent to ${short(edge.to.address)}: ${edge.transfers.toLocaleString('en-US')} transfer${edge.transfers === 1 ? '' : 's'} in the last few days`}</title>
               </line>
@@ -189,129 +184,96 @@ export function BubbleMap({
           })}
         </g>
 
+        {/* The circles: flat fills; a cluster is a 1.5px outline in its hue, nothing more. */}
         {nodes.map((node) => {
-          const hue = colourOf(node);
-          const clustered = node.cluster !== undefined;
-          /*
-           * The thresholds are the ones that stay legible once the drawing is
-           * scaled (responsive + geometry audits, 2026-09-22). This is the one
-           * chart in the package that still sets type in viewBox units, and on
-           * a 375px phone the whole 596-unit canvas renders at about half
-           * scale — so the old `r >= 13` rank floor came out near four real
-           * pixels, the same illegibility the candle chart moved all of its
-           * labels to HTML to escape. Raising the floors means a small bubble
-           * carries no numeral; its rank and share are in `BubbleList` beside
-           * the map, spelled out, which is where a reader can actually read
-           * them.
-           */
-          const showPct = node.r >= 40;
-          const showRank = node.r >= 26;
           const href = addressHref(node.address);
-          const body = (
-            <>
-              <circle
-                cx={node.x}
-                cy={node.y}
-                r={node.r}
-                fill={hue}
-                fillOpacity={clustered ? 0.42 : 0.16}
-                stroke={hue}
-                strokeWidth={clustered ? 1.5 : 1}
-                strokeOpacity={clustered ? 0.85 : 0.4}
-                className={href ? 'cursor-pointer' : undefined}
-              >
-                <title>
-                  {`#${node.rank} · ${node.label ?? short(node.address)} · ${pct(node.sharePct)}% of supply${clustered ? ` · cluster ${node.cluster}` : ''}`}
-                </title>
-              </circle>
-              <circle
-                cx={node.x}
-                cy={node.y}
-                r={node.r}
-                fill={`url(#${SPHERE_ID})`}
-                pointerEvents="none"
-              />
-              {showPct ? (
-                <>
-                  <text
-                    x={node.x}
-                    y={node.y - node.r * 0.1}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    className="tabular-nums"
-                    fontSize={Math.min(28, Math.max(12, node.r * 0.42))}
-                    fontWeight={600}
-                    fill="var(--hey-ink)"
-                    pointerEvents="none"
-                  >
-                    {pct(node.sharePct)}%
-                  </text>
-                  <text
-                    x={node.x}
-                    y={node.y + node.r * 0.32}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    className="tabular-nums"
-                    fontSize={Math.min(13, Math.max(9, node.r * 0.19))}
-                    fill="var(--hey-ink)"
-                    fillOpacity={0.6}
-                    pointerEvents="none"
-                  >
-                    #{node.rank}
-                  </text>
-                </>
-              ) : showRank ? (
-                <text
-                  x={node.x}
-                  y={node.y}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  className="tabular-nums"
-                  fontSize={Math.min(13, Math.max(8, node.r * 0.62))}
-                  fill="var(--hey-ink)"
-                  fillOpacity={0.7}
-                  pointerEvents="none"
-                >
-                  {node.rank}
-                </text>
-              ) : null}
-            </>
+          const circle = (
+            <circle
+              cx={node.x}
+              cy={node.y}
+              r={node.r}
+              fill={node.label !== undefined ? `url(#${HATCH_ID})` : 'var(--hey-subtle)'}
+              stroke={node.cluster !== undefined ? clusterColour(node.cluster) : 'var(--hey-border-strong)'}
+              strokeWidth={node.cluster !== undefined ? 1.5 : 1}
+              vectorEffect="non-scaling-stroke"
+              className={href ? 'cursor-pointer' : undefined}
+            >
+              <title>{`#${node.rank} · ${node.label ?? short(node.address)} · ${pct(node.sharePct)}% of supply${node.cluster !== undefined ? ` · cluster ${node.cluster}` : ''}`}</title>
+            </circle>
           );
           /*
-           * The link is out of the tab order (accessibility audit,
-           * 2026-09-22). `role="img"` on the <svg> prunes everything inside it
-           * from the accessibility tree, including these anchors and their
-           * labels — but an SVG anchor stays focusable in the DOM. So a
-           * keyboard reader tabbed through up to fifty stops that announced
-           * nothing at all before reaching anything else on the page. The same
-           * addresses sit in `BubbleList` below, as real links with real
-           * names; that is the interactive surface.
+           * The link is out of the tab order (accessibility audit, 2026-09-22):
+           * `role="img"` prunes the anchors from the accessibility tree, but they
+           * stay focusable. The same addresses are real links in `BubbleList`.
            */
           return href ? (
-            <a
-              key={node.address}
-              href={href}
-              tabIndex={-1}
-              aria-hidden="true"
-              target="_blank"
-              rel="noreferrer"
-              className="opacity-100 transition-opacity hover:opacity-75"
-            >
-              {body}
+            <a key={node.address} href={href} tabIndex={-1} aria-hidden="true" target="_blank" rel="noreferrer" className="transition-opacity hover:opacity-75">
+              {circle}
             </a>
           ) : (
-            <g key={node.address}>{body}</g>
+            <g key={node.address}>{circle}</g>
           );
         })}
+
+        {/*
+          Labels last, over everything, with a 2px surface halo so a numeral
+          crossing a line or a neighbour stays legible. The thresholds keep a
+          label readable once a phone scales the drawing down; smaller circles
+          carry their rank and share in `BubbleList` beside the map.
+        */}
+        <g pointerEvents="none" className="tabular-nums" fill="var(--hey-ink)" stroke="var(--hey-surface)" strokeWidth={2} paintOrder="stroke" strokeLinejoin="round">
+          {nodes.map((node) =>
+            node.r >= 40 ? (
+              <g key={node.address}>
+                <text x={node.x} y={node.y - node.r * 0.1} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(28, Math.max(12, node.r * 0.42))} fontWeight={600}>
+                  {pct(node.sharePct)}%
+                </text>
+                <text x={node.x} y={node.y + node.r * 0.32} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(13, Math.max(9, node.r * 0.19))} fill="var(--hey-secondary)">
+                  #{node.rank}
+                </text>
+              </g>
+            ) : node.r >= 26 ? (
+              <text key={node.address} x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(13, Math.max(8, node.r * 0.62))} fill="var(--hey-secondary)">
+                {node.rank}
+              </text>
+            ) : null,
+          )}
+        </g>
       </svg>
 
-      <p className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11.5px] text-hey-muted">
-        <span>circle area is the share of supply</span>
-        <span>a number is its rank</span>
-        {drawn.length > 0 ? (
-          <span>a line is a transfer between two of them in the last few days</span>
+      {/* The legend with real swatches: the same fills and outlines the drawing uses. */}
+      <ul className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-t-meta text-hey-muted">
+        <li className="flex items-center gap-1.5">
+          <svg aria-hidden width="12" height="12" viewBox="0 0 12 12">
+            <circle cx="6" cy="6" r="5" fill="var(--hey-subtle)" stroke="var(--hey-border-strong)" />
+          </svg>
+          a balance: area is its share, a number its rank
+        </li>
+        {named ? (
+          <li className="flex items-center gap-1.5">
+            <svg aria-hidden width="12" height="12" viewBox="0 0 12 12">
+              <circle cx="6" cy="6" r="5" fill={`url(#${HATCH_ID})`} stroke="var(--hey-border-strong)" />
+            </svg>
+            a pool, locker or burn
+          </li>
         ) : null}
-      </p>
+        {clustered ? (
+          <li className="flex items-center gap-1.5">
+            <svg aria-hidden width="12" height="12" viewBox="0 0 12 12">
+              <circle cx="6" cy="6" r="5" fill="var(--hey-subtle)" stroke={clusterColour(1)} strokeWidth="1.5" />
+            </svg>
+            an outline colour is a cluster
+          </li>
+        ) : null}
+        {drawn.length > 0 ? (
+          <li className="flex items-center gap-1.5">
+            <svg aria-hidden width="14" height="12" viewBox="0 0 14 12">
+              <line x1="1" y1="6" x2="13" y2="6" stroke="var(--hey-muted)" strokeWidth="1.5" strokeLinecap="round" />
+            </svg>
+            a transfer between two of them in the last few days
+          </li>
+        ) : null}
+      </ul>
     </div>
   );
 }
@@ -341,12 +303,12 @@ export function BubbleList({
       {clusters.length > 0 ? (
         <ul className="mb-5 space-y-1.5">
           {clusters.slice(0, 4).map((cluster) => (
-            <li key={cluster.id} className="flex items-baseline justify-between gap-3 text-[13px]">
+            <li key={cluster.id} className="flex items-baseline justify-between gap-3 text-t-ui">
               <span className="flex min-w-0 items-center gap-2">
                 <span
                   aria-hidden="true"
-                  className="inline-block size-[9px] shrink-0 rounded-full"
-                  style={{ background: clusterColour(cluster.id) }}
+                  className="inline-block size-[10px] shrink-0 rounded-full border-[1.5px] bg-hey-subtle"
+                  style={{ borderColor: clusterColour(cluster.id) }}
                 />
                 <span className="truncate">
                   Cluster {cluster.id}
@@ -362,9 +324,9 @@ export function BubbleList({
       ) : null}
       <ol className="space-y-1">
         {shown.map((node) => (
-          <li key={node.address} className="flex items-baseline justify-between gap-3 text-[13px]">
+          <li key={node.address} className="flex items-baseline justify-between gap-3 text-t-ui">
             <span className="flex min-w-0 items-baseline gap-2">
-              <span className="w-5 shrink-0 tabular-nums text-right text-[11.5px] text-hey-muted">
+              <span className="w-5 shrink-0 tabular-nums text-right text-t-meta text-hey-muted">
                 {node.rank}
               </span>
               {explorerBase ? (
@@ -372,20 +334,20 @@ export function BubbleList({
                   href={`${explorerBase.replace(/\/$/, '')}/address/${node.address}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="truncate font-mono text-[12.5px] underline decoration-hey-border-strong underline-offset-4 hover:decoration-hey-ink"
+                  className="truncate font-mono text-t-meta underline decoration-hey-border-strong underline-offset-4 hover:decoration-hey-ink"
                 >
                   {node.label ?? short(node.address)}
                 </a>
               ) : (
-                <span className="truncate font-mono text-[12.5px]">
+                <span className="truncate font-mono text-t-meta">
                   {node.label ?? short(node.address)}
                 </span>
               )}
               {node.cluster !== undefined ? (
                 <span
                   aria-hidden="true"
-                  className="inline-block size-[7px] shrink-0 rounded-full"
-                  style={{ background: clusterColour(node.cluster) }}
+                  className="inline-block size-[8px] shrink-0 rounded-full border-[1.5px] bg-hey-subtle"
+                  style={{ borderColor: clusterColour(node.cluster) }}
                 />
               ) : null}
             </span>

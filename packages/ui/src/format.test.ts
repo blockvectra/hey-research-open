@@ -138,3 +138,42 @@ describe('formatSharePct', () => {
     expect(formatSharePct(0)).toBe('0');
   });
 });
+
+describe('Terminal price and date formats (redesign, 2026-09-26)', () => {
+  it('prints a price at the precision it deserves, counting long runs of zeros', async () => {
+    const { formatTerminalPrice } = await import('./format');
+    expect(formatTerminalPrice(0.0000211)).toBe('$0.0₄211');
+    expect(formatTerminalPrice(0.0123)).toBe('$0.0123');
+    expect(formatTerminalPrice(1234.5)).toBe('$1,234.50');
+    expect(formatTerminalPrice(1)).toBe('$1.00');
+    expect(formatTerminalPrice(0.5)).toBe('$0.500');
+    expect(formatTerminalPrice(0.0001)).toBe('$0.000100');
+    // Rounds before choosing the form: 0.00009999 is $0.000100, not $0.0₄1000.
+    expect(formatTerminalPrice(0.00009999)).toBe('$0.000100');
+    expect(formatTerminalPrice(2.38e-12)).toBe('$0.0₁₁238');
+  });
+
+  it('never prints an unknown or impossible price as a number', async () => {
+    const { formatTerminalPrice, formatTerminalPriceLong } = await import('./format');
+    for (const value of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {
+      expect(formatTerminalPrice(value)).toBe('—');
+      expect(formatTerminalPriceLong(value)).toBe('—');
+    }
+  });
+
+  it('writes the full decimal for assistive text', async () => {
+    const { formatTerminalPriceLong } = await import('./format');
+    expect(formatTerminalPriceLong(0.0000211)).toBe('$0.0000211');
+    expect(formatTerminalPriceLong(1234.5)).toBe('$1,234.50');
+  });
+
+  it('prints a short UTC date, with the year only when it is not this one', async () => {
+    const { formatShortDate, formatMonthTick } = await import('./format');
+    const now = new Date('2026-09-26T12:00:00Z');
+    expect(formatShortDate('2026-09-23', now)).toBe('23 Sep');
+    expect(formatShortDate(new Date('2026-09-23T23:59:00Z'), now)).toBe('23 Sep');
+    expect(formatShortDate('2025-09-23', now)).toBe('23 Sep 2025');
+    expect(formatShortDate('not a day', now)).toBe('—');
+    expect(formatMonthTick('2026-07-01')).toBe('Jul');
+  });
+});

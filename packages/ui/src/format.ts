@@ -58,6 +58,67 @@ export function formatTokenPrice(value: number): string {
   return value >= 1 ? `$${value.toFixed(2)}` : `$${value.toPrecision(3)}`;
 }
 
+const SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';
+const subscript = (value: number): string =>
+  String(value)
+    .split('')
+    .map((digit) => SUBSCRIPT_DIGITS[Number(digit)])
+    .join('');
+
+/**
+ * A token price in the Terminal (redesign, 2026-09-26). The public pages keep
+ * `formatTokenPrice`.
+ *
+ * - from $1: grouped, two places — `$1,234.50`
+ * - from $0.0001: three significant digits — `$0.0123`
+ * - below that: the leading zeros counted in a subscript, then three
+ *   significant digits — 0.0000211 is `$0.0₄211`, four zeros after the point.
+ *   Seven zeros in a row cannot be counted at a glance; a subscript can.
+ *
+ * A price is never negative and an unknown price is not zero, so anything that
+ * is not a positive finite number prints a dash. `formatTerminalPriceLong` is
+ * the same figure written out in full, for `aria-label` and `title`.
+ */
+export function formatTerminalPrice(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '—';
+  if (value >= 1) return `$${value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  // Rounded first, so 0.00009999 becomes 0.000100 and takes the plain form.
+  const [mantissa = '', exponent = '0'] = value.toExponential(2).split('e');
+  const power = Number(exponent);
+  if (power >= -4) return `$${value.toPrecision(3)}`;
+  return `$0.0${subscript(-power - 1)}${mantissa.replace('.', '')}`;
+}
+
+/** The same price written out in full (`$0.0000211`), for `aria-label` and `title`. */
+export function formatTerminalPriceLong(value: number): string {
+  if (!Number.isFinite(value) || value <= 0) return '—';
+  if (value >= 1) return formatTerminalPrice(value);
+  return `$${value.toLocaleString('en-US', { maximumSignificantDigits: 6 })}`;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+
+/** A day key (`2026-09-23`) or a Date, read as a UTC calendar day. */
+const utcDay = (value: Date | string): Date =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T00:00:00Z`) : new Date(value);
+
+/**
+ * "23 Sep", or "23 Sep 2025" when the year is not the current one. UTC, the
+ * same calendar HEY's daily index keys by.
+ */
+export function formatShortDate(value: Date | string, now: Date = new Date()): string {
+  const date = utcDay(value);
+  if (Number.isNaN(date.getTime())) return '—';
+  const short = `${date.getUTCDate()} ${MONTHS[date.getUTCMonth()]}`;
+  return date.getUTCFullYear() === now.getUTCFullYear() ? short : `${short} ${date.getUTCFullYear()}`;
+}
+
+/** A chart's month tick: "Jul". */
+export function formatMonthTick(value: Date | string): string {
+  const date = utcDay(value);
+  return Number.isNaN(date.getTime()) ? '' : MONTHS[date.getUTCMonth()]!;
+}
+
 /** Compact USD, because a card has room for `$24K` and not for `$24,013.55`. */
 export function formatUsdCompact(value: number | undefined): string | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;
