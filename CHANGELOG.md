@@ -6,6 +6,18 @@ record.
 
 ## 2026-09-25
 
+- **Scoring `hbm-v15`.** A token whose market is not live gets no Discovery Gap and no market
+  percentile, and is not in the population others are ranked against. Nor does a token HEY knows
+  only from a market listing (no launch on this chain) that nothing the project publishes ties to
+  it — a bridged copy of an outside asset. A daily-close high is dated to the end of its day, so a
+  ship that same day is not "since the decline". Stored gaps and badges refill as projects are
+  rescored.
+- **`distributionRead`** on the market answer (`outcome`, `checkedAt`, `note`). When the latest
+  holder read saw no balance change inside the provider's window, the answer says so and keeps the
+  last good distribution with its date, instead of reading as "no holders".
+- **Paid research is charged at the quoted price.** The wallet takes a quote before paying and sends
+  exactly that amount; an expired quote covers only a transfer mined before it expired.
+
 - **Renamed-project redirects point at the public site.** `GET /api/projects/{slug}` (and its
   `/market` and `/intelligence` routes) and `/api/badge/{slug}` answered an old slug with a
   `Location` on `https://0.0.0.0:3000`. They now redirect to `https://heyresearch.xyz/...` with

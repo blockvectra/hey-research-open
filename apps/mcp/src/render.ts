@@ -453,6 +453,15 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     if (supply.length > 0) lines.push(`Supply (HEY's snapshot, ${dist.day}; burned and pooled supply left out of the top shares): ${supply.join(', ')}.`);
   }
   /*
+   * An EMPTY run is not "no holders" (2026-09-25): the holder source reports
+   * only balances that moved in about the last nine days. Said once, beside
+   * the last map if there is one.
+   */
+  const read = market.distributionRead;
+  if (read && read.outcome !== 'mapped' && read.note) {
+    lines.push(dist ? `Latest distribution read (${read.checkedAt.slice(0, 10)}): ${read.note} The snapshot above is from ${dist.day}.` : `Distribution (${read.checkedAt.slice(0, 10)}): ${read.note}`);
+  }
+  /*
    * The series is capped for readability, and the cap is stated (2026-09-17).
    * It printed the full count and then showed fourteen rows, so an agent asked
    * for ninety days was told ninety were indexed, shown two weeks, and given

@@ -45,6 +45,7 @@ export type {
   HeyMarketCoverage,
   HeyPage,
   HeyLiquidityKind,
+  HeyDistributionReadOutcome,
   HeyProject,
   HeyProjectDetail,
   HeyProjectIntelligence,

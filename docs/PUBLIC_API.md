@@ -248,6 +248,12 @@ figures with the scoring version that produced them.
 A project HEY has not measured carries **no `score` key at all** — a zero would read as
 "measured, nothing found", which is a different answer from "not measured".
 
+`score.discoveryGap` is `null`, and `stillBuilding` / `underTheRadar` are `false`, for a project
+outside the market cohort (scoring version `hbm-v15`, 2026-09-25): its token's market is not
+live, or nothing the project publishes ties the token to it (token not verified and every site
+and repository source context-only — a bridged copy of another chain's asset, for instance).
+The rule is on `/methodology`.
+
 A slug that is not published answers `404` with `{ "error": "not_found" }`. It looks
 identical to a slug that never existed, which is what the pages do too.
 
@@ -567,6 +573,13 @@ Added 2026-09-25, all optional and absent when HEY holds nothing:
 - `distribution` — a summary of HEY's snapshot of the token's largest balances: `day`,
   `observedAt`, `holdersTotal`, `top10SharePct`, `top50SharePct` (burned and pooled supply left
   out), `burnedSharePct`, `pooledSharePct`. No address and no balance.
+- `distributionRead` (2026-09-25) — what HEY's latest attempt to read the distribution found:
+  `outcome` (`mapped`, `no_balance_change_in_window`, `no_supply` or `read_failed`), `checkedAt`,
+  and a plain-sentence `note` for every outcome but `mapped`. The holder source reports only
+  balances that moved in about the last nine days, so a quiet token comes back empty:
+  `no_balance_change_in_window` says exactly that — "No balance change in the provider's window",
+  never "no holders" — and `distribution`, when present, is then the last map HEY did read, dated
+  by its own `day`. Absent when HEY has never tried.
 - `days[]` also names `distinctAddresses`, `distinctBuyers`, `distinctSellers` and `poolsTraded`,
   and `onchainDays[]` names `callers` — counts the route already sent and the types did not.
 

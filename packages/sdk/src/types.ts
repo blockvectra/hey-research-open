@@ -33,6 +33,14 @@ export type HeyToken = { chainId: number; contractAddress: string };
  */
 export type HeyLiquidityKind = 'market' | 'launch_inventory';
 
+/**
+ * What HEY's latest attempt to read a token's distribution found.
+ * `no_balance_change_in_window`: the holder source reports only balances that
+ * moved in about the last nine days, and none of this token's did — not "no
+ * holders".
+ */
+export type HeyDistributionReadOutcome = 'mapped' | 'no_balance_change_in_window' | 'no_supply' | 'read_failed';
+
 export type HeyProject = {
   slug: string;
   name: string;
@@ -278,6 +286,17 @@ export type HeyTokenMarket = {
     top50SharePct?: number;
     burnedSharePct?: number;
     pooledSharePct?: number;
+  };
+  /**
+   * HEY's latest attempt to read the distribution. When it found no balance
+   * change in the provider's window, `distribution` (if present) is the last
+   * map HEY did read, dated by its own `day`. Absent when HEY has never tried.
+   */
+  distributionRead?: {
+    outcome: HeyDistributionReadOutcome;
+    checkedAt: string;
+    /** A plain sentence for every outcome but `mapped`. */
+    note?: string;
   };
   current?: {
     priceUsd?: number;

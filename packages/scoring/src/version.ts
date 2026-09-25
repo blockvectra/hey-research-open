@@ -123,7 +123,21 @@
  * Priviet's DEX Screener pool held $1 and priced the token 4x under the pool
  * that trades.
  */
-export const SCORING_VERSION = 'hbm-v14' as const;
+/*
+ * hbm-v15 (2026-09-25, founder decisions F5 and A4-07): no weight or threshold
+ * change. (1) The market cohort — the market-context percentile, the
+ * Discovery Gap, Still Building and Under the Radar — holds only projects
+ * with a live market (`marketIsLive`); 33 published dead-market pages had a
+ * Discovery Gap averaging 63.9. (2) It also leaves out a project whose token
+ * nothing it publishes ties to it: token not VERIFIED and every site, docs,
+ * feed and repository source context-only (`marketNotTheProjectsSql`) —
+ * `chainlink` on a $25 pool of bridged LINK. HEY stores no bridge marker, so
+ * this is the conservative rule, not a bridge detector. (3) The Still
+ * Building high from a daily close is dated to the end of its day and must be
+ * strictly older than the seven-day floor; a same-day release no longer
+ * counts as building "since the decline".
+ */
+export const SCORING_VERSION = 'hbm-v15' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

@@ -8,6 +8,11 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ### Added
 
+- `HeyTokenMarket.distributionRead` and `HeyDistributionReadOutcome`
+  (2026-09-25), optional: what HEY's latest attempt to read the distribution
+  found. `no_balance_change_in_window` means no balance moved inside the holder
+  source's ~9-day window — not "no holders" — and `distribution` is then the
+  last map HEY did read, dated by its own `day`.
 - What a figure is (2026-09-25), additive: `HeyLiquidityKind` and
   `HeyProject.liquidity.kind` (`market` or `launch_inventory`), with
   `liquidityKind` on the dossier's `market` and `tokenMarket`, on

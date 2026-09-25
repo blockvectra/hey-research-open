@@ -751,4 +751,19 @@ describe('renderTokenMarket: pools, the deployer and the supply (2026-09-25)', (
     );
     expect(text).toContain('1,830 holders, largest 10 balances hold 41.2%, largest 50 hold 63.9%, 5% burned, 12.4% in pools');
   });
+
+  it("says an empty read is no balance change in the provider's window, beside the last map (2026-09-25)", () => {
+    const note = "No balance change in the provider's window. The holder source reports balances that moved in about the last 9 days, and none of this token's did. That is not the same as no holders.";
+    const distributionRead = { outcome: 'no_balance_change_in_window' as const, checkedAt: '2026-09-25T03:00:00Z', note };
+    const kept = renderTokenMarket(
+      { ...market, distribution: { day: '2026-09-18', observedAt: '2026-09-18T03:00:00Z', holdersTotal: 1_403 }, distributionRead },
+      NOW,
+    );
+    expect(kept).toContain('1,403 holders');
+    expect(kept).toContain(`Latest distribution read (2026-09-25): ${note} The snapshot above is from 2026-09-18.`);
+    const none = renderTokenMarket({ ...market, distributionRead }, NOW);
+    expect(none).toContain(`Distribution (2026-09-25): ${note}`);
+    // A run that produced the map says nothing extra.
+    expect(renderTokenMarket({ ...market, distributionRead: { outcome: 'mapped', checkedAt: '2026-09-25T03:00:00Z' } }, NOW)).not.toContain('Latest distribution read');
+  });
 });
