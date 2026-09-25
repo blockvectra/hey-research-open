@@ -3,7 +3,7 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { HeyClient } from '@hey-research/sdk';
 
 import { resolveBaseUrl } from './base-url';
-import { createHeyMcpServer } from './server';
+import { createHeyMcpServer, marketIntegrityFromEnv } from './server';
 import { MCP_VERSION } from './version';
 
 /**
@@ -22,7 +22,10 @@ const apiKey = process.env.HEY_API_KEY;
 async function main(): Promise<void> {
   // Before the transport: a server that came up and then leaked the key is worse than one that did not come up.
   const { baseUrl, origin } = resolveBaseUrl(process.env.HEY_API_URL);
-  const server = createHeyMcpServer(new HeyClient({ baseUrl, ...(apiKey ? { apiKey } : {}), userAgent: `hey-research-mcp/${MCP_VERSION}` }));
+  const server = createHeyMcpServer(new HeyClient({ baseUrl, ...(apiKey ? { apiKey } : {}), userAgent: `hey-research-mcp/${MCP_VERSION}` }), undefined, {
+    // Offered only where the site publishes it: the same flag, the same value (2026-09-25).
+    marketIntegrity: marketIntegrityFromEnv(process.env.HEY_MARKET_INTEGRITY),
+  });
   await server.connect(new StdioServerTransport());
   // The origin, not the configured string: it is the host the key actually goes to, and a reader can check it at a glance.
   console.error(`[hey-research-mcp] ready, reading ${baseUrl} (origin ${origin}) ${apiKey ? 'with an API key' : 'without a key'}`);

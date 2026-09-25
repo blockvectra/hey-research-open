@@ -52,6 +52,13 @@ Set `HEY_API_URL` to read a different instance (`http://localhost:3000` while de
 to read with your key's allowance (M13-E); the server never prints the key.
 It defaults to `https://heyresearch.xyz`.
 
+**`market_integrity` is not one of the twenty-two** (2026-09-25). Market Integrity is internal
+until the site's `HEY_MARKET_INTEGRITY` flag reaches `public`, and until then
+`/api/projects/{slug}/market-integrity` answers 404. The server used to offer the tool anyway,
+so every call an assistant made to it failed. It is now offered only when the MCP process
+itself is started with `HEY_MARKET_INTEGRITY=public` — the same flag, the same value — which
+makes twenty-three tools. `server.test.ts` pins both counts.
+
 ## The twenty-two tools
 
 | Tool | The question it answers |
@@ -90,7 +97,7 @@ plus `kind`, `status`, `narrative`, `launchpad`, `has` (now including `liveMarke
 `trading` and `github`), `stage` (`curve`, `graduated`, `dex`), `minLiquidity`, `minMarketCap`, `maxMarketCap` and `sort` (`liquidity` and
 `volume24h` joined the orders on 2026-09-12). A market order is context the caller asked for; the
 rendering says how many of the matching projects carry the figure and that the rest follow in
-activity order, and each line names the launch stage and the provider behind every figure. A project with no repository, changelog or feed reads "no builder signal yet" instead of "unknown" (2026-09-13), and a line ends with "trades on Uniswap v4" when the reading names its pool.
+activity order, and each line names the launch stage and the provider behind every figure. A project with no repository, changelog or feed reads "no builder signal yet" instead of "unknown" (2026-09-13) — unless it has a recorded ship (2026-09-25) — and a line ends with "trades on Uniswap v4" when the reading names its pool. A launch pool's own supply is printed as *"of its own supply in the launch pool — not a market reading"*, never as liquidity; a fully diluted valuation is printed as an FDV in `list_projects`, `compare_projects`, `this_week` and `events_before_market_change` (by the kind the API sends, never by comparing figures); and `lookup_token` says when the address is `MISMATCH` or unverified (2026-09-25).
 
 ## What the server will not let an assistant say
 

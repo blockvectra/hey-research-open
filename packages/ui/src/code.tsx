@@ -10,7 +10,8 @@ import { formatRelativeTime } from './format';
  * collect say so explicitly rather than scoring nil.
  */
 export type CodeActivityData =
-  | { measurable: false; reason: string }
+  /** `quiet`: HEY read the repository in the window and found nothing — a finding, not "not measurable" (2026-09-25). */
+  | { measurable: false; reason: string; quiet?: true }
   | {
       measurable: true;
       score: number;
@@ -38,7 +39,9 @@ export function PublicCodeCard({
           <GitBranch aria-hidden="true" size={14} strokeWidth={1.9} />
           Public code activity
         </p>
-        <p className="mt-2 text-[15px] font-medium text-white">Not measurable</p>
+        <p className="mt-2 text-[15px] font-medium text-white">
+          {data.quiet ? 'Quiet' : 'Not measurable'}
+        </p>
         <p className="mt-1.5 text-[13px] text-white/55">{data.reason}</p>
       </div>
     );
@@ -73,7 +76,7 @@ export function PublicCodeCard({
           label="Contributors"
           value={data.contributors === null || data.contributors === 0 ? '—' : String(data.contributors)}
         />
-        <Row label="Releases" value={String(data.releases)} />
+        <Row label="GitHub releases" value={String(data.releases)} />
         <Row
           label="Last code update"
           value={data.lastCodeUpdate ? formatRelativeTime(data.lastCodeUpdate) : '—'}

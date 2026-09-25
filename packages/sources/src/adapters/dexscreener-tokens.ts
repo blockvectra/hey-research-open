@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { pickDeepestLiquidity, sumAcrossPools, toNumber } from '../market';
+import { pickDeepestLiquidity, priceChangePct, sumAcrossPools, toNumber } from '../market';
 
 /**
  * DEX Screener batch token lookup — the screening step.
@@ -44,7 +44,8 @@ const pairSchema = z.object({
   volume: z.object({ h24: z.union([z.string(), z.number()]).nullish() }).nullish(),
   // The provider sends these in the same payload; the schema dropped them and every card's venue line stayed empty (2026-09-18).
   txns: z.object({ h24: z.object({ buys: z.union([z.string(), z.number()]).nullish(), sells: z.union([z.string(), z.number()]).nullish() }).nullish() }).nullish(),
-  priceChange: z.object({ h1: z.union([z.string(), z.number()]).nullish(), h6: z.union([z.string(), z.number()]).nullish(), h24: z.union([z.string(), z.number()]).nullish() }).nullish(),
+  // A move too large for numeric(12,4), or not a number, is unknown (2026-09-25): one such value failed the whole batch.
+  priceChange: z.object({ h1: priceChangePct, h6: priceChangePct, h24: priceChangePct }).nullish(),
   pairCreatedAt: z.number().nullish(),
   info: z
     .object({

@@ -1,5 +1,5 @@
 import { cn } from './cn';
-import { formatRelativeTime, formatUsdCompact } from './format';
+import { formatRelativeTime, formatUsdCompact, valuationKindLabel } from './format';
 import { activityLabel, type ActivityStatusValue } from './status';
 
 /**
@@ -18,6 +18,8 @@ export type ScatterDatum = {
   buildMomentum: number;
   marketAttention: number;
   marketCapUsd?: number;
+  /** Which measure `marketCapUsd` is (2026-09-25); the tooltip names it, and an FDV is never called a market cap. */
+  valuationKind?: 'marketCap' | 'fdv';
   lastMeaningfulShipAt?: Date;
 };
 
@@ -140,7 +142,9 @@ export function BuildVsMarketChart({
                     activityLabel(point.activityStatus),
                     `Build Momentum ${Math.round(point.buildMomentum)}`,
                     `Market attention ${describeAttention(point.marketAttention)}`,
-                    `Market cap ${formatUsdCompact(point.marketCapUsd) ?? 'not available'}`,
+                    point.marketCapUsd === undefined
+                      ? 'Valuation not available'
+                      : `${valuationKindLabel(point.valuationKind)} ${formatUsdCompact(point.marketCapUsd)}`,
                     point.lastMeaningfulShipAt
                       ? `Last ship ${formatRelativeTime(point.lastMeaningfulShipAt)}`
                       : 'No ship recorded',
@@ -161,7 +165,8 @@ export function BuildVsMarketChart({
       </div>
 
       <figcaption className="mt-3 text-[13px] text-hey-secondary">
-        Each bubble is a project; size reflects market cap and colour reflects activity status.
+        Each bubble is a project; size reflects its valuation (market cap, or fully diluted
+        valuation where no circulating figure exists) and colour reflects activity status.
         Position describes what has happened, not what will.
       </figcaption>
     </figure>

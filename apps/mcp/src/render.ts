@@ -116,12 +116,30 @@ export function tokenMarketWords(status: string): string {
   return TOKEN_MARKET_WORDS[status] ?? status.toLowerCase().replace(/_/g, ' ');
 }
 
+/**
+ * A liquidity figure in words, by its kind (2026-09-25). A launch pool's own
+ * supply is not depth, and the project page says so; so does this. A figure
+ * with no provider is the token's last recorded depth, dated rather than
+ * attributed to a source that did not report it.
+ */
+export function liquidityWords(liquidity: NonNullable<HeyProject['liquidity']>, now?: Date): string {
+  const provenance = liquidity.source
+    ? liquidity.source
+    : liquidity.observedAt
+      ? `last recorded ${ago(liquidity.observedAt, now)}`
+      : 'last recorded';
+  return liquidity.kind === 'launch_inventory'
+    ? `${money(liquidity.usd)} of its own supply in the launch pool — not a market reading (${provenance})`
+    : `${money(liquidity.usd)} liquidity (${provenance})`;
+}
+
 export function projectLine(project: HeyProject, now?: Date): string {
   const parts = [project.symbol ? `${project.name} ($${project.symbol})` : project.name];
 
   // What HEY is actually claiming about activity comes before anything else.
   parts.push(
-    project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false
+    // Not beside a last ship (2026-09-25): a project with a recorded ship has had a builder signal.
+    project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false && !project.lastShippedAt
       ? 'no builder signal yet (no repository, changelog or feed to read; trading is not building)'
       : project.researchLevel === 'INDEXED'
         ? 'activity not researched yet'
@@ -138,7 +156,7 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.tokenMarket) parts.push(`market: ${tokenMarketWords(project.tokenMarket.status)}`);
   // Context, and only ever with the provider that reported it.
   if (project.marketCap) parts.push(`${money(project.marketCap.usd)} ${project.marketCap.kind === 'fdv' ? 'FDV' : 'mcap'} (${project.marketCap.source})`);
-  if (project.liquidity) parts.push(`${money(project.liquidity.usd)} liquidity (${project.liquidity.source})`);
+  if (project.liquidity) parts.push(liquidityWords(project.liquidity, now));
   if (project.volume24h) parts.push(`${money(project.volume24h.usd)} 24h volume (${project.volume24h.source})`);
   if (project.launchStage) parts.push(STAGE_WORDS[project.launchStage]);
   if (project.trades24h) parts.push(`${project.trades24h.buys} buys / ${project.trades24h.sells} sells in 24h (${project.trades24h.source})`);
@@ -211,7 +229,11 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
     const m = project.tokenMarket;
     const detail = [
       m.reason ? m.reason.replace(/_/g, ' ') : undefined,
-      m.liquidityUsd === undefined ? undefined : `liquidity ${money(m.liquidityUsd)}`,
+      m.liquidityUsd === undefined
+        ? undefined
+        : m.liquidityKind === 'launch_inventory'
+          ? `launch pool holds ${money(m.liquidityUsd)} of its own supply, not a market reading`
+          : `liquidity ${money(m.liquidityUsd)}`,
       m.peakLiquidityUsd === undefined ? undefined : `highest HEY saw ${money(m.peakLiquidityUsd)}`,
       m.evaluatedAt ? `checked ${m.evaluatedAt.slice(0, 10)}` : undefined,
     ].filter((v): v is string => v !== undefined);
@@ -251,7 +273,11 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
       // A market cap equal to the FDV is the FDV standing in; print it once, by its name.
       m.marketCapUsd === undefined || m.marketCapUsd === m.fdvUsd ? undefined : `market cap ${money(m.marketCapUsd)}`,
       m.fdvUsd === undefined ? undefined : `FDV ${money(m.fdvUsd)}`,
-      m.liquidityUsd === undefined ? undefined : `liquidity ${money(m.liquidityUsd)}`,
+      m.liquidityUsd === undefined
+        ? undefined
+        : m.liquidityKind === 'launch_inventory'
+          ? `launch pool holds ${money(m.liquidityUsd)} of its own supply (not a market reading)`
+          : `liquidity ${money(m.liquidityUsd)}`,
       m.volume24hUsd === undefined ? undefined : `24h volume ${money(m.volume24hUsd)}`,
       m.buys24h === undefined || m.sells24h === undefined ? undefined : `${m.buys24h} buys / ${m.sells24h} sells in 24h`,
       m.priceChange24hPct === undefined ? undefined : `${m.priceChange24hPct >= 0 ? '+' : ''}${m.priceChange24hPct.toFixed(1)}% in 24h`,
@@ -379,7 +405,11 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     const parts = [
       c.priceUsd === undefined ? undefined : `price $${c.priceUsd >= 1 ? c.priceUsd.toFixed(2) : c.priceUsd.toPrecision(3)}`,
       c.marketCapUsd === undefined ? undefined : `${c.marketCapUsd === c.fdvUsd ? 'FDV' : 'market cap'} ${money(c.marketCapUsd)}`,
-      c.liquidityUsd === undefined ? undefined : `liquidity ${money(c.liquidityUsd)}`,
+      c.liquidityUsd === undefined
+        ? undefined
+        : c.liquidityKind === 'launch_inventory'
+          ? `launch pool holds ${money(c.liquidityUsd)} of its own supply (not a market reading)`
+          : `liquidity ${money(c.liquidityUsd)}`,
       c.volume24hUsd === undefined ? undefined : `24h volume ${money(c.volume24hUsd)}`,
       c.buys24h === undefined || c.sells24h === undefined ? undefined : `${c.buys24h} buys / ${c.sells24h} sells in 24h`,
       signed(c.priceChange24hPct) === undefined ? undefined : `${signed(c.priceChange24hPct)} in 24h`,
@@ -569,7 +599,7 @@ const WEEK_ROWS = 10;
 export function renderThisWeek(week: HeyThisWeek): string {
   const w = week.window;
   const one = (p: HeyThisWeekProject) =>
-    `${p.name}${p.symbol ? ` ($${p.symbol})` : ''} · ${p.activityStatus.toLowerCase()}${p.marketCapUsd === undefined ? '' : ` · mcap ${money(p.marketCapUsd)} (context)`} — ${p.url}`;
+    `${p.name}${p.symbol ? ` ($${p.symbol})` : ''} · ${p.activityStatus.toLowerCase()}${p.marketCapUsd === undefined ? '' : ` · ${p.valuationKind === 'fdv' ? 'FDV' : 'mcap'} ${money(p.marketCapUsd)} (context)`} — ${p.url}`;
   const lines: string[] = [
     `# This week on Robinhood Chain (${w.label})`,
     week.summary,
@@ -609,7 +639,7 @@ export function renderThisWeek(week: HeyThisWeek): string {
    */
   lines.push(
     '',
-    "Any market cap here is context HEY recorded and does not name its provider in this rollup; GET /api/projects/{slug} carries the figure with the source that reported it.",
+    "Any valuation here (a market cap, or an FDV where no circulating figure exists) is context HEY recorded and does not name its provider in this rollup; GET /api/projects/{slug} carries the figure with the source that reported it.",
     week.disclaimer,
     `Page: ${week.links.page}`,
   );
@@ -653,6 +683,12 @@ export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
     );
   }
   if (p.deployedAt) lines.push(`- Contract deployed ${p.deployedAt.slice(0, 10)}, read from the block.`);
+  // Whose contract this is, beside whose activity (2026-09-25).
+  if (p.tokenVerification?.status === 'MISMATCH') {
+    lines.push('- MISMATCH: the project’s own site names a different contract. The activity above is the project’s; do not treat this address as its token.');
+  } else if (p.tokenVerification?.status === 'UNVERIFIED') {
+    lines.push('- Unverified: HEY has not seen the project name this contract itself.');
+  }
   lines.push(`- ${p.url}`, '', lookup.disclaimer);
   return lines.join('\n');
 }
@@ -802,7 +838,8 @@ export function renderMarketMoves(page: HeyMarketMoves): string {
     const events = move.eventsBefore.length
       ? move.eventsBefore.map((event) => `  - FACT ${event.publishedAt.slice(0, 10)} · ${event.title}${event.source ? ` — ${event.source}` : ''}`).join('\n')
       : `  - FACT no corroborated building event in the ${page.threshold.lookbackDays} days up to it`;
-    return `- FACT ${move.day}: market cap ${move.changePct > 0 ? '+' : ''}${move.changePct}% on ${move.previousDay} (${Math.round(move.previousMarketCapUsd).toLocaleString('en-US')} → ${Math.round(move.marketCapUsd).toLocaleString('en-US')} USD)\n${events}`;
+    const measure = move.valuationKind === 'fdv' ? 'FDV' : move.valuationKind === 'marketCap' ? 'market cap' : 'valuation';
+    return `- FACT ${move.day}: ${measure} ${move.changePct > 0 ? '+' : ''}${move.changePct}% on ${move.previousDay} (${Math.round(move.previousMarketCapUsd).toLocaleString('en-US')} → ${Math.round(move.marketCapUsd).toLocaleString('en-US')} USD)\n${events}`;
   });
   return `${head}\n${blocks.join('\n')}\n\nA sequence, never a cause. ${page.method}\n${page.disclaimer}`;
 }
@@ -833,7 +870,15 @@ export function renderCompare(page: HeyCompare): string {
       project.velocity ? `DERIVED velocity: ${project.velocity.state.toLowerCase()} (${project.velocity.current}${project.velocity.previous === null ? '' : ` vs ${project.velocity.previous}`})` : 'UNKNOWN velocity',
       project.cadence?.medianIntervalDays !== undefined ? `DERIVED release cadence: every ${project.cadence.medianIntervalDays} days` : 'UNKNOWN release cadence',
       `FACT verified builder: ${project.verifiedBuilder ? 'yes' : 'no'}; sources ${project.sources.verified} verified of ${project.sources.total}`,
-      project.marketCapUsd === undefined ? 'UNKNOWN market cap' : `FACT market cap ${project.marketCapUsd.toLocaleString('en-US')} USD (context)`,
+      // By the kind the API sends, not by comparing figures (2026-09-25): an FDV is never called a market cap.
+      project.marketCapUsd === undefined
+        ? 'UNKNOWN valuation'
+        : `FACT ${project.valuationKind === 'fdv' ? 'fully diluted valuation' : 'market cap'} ${project.marketCapUsd.toLocaleString('en-US')} USD (context)`,
+      project.liquidityUsd === undefined
+        ? 'UNKNOWN liquidity'
+        : project.liquidityKind === 'launch_inventory'
+          ? `FACT launch pool holds ${project.liquidityUsd.toLocaleString('en-US')} USD of its own supply — not a market reading`
+          : `FACT liquidity ${project.liquidityUsd.toLocaleString('en-US')} USD (context)`,
     ].join('\n'),
   );
   const missing = page.missing.length ? `\nNot published: ${page.missing.join(', ')}.` : '';

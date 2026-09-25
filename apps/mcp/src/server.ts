@@ -121,7 +121,20 @@ const failure = (error: unknown) => ({
   isError: true,
 });
 
-export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServer {
+/**
+ * What the server offers beyond the default set (2026-09-25).
+ *
+ * `marketIntegrity` mirrors the site's own gate: `/api/projects/{slug}/market-integrity`
+ * answers 404 until `HEY_MARKET_INTEGRITY` reaches `public`, so a tool that
+ * calls it is not offered until the operator says the same. Offering it
+ * earlier handed an assistant a tool whose every call failed.
+ */
+export type HeyMcpOptions = { marketIntegrity?: boolean };
+
+/** The site's exposure flag, read the same way: only `public` publishes Market Integrity. Fail closed. */
+export const marketIntegrityFromEnv = (value: string | undefined): boolean => value?.trim().toLowerCase() === 'public';
+
+export function createHeyMcpServer(client: HeyClient, now?: () => Date, options: HeyMcpOptions = {}): McpServer {
   const server = new McpServer(
     { name: 'hey-research', version: MCP_VERSION },
     {
@@ -354,18 +367,20 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
     },
   );
 
-  server.tool(
-    'market_integrity',
-    "For one Robinhood Chain project: what happened to its tracked token market — liquidity against the level it held, trading, a pool migration — beside its builder activity, and where the two disagree. It describes the token market, never whether development stopped, and never calls a project a rug or safe.",
-    { slug: z.string().min(1).describe('The project slug.') },
-    async ({ slug }) => {
-      try {
-        return text(renderMarketIntegrity(await client.get<HeyMarketIntegrity>(`/api/projects/${encodeURIComponent(slug)}/market-integrity`)));
-      } catch (error) {
-        return failure(error);
-      }
-    },
-  );
+  if (options.marketIntegrity) {
+    server.tool(
+      'market_integrity',
+      "For one Robinhood Chain project: what happened to its tracked token market — liquidity against the level it held, trading, a pool migration — beside its builder activity, and where the two disagree. It describes the token market, never whether development stopped, and never calls a project a rug or safe.",
+      { slug: z.string().min(1).describe('The project slug.') },
+      async ({ slug }) => {
+        try {
+          return text(renderMarketIntegrity(await client.get<HeyMarketIntegrity>(`/api/projects/${encodeURIComponent(slug)}/market-integrity`)));
+        } catch (error) {
+          return failure(error);
+        }
+      },
+    );
+  }
 
   server.tool(
     'events_before_market_change',

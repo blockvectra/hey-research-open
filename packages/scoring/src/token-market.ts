@@ -47,6 +47,50 @@ export const TOKEN_MARKET = {
    * "reserve" (AgentOS on Clanker: $42M liquidity, $42M FDV, zero volume).
    */
   ownSupplyShareOfFdv: 0.5,
+  /*
+   * Readings HEY will not believe (2026-09-25).
+   *
+   * A second reading — another pool's, or HEY's own chain index — can overrule
+   * the current one only if it describes the same token's market. One whose
+   * price is more than `maxPriceRatio` away from the reference price (HEY's
+   * decoded trade close when it has one, the current reading's price
+   * otherwise) is another market: farmmi-inc was "Active market" on a
+   * GeckoTerminal pool priced 31× DEX Screener's.
+   */
+  maxPriceRatio: 3,
+  /**
+   * A pool, or the index, cannot hold more than this many times the token's
+   * whole valuation: both sides of a pool are worth about twice the token side
+   * at most, and the price factor above is the slack. More than that is a
+   * pool valued by what it is paired with (another launch at its own price).
+   */
+  maxLiquidityOfFdv: 6,
+  /**
+   * A second reading shaped like the token's own supply (liquidity at least
+   * `ownSupplyShareOfFdv` of the valuation) is a market only if the day's
+   * volume is at least this share of the liquidity it claims — a flat $1
+   * let $16.75 of volume vouch for $394K.
+   */
+  minOwnSupplyTurnover: 0.001,
+  /**
+   * The current reading itself is implausible when it claims at least
+   * `implausibleMinLiquidityUsd`, the day's volume is at most
+   * `implausibleMaxTurnover` of it, and HEY's chain index — read in the last
+   * `implausibleIndexMaxAgeDays` — holds at most `implausibleIndexShare` of it.
+   * blorb: $22.4M "liquidity", $53 of volume, $5 in the index.
+   */
+  implausibleMinLiquidityUsd: 25_000,
+  implausibleMaxTurnover: 0.0001,
+  implausibleIndexShare: 0.001,
+  implausibleIndexMaxAgeDays: 2,
+  /**
+   * Without an index reading, only a stronger contradiction: at least $1M
+   * claimed and at most a thousandth of a per cent of it traded in a day
+   * ($10 per $1M). The index under-reads some real markets (audit A10-04), so
+   * it corroborates here and never decides alone.
+   */
+  implausibleUncorroboratedMinLiquidityUsd: 1_000_000,
+  implausibleUncorroboratedMaxTurnover: 0.00001,
 } as const;
 
 export type TokenMarketEvidence = {
@@ -58,6 +102,8 @@ export type TokenMarketEvidence = {
     volume24hUsd?: number;
     /** The token's FDV (or market cap) on the same reading, to catch own-supply "liquidity". */
     fdvUsd?: number;
+    /** The same reading's price: the reference a second reading's price is held to. */
+    priceUsd?: number;
   };
   /** The newest reading of any kind, to tell "stale" from "never read". */
   latestObservedAt?: Date;
@@ -82,15 +128,78 @@ export type TokenMarketEvidence = {
    * detected" with a market still trading. A drain is only a drain when no
    * pool HEY can see still holds the market.
    */
-  otherPools?: { observedAt: Date; liquidityUsd: number; volume24hUsd?: number };
+  otherPools?: SecondReading;
   /**
    * The deepest such reading in the last seven days (2026-09-25). When the
    * current reading's pool is empty and no other pool was read today, but one
    * held a market within the week, HEY holds two readings that disagree and
    * says so, instead of either claim.
    */
-  recentOtherPools?: { observedAt: Date; liquidityUsd: number };
+  recentOtherPools?: SecondReading;
+  /**
+   * HEY's own chain pool index, its newest day (2026-09-25): liquidity across
+   * every pool the token has state in. It corroborates or contradicts a
+   * provider's figure; a newer drained index reading also outranks an older
+   * pool reading that still showed a market.
+   */
+  chainIndex?: { observedAt: Date; liquidityUsd: number };
+  /** HEY's decoded trade close in the last two days: the preferred reference price. */
+  chainPriceUsd?: number;
 };
+
+/** A reading other than the current one: another pool's, or the chain index's. */
+export type SecondReading = { observedAt: Date; liquidityUsd: number; volume24hUsd?: number; priceUsd?: number };
+
+/**
+ * Whether a second reading describes this token's market at all (2026-09-25),
+ * judged against the reference price and valuation. Three refusals: a price
+ * more than `maxPriceRatio` off; liquidity beyond `maxLiquidityOfFdv` times
+ * the valuation; and the token's own supply valued at its price, unless the
+ * day's volume is a real share of it. What cannot be compared is not refused:
+ * a reading with no price is held to the valuation rules alone.
+ *
+ * The SQL in `@hey/domain` (`tokens/market-status.ts`) filters each pool by
+ * the same rules before choosing the deepest; this is the rule it mirrors.
+ */
+export function secondReadingBelievable(
+  reading: Pick<SecondReading, 'liquidityUsd' | 'volume24hUsd' | 'priceUsd'>,
+  reference: { priceUsd?: number | undefined; fdvUsd?: number | undefined },
+): boolean {
+  const { priceUsd } = reading;
+  const refPrice = reference.priceUsd;
+  if (priceUsd !== undefined && priceUsd > 0 && refPrice !== undefined && refPrice > 0) {
+    const ratio = priceUsd > refPrice ? priceUsd / refPrice : refPrice / priceUsd;
+    if (ratio > TOKEN_MARKET.maxPriceRatio) return false;
+  }
+  const fdv = reference.fdvUsd;
+  if (fdv !== undefined && fdv > 0) {
+    if (reading.liquidityUsd > fdv * TOKEN_MARKET.maxLiquidityOfFdv) return false;
+    if (reading.liquidityUsd >= fdv * TOKEN_MARKET.ownSupplyShareOfFdv) {
+      const needed = Math.max(TOKEN_MARKET.inactiveVolumeUsd, reading.liquidityUsd * TOKEN_MARKET.minOwnSupplyTurnover);
+      if ((reading.volume24hUsd ?? 0) <= needed) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Whether the current reading's liquidity is a figure HEY will not believe
+ * (2026-09-25): a large pool the day's trading and HEY's own chain index both
+ * contradict. Volume unknown decides nothing.
+ */
+export function liquidityImplausible(
+  liquidityUsd: number,
+  volume24hUsd: number | undefined,
+  chainIndex: { observedAt: Date; liquidityUsd: number } | undefined,
+  now: Date,
+): boolean {
+  if (volume24hUsd === undefined || liquidityUsd < TOKEN_MARKET.implausibleMinLiquidityUsd) return false;
+  const indexFresh = chainIndex !== undefined && now.getTime() - chainIndex.observedAt.getTime() <= TOKEN_MARKET.implausibleIndexMaxAgeDays * DAY_MS;
+  if (indexFresh) {
+    return volume24hUsd <= liquidityUsd * TOKEN_MARKET.implausibleMaxTurnover && chainIndex.liquidityUsd <= liquidityUsd * TOKEN_MARKET.implausibleIndexShare;
+  }
+  return liquidityUsd >= TOKEN_MARKET.implausibleUncorroboratedMinLiquidityUsd && volume24hUsd <= liquidityUsd * TOKEN_MARKET.implausibleUncorroboratedMaxTurnover;
+}
 
 export type TokenMarketClassification = {
   status: TokenMarketStatusValue;
@@ -148,17 +257,24 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
   }
 
   /*
-   * Another pool's figure is a market only if it is not the token's own supply
-   * valued at its last price (adversarial review, 2026-09-25): a single-sided
-   * launch pool beside a dead one "rescued" the dead one.
+   * A large pool nobody trades and HEY's chain index cannot find (2026-09-25):
+   * the figure is not believed, so it is neither a live market nor a drain.
    */
-  const ownSupply = (liquidityUsd: number) =>
-    latest.fdvUsd !== undefined && latest.fdvUsd > 0 && liquidityUsd >= latest.fdvUsd * TOKEN_MARKET.ownSupplyShareOfFdv;
-  const otherTrades = (evidence.otherPools?.volume24hUsd ?? 0) > TOKEN_MARKET.inactiveVolumeUsd;
+  if (liquidityImplausible(latest.liquidityUsd, volume, evidence.chainIndex, now)) {
+    return { status: 'INSUFFICIENT_DATA', reason: 'readings_implausible' };
+  }
+
+  /*
+   * Another pool's figure is a market only if it describes this token's market
+   * (adversarial review, 2026-09-25): not the token's own supply valued at its
+   * last price — a single-sided launch pool beside a dead one "rescued" the
+   * dead one — and not a pool priced several times away from the reference.
+   */
+  const reference = { priceUsd: evidence.chainPriceUsd ?? latest.priceUsd, fdvUsd: latest.fdvUsd };
   const other =
     evidence.otherPools &&
     now.getTime() - evidence.otherPools.observedAt.getTime() <= DAY_MS &&
-    (otherTrades || !ownSupply(evidence.otherPools.liquidityUsd))
+    secondReadingBelievable(evidence.otherPools, reference)
       ? evidence.otherPools.liquidityUsd
       : undefined;
   const heldElsewhere = other !== undefined && other > latest.liquidityUsd;
@@ -170,11 +286,22 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     if (pooled !== undefined && pooled <= TOKEN_MARKET.inactiveVolumeUsd) return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
     return { status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' };
   }
-  // Disagreement claims nothing either way, so it needs no own-supply guard.
+  /*
+   * Disagreement claims nothing either way, but it still needs a reading of
+   * this token's market to disagree with (the same test as a rescue), and it
+   * ends when HEY's chain index read the pools drained after that reading did
+   * (2026-09-25): cash-shaq held "readings disagree" on a pool reading from
+   * before the drain while the index had since read $0.99.
+   */
   const recent = evidence.recentOtherPools;
+  const index = evidence.chainIndex;
+  const drainedSince =
+    recent !== undefined && index !== undefined && index.observedAt.getTime() > recent.observedAt.getTime() && index.liquidityUsd < TOKEN_MARKET.lowLiquidityUsd;
   if (
     !heldElsewhere &&
     recent &&
+    !drainedSince &&
+    secondReadingBelievable(recent, reference) &&
     now.getTime() - recent.observedAt.getTime() <= 7 * DAY_MS &&
     recent.liquidityUsd >= TOKEN_MARKET.lowLiquidityUsd &&
     latest.liquidityUsd < TOKEN_MARKET.lowLiquidityUsd &&
@@ -214,14 +341,66 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
  */
 export function marketIsLive(status: TokenMarketStatusValue | null | undefined, reason?: string | null): boolean {
   if (!status) return true; // no token: nothing to be dead
-  if (status === 'NO_LIQUIDITY' || status === 'LIQUIDITY_REMOVED' || status === 'MARKET_ABANDONED') return false;
-  if (status === 'TRADING_INACTIVE' && reason === 'launch_pool_no_trades') return false;
-  // A launch pool nobody reports volume for is not yet a market either (2026-09-25): its
-  // "liquidity" is the token's own supply, so no drawdown can be measured against it.
-  if (reason === 'launch_pool_volume_unknown') return false;
-  return true;
+  if ((DEAD_MARKET_STATUSES as readonly string[]).includes(status)) return false;
+  return !(reason && (DEAD_MARKET_REASONS as readonly string[]).includes(reason));
 }
 
-/** The SQL-side twin of `marketIsLive`, for listing filters. */
+/**
+ * The statuses and reasons `marketIsLive` refuses, and the only list of them
+ * (2026-09-25). The SQL twin is `deadMarketSql` in `@hey/domain`, generated
+ * from these two arrays; a parity test runs both over every status and
+ * reason. The SQL filter on listings once kept its own copy and treated
+ * `launch_pool_volume_unknown` as live while the badges did not (617 pages).
+ */
 export const DEAD_MARKET_STATUSES = ['NO_LIQUIDITY', 'LIQUIDITY_REMOVED', 'MARKET_ABANDONED'] as const;
-export const DEAD_MARKET_REASONS = ['launch_pool_no_trades', 'launch_pool_volume_unknown'] as const;
+/**
+ * Reasons that are not a live market whatever the status beside them:
+ * - `launch_pool_no_trades`, `launch_pool_volume_unknown` — a launch pool's
+ *   "liquidity" is the token's own supply, so no drawdown can be measured
+ *   against it (2026-09-11, 2026-09-25);
+ * - `pool_readings_disagree` — HEY claims neither a live market nor a drain,
+ *   so no badge may rest on it either (2026-09-25);
+ * - `readings_implausible` — the reading is one HEY does not believe
+ *   (`liquidityImplausible`, 2026-09-25).
+ */
+export const DEAD_MARKET_REASONS = ['launch_pool_no_trades', 'launch_pool_volume_unknown', 'pool_readings_disagree', 'readings_implausible'] as const;
+
+/**
+ * Every reason the classifier can write, for vocabularies and parity tests.
+ * Adding a reason to `classifyTokenMarket` without adding it here fails
+ * `token-market.test.ts`.
+ */
+export const TOKEN_MARKET_REASONS = [
+  'trades_observed',
+  'no_trades_24h',
+  'no_liquidity_reading',
+  'no_recent_reading_after_market',
+  'readings_stale',
+  'no_readings',
+  'liquidity_reading_stale_after_market',
+  'launch_pool_trading',
+  'launch_pool_volume_unknown',
+  'launch_pool_no_trades',
+  'readings_implausible',
+  'liquidity_in_another_pool',
+  'no_volume_24h',
+  'pool_readings_disagree',
+  'liquidity_gone_after_market',
+  'no_liquidity',
+  'liquidity_far_below_peak',
+  'liquidity_below_threshold',
+  'liquidity_and_volume',
+] as const;
+
+/**
+ * Whether the current reading's figures may be printed, sorted or filtered on
+ * (2026-09-25). A reading HEY does not believe keeps its price and volume —
+ * facts the provider reported — but not the liquidity and valuation it
+ * contradicted.
+ */
+export function marketFiguresBelievable(reason: string | null | undefined): boolean {
+  return reason !== IMPLAUSIBLE_READING_REASON;
+}
+
+/** The reason a reading HEY does not believe carries (`liquidityImplausible`). */
+export const IMPLAUSIBLE_READING_REASON = 'readings_implausible' as const;

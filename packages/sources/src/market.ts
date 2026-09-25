@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 /**
  * Normalized market context (PRD V4 section 29).
  *
@@ -94,3 +96,29 @@ export function toNumber(value: string | number | null | undefined): number | un
   const parsed = typeof value === 'number' ? value : Number(value);
   return Number.isFinite(parsed) ? parsed : undefined;
 }
+
+/**
+ * The largest price move, in percent, HEY can store (2026-09-25): the
+ * `price_change_*_pct` columns are `numeric(12,4)`, so anything at or beyond
+ * 1e8 overflows. A provider reported a 24 h move of that size on a pool that
+ * went from nothing to something, and the insert failed the whole
+ * `REFRESH_MARKET_BATCH` — every other token in the batch lost its reading
+ * with it.
+ */
+export const PRICE_CHANGE_PCT_LIMIT = 1e8;
+
+/**
+ * A provider's price move in percent, or null when HEY cannot hold it: not a
+ * finite number, or too large for the column once rounded to its four
+ * decimals. Unknown rather than clipped — a clamped "99,999,999%" would be a
+ * figure HEY invented.
+ */
+export const priceChangePct = z
+  .union([z.string(), z.number()])
+  .nullish()
+  .transform((value): number | null | undefined => {
+    if (value === null || value === undefined) return value;
+    const parsed = toNumber(value);
+    if (parsed === undefined) return null;
+    return Math.abs(Math.round(parsed * 10_000) / 10_000) < PRICE_CHANGE_PCT_LIMIT ? parsed : null;
+  });

@@ -241,6 +241,15 @@ export function isFullyDiluted(valueUsd: number | null | undefined, fdvUsd: numb
   return valueUsd !== null && valueUsd !== undefined && fdvUsd !== null && fdvUsd !== undefined && fdvUsd === valueUsd;
 }
 
+/**
+ * The same name, from a kind a query or an API already decided (2026-09-25).
+ * Charts and tooltips receive the kind rather than both figures; an unknown
+ * kind is "Valuation", which claims neither measure.
+ */
+export function valuationKindLabel(kind: 'marketCap' | 'fdv' | null | undefined): string {
+  return kind === 'fdv' ? 'Fully diluted valuation' : kind === 'marketCap' ? 'Market cap' : 'Valuation';
+}
+
 /** The name a valuation is printed under. */
 export function valuationLabel(valueUsd: number | null | undefined, fdvUsd: number | null | undefined, short = false): string {
   return isFullyDiluted(valueUsd, fdvUsd) ? (short ? 'FDV' : 'Fully diluted valuation') : 'Market cap';

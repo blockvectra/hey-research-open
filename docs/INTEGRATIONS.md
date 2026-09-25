@@ -156,6 +156,7 @@ call, same validation, HEY's own tables only.
 {
   "status": "active",                 // active | stale | dormant | unknown
   "hey_status_label": "Shipping",     // print this, not your own word for it
+  "token_verification": "VERIFIED",   // VERIFIED | UNVERIFIED | MISMATCH (2026-09-25)
   "last_activity_at": "2026-09-19T10:00:00.000Z",
   "repo_url": "https://github.com/…",
   "latest_release": { "version": "v1.2.0", "url": "…", "timestamp": "…" },
@@ -163,7 +164,7 @@ call, same validation, HEY's own tables only.
 }
 ```
 
-Four things worth knowing before you render it:
+Five things worth knowing before you render it:
 
 - **Print `hey_status_label`, not a word of your own.** Left to themselves, integrators turn a quiet
   project into "dead". HEY's vocabulary is deliberate and the labels travel with the enum.
@@ -172,6 +173,9 @@ Four things worth knowing before you render it:
   Use `last_code_activity`, and treat `commits` as a floor when `commits_partial` is true.
 - **Carry `hey_project_url`.** Someone who sees a HEY line should be one tap from the evidence behind
   it. This is the one condition of use.
+- **Check `token_verification` (2026-09-25).** The activity belongs to the project; the verification
+  belongs to this address. On `MISMATCH` the project's own site names a different contract — do not
+  print the activity as this token's.
 
 ## The card call: `GET /api/v1/scan?chain=4663&token=0x…` (2026-09-18)
 
@@ -188,6 +192,7 @@ figures. Built for the Chit bot's line above its buy and sell buttons —
   "status_label": "Shipping",           // HEY's own words for it — print these
   "status_help": "Shipped something meaningful in the last 7 days.",
   "verified_builder": true,
+  "token_verification": "VERIFIED",     // MISMATCH: the project's own site names another contract (2026-09-25)
   "activity": { "commits_30d": 12, "releases_30d": 2, "ships_30d": 4, "last_ship": "2026-09-16", "last_ship_title": "v0.9.1" },
   "project": { "slug": "darkroute", "name": "DarkRoute", "symbol": "dark" },
   "project_url": "https://heyresearch.xyz/project/darkroute",

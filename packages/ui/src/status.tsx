@@ -87,6 +87,21 @@ export const NO_BUILDER_SIGNAL = {
   help: 'No repository, changelog or feed for HEY to read building from. Trading is not building.',
 } as const;
 
+/**
+ * Whether a project reads "No builder signal yet" (2026-09-25): UNKNOWN,
+ * no source HEY can read building from, *and* no ship on record. A project
+ * whose page says "Last ship 1mo ago" has had a builder signal — a
+ * deployment, a release read from somewhere else — and the chip printed
+ * beside it contradicted the line under it.
+ */
+export function showsNoBuilderSignal(project: {
+  activityStatus: string;
+  hasBuilderSource?: boolean | undefined;
+  lastMeaningfulShipAt?: Date | string | null | undefined;
+}): boolean {
+  return project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false && !project.lastMeaningfulShipAt;
+}
+
 export function ActivityChip({
   status,
   variant = 'text',
@@ -294,6 +309,8 @@ const TOKEN_MARKET_REASON_HELP: Readonly<Record<string, string>> = {
     'HEY’s readings disagree: the latest follows a nearly empty pool, while another pool held liquidity within the week. HEY claims neither a live market nor a drain until a fresh reading settles it.',
   launch_pool_volume_unknown:
     'A launch pool still holding the token’s own supply, and no reading reports its volume. Whether it trades is unknown, not zero.',
+  readings_implausible:
+    'The latest reading reports a large pool, but almost nothing traded in it and HEY’s own chain index does not find that liquidity. HEY does not show a figure it cannot believe, and claims neither a live market nor a drain.',
 };
 
 export function tokenMarketHelp(status: TokenMarketStatusValue, reason?: string | null): string {

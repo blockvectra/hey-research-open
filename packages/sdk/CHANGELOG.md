@@ -8,6 +8,16 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ### Added
 
+- What a figure is (2026-09-25), additive: `HeyLiquidityKind` and
+  `HeyProject.liquidity.kind` (`market` or `launch_inventory`), with
+  `liquidityKind` on the dossier's `market` and `tokenMarket`, on
+  `HeyTokenMarket.current` and on `HeyCompare` rows;
+  `HeyProject.tokenVerification` (moved up from the dossier, same shape);
+  `tokenLock.nextUnlockAt` and `nextUnlockPct`;
+  `HeyTokenLookupProject.tokenVerification` and `HeyScanCard.token_verification`;
+  `valuationKind` on `HeyThisWeekProject` and `HeyMarketMoves` items;
+  `marketCapKind` on timeline `marketAround` days; `marketCapCloseKind` on
+  market days.
 - API parity (2026-09-25), all optional: `HeyProject.tokenMarket`
   (`{ status, reason? }`, the card's market state); on `HeyTokenMarket`,
   `marketStatusReason`, `contract` (deployer, `deployerShared`, `creationTx`,

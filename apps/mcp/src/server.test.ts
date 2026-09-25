@@ -5,7 +5,7 @@ import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { HeyClient } from '@hey-research/sdk';
-import { createHeyMcpServer } from './server';
+import { createHeyMcpServer, marketIntegrityFromEnv, type HeyMcpOptions } from './server';
 
 /**
  * The tools as an assistant sees them (2026-09-05).
@@ -39,8 +39,8 @@ const projectsPage = {
   disclaimer: 'Public, source-backed activity HEY recorded. … not investment advice.',
 };
 
-async function connect(fetchImpl: (input: string, init?: RequestInit) => Promise<Response>) {
-  const server = createHeyMcpServer(new HeyClient({ baseUrl: 'https://hey.test', fetchImpl }), () => NOW);
+async function connect(fetchImpl: (input: string, init?: RequestInit) => Promise<Response>, options: HeyMcpOptions = {}) {
+  const server = createHeyMcpServer(new HeyClient({ baseUrl: 'https://hey.test', fetchImpl }), () => NOW, options);
   const client = new Client({ name: 'test', version: '0' });
   const [clientTransport, serverTransport] = InMemoryTransport.createLinkedPair();
   await Promise.all([server.connect(serverTransport), client.connect(clientTransport)]);
@@ -66,8 +66,9 @@ describe('the HEY MCP server', () => {
     const client = await connect(fetchOk(projectsPage));
     const { tools } = await client.listTools();
 
-    expect(tools.map((tool) => tool.name).sort()).toEqual(['accelerating_builders', 'ask_hey', 'builder_comebacks', 'chain_activity', 'compare_projects', 'contract_changes', 'events_before_market_change', 'get_project', 'get_token_market', 'list_bounties', 'list_builders', 'list_projects', 'list_ships', 'list_signals', 'lookup_token', 'market_integrity', 'project_intelligence', 'project_timeline', 'search_projects', 'shipping_in_silence', 'this_week', 'upcoming_unlocks', 'weekly_report']);
+    expect(tools.map((tool) => tool.name).sort()).toEqual(['accelerating_builders', 'ask_hey', 'builder_comebacks', 'chain_activity', 'compare_projects', 'contract_changes', 'events_before_market_change', 'get_project', 'get_token_market', 'list_bounties', 'list_builders', 'list_projects', 'list_ships', 'list_signals', 'lookup_token', 'project_intelligence', 'project_timeline', 'search_projects', 'shipping_in_silence', 'this_week', 'upcoming_unlocks', 'weekly_report']);
 
+    expect(tools).toHaveLength(22);
     // No tool promises a valuation, a recommendation or a price ranking.
     const descriptions = tools.map((tool) => tool.description ?? '').join(' ').toLowerCase();
     for (const forbidden of ['buy', 'invest', 'undervalued', 'price target', 'predict']) {
@@ -76,6 +77,23 @@ describe('the HEY MCP server', () => {
     // And the one that could be misread says outright that it is not a ranking.
     const list = tools.find((tool) => tool.name === 'list_projects');
     expect(list?.description).toMatch(/not a ranking by price/i);
+  });
+
+  it('offers market_integrity only where the site publishes it, by the same flag', async () => {
+    // The route answers 404 until HEY_MARKET_INTEGRITY is `public`; a tool whose every call 404s is not offered.
+    const hidden = await connect(fetchOk(projectsPage));
+    expect((await hidden.listTools()).tools.map((tool) => tool.name)).not.toContain('market_integrity');
+
+    const shown = await connect(fetchOk(projectsPage), { marketIntegrity: true });
+    const names = (await shown.listTools()).tools.map((tool) => tool.name);
+    expect(names).toContain('market_integrity');
+    expect(names).toHaveLength(23);
+
+    expect(marketIntegrityFromEnv(undefined)).toBe(false);
+    expect(marketIntegrityFromEnv('internal')).toBe(false);
+    expect(marketIntegrityFromEnv('terminal')).toBe(false);
+    expect(marketIntegrityFromEnv('public')).toBe(true);
+    expect(marketIntegrityFromEnv(' PUBLIC ')).toBe(true);
   });
 
   it('tells the model, up front, what HEY does not hold', async () => {

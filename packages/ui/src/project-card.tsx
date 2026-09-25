@@ -12,7 +12,7 @@ import {
   isFullyDiluted,
 } from './format';
 import { ProjectLogo } from './project-logo';
-import { ActivityChip, type ActivityStatusValue, StillBuildingBadge } from './status';
+import { ActivityChip, type ActivityStatusValue, showsNoBuilderSignal, StillBuildingBadge } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
 import { TokenLockChip, type TokenLockFacts } from './token-lock';
 
@@ -163,6 +163,8 @@ export function ProjectCard({
     project.tokenMarketStatus === 'MARKET_ABANDONED' ||
     (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') ||
     project.tokenMarketReason === 'launch_pool_volume_unknown';
+  // Readings that disagree, or one HEY does not believe (2026-09-25): no figure, and no claim of a dead market either.
+  const unsettledMarket = UNSETTLED_MARKET_REASONS.has(project.tokenMarketReason ?? '');
   const hasToken = Boolean(project.token);
   // What HEY does know about a token it cannot read building from (2026-09-13): trades and on-chain events, as context under the cap.
   const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
@@ -233,7 +235,7 @@ export function ProjectCard({
              * printed twice on those cards).
              */}
             <span className="flex shrink-0 flex-col items-end gap-1">
-              <ActivityChip status={project.activityStatus} variant="surface" noBuilderSource={project.hasBuilderSource === false} />
+              <ActivityChip status={project.activityStatus} variant="surface" noBuilderSource={showsNoBuilderSignal(project)} />
               {!ship && hasToken && project.lastMeaningfulShipAt ? (
                 <time
                   dateTime={project.lastMeaningfulShipAt.toISOString()}
@@ -356,6 +358,10 @@ export function ProjectCard({
             {deadMarket ? (
               <span className="text-hey-muted" title="The tracked token has no active market. Context only; it never affects activity status.">
                 No active market
+              </span>
+            ) : unsettledMarket ? (
+              <span className="text-hey-muted" title="HEY’s market readings for this token do not agree, so no figure is shown. Context only; it never affects activity status.">
+                Unconfirmed
               </span>
             ) : marketCap ? (
               <span
@@ -505,6 +511,9 @@ const STAGE_WORDS: Record<NonNullable<ProjectCardData['launchStage']>, string> =
  * liquidity figure says which stage the token is in instead of printing a
  * dash; no reading at all names the stage or says the market is unread.
  */
+/** Reasons under which HEY claims neither a live market nor a dead one (`@hey/scoring` DEAD_MARKET_REASONS). */
+const UNSETTLED_MARKET_REASONS: ReadonlySet<string> = new Set(['pool_readings_disagree', 'readings_implausible']);
+
 export function marketLensLine(project: ProjectCardData): string {
   const parts: string[] = [];
   const liquidity = formatUsdCompact(project.liquidityUsd);
@@ -513,6 +522,10 @@ export function marketLensLine(project: ProjectCardData): string {
     parts.push('Launch pool, no trades yet');
   } else if (project.tokenMarketReason === 'launch_pool_volume_unknown') {
     parts.push('Launch pool, trading unknown');
+  } else if (project.tokenMarketReason === 'readings_implausible') {
+    parts.push('Reported liquidity not confirmed');
+  } else if (project.tokenMarketReason === 'pool_readings_disagree') {
+    parts.push('Pool readings disagree');
   } else {
     if (liquidity) parts.push(`Liquidity ${liquidity}`);
     if (volume) parts.push(`24 h volume ${volume}`);

@@ -22,6 +22,14 @@ export type TokenLockFacts = {
   supplyPct?: number;
   /** When the last of it opens, `YYYY-MM-DD`. Absent when only a pair is locked. */
   until?: string;
+  /**
+   * When the next part of it opens, `YYYY-MM-DD`, and the share of total
+   * supply that opens that day (2026-09-25). Without them `until` read as
+   * "all of it until then": 16.49% "until 25 Sep 2027" where 8.57% opened
+   * within the week.
+   */
+  nextUnlockAt?: string;
+  nextUnlockPct?: number;
   /** Whether a pair holding this token is locked too. */
   pairLocked: boolean;
 };
@@ -49,13 +57,33 @@ export function lockUntilLabel(until: string): string {
   return `${day} ${name} ${year}`;
 }
 
+/**
+ * When the locked supply opens, in words (2026-09-25).
+ *
+ * The next date first, with its share, because that is the supply that can
+ * move soonest; the last date after it. One date only when everything opens
+ * on the same day — then "until" is true. Empty when only a pair is locked.
+ */
+export function tokenLockSchedule(lock: TokenLockFacts): string {
+  if (!lock.until) return '';
+  const next = lock.nextUnlockAt;
+  if (!next || next >= lock.until) return `until ${lockUntilLabel(lock.until)}`;
+  const nextShare = lock.nextUnlockPct === undefined ? 'the next part' : `the next ${formatSharePct(lock.nextUnlockPct)}%`;
+  return `${nextShare} unlocks on ${lockUntilLabel(next)}, and the last on ${lockUntilLabel(lock.until)}`;
+}
+
 /** The full sentence, used as the chip's title and as the project page's line. */
 export function tokenLockHelp(lock: TokenLockFacts): string {
   /* "Pair", never "liquidity": the card's own e2e guard forbids that word, and pair is the more exact one anyway. */
   if (!lock.until) return 'A pair holding this token is locked at HoodLock. Context HEY read from the locker, not a verdict.';
   const share = lock.supplyPct === undefined ? 'Token supply is' : `${formatSharePct(lock.supplyPct)}% of the token supply is`;
   const pair = lock.pairLocked ? ' A pair holding this token is locked too.' : '';
-  return `${share} held in a HoodLock lock until ${lockUntilLabel(lock.until)}. Context HEY read from the locker, not a verdict.${pair}`;
+  const schedule = tokenLockSchedule(lock);
+  // "held … until" only when it is all one date; otherwise the schedule is its own clause.
+  const sentence = schedule.startsWith('until ')
+    ? `${share} held in a HoodLock lock ${schedule}.`
+    : `${share} locked at HoodLock; ${schedule}.`;
+  return `${sentence} Context HEY read from the locker, not a verdict.${pair}`;
 }
 
 /**

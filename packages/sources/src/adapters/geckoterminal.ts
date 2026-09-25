@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireData, type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { pickDeepestLiquidity, sumAcrossPools, toNumber, type MarketContext } from '../market';
+import { pickDeepestLiquidity, priceChangePct, sumAcrossPools, toNumber, type MarketContext } from '../market';
 
 /**
  * GeckoTerminal — secondary/fallback market source (PRD V4 sections 20.1, 21).
@@ -24,7 +24,7 @@ const poolSchema = z.object({
     market_cap_usd: numericish,
     volume_usd: z.object({ h24: numericish }).nullish(),
     transactions: z.object({ h24: z.object({ buys: numericish, sells: numericish }).nullish() }).nullish(),
-    price_change_percentage: z.object({ h1: numericish, h6: numericish, h24: numericish }).nullish(),
+    price_change_percentage: z.object({ h1: priceChangePct, h6: priceChangePct, h24: priceChangePct }).nullish(),
     pool_created_at: z.string().nullish(),
   }),
   /** The DEX the pool belongs to, when the listing names it, and which token is the base. */

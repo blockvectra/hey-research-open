@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { requireData, type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { pickDeepestLiquidity, sumAcrossPools, toNumber, type MarketContext } from '../market';
+import { pickDeepestLiquidity, priceChangePct, sumAcrossPools, toNumber, type MarketContext } from '../market';
 
 /**
  * DEX Screener — primary market-context source (PRD V4 sections 20.1, 21).
@@ -29,7 +29,7 @@ const pairSchema = z.object({
   liquidity: z.object({ usd: numericish }).nullish(),
   volume: z.object({ h24: numericish }).nullish(),
   txns: z.object({ h24: z.object({ buys: numericish, sells: numericish }).nullish() }).nullish(),
-  priceChange: z.object({ h1: numericish, h6: numericish, h24: numericish }).nullish(),
+  priceChange: z.object({ h1: priceChangePct, h6: priceChangePct, h24: priceChangePct }).nullish(),
   fdv: numericish,
   marketCap: numericish,
   pairCreatedAt: z.number().nullish(),

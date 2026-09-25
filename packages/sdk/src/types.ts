@@ -26,6 +26,13 @@ export type HeyActivityStatus = 'SHIPPING' | 'ACTIVE' | 'QUIET' | 'DORMANT' | 'R
 /** Canonical token identity: `(chainId, contractAddress)`, never a ticker alone. */
 export type HeyToken = { chainId: number; contractAddress: string };
 
+/**
+ * What a liquidity figure is (2026-09-25): `market` is depth a trader could
+ * use; `launch_inventory` is a launch pool's own supply at its last price,
+ * which the project page prints as "Not a market reading".
+ */
+export type HeyLiquidityKind = 'market' | 'launch_inventory';
+
 export type HeyProject = {
   slug: string;
   name: string;
@@ -52,7 +59,12 @@ export type HeyProject = {
    * found none, which is the ordinary case and is not a finding about the
    * project. Context, never a score or a safety verdict.
    */
-  tokenLock?: { supplyPct?: number; until?: string; pairLocked: boolean };
+  /**
+   * `until` is when the *last* of the locked supply opens; `nextUnlockAt` is
+   * the nearest unlock date and `nextUnlockPct` the share of total supply
+   * that opens that day (2026-09-25).
+   */
+  tokenLock?: { supplyPct?: number; until?: string; nextUnlockAt?: string; nextUnlockPct?: number; pairLocked: boolean };
   priceChange24hPct?: number;
   /** Whether HEY holds a repository, org, changelog or feed to read building from; false explains an UNKNOWN status. */
   hasBuilderSource?: boolean;
@@ -65,8 +77,14 @@ export type HeyProject = {
   /** Market context only, with the provider that reported it and when. Context, never a ranking input. */
   /** `kind: 'fdv'` when the provider reported no circulating figure and the fully diluted valuation stands in. */
   marketCap?: { usd: number; source: string; observedAt?: string; kind?: 'marketCap' | 'fdv' };
-  /** The same reading's liquidity and 24 h volume. Absent means that source reports no such figure — never zero. */
-  liquidity?: { usd: number; source?: string; observedAt?: string };
+  /**
+   * The liquidity the project page prints. Absent means HEY holds no such
+   * figure — never zero. `kind: 'launch_inventory'` is a launch pool's own
+   * supply, left out of `minLiquidity` and `sort: 'liquidity'` (2026-09-25).
+   * When the current reading carries no liquidity this is the token's last
+   * recorded depth, dated by its own `observedAt` and with no `source`.
+   */
+  liquidity?: { usd: number; source?: string; observedAt?: string; kind: HeyLiquidityKind };
   volume24h?: { usd: number; source?: string; observedAt?: string };
   /** Where the launch stands: on its curve, graduated, or trading in a DEX pool. */
   launchStage?: 'CURVE' | 'GRADUATED' | 'DEX';
@@ -79,6 +97,12 @@ export type HeyProject = {
    * never about the team.
    */
   tokenMarket?: { status: string; reason?: string };
+  /**
+   * Whether the project itself names the tracked contract (on every project
+   * since 2026-09-25): `MISMATCH` means its own site names a different one.
+   * Absent for a project without a token.
+   */
+  tokenVerification?: { status: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH'; reason?: string; verifiedAt?: string };
   /** The project's page on HEY. */
   url: string;
 };
@@ -154,6 +178,8 @@ export type HeyProjectDetail = HeyProject & {
     marketCapUsd?: number;
     fdvUsd?: number;
     liquidityUsd?: number;
+    /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply (2026-09-25). */
+    liquidityKind?: HeyLiquidityKind;
     volume24hUsd?: number;
     priceUsd?: number;
     buys24h?: number;
@@ -175,8 +201,6 @@ export type HeyProjectDetail = HeyProject & {
     /** The algorithm version the figures were produced by. */
     scoringVersion: string;
   };
-  /** Whether the project itself ties the tracked contract to the project. */
-  tokenVerification?: { status: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH'; reason?: string; verifiedAt?: string };
   /** Events the token contract emitted, as HEY last read them from the chain. Context; never a ranking input. */
   onchainActivity?: {
     /**
@@ -208,6 +232,8 @@ export type HeyProjectDetail = HeyProject & {
     reason?: string;
     evaluatedAt?: string;
     liquidityUsd?: number;
+    /** What `liquidityUsd` is, by the same rule as `liquidity.kind` (2026-09-25). */
+    liquidityKind?: HeyLiquidityKind;
     volume24hUsd?: number;
     peakLiquidityUsd?: number;
     pairCreatedAt?: string;
@@ -259,6 +285,8 @@ export type HeyTokenMarket = {
     /** Fully diluted valuation from the same reading; equal to `marketCapUsd` when it stands in for one (2026-09-25). */
     fdvUsd?: number;
     liquidityUsd?: number;
+    /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply rather than market depth (2026-09-25). */
+    liquidityKind?: HeyLiquidityKind;
     volume24hUsd?: number;
     buys24h?: number;
     sells24h?: number;
@@ -276,7 +304,10 @@ export type HeyTokenMarket = {
     priceLowUsd?: number;
     liquidityCloseUsd?: number;
     volume24hUsd?: number;
+    /** The day's closing valuation; `marketCapCloseKind` says which measure (2026-09-25). */
     marketCapCloseUsd?: number;
+    /** `fdv` when the close equals price × total supply, `marketCap` when it is a circulating figure; absent when HEY does not know the supply. */
+    marketCapCloseKind?: 'marketCap' | 'fdv';
     source?: string;
     trades?: number;
     buys?: number;
@@ -359,6 +390,8 @@ export type HeyTokenLookupProject = {
   lastShipAt?: string;
   lastShip?: { title: string; publishedAt: string; sourceUrl?: string };
   deployedAt?: string;
+  /** Whether the project itself names this contract (2026-09-25). On `MISMATCH` its own site names a different one. */
+  tokenVerification: { status: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH'; reason?: string };
   badgeUrl: string;
 };
 
@@ -393,6 +426,8 @@ export type HeyScanCard =
       status_label: string;
       status_help: string;
       verified_builder: boolean;
+      /** Whether the project itself names this contract (2026-09-25). On `MISMATCH`, do not print the activity as this token's. */
+      token_verification: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';
       activity: {
         /** Absent when the project has no repository HEY reads — never a zero that reads as "nobody committed". */
         commits_30d?: number;
@@ -658,8 +693,10 @@ export type HeyThisWeekProject = {
   name: string;
   symbol?: string;
   activityStatus: string;
-  /** Market context only, and only when HEY has a fresh reading. */
+  /** Market context only, and only when HEY has a fresh reading of a live market. `valuationKind` says which measure it is (2026-09-25). */
   marketCapUsd?: number;
+  /** `fdv` where the fully diluted valuation stands in for a market cap; the site prints it as "Valuation". */
+  valuationKind?: 'marketCap' | 'fdv';
   url: string;
 };
 
@@ -958,6 +995,8 @@ export type HeyMarketMoves = {
     changePct: number;
     marketCapUsd: number;
     previousMarketCapUsd: number;
+    /** `fdv` when both closes are price × total supply: a fully diluted valuation, not a market cap (2026-09-25). */
+    valuationKind?: 'marketCap' | 'fdv';
     eventsBefore: { title: string; eventType: string; publishedAt: string; verification: string; source?: string }[];
   }[];
   method: string;
@@ -996,7 +1035,11 @@ export type HeyTimelineEntry = {
   verification?: string;
   countsAsBuilding: boolean;
   source?: string;
-  marketAround?: { before?: { day: string; marketCapUsd?: number; priceUsd?: number }; after?: { day: string; marketCapUsd?: number; priceUsd?: number } };
+  /** `marketCapKind` is `fdv` when the valuation is price × total supply (2026-09-25); no valuation for a market HEY records as gone. */
+  marketAround?: {
+    before?: { day: string; marketCapUsd?: number; marketCapKind?: 'marketCap' | 'fdv'; priceUsd?: number };
+    after?: { day: string; marketCapUsd?: number; marketCapKind?: 'marketCap' | 'fdv'; priceUsd?: number };
+  };
 };
 
 export type HeyTimeline = { project: { slug: string; name: string; url: string }; lens: string; items: HeyTimelineEntry[]; disclaimer: string };
@@ -1015,7 +1058,10 @@ export type HeyCompare = {
     marketCapUsd?: number;
     /** `fdv` when the figure is the fully diluted valuation standing in for a market cap. */
     valuationKind?: 'marketCap' | 'fdv';
+    /** The liquidity the project page prints: the current reading's, else the token's last recorded depth (2026-09-25). */
     liquidityUsd?: number;
+    /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply (2026-09-25). */
+    liquidityKind?: HeyLiquidityKind;
     velocity?: { state: string; current: number; previous: number | null };
     cadence?: { state: string; medianIntervalDays?: number };
     consistency?: { activeWeeks: number | null; windowWeeks: number };

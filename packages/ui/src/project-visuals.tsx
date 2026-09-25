@@ -73,6 +73,19 @@ export function BuilderActivityChart({
 }
 
 /**
+ * The measure a drawdown line is drawn in (2026-09-25). "Market
+ * capitalisation" was the title whatever the readings were, and on this chain
+ * they are nearly always fully diluted. Every day an FDV: say so; every day a
+ * market cap: say that; a mix, or days HEY cannot tell: "Valuation", which
+ * claims neither.
+ */
+export function drawdownMeasure(history: readonly { fullyDiluted?: boolean }[]): string {
+  if (history.length > 0 && history.every((point) => point.fullyDiluted === true)) return 'Fully diluted valuation';
+  if (history.length > 0 && history.every((point) => point.fullyDiluted === false)) return 'Market cap';
+  return 'Valuation';
+}
+
+/**
  * Build Through the Drawdown (UI/UX V2 section 33).
  *
  * Shown only for projects already meeting the Still Building criteria. It states
@@ -84,11 +97,13 @@ export function DrawdownChart({
   ships,
   className,
 }: {
-  history: readonly { observedAt: Date; marketCapUsd: number }[];
+  /** `fullyDiluted` marks a day whose valuation was an FDV (2026-09-25); the title names the measure the line is drawn in. */
+  history: readonly { observedAt: Date; marketCapUsd: number; fullyDiluted?: boolean }[];
   ships: readonly { publishedAt: Date; title: string }[];
   className?: string;
 }) {
   if (history.length < 2) return null;
+  const measure = drawdownMeasure(history);
 
   const width = 720;
   const height = 200;
@@ -123,7 +138,7 @@ export function DrawdownChart({
           viewBox={`0 0 ${width} ${height}`}
           className="h-auto w-full min-w-[420px]"
           role="img"
-          aria-label="Market capitalisation over time, with meaningful ships marked"
+          aria-label={`${measure} over time, with meaningful ships marked`}
         >
           <path d={path} fill="none" stroke="var(--color-hey-border-strong)" strokeWidth={2} />
 
@@ -145,7 +160,7 @@ export function DrawdownChart({
         </svg>
       </div>
       <figcaption className="mt-2 text-[13px] text-hey-secondary">
-        Market capitalisation over time. Each marker is a meaningful ship.
+        {measure} over time. Each marker is a meaningful ship.
       </figcaption>
     </figure>
   );

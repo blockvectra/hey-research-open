@@ -6,6 +6,17 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- `market_integrity` is offered only when the process is started with
+  `HEY_MARKET_INTEGRITY=public`, the site's own flag: until then its route
+  answers 404 (2026-09-25). Twenty-two tools by default.
+- A launch pool's own supply is printed as such, never as liquidity; an FDV
+  is named an FDV in `list_projects`, `compare_projects` (by the API's kind,
+  not by comparing figures), `this_week` and `events_before_market_change`;
+  `lookup_token` says when the address is `MISMATCH` or unverified; "no
+  builder signal yet" is not printed beside a recorded ship (2026-09-25).
+
 ### Added
 
 - API parity (2026-09-25): project lines say the token's market state in the

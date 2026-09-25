@@ -44,6 +44,7 @@ Any other MCP client: run `npx -y @hey-research/mcp` over stdio.
 |---|---|
 | `HEY_API_URL` | Another HEY to read, e.g. `http://localhost:3000` when developing. Default `https://heyresearch.xyz`. |
 | `HEY_API_KEY` | An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account). Lifts the anonymous rate limit; nothing is gated behind it. Sent as a bearer token, never logged. |
+| `HEY_MARKET_INTEGRITY` | Set to `public` only when the HEY you read publishes Market Integrity. The `market_integrity` tool is offered only then, because until that flag is `public` on the site its route answers 404. Unset, the server offers twenty-two tools. |
 
 ## The tools
 

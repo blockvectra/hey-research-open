@@ -44,6 +44,7 @@ export type {
   HeyLaunchStage,
   HeyMarketCoverage,
   HeyPage,
+  HeyLiquidityKind,
   HeyProject,
   HeyProjectDetail,
   HeyProjectIntelligence,

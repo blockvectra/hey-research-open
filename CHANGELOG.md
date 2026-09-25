@@ -16,6 +16,24 @@ record.
   earlier recounted among today's board, as `/builders` measures movement.
 - **`buildMomentum` is omitted for an UNKNOWN project with a score of 0.** That zero meant HEY found
   nothing it could read, not a measurement.
+- **`liquidity.kind`** (`market` | `launch_inventory`) wherever a liquidity figure is returned: the
+  list, the detail's `market` and `tokenMarket`, `/market` and `/intelligence` `current`, compare and
+  the MCP. A launch pool's own token inventory is not a market, so `minLiquidity`, `sort=liquidity`
+  and the coverage counts leave it out.
+- **A new market status reason, `readings_implausible`** (status `INSUFFICIENT_DATA`): a provider's
+  liquidity that its own volume and HEY's pool index cannot support. Its liquidity, valuation and
+  stored high are withheld; price and volume stay. `pool_readings_disagree` and
+  `readings_implausible` are not live markets.
+- **Valuations name their kind** on `/api/this-week`, market `days[]`, market-moves and the timeline;
+  a dead market's valuation is withheld there.
+- **`tokenLock.nextUnlockAt`** and **`tokenLock.nextUnlockPct`** beside `until` (which is the last
+  unlock).
+- **Token verification** (`VERIFIED` / `UNVERIFIED` / `MISMATCH`) on the list, the token lookup,
+  `/api/v1/scan` and `/api/v1/builder`.
+- **First and last indexed trade** are read over the whole daily index, not the answer's window.
+- **`kind=constructor`** and other inherited names are refused as signal kinds.
+- The MCP offers `market_integrity` only when the server runs with `HEY_MARKET_INTEGRITY=public`, as
+  the route is gated.
 - **Search** treats a ticker's `$` as a sigil (`$HEY` finds HEY), and a whole contract address is
   matched exactly and quickly.
 

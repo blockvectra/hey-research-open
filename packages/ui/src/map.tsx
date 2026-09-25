@@ -1,5 +1,5 @@
 import { cn } from './cn';
-import { formatRelativeTime, formatUsdCompact } from './format';
+import { formatRelativeTime, formatUsdCompact, valuationKindLabel } from './format';
 import { activityLabel, type ActivityStatusValue } from './status';
 
 /**
@@ -29,6 +29,8 @@ export type MapNodeData = {
   hbm?: number | null;
   stillBuilding?: boolean;
   marketCapUsd?: number | null;
+  /** Which measure `marketCapUsd` is (2026-09-25): an FDV is never called a market cap. */
+  valuationKind?: 'marketCap' | 'fdv' | null;
   lastShipAt?: Date | null;
 };
 
@@ -251,13 +253,14 @@ export function layoutMapNodes(
   return placed.map((node) => ({ ...node, labelled: labelled.has(node.slug) }));
 }
 
-const tooltip = (node: MapNodeData, now: Date): string => {
+/** The native tooltip of one node, exported so its words are tested (2026-09-25). */
+export const mapNodeTooltip = (node: MapNodeData, now: Date): string => {
   const lines = [
     `${node.name}${node.ticker ? ` (${node.ticker})` : ''}`,
     activityLabel(node.activityStatus),
   ];
   if (typeof node.hbm === 'number') lines.push(`Build momentum ${node.hbm}`);
-  if (node.marketCapUsd) lines.push(`Market cap ${formatUsdCompact(node.marketCapUsd)}`);
+  if (node.marketCapUsd) lines.push(`${valuationKindLabel(node.valuationKind)} ${formatUsdCompact(node.marketCapUsd)}`);
   if (node.lastShipAt) lines.push(`Last ship ${formatRelativeTime(node.lastShipAt, now)}`);
   if (node.stillBuilding) lines.push('Still Building');
   return lines.join('\n');
@@ -319,7 +322,7 @@ export function EcosystemMapChart({
 
       {placed.map((node) => (
         <a key={node.slug} href={`/project/${node.slug}`} aria-label={node.name}>
-          <title>{tooltip(node, now)}</title>
+          <title>{mapNodeTooltip(node, now)}</title>
           <circle
             cx={node.x}
             cy={node.y}

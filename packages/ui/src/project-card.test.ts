@@ -112,6 +112,8 @@ describe('ProjectCard — fallbacks', () => {
     // A source HEY can read keeps the plain word; a known status never changes.
     expect(render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: true })).toContain('Activity unknown');
     expect(render({ ...tokenBacked, activityStatus: 'SHIPPING', hasBuilderSource: false })).not.toContain('No builder signal');
+    // Not beside a recorded ship (2026-09-25): a card that says "Last ship 1mo ago" has had a signal.
+    expect(render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false, lastMeaningfulShipAt: new Date('2026-08-16T00:00:00Z') })).not.toContain('No builder signal');
   });
 
   it('prints what it knows under an UNKNOWN token card: trades and on-chain events, and nothing when it knows neither', () => {
@@ -139,6 +141,17 @@ describe('ProjectCard — fallbacks', () => {
     expect(formatPercentChange(-12.04)).toBe('−12.0%');
     expect(formatPercentChange(1234.5)).toBe('+1,235%');
     expect(formatPercentChange(undefined)).toBeUndefined();
+  });
+
+  it('prints no figure and no dead-market claim for readings HEY does not settle (2026-09-25)', () => {
+    const implausible = { ...tokenBacked, tokenMarketStatus: 'INSUFFICIENT_DATA', tokenMarketReason: 'readings_implausible', volume24hUsd: 53 } as ProjectCardData;
+    expect(marketLensLine(implausible)).toBe('Reported liquidity not confirmed');
+    const html = render(implausible);
+    expect(html).toContain('Unconfirmed');
+    expect(html).not.toContain('No active market');
+    const disagree = { ...tokenBacked, tokenMarketStatus: 'INSUFFICIENT_DATA', tokenMarketReason: 'pool_readings_disagree' } as ProjectCardData;
+    expect(marketLensLine(disagree)).toBe('Pool readings disagree');
+    expect(render(disagree)).toContain('Unconfirmed');
   });
 });
 

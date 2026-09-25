@@ -124,7 +124,7 @@ The catalogue, with the same filters and order the browse pages use.
 | `narrative` | a narrative slug | — |
 | `has` | any of `token`, `x`, `marketCap`, `launchpad`, `liveMarket` (no token, or a token whose market is not gone), `verifiedToken` (the project itself ties the contract to the project), `trading` (the token traded in the last day), `github` (a public repository HEY reads commits from), comma-separated; **all** must hold | — |
 | `stage` | `curve`, `graduated`, `dex` — where the launch stands: still on its bonding curve, graduated off it, or trading in a DEX pool | — |
-| `minLiquidity` | a positive dollar figure; only tokens whose card reading shows at least this much liquidity. Unknown liquidity is excluded, never read as zero | — |
+| `minLiquidity` | a positive dollar figure; only tokens whose card reading shows at least this much market liquidity. Unknown liquidity is excluded, never read as zero, and so is a launch pool's own supply (`liquidity.kind: "launch_inventory"`, 2026-09-25) | — |
 | `maxMarketCap` | a positive dollar figure; only tokens whose card reading shows a market cap at or under it | — |
 | `minMarketCap` | a positive dollar figure; only tokens whose card reading shows a market cap at or above it (with `maxMarketCap`, a band) | — |
 | `launchpad` | `pons`, `virtuals`, `hoodfun`, `clanker`, `pairfund`, `bankr`, `hooddev`, `poolstrade`, `easya-kickstart`, `hoodit`, … | — |
@@ -213,6 +213,32 @@ withheld. The dossier's `tokenMarket` is the same object with more in it.
 how the *card* says provenance is missing; the API omits the field instead, so nothing reads
 them as the names of launchpads.
 
+### What a figure is, not just what it is worth (2026-09-25)
+
+Additive: no field was removed or renamed, and every new one is absent where HEY does not know.
+
+- **`liquidity.kind`** — `market`, or `launch_inventory` for a launch pool's own supply at its
+  last price (any `launch_pool_*` reason), which the project page prints as "Not a market
+  reading". `minLiquidity`, `sort=liquidity` and `catalogue.marketCoverage.liquidity` leave launch
+  inventory out. The same kind is on the dossier's `market.liquidityKind` and
+  `tokenMarket.liquidityKind`, the market and intelligence APIs' `current.liquidityKind`, and
+  compare's `liquidityKind`.
+- **`liquidity` is the figure the page prints.** When the current reading carries no liquidity
+  — a reading decoded from on-chain trades has none — it is the token's last recorded depth, with
+  its own `observedAt` and no `source`. It used to be absent while the page showed a figure.
+- **Provenance on every market figure.** `liquidity`, `volume24h` and `trades24h` carry the
+  reading's `source` and `observedAt` whether or not the reading has a valuation; they were keyed
+  off the market cap and went out bare without one.
+- **`tokenVerification`** (`{ status, reason? }`) on every listed project with a token, not only
+  the dossier: `MISMATCH` means the project's own site names a different contract.
+- **`tokenLock.nextUnlockAt` and `tokenLock.nextUnlockPct`** — the nearest unlock date and the
+  share of total supply that opens that UTC day. `until` is unchanged and is when the *last* of
+  the locked supply opens; it was being read as "all of it until then".
+- **FDV is never called a market cap.** `/api/this-week` items carry `valuationKind` beside
+  `marketCapUsd` (and no valuation for a dead market); market moves carry `valuationKind`; the
+  timeline's `marketAround` days carry `marketCapKind` (and no valuation for a dead market); the
+  market API's `days[]` carry `marketCapCloseKind`.
+
 ## `GET /api/projects/{slug}`
 
 One project in full: everything in the listing, plus the long description, every registered
@@ -286,6 +312,7 @@ GET /api/token/4663/0xa0000000000000000000000000000000000000a1
     "lastShipAt": "2026-09-14T15:54:25.322Z",
     "lastShip": { "title": "Agent SDK v0.4", "publishedAt": "…", "sourceUrl": "…" },
     "deployedAt": "2026-06-02T11:20:41Z",
+    "tokenVerification": { "status": "VERIFIED" },
     "badgeUrl": "https://heyresearch.xyz/badge/agentos.svg"
   },
   "scanUrl": "https://heyresearch.xyz/scan?address=0x…",
@@ -313,6 +340,10 @@ refuses to say. Use the strings you are given.
 **`shipsLast30Days` counts what the project's own page counts**, over the window the field names.
 A number that contradicts the page it links to is worse than no number.
 
+**`tokenVerification` says whose contract this is (2026-09-25).** The activity is the project's;
+the verification is this address's. `MISMATCH` means the project's own site names a different
+contract — print the activity as the project's, never as this token's.
+
 **There is no risk field, no score and no verdict**, here or anywhere. HEY answers whether anyone
 is building; it says nothing about what a token might do next. An integration that wants a risk
 reading should put one from a tool that does that work beside this line — HEY is built to sit
@@ -333,7 +364,9 @@ hour, is never cached, and spends a budget the scheduled pipeline needs.
 The by-contract lookup above in the shape a trading bot's card wants: `found`, `status` (HEY's six
 states, lower-cased) with `status_label` and `status_help` in HEY's own words, `verified_builder`,
 `activity` (`commits_30d` — absent when no repository is read, and a floor when `commits_30d_partial: true` says a commits page was cut inside the window; `releases_30d`, `ships_30d`,
-`last_ship`), `project_url`, `logo_url`, `badge_url`, a `cta` that points at the project page, and
+`last_ship`), `token_verification` (`VERIFIED`, `UNVERIFIED` or `MISMATCH`, 2026-09-25: on
+`MISMATCH` the project's own site names another contract, so do not print the activity as this
+token's), `project_url`, `logo_url`, `badge_url`, a `cta` that points at the project page, and
 the disclaimer. `found: false` is a 200 for an unpublished token and for a chain HEY does not index
 (`reason: "chain"`); a malformed `token` is a 400. `chain` defaults to 4663. Same limits and cache as
 `/api/token`; a database read only. Documented for bots in [INTEGRATIONS.md](INTEGRATIONS.md).
@@ -499,11 +532,14 @@ One token's market in depth, from HEY's own daily index. `days` (1–400, defaul
 the same reading the card shows (price, market cap, liquidity, 24 h volume, `buys24h`/`sells24h`,
 `priceChange24hPct`, `venue`, `pairAddress`, provider, observed time). `days[]` is one row per UTC
 day: `priceOpenUsd`/`priceCloseUsd`/`priceHighUsd`/`priceLowUsd`, `liquidityCloseUsd`,
-`volume24hUsd`, `marketCapCloseUsd` and the `source` that won the day, rolled up from HEY's
-readings; and, where Bitquery decoded them, `trades`, `buys`, `sells`, `buyVolumeUsd`,
+`volume24hUsd`, `marketCapCloseUsd` (the closing reading's valuation; `marketCapCloseKind` is
+`fdv` when it equals price × total supply and `marketCap` when it is a circulating figure, absent
+when HEY does not know the supply, and the close is withheld when it implies more than twice the
+supply — 2026-09-25) and the `source` that won the day, rolled up from HEY's readings; and, where Bitquery decoded them, `trades`, `buys`, `sells`, `buyVolumeUsd`,
 `sellVolumeUsd`, `tradeCloseUsd`, `transfers` (`tradesSource: "bitquery"`). `lifecycle` carries
 when HEY recorded the launch, when the pool was created, the launch stage and since when, the
-first and last indexed trade day, the highest liquidity HEY saw and how far below it liquidity
+first and last indexed trade day (over the whole daily index HEY keeps, not the `days`
+window — 2026-09-25), the highest liquidity HEY saw and how far below it liquidity
 sits (`liquidityBelowPeakPct`), and the 7- and 30-day price moves from HEY's own closes.
 `checks[]` is what HEY checked on the contract — on chain, upgradeable proxy, deployer (and how
 many other projects' tokens it deployed), whether the project's own sources name the contract,
@@ -516,7 +552,13 @@ accounts. A project without a token is `404`.
 Added 2026-09-25, all optional and absent when HEY holds nothing:
 
 - `marketStatusReason` — the reason code behind `marketStatus` (`launch_pool_no_trades`,
-  `no_volume_24h`, …).
+  `no_volume_24h`, …). The market is not live when the status is `NO_LIQUIDITY`,
+  `LIQUIDITY_REMOVED` or `MARKET_ABANDONED`, or the reason is `launch_pool_no_trades`,
+  `launch_pool_volume_unknown`, `pool_readings_disagree` or `readings_implausible` whatever the
+  status beside it. For those HEY sends no valuation. `readings_implausible` (2026-09-25)
+  means the reading claims a large pool that almost nothing traded in and that HEY's own chain
+  index does not find; its liquidity and highest liquidity are withheld too, here, in the list and
+  detail endpoints, and from `sort=liquidity`, `minLiquidity` and the market-cap filters.
 - `contract` — `deployer`, `deployerShared` (that deployer launched other projects HEY tracks: a
   launch service, not one team), `creationTx`, `createdAt`. A fact about the contract, never a label
   on a person.
@@ -635,7 +677,7 @@ price, and none names a winner.
 | `GET /api/chain/unlocks?days=30` | HoodLock's own schedule: locks still holding that unlock within `days` (1–365), each `precision: SCHEDULED` with a `proof` link |
 | `GET /api/chain/build-market` | Build Momentum and market-attention percentile for researched projects, in slug order — a map, not a ranking |
 | `GET /api/projects/{slug}/timeline?lens=` | every kind of evidence on one axis with `precision` (EXACT, DATE, WEEK, OBSERVED, SCHEDULED), `recordedAt`, `discoveryLagHours`, `countsAsBuilding`, `source` and `marketAround` (context, not cause). Lenses: everything, build, code, onchain, market, locks |
-| `GET /api/projects/{slug}/market-moves?days=90&min=25` | day-on-day moves of at least `min`% in HEY's recorded market-cap close (consecutive days only), each with the corroborated building events published in the 7 days up to that close — a sequence, never a cause; `daysRead` says how much index there was |
+| `GET /api/projects/{slug}/market-moves?days=90&min=25` | day-on-day moves of at least `min`% in HEY's recorded valuation close (consecutive days only; `valuationKind` says `fdv` or `marketCap` where HEY knows the supply; nothing for a market HEY records as gone), each with the corroborated building events published in the 7 days up to that close — a sequence, never a cause; `daysRead` says how much index there was |
 | `GET /api/compare?slugs=a,b` | two to four projects side by side with the project page's gates; `missing` names slugs that are not published; `400` for fewer than two |
 
 ## `GET /api/chain` (2026-09-13)

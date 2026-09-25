@@ -103,6 +103,24 @@ describe('projectLine', () => {
     expect(tokenMarketWords('SOMETHING_NEW')).toBe('something new');
   });
 
+  it('names a launch pool’s own supply for what it is, and dates a figure with no provider (2026-09-25)', () => {
+    const inventory = projectLine(project({ liquidity: { usd: 42_000_000, source: 'dexscreener', kind: 'launch_inventory' } }), NOW);
+    expect(inventory).toContain('of its own supply in the launch pool — not a market reading (dexscreener)');
+    expect(inventory).not.toMatch(/\$42\.0M liquidity/);
+    expect(projectLine(project({ liquidity: { usd: 9_000, source: 'onchain', kind: 'market' } }), NOW)).toContain('$9.0K liquidity (onchain)');
+    // The token's last recorded depth has no provider: it is dated, never attributed to one.
+    const earlier = projectLine(project({ liquidity: { usd: 467, observedAt: '2026-09-03T09:00:00Z', kind: 'market' } }), NOW);
+    expect(earlier).toContain('liquidity (last recorded 2 days ago)');
+    expect(earlier).not.toContain('undefined');
+  });
+
+  it('does not say "no builder signal yet" beside a recorded ship (2026-09-25)', () => {
+    const line = projectLine(project({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastShippedAt: '2026-08-05T00:00:00Z' }), NOW);
+    expect(line).not.toContain('no builder signal yet');
+    expect(line).toContain('last shipped');
+    expect(projectLine(project({ activityStatus: 'UNKNOWN', hasBuilderSource: false }), NOW)).toContain('no builder signal yet');
+  });
+
   it('dates ships in words, so an agent is not left doing arithmetic', () => {
     expect(ago('2026-09-05T09:00:00Z', NOW)).toBe('today');
     expect(ago('2026-09-04T09:00:00Z', NOW)).toBe('yesterday');
@@ -412,6 +430,20 @@ describe('the renderers nothing was watching', () => {
     expect(found).not.toContain('SHIPPING');
     expect(found).toContain('4 ships in the last 30 days');
     expect(found).toContain('https://github.com/x');
+    expect(found).not.toContain('MISMATCH');
+
+    // A builder attached to a contract its own site disowns says so (2026-09-25).
+    const mismatch = renderTokenLookup(
+      {
+        chainId: 4663, contractAddress: '0xabc', status: 'published', scanUrl: 's', disclaimer: 'D',
+        project: {
+          slug: 'x', name: 'X', url: 'u', activityStatus: 'SHIPPING', activityLabel: 'Shipping', activityHelp: 'h',
+          shipsLast30Days: 1, tokenVerification: { status: 'MISMATCH', reason: 'site_names_another_contract' }, badgeUrl: 'b',
+        },
+      },
+      NOW,
+    );
+    expect(mismatch).toContain('MISMATCH: the project’s own site names a different contract');
   });
 });
 
@@ -597,6 +629,13 @@ describe('command centre renderers (2026-09-24)', () => {
       disclaimer: 'd',
     };
     const text = renderCompare(page);
+    // No kind sent: a market cap, as before.
+    expect(text).toContain('FACT market cap 5,000 USD (context)');
+    const fdv = renderCompare({ ...page, projects: [{ ...page.projects[1]!, valuationKind: 'fdv', liquidityUsd: 42_000_000, liquidityKind: 'launch_inventory' }] });
+    // By the kind the API sends, never by comparing figures (2026-09-25).
+    expect(fdv).toContain('FACT fully diluted valuation 5,000 USD (context)');
+    expect(fdv).not.toContain('market cap');
+    expect(fdv).toContain('launch pool holds 42,000,000 USD of its own supply — not a market reading');
     expect(text).toContain('UNKNOWN Build Momentum: not measured');
     expect(text).toContain('FACT Build Momentum 12');
     expect(text).toContain('Not published: c.');
@@ -624,9 +663,19 @@ describe('acceleration and market moves (2026-09-24)', () => {
       method: 'Day-on-day moves.',
       disclaimer: 'Not advice.',
     });
-    expect(text).toContain('FACT 2026-09-14: market cap +50% on 2026-09-13 (104,000 → 156,000 USD)');
+    // No kind: HEY does not know the supply, so it says "valuation" and claims neither measure (2026-09-25).
+    expect(text).toContain('FACT 2026-09-14: valuation +50% on 2026-09-13 (104,000 → 156,000 USD)');
     expect(text).toContain('FACT 2026-09-11 · v2 released — https://github.com/x/y');
     expect(text).toContain('A sequence, never a cause.');
+  });
+
+  it('names a move in a fully diluted valuation as one, never as a market cap', () => {
+    const base = { day: '2026-09-14', previousDay: '2026-09-13', changePct: 50, marketCapUsd: 156000, previousMarketCapUsd: 104000, eventsBefore: [] };
+    const page = { project: { slug: 'm', name: 'M', url: 'u' }, threshold: { minChangePct: 25, lookbackDays: 7, windowDays: 90 }, daysRead: 30, method: 'm', disclaimer: 'd' };
+    const fdv = renderMarketMoves({ ...page, items: [{ ...base, valuationKind: 'fdv' }] });
+    expect(fdv).toContain('FACT 2026-09-14: FDV +50%');
+    expect(fdv).not.toContain('market cap');
+    expect(renderMarketMoves({ ...page, items: [{ ...base, valuationKind: 'marketCap' }] })).toContain('FACT 2026-09-14: market cap +50%');
   });
 
   it('says unknown, not zero, without a daily index', () => {
