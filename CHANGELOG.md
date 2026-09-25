@@ -4,6 +4,21 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-09-25
+
+- **Renamed-project redirects point at the public site.** `GET /api/projects/{slug}` (and its
+  `/market` and `/intelligence` routes) and `/api/badge/{slug}` answered an old slug with a
+  `Location` on `https://0.0.0.0:3000`. They now redirect to `https://heyresearch.xyz/...` with
+  `cache-control: no-store`.
+- **`builderRadar.onCurrentBoard`** and **`builderRadar.rank7d`** on
+  `GET /api/projects/{slug}/intelligence`. A project that dropped off the board keeps its last
+  row; `onCurrentBoard: false` says that `rank` is a past standing. `rank7d` is the rank a week
+  earlier recounted among today's board, as `/builders` measures movement.
+- **`buildMomentum` is omitted for an UNKNOWN project with a score of 0.** That zero meant HEY found
+  nothing it could read, not a measurement.
+- **Search** treats a ticker's `$` as a sigil (`$HEY` finds HEY), and a whole contract address is
+  matched exactly and quickly.
+
 ## 2026-09-20
 
 - **`GET /api/v1/builder?chain=4663&token=0x…`** — builder activity for one contract, for a partner
