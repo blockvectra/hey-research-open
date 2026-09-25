@@ -115,7 +115,15 @@
  * (2) The build streak counts UTC ISO weeks, like consistency already did; a
  * week still in progress with no ship yet does not break it.
  */
-export const SCORING_VERSION = 'hbm-v13' as const;
+/*
+ * hbm-v14 (2026-09-25, GeckoTerminal pool selection): no weight or threshold
+ * change. The current market value the Still Building decline is measured
+ * against no longer comes from a dead pool's reading (liquidity at or under
+ * $100) while an equally fresh reading of a pool with liquidity exists.
+ * Priviet's DEX Screener pool held $1 and priced the token 4x under the pool
+ * that trades.
+ */
+export const SCORING_VERSION = 'hbm-v14' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];
