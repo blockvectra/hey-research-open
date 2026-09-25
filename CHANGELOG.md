@@ -6,6 +6,11 @@ record.
 
 ## 2026-09-25
 
+- **Research Terminal early access.** With the console's preview switch on, a reader the Terminal
+  does not admit sees it in preview — project identities, with the research withheld on the server
+  rather than hidden in the page — and can ask for early access with the wallet linked to their
+  account. Requests are reviewed by hand; holding $HEY is context for the reviewer and never
+  approves one. Every `/terminal` response is `private, no-store`.
 - **Scoring `hbm-v15`.** A token whose market is not live gets no Discovery Gap and no market
   percentile, and is not in the population others are ranked against. Nor does a token HEY knows
   only from a market listing (no launch on this chain) that nothing the project publishes ties to
