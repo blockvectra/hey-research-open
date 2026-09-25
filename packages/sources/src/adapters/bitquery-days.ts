@@ -73,10 +73,17 @@ export const ROBINHOOD_QUOTE_ASSETS = [
  */
 export const tradeDaysQuery = (
   dataset: BitqueryDataset = BITQUERY_DEFAULT_DATASET,
-): string => `query HeyTradeDays($addresses: [String!], $since: DateTime) {
+  /**
+   * A closed window (2026-09-25): a history read asks for one week, not "since
+   * then until now". Open-ended, a backfill week read every later day too,
+   * so each request re-read the whole remaining history into a 5,000-row
+   * page and a full page silently cut days short.
+   */
+  bounded = false,
+): string => `query HeyTradeDays($addresses: [String!], $since: DateTime${bounded ? ', $till: DateTime' : ''}) {
   EVM(network: ${BITQUERY_NETWORK}, dataset: ${dataset}) {
     trades: DEXTradeByTokens(
-      where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
+      where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since${bounded ? ', till: $till' : ''} } } }
       limit: { count: 5000 }
     ) {
       Block { Date }
@@ -85,7 +92,7 @@ export const tradeDaysQuery = (
       volume_usd: sum(of: Trade_Side_AmountInUSD)
     }
     breadth: DEXTradeByTokens(
-      where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
+      where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since${bounded ? ', till: $till' : ''} } } }
       limit: { count: 5000 }
     ) {
       Block { Date }
@@ -98,7 +105,7 @@ export const tradeDaysQuery = (
     ${
       dataset === 'realtime'
         ? `transfers: Transfers(
-      where: { Transfer: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since } } }
+      where: { Transfer: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since${bounded ? ', till: $till' : ''} } } }
       limit: { count: 2000 }
     ) {
       Block { Date }
@@ -195,6 +202,8 @@ const chainDaysResponseSchema = z.object({
 export type BitqueryTradeDaysInput = {
   addresses: readonly string[];
   since: Date;
+  /** Exclusive end of the window; absent reads up to now. */
+  till?: Date;
   apiKey: string;
   baseUrl?: string;
   /** Which slice of history to read. Defaults to `realtime`, the only dataset that computes USD. */
@@ -376,7 +385,8 @@ export function createBitqueryTradeDaysAdapter(): SourceAdapter<BitqueryTradeDay
       input.addresses.length > 0 && input.addresses.length <= BITQUERY_BATCH_SIZE && input.addresses.every((address) => ADDRESS.test(address)) && input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryTokenDay[]>> {
       const addresses = [...new Set(input.addresses.map((address) => address.toLowerCase()))];
-      return performSourceFetch(ctx, post(input, tradeDaysQuery(input.dataset), { addresses, since: input.since.toISOString() }), {
+      const window = input.till ? { since: input.since.toISOString(), till: input.till.toISOString() } : { since: input.since.toISOString() };
+      return performSourceFetch(ctx, post(input, tradeDaysQuery(input.dataset, Boolean(input.till)), { addresses, ...window }), {
         schema: tradeDaysResponseSchema,
         parse: (body) => JSON.parse(body),
         cacheTtlSeconds: CACHE_TTL_SECONDS,

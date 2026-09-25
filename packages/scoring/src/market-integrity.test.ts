@@ -177,6 +177,20 @@ describe('market integrity: the market side', () => {
     expect(result.exitPattern.level).toBe('NONE');
   });
 
+  it('reads ACTIVE while any lock still holds, whatever an older lock did (mi-v3)', () => {
+    const result = evaluateMarketIntegrity(
+      input({
+        days: series(HEALTHY),
+        locks: [
+          { assetKind: 'TOKEN', lockId: 1, unlockAt: new Date(`${day(-30)}T00:00:00Z`), withdrawn: true, observedAt: NOW },
+          { assetKind: 'TOKEN', lockId: 2, unlockAt: new Date('2027-01-01T00:00:00Z'), withdrawn: false, observedAt: NOW },
+        ],
+      }),
+    );
+    expect(result.lock.state).toBe('ACTIVE');
+    expect(result.events.some((event) => event.kind === 'LOCK_WITHDRAWN')).toBe(true);
+  });
+
   it('a lock expiry without a market failure is only a lock event', () => {
     const result = evaluateMarketIntegrity(
       input({ days: series(HEALTHY), locks: [{ assetKind: 'LP', lockId: 3, unlockAt: new Date(`${day(-3)}T00:00:00Z`), withdrawn: false, observedAt: NOW }] }),

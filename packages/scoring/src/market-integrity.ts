@@ -33,7 +33,8 @@ import { TOKEN_MARKET, type TokenMarketStatusValue } from './token-market';
  * when the chain still reports half the level in the token's pools, the
  * liquidity is there — a conflict to review, not a migration or a collapse.
  */
-export const MARKET_INTEGRITY_RULES_VERSION = 'mi-v2';
+// mi-v3 (2026-09-25): the lock state is the state today — any active lock reads ACTIVE.
+export const MARKET_INTEGRITY_RULES_VERSION = 'mi-v3';
 
 export const MARKET_INTEGRITY = {
   /** A market is established once liquidity held at least this much … */
@@ -465,12 +466,19 @@ export function evaluateMarketIntegrity(input: MarketIntegrityInput): MarketInte
       precededCollapse = true;
     }
   }
-  const lockState: LockState = input.locks.some((l) => l.withdrawn)
-    ? 'WITHDRAWN'
-    : input.locks.some((l) => l.unlockAt.getTime() <= input.now.getTime())
-      ? 'EXPIRED'
+  /*
+   * The lock state is today's (mi-v3, schema-to-UI audit 2026-09-25): a token
+   * with supply locked right now reads ACTIVE whatever older locks did. mi-v2
+   * put WITHDRAWN first, so 56 tokens with active locks read "withdrawn"
+   * because one earlier deposit had been taken out. The withdrawal and the
+   * expiry are still events on the record; they are history, not the state.
+   */
+  const lockState: LockState = input.locks.some((l) => !l.withdrawn && l.unlockAt.getTime() > input.now.getTime())
+    ? 'ACTIVE'
+    : input.locks.some((l) => l.withdrawn)
+      ? 'WITHDRAWN'
       : input.locks.length > 0
-        ? 'ACTIVE'
+        ? 'EXPIRED'
         : 'NONE';
   const upcoming = input.locks.filter((l) => !l.withdrawn && l.unlockAt.getTime() > input.now.getTime()).map((l) => l.unlockAt.getTime());
   const nextUnlockAt = upcoming.length > 0 ? new Date(Math.min(...upcoming)) : null;

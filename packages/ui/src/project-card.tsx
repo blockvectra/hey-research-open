@@ -9,7 +9,7 @@ import {
   formatUsdCompact,
   formatVerification,
   plainText,
-  valuationLabel,
+  isFullyDiluted,
 } from './format';
 import { ProjectLogo } from './project-logo';
 import { ActivityChip, type ActivityStatusValue, StillBuildingBadge } from './status';
@@ -339,8 +339,19 @@ export function ProjectCard({
         <>
           {/* 4: market cap, from stored snapshots only */}
           <p className="flex items-baseline justify-between gap-3 text-[14px]" data-testid="market-cap">
-            {/* Named for what it is (parity audit, 2026-09-25): equal to the FDV, it is an FDV. */}
-            <span className="text-hey-secondary">{valuationLabel(project.marketCapUsd, project.fdvUsd)}</span>
+            {/*
+              Named for what it is (parity audit, 2026-09-25): a figure equal to
+              the FDV is not called a market cap. The card itself stays inside
+              its information budget (PRD V4 16.0 D: no FDV on a card), so it
+              says "Valuation" and the tooltip names the measure.
+            */}
+            {isFullyDiluted(project.marketCapUsd, project.fdvUsd) ? (
+              <span className="text-hey-secondary" title="Fully diluted valuation: the provider reports no circulating supply, so this is price × total supply.">
+                Valuation
+              </span>
+            ) : (
+              <span className="text-hey-secondary">Market cap</span>
+            )}
             {deadMarket ? (
               <span className="text-hey-muted" title="The tracked token has no active market. Context only; it never affects activity status.">
                 No active market

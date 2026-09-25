@@ -39,6 +39,21 @@ describe('Bitquery trade days adapter', () => {
     expect(body.variables.since).toBe('2026-09-10T00:00:00.000Z');
   });
 
+  it('reads a closed window when given an end, and an open one otherwise (2026-09-25)', async () => {
+    const bounded = stubFetch(json('bitquery-trade-days.json'));
+    await adapter.fetch({ ...input, till: new Date('2026-09-17T00:00:00Z'), dataset: 'archive' }, testContext({ fetchImpl: bounded.fetchImpl }));
+    const body = JSON.parse(String(bounded.requests[0]?.init?.body)) as { query: string; variables: { till?: string } };
+    expect(body.variables.till).toBe('2026-09-17T00:00:00.000Z');
+    expect(body.query).toContain('$till: DateTime');
+    expect(body.query.match(/till: \$till/g)).toHaveLength(2);
+
+    const open = stubFetch(json('bitquery-trade-days.json'));
+    await adapter.fetch(input, testContext({ fetchImpl: open.fetchImpl }));
+    const openBody = JSON.parse(String(open.requests[0]?.init?.body)) as { query: string; variables: { till?: string } };
+    expect(openBody.variables.till).toBeUndefined();
+    expect(openBody.query).not.toContain('$till');
+  });
+
   it('folds side rows into one row per token and day, keeps the sell close, and drops a malformed day', async () => {
     const stub = stubFetch(json('bitquery-trade-days.json'));
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
