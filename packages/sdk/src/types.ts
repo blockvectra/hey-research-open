@@ -546,7 +546,8 @@ export type HeyProjectIntelligence = {
   project: HeyProject;
   signals: HeySignal[];
   /** Absent until the project has been scored. */
-  builderRadar?: HeyBuilderRadarDay & { history: HeyBuilderRadarDay[] };
+  /** `onCurrentBoard` false: `rank` is the last standing, not today's (2026-09-25). `rank7d`: a week earlier, recounted among today's board. */
+  builderRadar?: HeyBuilderRadarDay & { onCurrentBoard: boolean; rank7d?: number; history: HeyBuilderRadarDay[] };
   /** Absent for a project without a token. */
   market?: HeyIntelligenceMarket;
   /** Absent when HEY could not read the project's record. */

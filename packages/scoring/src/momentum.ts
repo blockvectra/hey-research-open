@@ -9,9 +9,18 @@
  * same score, showed them: bitbots-on-chain read "not measured" on its
  * Overview and "#24 on the Radar" one tab away. One rule, every surface.
  */
-export function momentumMeasured<P extends { score?: { hbm?: number } | undefined; activityResearched?: boolean | undefined }>(
+export function momentumMeasured<P extends { score?: { hbm?: number } | undefined; activityResearched?: boolean | undefined; activityStatus?: string | undefined }>(
   profile: P,
 ): profile is P & { score: NonNullable<P['score']> & { hbm: number } } {
   const hbm = profile.score?.hbm;
-  return hbm !== undefined && (profile.activityResearched === true || hbm > 0);
+  if (hbm === undefined) return false;
+  if (hbm > 0) return true;
+  /*
+   * A zero on an UNKNOWN project is "HEY found nothing it could read", not a
+   * measurement (full-platform audit 2026-09-25, A10-12): an attempted GitHub
+   * resolution counted as research, and 4,069 unknown pages printed "Build
+   * Momentum 0". A readable source with nothing recent is QUIET or DORMANT,
+   * and its zero stays a measurement.
+   */
+  return profile.activityResearched === true && profile.activityStatus !== 'UNKNOWN';
 }
