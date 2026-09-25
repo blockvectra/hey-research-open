@@ -99,6 +99,10 @@ describe('token market status', () => {
     expect(
       classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 1 }, peakLiquidityUsd: 48_000, recentOtherPools: { observedAt: at(8), liquidityUsd: 14_000 } }),
     ).toMatchObject({ status: 'LIQUIDITY_REMOVED' });
+    // A small pool that trades is a market even when its liquidity is most of the FDV (Priviet: $14K beside a $19K valuation).
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 1, fdvUsd: 4_800 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(0.3), liquidityUsd: 14_344, volume24hUsd: 10_600 } }),
+    ).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
     // A launch pool's own supply beside the dead pool is not a market.
     expect(
       classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 3, fdvUsd: 40_000 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(0), liquidityUsd: 39_000 } }).status,

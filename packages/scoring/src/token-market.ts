@@ -154,8 +154,11 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
    */
   const ownSupply = (liquidityUsd: number) =>
     latest.fdvUsd !== undefined && latest.fdvUsd > 0 && liquidityUsd >= latest.fdvUsd * TOKEN_MARKET.ownSupplyShareOfFdv;
+  const otherTrades = (evidence.otherPools?.volume24hUsd ?? 0) > TOKEN_MARKET.inactiveVolumeUsd;
   const other =
-    evidence.otherPools && now.getTime() - evidence.otherPools.observedAt.getTime() <= DAY_MS && !ownSupply(evidence.otherPools.liquidityUsd)
+    evidence.otherPools &&
+    now.getTime() - evidence.otherPools.observedAt.getTime() <= DAY_MS &&
+    (otherTrades || !ownSupply(evidence.otherPools.liquidityUsd))
       ? evidence.otherPools.liquidityUsd
       : undefined;
   const heldElsewhere = other !== undefined && other > latest.liquidityUsd;
@@ -167,7 +170,8 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     if (pooled !== undefined && pooled <= TOKEN_MARKET.inactiveVolumeUsd) return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
     return { status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' };
   }
-  const recent = evidence.recentOtherPools && !ownSupply(evidence.recentOtherPools.liquidityUsd) ? evidence.recentOtherPools : undefined;
+  // Disagreement claims nothing either way, so it needs no own-supply guard.
+  const recent = evidence.recentOtherPools;
   if (
     !heldElsewhere &&
     recent &&
