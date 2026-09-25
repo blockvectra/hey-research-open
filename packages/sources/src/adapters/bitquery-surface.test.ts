@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { readFixture, stubFetch, testContext } from '../testing';
+import { BITQUERY_FULL_DATASET } from './bitquery';
 import {
   BITQUERY_SURFACE_QUERY,
   createBitquerySurfaceAdapter,
@@ -44,13 +45,27 @@ const protocol = {
 };
 
 describe('bitquery contract surface', () => {
-  it('asks one cube for the methods, the totals and the logs', () => {
-    expect(BITQUERY_SURFACE_QUERY).toContain('Call: { To: { is: $address } }');
-    expect(BITQUERY_SURFACE_QUERY).toContain('count(distinct: Call_Signature_Name)');
-    // Realtime is the only dataset this plan may read on this chain.
-    expect(BITQUERY_SURFACE_QUERY).toContain('dataset: realtime');
+  it('asks one cube for the methods, the totals and the logs, over the whole history', async () => {
+    /*
+     * Pinned on the document the adapter actually sends (2026-09-25). This
+     * used to assert on BITQUERY_SURFACE_QUERY, the frozen realtime form, and
+     * so kept passing "dataset: realtime" after the adapter moved to
+     * `combined` (2026-09-22) — a contract test that checked a constant
+     * nothing posts.
+     */
+    const stub = stubFetch(json(readFixture('bitquery-surface.json')));
+    await createBitquerySurfaceAdapter().fetch({ address: ADDRESS, apiKey: 'test-token' }, testContext({ fetchImpl: stub.fetchImpl }));
+    const sent = (JSON.parse(String(stub.requests[0]?.init?.body)) as { query: string }).query;
+
+    expect(sent).toContain('Call: { To: { is: $address } }');
+    expect(sent).toContain('count(distinct: Call_Signature_Name)');
+    // Calls and Events are archive-granted and nothing here reads USD, so the whole chain is read.
+    expect(sent).toContain(`dataset: ${BITQUERY_FULL_DATASET}`);
+    expect(sent).toContain('dataset: combined');
+    // The same document as the frozen realtime form in every other respect.
+    expect(sent).toBe(BITQUERY_SURFACE_QUERY.replace('dataset: realtime', 'dataset: combined'));
     // Never a holder, a balance or an address (product rule 1).
-    expect(BITQUERY_SURFACE_QUERY).not.toMatch(/Holders|Balances|BalanceUpdates/);
+    expect(sent).not.toMatch(/Holders|Balances|BalanceUpdates/);
   });
 
   it('separates a plain token from a protocol by what the contract answers', () => {

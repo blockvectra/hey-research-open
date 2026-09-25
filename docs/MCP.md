@@ -63,7 +63,7 @@ It defaults to `https://heyresearch.xyz`.
 | `list_ships` | "What shipped this week?" · "Is this project alive?" |
 | `this_week` | "What happened on Robinhood Chain this week?" |
 | `list_bounties` | "Which research bounties are open, what do they pay, is this one claimed?" (read-only; claiming is a wallet sign-in on the site) |
-| `get_token_market` | "Does this token still trade? How has its liquidity moved? What did HEY check on the contract?" — HEY's own daily index (price, liquidity, volume, trades by day), the lifecycle, the checks, contract events and value locked (2026-09-13) |
+| `get_token_market` | "Does this token still trade? How has its liquidity moved? What did HEY check on the contract?" — HEY's own daily index (price, liquidity, volume, trades by day), the lifecycle, the checks, contract events and value locked (2026-09-13); the deployer, pools and 1% depth, and a supply-concentration summary with no addresses (2026-09-25) |
 | `list_signals` | "What changed on the chain this week? Any news on X?" — HEY Signal with figures before and after, source and confidence (2026-09-13) |
 | `list_builders` | "Who are the top builders? Most improved? Who is building on Pons?" — the Builder Radar, never ranked by price (2026-09-13) |
 | `weekly_report` | "What happened on Robinhood Chain in week 37?" — the archived weekly report (2026-09-13) |

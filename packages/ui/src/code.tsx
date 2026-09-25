@@ -1,4 +1,4 @@
-import { GitBranch, Hammer, PackageCheck, RefreshCcw, Trophy } from 'lucide-react';
+import { GitBranch } from 'lucide-react';
 import { cn } from './cn';
 import { formatRelativeTime } from './format';
 
@@ -164,68 +164,5 @@ export function CodeHeatmap({
         Observed development days. Commit volume is capped and never ranked.
       </p>
     </div>
-  );
-}
-
-/** Weekly builder recognitions (UI/UX V2 section 27). */
-export function AwardsRow({
-  awards,
-  className,
-}: {
-  awards: readonly {
-    title: string;
-    kind: 'momentum' | 'still-building' | 'shipping' | 'comeback' | 'new-builder';
-    project?: { slug: string; name: string };
-    detail: string;
-  }[];
-  className?: string;
-}) {
-  if (awards.length === 0) return null;
-
-  return (
-    <ul className={cn('grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className)}>
-      {awards.map((award) => (
-        <li key={award.title} className="rounded-[6px] border border-hey-border bg-hey-surface p-5">
-          <p className="text-[13px] text-hey-secondary">
-            <AwardIcon kind={award.kind} />
-            {award.title}
-          </p>
-          {award.project ? (
-            <a
-              href={`/project/${award.project.slug}`}
-              className="mt-1.5 block truncate text-lg font-semibold tracking-tight hover:underline"
-            >
-              {award.project.name}
-            </a>
-          ) : null}
-          <p className="mt-1 text-[13px] text-hey-secondary">{award.detail}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-/** Award icons (V4 section 13). Vector, single library, consistent stroke. */
-function AwardIcon({
-  kind,
-}: {
-  kind: 'momentum' | 'still-building' | 'shipping' | 'comeback' | 'new-builder';
-}) {
-  const Icon =
-    kind === 'still-building'
-      ? Hammer
-      : kind === 'shipping'
-        ? PackageCheck
-        : kind === 'comeback' || kind === 'new-builder'
-          ? RefreshCcw
-          : Trophy;
-
-  return (
-    <Icon
-      aria-hidden="true"
-      size={15}
-      strokeWidth={1.9}
-      className="mr-1.5 inline-block shrink-0 align-[-2px] text-gold-dark"
-    />
   );
 }

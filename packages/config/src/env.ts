@@ -218,8 +218,14 @@ export const serverEnvSchema = z
         walletPreviewEnabled: optionalString
           .transform((value) => value === 'true')
           .pipe(z.boolean()),
-        /* Later utilities. Flags exist so each phase is switched on independently;
-       nothing consumes them yet beyond the /hey page's "planned" labels. */
+        /*
+         * Later utilities, one flag per phase so each is switched on on its own.
+         * A flag alone opens nothing: bounties, the vote, early access, API keys
+         * and bonds are each read through their `is*Open` helper below, which
+         * also requires a live token (and a treasury, where money is held).
+         * The domain layer's `earlyAccessFor` repeats the same live-token check.
+         */
+        /** Research bounties (M13-B). */
         bountiesEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
         /** The monthly research-funding vote (M13-D). */
         holderVoteEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
@@ -770,11 +776,6 @@ export function isAiEnabled(env: ServerEnv): boolean {
   return env.ai.provider !== 'disabled' && env.ai.dailyBudgetUsd > 0 && Boolean(env.ai.apiKey);
 }
 
-/**
- * Mail is opt-in twice over: the flag, and a configuration that validated.
- * Every send path checks this and no-ops when it is false, so development and
- * CI behave exactly like production minus the message.
- */
 /** Bounties are open: the flag, a live token, and a treasury to pay from (M13-B). */
 export function isBountiesOpen(env: ServerEnv): boolean {
   return (
@@ -810,6 +811,11 @@ export function isBondsOpen(env: ServerEnv): boolean {
   );
 }
 
+/**
+ * Mail is opt-in twice over: the flag, and a configuration that validated.
+ * Every send path checks this and no-ops when it is false, so development and
+ * CI behave exactly like production minus the message.
+ */
 export function isMailEnabled(env: ServerEnv): boolean {
   return env.mail.enabled && Boolean(env.mail.apiKey) && Boolean(env.mail.from);
 }

@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
+import type { HeyTokenMarket } from '@hey-research/sdk';
 import type { HeyAskAnswer, HeyCompare, HeyContractChanges, HeySilentBuilders, HeyUnlocks, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip, HeyThisWeek } from '@hey-research/sdk';
 import {
   STILL_BUILDING_MEANING,
@@ -25,6 +26,7 @@ import {
   renderUnlocks,
   renderWeeklyReport,
   stillBuildingEvidence,
+  tokenMarketWords,
 } from './render';
 
 /**
@@ -86,6 +88,19 @@ describe('projectLine', () => {
     expect(line).not.toMatch(/mcap/);
     // Nothing that an agent could read as a value: no zero, no dash, no "n/a".
     expect(line).not.toMatch(/\$0|n\/a|N\/A|—/);
+  });
+
+  it('says the token market state in the site’s words, before the figures (2026-09-25)', () => {
+    const token = { chainId: 4663, contractAddress: '0xabc' };
+    const quiet = projectLine(project({ token, tokenMarket: { status: 'TRADING_INACTIVE', reason: 'launch_pool_no_trades' } }), NOW);
+    expect(quiet).toContain('market: trading inactive');
+    // The site says "no longer detected" — an observation, not "removed" as a verdict.
+    expect(projectLine(project({ token, tokenMarket: { status: 'LIQUIDITY_REMOVED' } }), NOW)).toContain('market: liquidity no longer detected');
+    const live = projectLine(project({ token, tokenMarket: { status: 'ACTIVE_MARKET' }, marketCap: { usd: 24_000, source: 'coingecko' } }), NOW);
+    expect(live.indexOf('market: active market')).toBeLessThan(live.indexOf('mcap'));
+    expect(projectLine(project(), NOW)).not.toContain('market:');
+    // A status the table does not know is printed as its own words, not guessed at.
+    expect(tokenMarketWords('SOMETHING_NEW')).toBe('something new');
   });
 
   it('dates ships in words, so an agent is not left doing arithmetic', () => {
@@ -479,7 +494,7 @@ describe('renderProjectIntelligence (2026-09-24)', () => {
     disclaimer: 'Not investment advice.',
   };
   const development: NonNullable<HeyProjectIntelligence['development']> = {
-    rulesVersion: 'intel-v2',
+    rulesVersion: 'intel-v3',
     computedAt: '2026-09-24T12:00:00.000Z',
     observedSince: '2026-03-01T00:00:00.000Z',
     velocity: { windowDays: 30, current: 6, previous: 2, changePct: 200, state: 'ACCELERATING' },
@@ -640,5 +655,51 @@ describe('market integrity rendering (2026-09-25)', () => {
     expect(out).toContain('DERIVED no verified replacement pool');
     expect(out).toContain('not whether development has stopped');
     expect(out.toLowerCase()).not.toMatch(/\brug|scam|\bsafe\b/);
+  });
+});
+
+describe('renderTokenMarket: pools, the deployer and the supply (2026-09-25)', () => {
+  const NOW = new Date('2026-09-25T12:00:00Z');
+  const market: HeyTokenMarket = {
+    slug: 'agentos',
+    name: 'AgentOS',
+    symbol: 'AOS',
+    token: { chainId: 4663, contractAddress: '0xabc' },
+    marketStatus: 'TRADING_INACTIVE',
+    marketStatusReason: 'launch_pool_no_trades',
+    verification: 'VERIFIED',
+    days: [],
+    lifecycle: {},
+    checks: [],
+    onchainDays: [],
+    tvlDays: [],
+    url: 'https://heyresearch.xyz/project/agentos/market',
+    disclaimer: '…',
+  };
+
+  it('says the status and its reason in words', () => {
+    expect(renderTokenMarket(market, NOW)).toContain('Market status: trading inactive (launch pool no trades)');
+  });
+
+  it('prints the pools and how much can be sold before the price moves', () => {
+    const text = renderTokenMarket({ ...market, pools: { day: '2026-09-24', observedAt: '2026-09-24T23:00:00Z', pools: 2, liquidityUsd: 40_000, depthOnePctUsd: 350 } }, NOW);
+    expect(text).toContain('Pools (read from the chain, 2026-09-24): 2 pools, liquidity $40.0K, about $350 can be sold before the price moves 1%.');
+  });
+
+  it('names the deployer as a fact about the contract, and a shared one as a launch service', () => {
+    const text = renderTokenMarket({ ...market, contract: { deployer: '0xdep', deployerShared: true, createdAt: '2026-08-01T12:00:00.000Z', creationTx: '0xtx' } }, NOW);
+    expect(text).toContain('Contract: deployed by 0xdep (a deployer that launched other projects HEY tracks: a launch service, not one team), created 2026-08-01, in transaction 0xtx.');
+    // The closing sentence no longer claims no address is named.
+    expect(text).toContain('no address but the contract’s deployer is named');
+    expect(renderTokenMarket(market, NOW)).toContain('no address is named, scored, ranked or followed');
+    expect(renderTokenMarket(market, NOW)).not.toContain('Contract: deployed');
+  });
+
+  it('summarises the supply without an address', () => {
+    const text = renderTokenMarket(
+      { ...market, distribution: { day: '2026-09-24', observedAt: '2026-09-24T20:00:00Z', holdersTotal: 1_830, top10SharePct: 41.24, top50SharePct: 63.9, burnedSharePct: 5, pooledSharePct: 12.4 } },
+      NOW,
+    );
+    expect(text).toContain('1,830 holders, largest 10 balances hold 41.2%, largest 50 hold 63.9%, 5% burned, 12.4% in pools');
   });
 });

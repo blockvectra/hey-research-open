@@ -55,7 +55,6 @@ export type HbmResult = {
   scoringVersion: string;
 };
 
-const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** The widest component window: six rolling weeks (PRD V4 section 11.1). */
 export const SCORING_WINDOW_DAYS = CONSISTENCY.weeks * 7;
@@ -301,13 +300,17 @@ function emptyResult(): HbmResult {
 
 /** Consecutive most-recent weeks containing meaningful activity (PRD V4 section 39). */
 export function shippingStreak(events: readonly ScoredEvent[], now: Date): number {
+  // UTC ISO weeks (hbm-v13), like consistency: seven-day spans back from the
+  // rescore clock made the streak depend on the hour it was computed.
+  const thisWeek = isoWeekIndex(now);
   const weeks = new Set<number>();
   for (const event of meaningfulEvents(events, now)) {
-    const ageMs = now.getTime() - event.publishedAt.getTime();
-    if (ageMs >= 0) weeks.add(Math.floor(ageMs / WEEK_MS));
+    if (event.publishedAt.getTime() <= now.getTime()) weeks.add(thisWeek - isoWeekIndex(event.publishedAt));
   }
 
+  // The week in progress does not break a run before it has ended.
+  const start = weeks.has(0) ? 0 : 1;
   let streak = 0;
-  while (weeks.has(streak)) streak += 1;
+  while (weeks.has(start + streak)) streak += 1;
   return streak;
 }

@@ -106,7 +106,16 @@
  * total supply (giga: 98.4% printed, 71.9% by price). The decline now reads
  * the price, scaled into the current reading's valuation basis.
  */
-export const SCORING_VERSION = 'hbm-v12' as const;
+/*
+ * hbm-v13 (2026-09-25, reconciliation): no weight or threshold change.
+ * (1) A repository whose activity HEY records under another project (the same
+ * release or commit ids already held by an earlier page) is not coverage for
+ * this one: with only held-elsewhere activity the answer is UNKNOWN, not
+ * DORMANT — HEY saw the repo move, just not as this project's evidence.
+ * (2) The build streak counts UTC ISO weeks, like consistency already did; a
+ * week still in progress with no ship yet does not break it.
+ */
+export const SCORING_VERSION = 'hbm-v13' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

@@ -183,7 +183,7 @@ describe('HEY Build Momentum', () => {
   });
 
   it('stamps the scoring version onto every result', () => {
-    expect(SCORING_VERSION).toBe('hbm-v12');
+    expect(SCORING_VERSION).toBe('hbm-v13');
     expect(computeHbm({ events: [ship(1)], now }).scoringVersion).toBe(SCORING_VERSION);
   });
 
@@ -214,5 +214,16 @@ describe('shipping streak', () => {
 
   it('is zero when the current week has no meaningful activity', () => {
     expect(shippingStreak([ship(20)], now)).toBe(0);
+  });
+
+  it('counts ISO weeks, and a week in progress does not break the run (hbm-v13)', () => {
+    // Monday morning: nothing yet this week, shipped the previous two weeks.
+    const monday = new Date('2026-09-07T06:00:00Z');
+    const at = (iso: string) => ship(0, { publishedAt: new Date(iso) });
+    expect(shippingStreak([at('2026-09-02T12:00:00Z'), at('2026-08-26T12:00:00Z')], monday)).toBe(2);
+    // The same two ships, and one this week: three.
+    expect(shippingStreak([at('2026-09-07T05:00:00Z'), at('2026-09-02T12:00:00Z'), at('2026-08-26T12:00:00Z')], monday)).toBe(3);
+    // Sunday night and Monday morning are different weeks, whatever the hour gap.
+    expect(shippingStreak([at('2026-09-06T23:00:00Z')], monday)).toBe(1);
   });
 });

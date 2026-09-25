@@ -8,6 +8,14 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ### Added
 
+- API parity (2026-09-25), all optional: `HeyProject.tokenMarket`
+  (`{ status, reason? }`, the card's market state); on `HeyTokenMarket`,
+  `marketStatusReason`, `contract` (deployer, `deployerShared`, `creationTx`,
+  `createdAt`), `pools` (`pools`, `liquidityUsd`, `depthOnePctUsd`) and a
+  `distribution` summary (holder count and supply shares, no addresses). The
+  day rows now name `distinctAddresses`, `distinctBuyers`, `distinctSellers`
+  and `poolsTraded`, and `onchainDays` names `callers` — fields the API
+  already sent.
 - `silence()`, `comebacks()`, `unlocks()`, `buildMarket()`,
   `projects.timeline()` and `projects.compare()` (2026-09-24).
 - `projects.ask(slug, question)` (`HeyAskAnswer`) and `contractChanges({ days })`

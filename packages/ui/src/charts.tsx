@@ -222,61 +222,6 @@ function AxisLabel({
   );
 }
 
-/** Weekly ship counts (UI/UX V2 section 23). */
-export function ShipsPerWeekChart({
-  data,
-  className,
-}: {
-  data: readonly { week: string; ships: number; projects: number }[];
-  className?: string;
-}) {
-  if (data.length === 0) {
-    return (
-      <ChartEmpty
-        className={className}
-        message="No verified ships recorded yet."
-        hint="This fills in as HEY observes source-backed updates."
-      />
-    );
-  }
-
-  const max = Math.max(...data.map((entry) => entry.ships), 1);
-
-  return (
-    <figure className={className}>
-      <div
-        className="flex h-40 items-end gap-2"
-        role="img"
-        aria-label={`Meaningful ships per week: ${data
-          .map((entry) => `${entry.week}, ${entry.ships}`)
-          .join('; ')}`}
-      >
-        {data.map((entry) => (
-          // `h-full` matters: a percentage height resolves against the parent,
-          // and without it this column is content-sized, so every bar collapsed
-          // to nothing and the chart rendered as bare axis labels.
-          <div
-            key={entry.week}
-            className="flex h-full flex-1 flex-col items-center justify-end gap-2"
-          >
-            <div
-              className="w-full rounded-t-md bg-blue-500"
-              style={{ height: `${Math.max(4, (entry.ships / max) * 100)}%` }}
-              /* `title` the attribute, not `<title>` the element (2026-09-17): in HTML that tag
-                 is metadata, React 19 hoists it into <head>, and it renders no tooltip at all. */
-              title={`${entry.week}: ${entry.ships} ships across ${entry.projects} projects`}
-            />
-            <span className="text-[11px] tabular-nums text-hey-muted">{entry.ships}</span>
-          </div>
-        ))}
-      </div>
-      <figcaption className="mt-2 text-[13px] text-hey-secondary">
-        Meaningful, source-backed updates per week.
-      </figcaption>
-    </figure>
-  );
-}
-
 function ChartEmpty({
   message,
   hint,

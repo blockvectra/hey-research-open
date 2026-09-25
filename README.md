@@ -129,6 +129,11 @@ for await (const project of hey.projects.items({ tab: 'still-building' })) {
 }
 ```
 
+A listed project with a token carries `tokenMarket` — the market state the card shows — and the
+single-project route sends everything the listing does. `/api/projects/{slug}/market` adds the
+contract's deployer, its pools and 1% depth, and a supply-concentration summary with no addresses
+(2026-09-25).
+
 Paging follows the API's own cursor, a `429` arrives as `HeyApiError` with `retryAfterSeconds`
 and is never retried for you, and an absent field means HEY does not know — never a zero.
 

@@ -93,6 +93,29 @@ export function stillBuildingEvidence(project: Pick<HeyProject, 'stillBuildingEv
   return `${drawdown}, ${evidence.shipsSinceDecline} verified ship${evidence.shipsSinceDecline === 1 ? '' : 's'} since`;
 }
 
+/**
+ * The site's words for a token's market state, lower-cased for a line
+ * (2026-09-25). A copy of `tokenMarketLabel` in `@hey/ui`, which this
+ * package cannot import: it is published on its own and depends on the SDK
+ * alone. `LIQUIDITY_REMOVED` is "liquidity no longer detected" on the site —
+ * an observation, not a verdict on why — and so it is here. A status this
+ * table does not know is printed as its own words rather than guessed at.
+ */
+const TOKEN_MARKET_WORDS: Record<string, string> = {
+  ACTIVE_MARKET: 'active market',
+  LOW_LIQUIDITY: 'low liquidity',
+  NO_LIQUIDITY: 'no liquidity',
+  TRADING_INACTIVE: 'trading inactive',
+  LIQUIDITY_REMOVED: 'liquidity no longer detected',
+  MARKET_ABANDONED: 'market not detected',
+  INSUFFICIENT_DATA: 'market data insufficient',
+  TOKEN_NOT_LAUNCHED: 'no token',
+};
+
+export function tokenMarketWords(status: string): string {
+  return TOKEN_MARKET_WORDS[status] ?? status.toLowerCase().replace(/_/g, ' ');
+}
+
 export function projectLine(project: HeyProject, now?: Date): string {
   const parts = [project.symbol ? `${project.name} ($${project.symbol})` : project.name];
 
@@ -111,6 +134,8 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.lastShippedAt) parts.push(`last shipped ${ago(project.lastShippedAt, now)}`);
   if (project.primaryNarrative) parts.push(project.primaryNarrative.name);
   if (project.launchedVia) parts.push(`via ${project.launchedVia.name}`);
+  // The market's state before its figures: it is why a dead market prints no valuation (2026-09-25).
+  if (project.tokenMarket) parts.push(`market: ${tokenMarketWords(project.tokenMarket.status)}`);
   // Context, and only ever with the provider that reported it.
   if (project.marketCap) parts.push(`${money(project.marketCap.usd)} ${project.marketCap.kind === 'fdv' ? 'FDV' : 'mcap'} (${project.marketCap.source})`);
   if (project.liquidity) parts.push(`${money(project.liquidity.usd)} liquidity (${project.liquidity.source})`);
@@ -191,7 +216,7 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
       m.evaluatedAt ? `checked ${m.evaluatedAt.slice(0, 10)}` : undefined,
     ].filter((v): v is string => v !== undefined);
     lines.push(
-      `- Token market: ${m.status.replace(/_/g, ' ').toLowerCase()}${detail.length > 0 ? ` (${detail.join('; ')})` : ''}. A reading of the market, not of the team.`,
+      `- Token market: ${tokenMarketWords(m.status)}${detail.length > 0 ? ` (${detail.join('; ')})` : ''}. A reading of the market, not of the team.`,
     );
   }
   lines.push(`- Kind: ${project.projectKind.toLowerCase()}`);
@@ -330,7 +355,25 @@ const signed = (value: number | undefined) => (value === undefined ? undefined :
 
 /** One token's market in depth, as prose an agent can quote with its sources. */
 export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
-  const lines: string[] = [`# ${market.name}${market.symbol ? ` ($${market.symbol})` : ''} — market, from HEY's own daily index`, `Contract ${market.token.contractAddress} on chain ${market.token.chainId}. Market status: ${market.marketStatus.toLowerCase().replace(/_/g, ' ')}; verification: ${market.verification.toLowerCase()}.`, ''];
+  const lines: string[] = [
+    `# ${market.name}${market.symbol ? ` ($${market.symbol})` : ''} — market, from HEY's own daily index`,
+    `Contract ${market.token.contractAddress} on chain ${market.token.chainId}. Market status: ${tokenMarketWords(market.marketStatus)}${market.marketStatusReason ? ` (${market.marketStatusReason.replace(/_/g, ' ')})` : ''}; verification: ${market.verification.toLowerCase()}.`,
+  ];
+  /*
+   * Who deployed the contract, and when (2026-09-25). A fact about the
+   * contract read from the chain; a shared deployer is a launch service, and
+   * the line says so rather than let the address read as one team's.
+   */
+  const k = market.contract;
+  if (k) {
+    const facts = [
+      k.deployer ? `deployed by ${k.deployer}${k.deployerShared ? ' (a deployer that launched other projects HEY tracks: a launch service, not one team)' : ''}` : undefined,
+      k.createdAt ? `created ${k.createdAt.slice(0, 10)}` : undefined,
+      k.creationTx ? `in transaction ${k.creationTx}` : undefined,
+    ].filter((v): v is string => v !== undefined);
+    if (facts.length > 0) lines.push(`Contract: ${facts.join(', ')}.`);
+  }
+  lines.push('');
   if (market.current) {
     const c = market.current;
     const parts = [
@@ -358,6 +401,27 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     signed(l.priceChange30dPct) === undefined ? undefined : `${signed(l.priceChange30dPct)} over 30 days`,
   ].filter((v): v is string => v !== undefined);
   if (life.length > 0) lines.push(`Lifecycle: ${life.join('; ')}.`);
+  const pool = market.pools;
+  if (pool) {
+    const pools = [
+      pool.pools === undefined ? undefined : `${pool.pools} ${pool.pools === 1 ? 'pool' : 'pools'}`,
+      pool.liquidityUsd === undefined ? undefined : `liquidity ${money(pool.liquidityUsd)}`,
+      pool.depthOnePctUsd === undefined ? undefined : `about ${money(pool.depthOnePctUsd)} can be sold before the price moves 1%`,
+    ].filter((v): v is string => v !== undefined);
+    if (pools.length > 0) lines.push(`Pools (read from the chain, ${pool.day}): ${pools.join(', ')}.`);
+  }
+  const dist = market.distribution;
+  if (dist) {
+    const share = (v: number) => `${Math.round(v * 10) / 10}%`;
+    const supply = [
+      dist.holdersTotal === undefined ? undefined : `${dist.holdersTotal.toLocaleString('en-US')} holders`,
+      dist.top10SharePct === undefined ? undefined : `largest 10 balances hold ${share(dist.top10SharePct)}`,
+      dist.top50SharePct === undefined ? undefined : `largest 50 hold ${share(dist.top50SharePct)}`,
+      dist.burnedSharePct === undefined ? undefined : `${share(dist.burnedSharePct)} burned`,
+      dist.pooledSharePct === undefined ? undefined : `${share(dist.pooledSharePct)} in pools`,
+    ].filter((v): v is string => v !== undefined);
+    if (supply.length > 0) lines.push(`Supply (HEY's snapshot, ${dist.day}; burned and pooled supply left out of the top shares): ${supply.join(', ')}.`);
+  }
   /*
    * The series is capped for readability, and the cap is stated (2026-09-17).
    * It printed the full count and then showed fourteen rows, so an agent asked
@@ -388,7 +452,11 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
   }
   if (market.onchainDays.length > 0) lines.push('', `Contract events by day: ${market.onchainDays.map((d) => `${d.day} ${d.events}${d.truncated ? '+' : ''}`).join(', ')}.`);
   if (market.tvlDays.length > 0) lines.push(`Value locked (DefiLlama, ${market.tvlDays[0]!.protocolName}): latest ${money(market.tvlDays[market.tvlDays.length - 1]!.tvlUsd)}.`);
-  lines.push('', 'Counts, never a wallet: no address is named, scored, ranked or followed here. Context only: nothing here reaches activity status or any HEY score, and none of it is a buy signal.', market.url);
+  lines.push(
+    '',
+    `Counts, never a wallet: ${k?.deployer ? 'no address but the contract’s deployer is named, and none is' : 'no address is named,'} scored, ranked or followed here. Context only: nothing here reaches activity status or any HEY score, and none of it is a buy signal.`,
+    market.url,
+  );
   return lines.join('\n');
 }
 

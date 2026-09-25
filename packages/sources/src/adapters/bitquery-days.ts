@@ -86,7 +86,7 @@ export const tradeDaysQuery = (
       where: { Trade: { Currency: { SmartContract: { in: $addresses } } }, Block: { Time: { since: $since${bounded ? ', till: $till' : ''} } } }
       limit: { count: 5000 }
     ) {
-      Block { Date }
+      Block { Date lastBlock: Number(maximum: Block_Number) }
       Trade { Currency { SmartContract } Side { Type } close: PriceInUSD(maximum: Block_Number) }
       trades: count
       volume_usd: sum(of: Trade_Side_AmountInUSD)
@@ -153,7 +153,8 @@ const numberish = z.union([z.number(), z.string()]).nullish();
 const dayBlock = z.object({ Date: z.string() });
 
 const tradeRowSchema = z.object({
-  Block: dayBlock,
+  /** The side's last block, which says whose close is the day's (2026-09-25). */
+  Block: dayBlock.extend({ lastBlock: numberish }),
   Trade: z.object({ Currency: z.object({ SmartContract: z.string() }), Side: z.object({ Type: z.string().nullish() }).nullish(), close: numberish }),
   trades: numberish,
   volume_usd: numberish,
@@ -280,6 +281,15 @@ export function normalizeBitqueryTokenDays(
 ): BitqueryTokenDay[] {
   const byKey = new Map<string, BitqueryTokenDay>();
   const keyOf = (address: string, day: string) => `${address}:${day}`;
+  /*
+   * The block the kept close was read at, per (token, day). Each side row
+   * carries the price of its own last trade, and the day's close is whichever
+   * side traded last (2026-09-25) — it used to be the sell side's
+   * unconditionally, so a day that ended on a buy closed on an earlier sell's
+   * price. A side with no block number loses to one that has it; with none on
+   * either side the sell close is kept, as before.
+   */
+  const closeBlock = new Map<string, number | undefined>();
   for (const row of trades) {
     const address = row.Trade.Currency.SmartContract.toLowerCase();
     const day = row.Block.Date;
@@ -297,7 +307,19 @@ export function normalizeBitqueryTokenDays(
       current.buyVolumeUsd += volume;
     }
     const close = price(row.Trade.close);
-    if (close !== undefined) current.closeUsd = current.closeUsd === undefined ? close : side === 'sell' ? close : current.closeUsd;
+    if (close !== undefined) {
+      const block = toNumber(row.Block.lastBlock);
+      const at = block !== undefined && Number.isFinite(block) && block > 0 ? block : undefined;
+      const keptAt = closeBlock.get(keyOf(address, day));
+      const later =
+        current.closeUsd === undefined ||
+        (at !== undefined && (keptAt === undefined || at > keptAt)) ||
+        (at === undefined && keptAt === undefined && side === 'sell');
+      if (later) {
+        current.closeUsd = close;
+        closeBlock.set(keyOf(address, day), at);
+      }
+    }
     byKey.set(keyOf(address, day), current);
   }
   /*

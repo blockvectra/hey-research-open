@@ -53,7 +53,7 @@ Any other MCP client: run `npx -y @hey-research/mcp` over stdio.
 | `list_projects` | Browse the catalogue by surface (`still-building`, `under-the-radar`, `shipping-now`, …), kind, status, narrative, launchpad, facts and launch stage. |
 | `lookup_token` | One project by contract address: is anyone building it, ships in 30 days, the last ship and its source. `unknown` is an answer, not an error. |
 | `get_project` | Everything HEY holds on one project: sources with provenance, token identity, market context with its provider, HEY's own measures. |
-| `get_token_market` | One token's market in depth from HEY's daily index: price, liquidity, volume and trades by day, lifecycle, contract checks. |
+| `get_token_market` | One token's market in depth from HEY's daily index: price, liquidity, volume and trades by day, lifecycle, contract checks, deployer, pools and 1% depth, supply-concentration summary. |
 | `project_intelligence` | How one project builds over time: velocity, release cadence, consistency, how fast HEY saw its ships, market attention as context, and 30-day changes — each line tagged FACT, DERIVED or UNKNOWN. |
 | `ask_hey` | A free-text question about one project, answered only from HEY's record; every line FACT, DERIVED or UNKNOWN. |
 | `contract_changes` | Upgrades, follow-up deployments, newly verified contracts and interface changes, with evidence. |

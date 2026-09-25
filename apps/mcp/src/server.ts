@@ -444,7 +444,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date): McpServ
     [
       'One token\'s market in depth, from HEY\'s own daily index: price, liquidity and volume by day, trades by day split by direction (decoded from the chain),',
       'the token\'s lifecycle (launch recorded, pool created, launch stage, first and last indexed trade, highest liquidity), what HEY checked on the contract',
-      '(proxy, deployer, whether the project names the contract, liquidity against its high), contract events by day and value locked.',
+      '(proxy, deployer, whether the project names the contract, liquidity against its high), who deployed the contract and when, its pools and how much can be sold before the price moves 1%,',
+      'a summary of how concentrated the supply is (shares only, no addresses), contract events by day and value locked.',
       'Use this after get_project when asked whether a token still trades, how its liquidity has moved, or what HEY checked. Counts, never accounts; context, never a recommendation.',
     ].join(' '),
     {

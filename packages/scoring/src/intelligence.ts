@@ -1,6 +1,6 @@
 import type { ShipEventType } from '@hey/db';
 
-import { daysBetween, meaningfulEvents, type ScoredEvent } from './activity';
+import { daysBetween, isoWeekIndex, meaningfulEvents, type ScoredEvent } from './activity';
 import { ACTIVITY } from './config';
 import { shippingStreak } from './hbm';
 
@@ -26,10 +26,13 @@ import { shippingStreak } from './hbm';
  * reading must sit within two days of the window's start; and no market
  * attention is reported for a market that is not live.
  */
-export const INTELLIGENCE_RULES_VERSION = 'intel-v2' as const;
+/*
+ * intel-v3 (2026-09-25, reconciliation): active weeks and the longest streak
+ * count UTC ISO weeks, the unit the streak and HBM consistency use.
+ */
+export const INTELLIGENCE_RULES_VERSION = 'intel-v3' as const;
 
 const DAY_MS = 86_400_000;
-const WEEK_MS = 7 * DAY_MS;
 
 /**
  * The event types that are a release — something a user can pick up — rather
@@ -207,14 +210,15 @@ export type BuilderConsistency = {
 };
 
 /**
- * How steadily a project builds. Weeks are the same seven-day buckets counted
- * back from now that the canonical streak uses, so "active week" means one
- * thing on every surface.
+ * How steadily a project builds. Weeks are UTC ISO weeks (intel-v3), the unit
+ * the canonical streak and HBM consistency use, so "active week" means one
+ * thing on every surface. Week 0 is the week in progress.
  */
 export function builderConsistency(events: readonly ScoredEvent[], now: Date, observedSince: Date): BuilderConsistency {
   const meaningful = meaningfulEvents(events, now).filter((event) => event.publishedAt.getTime() <= now.getTime());
-  const buckets = new Set(meaningful.map((event) => Math.floor((now.getTime() - event.publishedAt.getTime()) / WEEK_MS)));
-  const watchedWeeks = Math.floor((now.getTime() - observedSince.getTime()) / WEEK_MS);
+  const thisWeek = isoWeekIndex(now);
+  const buckets = new Set(meaningful.map((event) => thisWeek - isoWeekIndex(event.publishedAt)));
+  const watchedWeeks = thisWeek - isoWeekIndex(observedSince);
 
   let activeWeeks: number | null = null;
   if (watchedWeeks >= CONSISTENCY_WINDOW_WEEKS) {

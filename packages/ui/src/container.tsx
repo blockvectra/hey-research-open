@@ -34,11 +34,3 @@ export function Container({ children, className, width = 'max-w-shell' }: Contai
     </div>
   );
 }
-
-/**
- * A narrower column for prose, inside the wide shell. Long text stays readable
- * even when the page itself is wide.
- */
-export function Prose({ children, className }: ContainerProps) {
-  return <div className={cn('max-w-2xl', className)}>{children}</div>;
-}

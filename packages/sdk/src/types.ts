@@ -70,6 +70,15 @@ export type HeyProject = {
   volume24h?: { usd: number; source?: string; observedAt?: string };
   /** Where the launch stands: on its curve, graduated, or trading in a DEX pool. */
   launchStage?: 'CURVE' | 'GRADUATED' | 'DEX';
+  /**
+   * The tracked token's market state, as the card shows it: `ACTIVE_MARKET`,
+   * `LOW_LIQUIDITY`, `NO_LIQUIDITY`, `TRADING_INACTIVE`, `LIQUIDITY_REMOVED`,
+   * `MARKET_ABANDONED` or `INSUFFICIENT_DATA`, with HEY's reason code. It is
+   * why a listing sometimes carries no `marketCap`: a dead market's valuation
+   * is withheld. Absent for a project without a token. About the market,
+   * never about the team.
+   */
+  tokenMarket?: { status: string; reason?: string };
   /** The project's page on HEY. */
   url: string;
 };
@@ -215,7 +224,35 @@ export type HeyTokenMarket = {
   symbol?: string;
   token: { chainId: number; contractAddress: string };
   marketStatus: string;
+  /** The reason code behind `marketStatus` (`launch_pool_no_trades`, `no_volume_24h`, …), when HEY recorded one. */
+  marketStatusReason?: string;
   verification: string;
+  /**
+   * The contract's own provenance, read from the chain: who deployed it, in
+   * which transaction, and when. `deployerShared` is true when that deployer
+   * launched other projects HEY tracks — a launch service, not one team.
+   * Absent when HEY holds none of it. A fact about a contract, never a label
+   * on a person.
+   */
+  contract?: { deployer?: string; deployerShared?: boolean; creationTx?: string; createdAt?: string };
+  /** The token's pools on the latest day HEY read: how many, their liquidity, and how much can be sold before the price moves 1%, added across them. */
+  pools?: { day: string; observedAt: string; pools?: number; liquidityUsd?: number; depthOnePctUsd?: number };
+  /**
+   * How concentrated the supply is, from HEY's daily snapshot of the token's
+   * largest balances. Shares are 0–100; burned and pooled supply are excluded
+   * from the top-10 and top-50 shares and reported beside them. A summary
+   * only — no address is published. Absent when HEY has not read it. Context,
+   * never a score.
+   */
+  distribution?: {
+    day: string;
+    observedAt: string;
+    holdersTotal?: number;
+    top10SharePct?: number;
+    top50SharePct?: number;
+    burnedSharePct?: number;
+    pooledSharePct?: number;
+  };
   current?: {
     priceUsd?: number;
     marketCapUsd?: number;
@@ -248,6 +285,11 @@ export type HeyTokenMarket = {
     sellVolumeUsd?: number;
     tradeCloseUsd?: number;
     transfers?: number;
+    /** Counts of the addresses behind the day's trades, and of the pools traded; absent means unread. Counts, never the addresses. */
+    distinctAddresses?: number;
+    distinctBuyers?: number;
+    distinctSellers?: number;
+    poolsTraded?: number;
     tradesSource?: string;
   }[];
   lifecycle: {
@@ -264,7 +306,8 @@ export type HeyTokenMarket = {
     priceChange30dPct?: number;
   };
   checks: { key: string; label: string; finding: string; provenance?: string; checkedAt?: string; tone: 'plain' | 'noted' }[];
-  onchainDays: { day: string; events: number; truncated: boolean }[];
+  /** `callers` is how many distinct addresses called the contract that day, when HEY read it: a count, never the addresses. */
+  onchainDays: { day: string; events: number; truncated: boolean; callers?: number }[];
   tvlDays: { day: string; tvlUsd: number; protocolName: string }[];
   url: string;
   disclaimer: string;

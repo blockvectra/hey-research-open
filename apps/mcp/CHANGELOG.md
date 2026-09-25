@@ -8,6 +8,10 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ### Added
 
+- API parity (2026-09-25): project lines say the token's market state in the
+  site's words (`market: trading inactive`); `get_token_market` prints the
+  status reason, who deployed the contract and when, the pools and how much
+  can be sold before the price moves 1%, and a supply-concentration summary.
 - `shipping_in_silence`, `builder_comebacks`, `upcoming_unlocks`,
   `project_timeline` and `compare_projects` (2026-09-24): the Terminal command
   centre over MCP.

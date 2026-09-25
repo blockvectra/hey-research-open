@@ -27,7 +27,7 @@ Base URL: `https://heyresearch.xyz`
 | Provenance travels with the fact | A ship carries `sourceUrl` and `verification`; a market figure carries the `source` that reported it. One exception, and it is the roll-up rather than the record: `/api/this-week` prints a bare `marketCapUsd` on its list items, with no `source` and no `observedAt` — read it as the figure the project listing carries, and take the provenance from `/api/projects` (2026-09-19). |
 | Self-reported ≠ verified | `verification` distinguishes them, always. |
 | Research depth is stated | `researchLevel` and `catalogStatus` say whether HEY merely indexed a record or actually researched it, so an `INDEXED` row is not read as a claim. |
-| No wallet data, and one narrow holder snapshot | HEY builds no wallet analytics, no PnL, no smart-money labels and no cross-token holder history. Since the founder's 2026-09-14 amendment it does keep one narrow thing: a daily snapshot of a **single token's** fifty largest balances, which draws the distribution bubble map on `/project/{slug}/market`. **No payload here carries a balance or an address**, and the snapshot is never an input to activity status, Build Momentum, the Discovery Gap or the Builder Radar. It is not sealed off from everything: `/api/signals` publishes a `concentration_rose` signal derived from it (2026-09-15) — a Nakamoto count with its before and after, carrying an `importance` like every other signal, which `order=importance` sorts the *feed* by. That feed is a record of measured changes, not a ranking of projects. |
+| No wallet data, and one narrow holder snapshot | HEY builds no wallet analytics, no PnL, no smart-money labels and no cross-token holder history. Since the founder's 2026-09-14 amendment it does keep one narrow thing: a daily snapshot of a **single token's** fifty largest balances, which draws the distribution bubble map on `/project/{slug}/market`. **No payload here carries a balance or a holder's address** — `/market` sends only a summary of the snapshot (shares, a holder count, the day), and the one address it names is the contract's *deployer*, a fact about the contract read from the chain (2026-09-25) — and the snapshot is never an input to activity status, Build Momentum, the Discovery Gap or the Builder Radar. It is not sealed off from everything: `/api/signals` publishes a `concentration_rose` signal derived from it (2026-09-15) — a Nakamoto count with its before and after, carrying an `importance` like every other signal, which `order=importance` sorts the *feed* by. That feed is a record of measured changes, not a ranking of projects. |
 | Market data is context | It never ranks anything here, and the default order is activity. |
 | Paid placement is not in the data | The labelled *Sponsored* row on the home page is advertising. It has no field here, no feed entry, and no effect on any order, score or status. |
 | The caveat travels too | Every data response carries `disclaimer`. `/api/status` is the exception: it reports HEY's own freshness and health, claims nothing about a project, and carries no `disclaimer` (2026-09-19). |
@@ -204,6 +204,11 @@ MARKET_ABANDONED or INSUFFICIENT_DATA, with `liquidityUsd`, `volume24hUsd`, `pea
 `pairCreatedAt`, `evaluatedAt`) describes the market HEY observed. Neither feeds a score; both are
 observations, never a verdict on the team.
 
+Every listed project with a token also carries `tokenMarket` (2026-09-25): `{ status, reason? }`,
+the same state the card shows. It is why a listing sometimes has no `marketCap` — a dead market's
+valuation (`NO_LIQUIDITY`, `LIQUIDITY_REMOVED`, `MARKET_ABANDONED`, or an untraded launch pool) is
+withheld. The dossier's `tokenMarket` is the same object with more in it.
+
 `launchedVia` is present only when HEY observed the launch. "Unknown" and "Independent" are
 how the *card* says provenance is missing; the API omits the field instead, so nothing reads
 them as the names of launchpads.
@@ -226,6 +231,15 @@ identical to a slug that never existed, which is what the pages do too.
   contract deployment is a launch, not a ship, and appears on none of the ship surfaces; the project
   page's own timeline still shows it.
 - `stillBuildingEvidence` — present whenever `stillBuilding` is true, on the dossier as on the listing.
+
+### Everything the listing sends (2026-09-25)
+
+The dossier used to send less than the listing for the same project: `officialX`, `marketCap`
+(with `source`, `observedAt` and `kind`), `liquidity`, `volume24h`, `trades24h`,
+`priceChange24hPct`, `venue`, `launchStage` and the listing's `tokenMarket` were missing, because
+the profile keeps its reading in `market` and its token state apart. They are now filled from the
+same reading, in the listing's shapes and under the same rules — a dead market's valuation is
+withheld here too — and `market` is unchanged beside them.
 
 ### Mirroring the ship feed (2026-09-17)
 
@@ -498,6 +512,21 @@ words with `provenance` and a `tone` of `plain` or `noted`. Never a score, never
 "risky". `onchainDays[]` are the contract's events per day; `tvlDays[]` DefiLlama's value locked
 per day. Absent means HEY holds no such figure. Counts of trades, transfers and events, never of
 accounts. A project without a token is `404`.
+
+Added 2026-09-25, all optional and absent when HEY holds nothing:
+
+- `marketStatusReason` — the reason code behind `marketStatus` (`launch_pool_no_trades`,
+  `no_volume_24h`, …).
+- `contract` — `deployer`, `deployerShared` (that deployer launched other projects HEY tracks: a
+  launch service, not one team), `creationTx`, `createdAt`. A fact about the contract, never a label
+  on a person.
+- `pools` — the latest pool reading from the chain: `day`, `observedAt`, `pools`, `liquidityUsd`
+  and `depthOnePctUsd` (how much can be sold before the price moves 1%, added across the pools).
+- `distribution` — a summary of HEY's snapshot of the token's largest balances: `day`,
+  `observedAt`, `holdersTotal`, `top10SharePct`, `top50SharePct` (burned and pooled supply left
+  out), `burnedSharePct`, `pooledSharePct`. No address and no balance.
+- `days[]` also names `distinctAddresses`, `distinctBuyers`, `distinctSellers` and `poolsTraded`,
+  and `onchainDays[]` names `callers` — counts the route already sent and the types did not.
 
 A project's `onchainActivity` in `GET /api/projects/{slug}` gained four optional fields on
 2026-09-14, present only on days a decoding source filled: `calls24h`, `transactions24h`,

@@ -29,7 +29,6 @@ export * from './format';
 export * from './map';
 export * from './narrative-color';
 export * from './project-card';
-export * from './project-index';
 export * from './project-visuals';
 export * from './sections';
 export * from './status';

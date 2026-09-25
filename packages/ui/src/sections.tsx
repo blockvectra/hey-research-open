@@ -111,17 +111,3 @@ function Row({ label, value, strong }: { label: string; value: string; strong?: 
     </div>
   );
 }
-
-/** Small, subtle ecosystem counts for the hero (UI/UX V2 section 8). */
-export function EcosystemCounts({ items }: { items: { label: string; value: string }[] }) {
-  return (
-    <dl className="flex flex-wrap gap-x-8 gap-y-3">
-      {items.map((item) => (
-        <div key={item.label}>
-          <dt className="text-[13px] text-hey-secondary">{item.label}</dt>
-          <dd className="mt-0.5 text-xl font-semibold tabular-nums tracking-tight">{item.value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}

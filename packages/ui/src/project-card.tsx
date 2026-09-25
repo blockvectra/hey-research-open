@@ -461,31 +461,6 @@ export function ProjectCard({
 }
 
 /**
- * Consistency at a glance (UI/UX V2 section 19). Filled blocks are weeks that
- * contained a meaningful, verified build event — never social activity.
- */
-export function BuildStreak({ weeks, className }: { weeks: number; className?: string }) {
-  const shown = Math.min(weeks, 12);
-  const label = `${weeks} week shipping streak`;
-
-  return (
-    <div className={className}>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-hey-muted">Build streak</p>
-      <div className="mt-1.5 flex items-center gap-2">
-        <span className="flex gap-[3px]" role="img" aria-label={label}>
-          {Array.from({ length: shown }, (_, index) => (
-            <span key={index} className="h-3.5 w-2 rounded-[2px] bg-blue-500" />
-          ))}
-        </span>
-        <span className="text-[13px] text-hey-secondary">
-          {weeks} {weeks === 1 ? 'week' : 'weeks'}
-        </span>
-      </div>
-    </div>
-  );
-}
-
-/**
  * Responsive grid: one column on a phone, two on a tablet, three across the
  * 1280px shell, where each card keeps well over 300px.
  *
@@ -516,26 +491,6 @@ export function EmptyState({ title, hint }: { title: string; hint?: string }) {
     </div>
   );
 }
-
-/** Layout-aware skeleton so loading does not shift the grid (section 38). */
-export function ProjectCardSkeleton() {
-  return (
-    <div className="rounded-[12px] border border-hey-border bg-hey-surface p-5">
-      <div className="flex items-start gap-3">
-        <div className="h-11 w-11 rounded-[10px] bg-hey-border/70" />
-        <div className="flex-1">
-          <div className="h-4 w-1/2 rounded bg-hey-border" />
-          <div className="mt-2 h-3 w-1/4 rounded bg-hey-border/70" />
-        </div>
-      </div>
-      <div className="mt-4 h-3.5 w-full rounded bg-hey-border/50" />
-      <div className="mt-2 h-6 w-2/3 rounded bg-hey-border/50" />
-      <div className="mt-4 h-3 w-1/2 rounded bg-hey-border/50" />
-    </div>
-  );
-}
-
-export { ProjectCardSkeleton as CardSkeleton };
 
 const STAGE_WORDS: Record<NonNullable<ProjectCardData['launchStage']>, string> = {
   CURVE: 'on the launch curve',
