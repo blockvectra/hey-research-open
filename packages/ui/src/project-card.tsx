@@ -161,7 +161,8 @@ export function ProjectCard({
     project.tokenMarketStatus === 'NO_LIQUIDITY' ||
     project.tokenMarketStatus === 'LIQUIDITY_REMOVED' ||
     project.tokenMarketStatus === 'MARKET_ABANDONED' ||
-    (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades');
+    (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') ||
+    project.tokenMarketReason === 'launch_pool_volume_unknown';
   const hasToken = Boolean(project.token);
   // What HEY does know about a token it cannot read building from (2026-09-13): trades and on-chain events, as context under the cap.
   const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
@@ -510,6 +511,8 @@ export function marketLensLine(project: ProjectCardData): string {
   const volume = formatUsdCompact(project.volume24hUsd);
   if (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') {
     parts.push('Launch pool, no trades yet');
+  } else if (project.tokenMarketReason === 'launch_pool_volume_unknown') {
+    parts.push('Launch pool, trading unknown');
   } else {
     if (liquidity) parts.push(`Liquidity ${liquidity}`);
     if (volume) parts.push(`24 h volume ${volume}`);
@@ -543,6 +546,7 @@ export function tradeContextLine(project: ProjectCardData): string | undefined {
   const parts: string[] = [];
   if (project.tokenMarketStatus === 'ACTIVE_MARKET') parts.push('Traded today');
   else if (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') parts.push('Launch pool, no trades yet');
+  else if (project.tokenMarketReason === 'launch_pool_volume_unknown') parts.push('Launch pool, trading unknown');
   else if (project.tokenMarketStatus === 'TRADING_INACTIVE') parts.push('No trades today');
   if (project.onchainEvents24h !== undefined) parts.push(eventsPhrase(project.onchainEvents24h));
   return parts.length > 0 ? parts.join(' · ') : undefined;

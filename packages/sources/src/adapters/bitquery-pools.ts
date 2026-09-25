@@ -166,7 +166,7 @@ export function normalizeBitqueryPools(
   addresses: readonly string[],
 ): BitqueryTokenPools[] {
   const wanted = new Set(addresses.map((address) => address.toLowerCase()));
-  const byToken = new Map<string, BitqueryTokenPools & { seen: Set<string>; seenDepth: Set<string>; seenLiquidity?: Set<string> }>();
+  const byToken = new Map<string, BitqueryTokenPools & { seen: Set<string>; seenDepth: Set<string>; seenLiquidity?: Set<string>; sawEmpty?: boolean }>();
   const at = (token: string) => {
     const current = byToken.get(token) ?? { tokenAddress: token, pools: 0, events: 0, seen: new Set<string>(), seenDepth: new Set<string>() };
     byToken.set(token, current);
@@ -194,6 +194,9 @@ export function normalizeBitqueryPools(
     // Once per pool (2026-09-18): the provider returns one row per event and
     // the sum ran over all of them — yolo's one pool read $5,078 against the
     // card's $1, and 16 of 608 tokens were ten times their own market reading.
+    // A pool the provider priced at nothing is an empty pool, not an unread one (2026-09-25).
+    const raw = [row.PoolEvent.Liquidity?.a, row.PoolEvent.Liquidity?.b].filter((value) => value !== undefined && value !== null);
+    if (total === 0 && raw.length > 0 && raw.every((value) => Number(value) === 0)) entry.sawEmpty = true;
     if (total > 0 && (!pool || !entry.seenLiquidity?.has(pool))) {
       entry.liquidityUsd = (entry.liquidityUsd ?? 0) + total;
       if (pool) (entry.seenLiquidity ??= new Set<string>()).add(pool);
@@ -219,7 +222,11 @@ export function normalizeBitqueryPools(
   }
 
   return [...byToken.values()]
-    .map(({ seen: _seen, seenDepth: _seenDepth, seenLiquidity: _seenLiquidity, ...rest }) => rest)
+    // Every priced reading empty and none with liquidity: the pools hold nothing, so say 0 rather than
+    // leave the figure unknown — an unknown kept the pre-drain total in the index all day.
+    .map(({ seen: _seen, seenDepth: _seenDepth, seenLiquidity: _seenLiquidity, sawEmpty, ...rest }) =>
+      rest.liquidityUsd === undefined && sawEmpty ? { ...rest, liquidityUsd: 0 } : rest,
+    )
     .sort((a, b) => a.tokenAddress.localeCompare(b.tokenAddress));
 }
 

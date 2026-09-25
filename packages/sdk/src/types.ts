@@ -1012,6 +1012,8 @@ export type HeyCompare = {
     sources: { verified: number; total: number };
     tokenMarketStatus?: string;
     marketCapUsd?: number;
+    /** `fdv` when the figure is the fully diluted valuation standing in for a market cap. */
+    valuationKind?: 'marketCap' | 'fdv';
     liquidityUsd?: number;
     velocity?: { state: string; current: number; previous: number | null };
     cadence?: { state: string; medianIntervalDays?: number };

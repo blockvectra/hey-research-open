@@ -83,6 +83,13 @@ export type TokenMarketEvidence = {
    * pool HEY can see still holds the market.
    */
   otherPools?: { observedAt: Date; liquidityUsd: number; volume24hUsd?: number };
+  /**
+   * The deepest such reading in the last seven days (2026-09-25). When the
+   * current reading's pool is empty and no other pool was read today, but one
+   * held a market within the week, HEY holds two readings that disagree and
+   * says so, instead of either claim.
+   */
+  recentOtherPools?: { observedAt: Date; liquidityUsd: number };
 };
 
 export type TokenMarketClassification = {
@@ -140,7 +147,17 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     return { status: 'TRADING_INACTIVE', reason: 'launch_pool_no_trades' };
   }
 
-  const other = evidence.otherPools && now.getTime() - evidence.otherPools.observedAt.getTime() <= DAY_MS ? evidence.otherPools.liquidityUsd : undefined;
+  /*
+   * Another pool's figure is a market only if it is not the token's own supply
+   * valued at its last price (adversarial review, 2026-09-25): a single-sided
+   * launch pool beside a dead one "rescued" the dead one.
+   */
+  const ownSupply = (liquidityUsd: number) =>
+    latest.fdvUsd !== undefined && latest.fdvUsd > 0 && liquidityUsd >= latest.fdvUsd * TOKEN_MARKET.ownSupplyShareOfFdv;
+  const other =
+    evidence.otherPools && now.getTime() - evidence.otherPools.observedAt.getTime() <= DAY_MS && !ownSupply(evidence.otherPools.liquidityUsd)
+      ? evidence.otherPools.liquidityUsd
+      : undefined;
   const heldElsewhere = other !== undefined && other > latest.liquidityUsd;
   const liquidity = heldElsewhere ? other : latest.liquidityUsd;
   if (heldElsewhere && latest.liquidityUsd < TOKEN_MARKET.lowLiquidityUsd && liquidity >= TOKEN_MARKET.lowLiquidityUsd) {
@@ -149,6 +166,17 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     const pooled = otherVolume === undefined ? volume : volume === undefined ? otherVolume : Math.max(volume, otherVolume);
     if (pooled !== undefined && pooled <= TOKEN_MARKET.inactiveVolumeUsd) return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
     return { status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' };
+  }
+  const recent = evidence.recentOtherPools && !ownSupply(evidence.recentOtherPools.liquidityUsd) ? evidence.recentOtherPools : undefined;
+  if (
+    !heldElsewhere &&
+    recent &&
+    now.getTime() - recent.observedAt.getTime() <= 7 * DAY_MS &&
+    recent.liquidityUsd >= TOKEN_MARKET.lowLiquidityUsd &&
+    latest.liquidityUsd < TOKEN_MARKET.lowLiquidityUsd &&
+    hadMarket
+  ) {
+    return { status: 'INSUFFICIENT_DATA', reason: 'pool_readings_disagree' };
   }
   if (liquidity <= TOKEN_MARKET.dustLiquidityUsd) {
     return hadMarket ? { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_gone_after_market' } : { status: 'NO_LIQUIDITY', reason: 'no_liquidity' };
@@ -184,9 +212,12 @@ export function marketIsLive(status: TokenMarketStatusValue | null | undefined, 
   if (!status) return true; // no token: nothing to be dead
   if (status === 'NO_LIQUIDITY' || status === 'LIQUIDITY_REMOVED' || status === 'MARKET_ABANDONED') return false;
   if (status === 'TRADING_INACTIVE' && reason === 'launch_pool_no_trades') return false;
+  // A launch pool nobody reports volume for is not yet a market either (2026-09-25): its
+  // "liquidity" is the token's own supply, so no drawdown can be measured against it.
+  if (reason === 'launch_pool_volume_unknown') return false;
   return true;
 }
 
 /** The SQL-side twin of `marketIsLive`, for listing filters. */
 export const DEAD_MARKET_STATUSES = ['NO_LIQUIDITY', 'LIQUIDITY_REMOVED', 'MARKET_ABANDONED'] as const;
-export const DEAD_MARKET_REASONS = ['launch_pool_no_trades'] as const;
+export const DEAD_MARKET_REASONS = ['launch_pool_no_trades', 'launch_pool_volume_unknown'] as const;

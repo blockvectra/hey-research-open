@@ -91,6 +91,18 @@ describe('token market status', () => {
     expect(
       classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(2), liquidityUsd: 14_000 } }),
     ).toMatchObject({ status: 'LIQUIDITY_REMOVED' });
+    // A live pool read three days ago and nothing since: the readings disagree, and HEY says so.
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 1 }, peakLiquidityUsd: 48_000, recentOtherPools: { observedAt: at(3), liquidityUsd: 14_000 } }),
+    ).toMatchObject({ status: 'INSUFFICIENT_DATA', reason: 'pool_readings_disagree' });
+    // A week and more: the drain stands.
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 1 }, peakLiquidityUsd: 48_000, recentOtherPools: { observedAt: at(8), liquidityUsd: 14_000 } }),
+    ).toMatchObject({ status: 'LIQUIDITY_REMOVED' });
+    // A launch pool's own supply beside the dead pool is not a market.
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 3, fdvUsd: 40_000 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(0), liquidityUsd: 39_000 } }).status,
+    ).toBe('LIQUIDITY_REMOVED');
     // Every pool drained: still a drain.
     expect(
       classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(0), liquidityUsd: 40 } }),
@@ -101,7 +113,8 @@ describe('token market status', () => {
     const pool = { observedAt: at(0), liquidityUsd: 42_032_764, fdvUsd: 41_998_844 };
     const unknown = classifyTokenMarket({ now, latest: pool, peakLiquidityUsd: 42_032_764 });
     expect(unknown).toMatchObject({ status: 'INSUFFICIENT_DATA', reason: 'launch_pool_volume_unknown' });
-    expect(marketIsLive(unknown.status, unknown.reason)).toBe(true);
+    // Not a live market either: its reserve is its own supply (2026-09-25).
+    expect(marketIsLive(unknown.status, unknown.reason)).toBe(false);
     // A pool reading of zero does not overrule $56 of decoded trades on the same day.
     expect(
       classifyTokenMarket({ now, latest: { ...pool, volume24hUsd: 0 }, peakLiquidityUsd: 42_032_764, trades: { observedAt: at(0.1), volume24hUsd: 56.26 } }),

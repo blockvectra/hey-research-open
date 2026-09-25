@@ -282,7 +282,22 @@ export function tokenMarketLabel(status: TokenMarketStatusValue): string {
   return (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA).label;
 }
 
-export function tokenMarketHelp(status: TokenMarketStatusValue): string {
+/*
+ * Reasons whose sentence is more exact than the status's (2026-09-25): the
+ * status alone said "has liquidity and traded" over a reading of $1, because
+ * the market was in another pool the page did not name.
+ */
+const TOKEN_MARKET_REASON_HELP: Readonly<Record<string, string>> = {
+  liquidity_in_another_pool:
+    'The pool the latest reading follows is nearly empty, but another pool HEY read in the last day holds liquidity. The figures shown are the latest reading’s own pool.',
+  pool_readings_disagree:
+    'HEY’s readings disagree: the latest follows a nearly empty pool, while another pool held liquidity within the week. HEY claims neither a live market nor a drain until a fresh reading settles it.',
+  launch_pool_volume_unknown:
+    'A launch pool still holding the token’s own supply, and no reading reports its volume. Whether it trades is unknown, not zero.',
+};
+
+export function tokenMarketHelp(status: TokenMarketStatusValue, reason?: string | null): string {
+  if (reason && TOKEN_MARKET_REASON_HELP[reason]) return TOKEN_MARKET_REASON_HELP[reason]!;
   return (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA).help;
 }
 

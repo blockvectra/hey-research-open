@@ -53,8 +53,9 @@ export type BubbleNode = {
 export type BubbleEdge = { from: string; to: string; transfers: number };
 
 const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
+// A real balance never prints as 0.00% (2026-09-25): under a hundredth of a per cent says so.
 const pct = (value: number) =>
-  value >= 10 ? value.toFixed(0) : value >= 1 ? value.toFixed(1) : value.toFixed(2);
+  value >= 10 ? value.toFixed(0) : value >= 1 ? value.toFixed(1) : value > 0 && value < 0.01 ? '<0.01' : value.toFixed(2);
 
 /**
  * One hue per cluster, cycling. They are the product's own data colours, not a
