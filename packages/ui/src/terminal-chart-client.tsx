@@ -435,7 +435,13 @@ export function TerminalChartInteractive({
         <Readout model={model} at={at} />
       </div>
 
-      <div className="grid gap-x-2 lg:grid-cols-[minmax(0,1fr)_64px]">
+      {/*
+        The price scale has its own gutter at every width (review repairs,
+        2026-09-26). Below 1024px it used to sit inside the plot on a
+        translucent chip, over the newest candles — the ones a reader looks at
+        first — and the last-close tag hid the latest candle outright.
+      */}
+      <div className="grid grid-cols-[minmax(0,1fr)_52px] gap-x-1 lg:grid-cols-[minmax(0,1fr)_64px] lg:gap-x-2">
         <div
           onPointerMove={onMove}
           onPointerLeave={onLeave}
@@ -551,7 +557,7 @@ export function TerminalChartInteractive({
               </g>
             </svg>
 
-            {/* Price scale: inside the plot on a chip below 1024px, its own 64px column from there. */}
+            {/* Price scale: in its own column beside the plot, 52px below 1024px and 64px from there. */}
             <div
               aria-hidden="true"
               className="pointer-events-none font-mono text-t-micro tabular-nums text-hey-muted"
@@ -562,7 +568,7 @@ export function TerminalChartInteractive({
                 (lastClose === null || Math.abs(y(v) - y(lastClose)) > 16) ? (
                   <span
                     key={v}
-                    className="absolute right-1 -translate-y-1/2 rounded-[3px] bg-hey-surface/85 px-1 lg:right-auto lg:left-[calc(100%+8px)] lg:bg-transparent lg:px-0"
+                    className="absolute left-[calc(100%+4px)] -translate-y-1/2 whitespace-nowrap lg:left-[calc(100%+8px)]"
                     style={{ top: pct(y(v), H) }}
                   >
                     {label}
@@ -571,7 +577,7 @@ export function TerminalChartInteractive({
               )}
               {model.volLabel ? (
                 <span
-                  className="absolute right-1 rounded-[3px] bg-hey-surface/85 px-1 lg:right-auto lg:left-[calc(100%+8px)] lg:bg-transparent lg:px-0"
+                  className="absolute left-[calc(100%+4px)] whitespace-nowrap lg:left-[calc(100%+8px)]"
                   style={{ top: pct(VOL_TOP + 2, H) }}
                 >
                   {model.volLabel}
@@ -615,7 +621,7 @@ export function TerminalChartInteractive({
                 aria-hidden="true"
                 data-testid="last-close"
                 data-direction={lastDir === 'u' ? 'up' : lastDir === 'd' ? 'down' : 'flat'}
-                className="pointer-events-none absolute right-0 -translate-y-1/2 rounded-[var(--hey-radius-tooltip)] px-1.5 py-0.5 font-mono text-t-micro font-medium tabular-nums lg:right-auto lg:left-[calc(100%+4px)]"
+                className="pointer-events-none absolute left-[calc(100%+2px)] -translate-y-1/2 whitespace-nowrap rounded-[var(--hey-radius-tooltip)] px-1 py-0.5 font-mono text-t-micro font-medium tabular-nums lg:left-[calc(100%+4px)] lg:px-1.5"
                 style={{
                   top: pct(y(lastClose), H),
                   background:
@@ -629,7 +635,7 @@ export function TerminalChartInteractive({
             <span
               ref={pillRef}
               aria-hidden="true"
-              className="pointer-events-none absolute right-0 z-10 -translate-y-1/2 rounded-[var(--hey-radius-tooltip)] bg-[var(--hey-tooltip-bg)] px-1.5 py-0.5 font-mono text-t-micro tabular-nums text-[var(--hey-tooltip-ink)] lg:right-auto lg:left-[calc(100%+4px)]"
+              className="pointer-events-none absolute left-[calc(100%+2px)] z-10 -translate-y-1/2 whitespace-nowrap rounded-[var(--hey-radius-tooltip)] bg-[var(--hey-tooltip-bg)] px-1 py-0.5 font-mono text-t-micro tabular-nums text-[var(--hey-tooltip-ink)] lg:left-[calc(100%+4px)] lg:px-1.5"
               style={{ display: 'none' }}
             />
           </div>
@@ -717,6 +723,28 @@ export function TerminalChartInteractive({
           </div>
         </div>
       </div>
+
+      {/* The candle key, visible (review repairs, 2026-09-26): it was only in a collapsed note and the screen-reader caption. */}
+      <p
+        className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-t-meta text-hey-muted"
+        data-testid="candle-key"
+      >
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="inline-block h-2.5 w-1.5 rounded-[1px]" style={{ background: TONE.u }} />
+          Closed above its open
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span aria-hidden="true" className="inline-block h-2.5 w-1.5 rounded-[1px]" style={{ background: TONE.d }} />
+          Closed below
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span
+            aria-hidden="true"
+            className="inline-block h-2.5 w-1.5 rounded-[1px] border border-[var(--hey-market-flat)]"
+          />
+          Outline: day still open
+        </span>
+      </p>
 
       {numbered.length > 0 ? (
         <ol
