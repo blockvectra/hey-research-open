@@ -74,7 +74,7 @@ import { MCP_VERSION } from './version';
  * answer a question HEY cannot answer.
  */
 const NOT_ADVICE =
-  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data. No tool here returns holder data of any kind.';
+  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data and no cross-token address data. The one exception is get_token_market: it returns one token\'s supply-concentration summary and names only that token\'s contract deployer. No other tool here returns holder data.';
 
 /** The activity surfaces the site itself offers; held to the SDK's list, which the contract test holds to the domain's. */
 const SURFACES = [
@@ -183,7 +183,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       'Use this for open questions — "what is still being built", "what launched on Pons",',
       '"which infrastructure projects are active". The `surface` argument is the strongest filter:',
       'still-building is projects that kept shipping through a tracked market drawdown,',
-      'under-the-radar is projects with real activity and little market attention.',
+      'under-the-radar is projects with a positive Discovery Gap: verified activity with a market-attention percentile below its build percentile.',
       'Not a ranking by price: ordering by market cap is context the caller asked for.',
     ].join(' '),
     {
@@ -343,7 +343,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
 
   server.tool(
     'shipping_in_silence',
-    'Robinhood Chain projects with verified recent shipping whose live market draws comparatively little attention — HEY\'s Under the Radar decision. Newest ship first; never ordered by price, and not a recommendation.',
+    'Robinhood Chain projects that are Under the Radar (verified recent shipping, a positive Discovery Gap) and below the 40th market-attention percentile. Newest ship first; never ordered by price, and not a recommendation.',
     {},
     async () => {
       try {

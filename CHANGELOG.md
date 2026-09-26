@@ -29,6 +29,14 @@ record.
 - **Faster first paint on phones.** Marks the site font does not carry (⋯, ◆, ●, ■, ↗ and the
   subscript in compact prices) are drawn instead of typed, so the first layout no longer waits for a
   fallback font. A compact price still copies as its full decimal (`$0.0000254`).
+- **Wording that claimed more than HEY knows.** The MCP server and `llms.txt` describe Under the
+  Radar as a positive Discovery Gap (verified activity with a market-attention percentile below
+  its build percentile), and `shipping_in_silence` as Under the Radar and below the 40th
+  market-attention percentile. The server's opening note says `get_token_market` returns one
+  token's supply-concentration summary and names only its deployer. A project's date reads "First
+  listed". On the market page and in the MCP, the launch stage reads "HEY first saw it on DEX on" a
+  date instead of "since", and a contract that is not a proxy reads "No proxy pattern detected in
+  the EIP-1967 implementation slot at the last check."
 
 ## 2026-09-25
 

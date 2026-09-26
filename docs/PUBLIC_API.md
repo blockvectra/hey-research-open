@@ -99,8 +99,8 @@ try {
   `'quota'` and `retryAfterSeconds` from the `retry-after` header; the caller decides. A network
   failure is `code: 'network'`, a timeout `'timeout'`, a missing record `'not_found'` with
   `status: 404`.
-- **It cannot drift from the API.** `apps/web/src/lib/public-api-contract.test.ts` (private
-  repository) asserts, at
+- **It cannot drift from the API.** The `apps/web/src/lib/public-api-contract.*.test.ts` files
+  (private repository, one per family since 2026-09-26) assert, at
   the type level and in both directions, that every response type the SDK exports is identical
   to the serialiser that produces it; `pnpm typecheck` fails on a field added to one side only.
 - **The user-agent says who is calling.** Every request carries `hey-research-sdk/<version>`,
@@ -282,7 +282,7 @@ release published on Monday is routinely recorded on Tuesday, and a consumer kee
 late: never.
 
 Every ship now carries **`detectedAt`** — when HEY observed it — and the feed accepts
-**`?detectedSince=<ISO>`** and **`?sort=detected`**. Page along those and nothing is missed:
+**`?detectedSince=<ISO>`** and **`?sort=detected`**. Page along those:
 
 ```bash
 curl "https://heyresearch.xyz/api/ships?sort=detected&detectedSince=2026-09-16T00:00:00Z&limit=48"
@@ -290,6 +290,20 @@ curl "https://heyresearch.xyz/api/ships?sort=detected&detectedSince=2026-09-16T0
 
 Keep the highest `detectedAt` you have seen and pass it back next time. `since` is unchanged and
 still means what it meant.
+
+**What a `detectedAt` watermark still misses (2026-09-26).** Paging this way catches everything
+HEY records late, but three known paths still lose a ship, and they stay open until the change
+feed (`/api/changes`) lands:
+
+- **Late publication.** A ship recorded before its project was published appears in the feed
+  when the project is published, carrying its original `detectedAt`. A watermark already past
+  that instant never sees it.
+- **`context_only` cleared later.** A ship first recorded as context, and later counted, joins
+  the feed with its original `detectedAt`, behind the watermark in the same way.
+- **Retractions.** A ship later retracted, disputed or removed in moderation simply leaves the
+  feed. There is no tombstone, so a mirror keeps it.
+
+A periodic full re-read of the window you care about is the workaround until then.
 
 ## `GET /api/token/{chainId}/{address}` (2026-09-16)
 
@@ -726,7 +740,8 @@ named here so a reader of that repository can find them; they are not part of th
 - Contract tests: `apps/web/e2e/public-api.spec.ts`
 - The SDK: `packages/sdk` (published as `@hey-research/sdk` once the npm organisation exists);
   the type-level contract between its response types and the serialisers:
-  `apps/web/src/lib/public-api-contract.test.ts` (2026-09-19)
+  `apps/web/src/lib/public-api-contract.{projects,feeds,misc}.test.ts` (2026-09-19; split by family
+  2026-09-26)
 
 Every route here reads HEY's own database and makes no third-party call (CLAUDE.md
 architecture rules 13–14) — with one deliberate exception, `POST /api/scan`, which exists to

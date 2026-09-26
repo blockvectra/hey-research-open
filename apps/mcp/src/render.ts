@@ -265,7 +265,8 @@ export function renderProject(project: HeyProjectDetail, now?: Date): string {
   if (project.officialX) lines.push(`- Official X: @${project.officialX.handle}`);
   if (project.websiteUrl) lines.push(`- Website: ${project.websiteUrl}`);
   lines.push(`- Ownership: ${project.isClaimed ? 'claimed by a verified builder' : project.submitted ? 'self-reported at submission, not yet claimed' : 'not claimed'}`);
-  lines.push(`- First seen by HEY: ${project.firstSeenAt.slice(0, 10)}`);
+  // The date the project was first listed (for a promoted listing, the listing's own date), not when HEY first saw it (2026-09-26).
+  lines.push(`- First listed: ${project.firstSeenAt.slice(0, 10)}`);
 
   if (project.market) {
     const m = project.market;
@@ -377,6 +378,17 @@ export function renderBounties(page: HeyBountyPage, now?: Date): string {
 }
 
 
+/**
+ * The stage's stamp is when HEY recorded the stage, not when the token reached
+ * it (2026-09-26): a pool can exist for days before HEY reads it.
+ */
+function launchStageSeenWords(stage: string): string {
+  if (stage === 'DEX') return 'HEY first saw it on DEX on';
+  if (stage === 'GRADUATED') return 'HEY first saw it graduated on';
+  if (stage === 'CURVE') return 'HEY saw it on the curve on';
+  return 'HEY recorded this stage on';
+}
+
 const signed = (value: number | undefined) => (value === undefined ? undefined : `${value >= 0 ? '+' : ''}${value.toFixed(1)}%`);
 
 /** One token's market in depth, as prose an agent can quote with its sources. */
@@ -423,7 +435,7 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
   const life = [
     l.launchSeenAt ? `launch recorded ${l.launchSeenAt.slice(0, 10)}` : undefined,
     l.pairCreatedAt ? `pool created ${l.pairCreatedAt.slice(0, 10)}` : undefined,
-    l.launchStage ? `stage ${l.launchStage.toLowerCase()}${l.launchStageAt ? ` since ${l.launchStageAt.slice(0, 10)}` : ''}` : undefined,
+    l.launchStage ? `stage ${l.launchStage.toLowerCase()}${l.launchStageAt ? ` (${launchStageSeenWords(l.launchStage)} ${l.launchStageAt.slice(0, 10)})` : ''}` : undefined,
     l.firstTradeDay ? `first indexed trade ${l.firstTradeDay}` : undefined,
     l.lastTradeDay ? `last indexed trade ${l.lastTradeDay}` : undefined,
     l.peakLiquidityUsd === undefined ? undefined : `highest liquidity HEY saw ${money(l.peakLiquidityUsd)}${l.liquidityBelowPeakPct === undefined ? '' : ` (now ${Math.round(100 - l.liquidityBelowPeakPct)}% of it)`}`,

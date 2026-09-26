@@ -9,68 +9,14 @@ export { DEFAULT_BASE_URL, HeyClient, USER_AGENT, type FetchLike, type HeyClient
 export { HeyApiError, retryAfterSeconds, type HeyApiErrorCode, type HeyApiErrorOptions } from './error';
 export { itemsOf, nextOffsetPages, totalPages } from './paging';
 export { SDK_VERSION } from './version';
-export type {
-  HeyCentreProject,
-  HeySilentBuilders,
-  HeyAccelerating,
-  HeyMarketIntegrity,
-  HeyMarketMoves,
-  HeyComebacks,
-  HeyUnlocks,
-  HeyBuildMarket,
-  HeyTimelineEntry,
-  HeyTimeline,
-  HeyCompare,
-  HeyActivityStatus,
-  HeyAskAnswer,
-  HeyAskLine,
-  HeyContractChange,
-  HeyContractChanges,
-  HeyBountiesQuery,
-  HeyBounty,
-  HeyBountyDetail,
-  HeyBountyPage,
-  HeyBountyRules,
-  HeyBuilder,
-  HeyBuilderFilter,
-  HeyBuilderRadarDay,
-  HeyBuildersPage,
-  HeyBuildersQuery,
-  HeyCardFact,
-  HeyCatalogueCounts,
-  HeyChain,
-  HeyChainDay,
-  HeyIntelligenceMarket,
-  HeyLaunchStage,
-  HeyMarketCoverage,
-  HeyPage,
-  HeyLiquidityKind,
-  HeyDistributionReadOutcome,
-  HeyProject,
-  HeyProjectDetail,
-  HeyProjectIntelligence,
-  HeyProjectKind,
-  HeyProjectSurface,
-  HeyProjectsQuery,
-  HeyScanCard,
-  HeyShip,
-  HeyShipsQuery,
-  HeySignal,
-  HeySignalDetail,
-  HeySignalGroup,
-  HeySignalPage,
-  HeySignalsQuery,
-  HeyStatus,
-  HeyStatusLevel,
-  HeyStatusSlo,
-  HeyStatusSource,
-  HeyThisWeek,
-  HeyThisWeekProject,
-  HeyThisWeekShip,
-  HeyToken,
-  HeyTokenLookup,
-  HeyTokenLookupProject,
-  HeyTokenMarket,
-  HeyWeeklyIndex,
-  HeyWeeklyReport,
-} from './types';
+/*
+ * The response and query shapes, one file per family (2026-09-26). `export
+ * type *` makes a type added to any of them public without an edit here.
+ */
+export type * from './types/projects';
+export type * from './types/feeds';
+export type * from './types/misc';
+export type * from './types/changes';
+export type * from './types/snapshot';
+export type * from './types/contracts';
+export type * from './types/webhooks';

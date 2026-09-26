@@ -1,23 +1,34 @@
 import { HeyApiError, errorFromResponse } from './error';
 import { itemsOf, nextOffsetPages, totalPages } from './paging';
 import type {
-  HeyAskAnswer,
-  HeyBuildMarket,
-  HeyComebacks,
-  HeyCompare,
-  HeySilentBuilders,
   HeyAccelerating,
+  HeyBuildMarket,
+  HeyChain,
+  HeyComebacks,
+  HeyContractChanges,
   HeyMarketIntegrity,
   HeyMarketMoves,
+  HeySignalDetail,
+  HeySignalPage,
+  HeySignalsQuery,
+  HeySilentBuilders,
+  HeyThisWeek,
   HeyTimeline,
   HeyUnlocks,
+} from './types/feeds';
+import type {
+  HeyAskAnswer,
   HeyBountiesQuery,
-  HeyContractChanges,
   HeyBountyDetail,
   HeyBountyPage,
   HeyBuildersPage,
   HeyBuildersQuery,
-  HeyChain,
+  HeyCompare,
+  HeyStatus,
+  HeyWeeklyIndex,
+  HeyWeeklyReport,
+} from './types/misc';
+import type {
   HeyPage,
   HeyProject,
   HeyProjectDetail,
@@ -26,16 +37,9 @@ import type {
   HeyScanCard,
   HeyShip,
   HeyShipsQuery,
-  HeySignalDetail,
-  HeySignalPage,
-  HeySignalsQuery,
-  HeyStatus,
-  HeyThisWeek,
   HeyTokenLookup,
   HeyTokenMarket,
-  HeyWeeklyIndex,
-  HeyWeeklyReport,
-} from './types';
+} from './types/projects';
 import { SDK_VERSION } from './version';
 
 /**

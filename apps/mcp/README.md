@@ -1,5 +1,10 @@
 # @hey-research/mcp
 
+> **Not yet published to npm; build from source.** Until the first release the
+> `npx` lines below do not resolve. Clone the repository, run
+> `pnpm install && pnpm --filter @hey-research/mcp build`, and point your
+> assistant at `node /absolute/path/to/apps/mcp/dist/index.js`.
+
 [HEY Research](https://heyresearch.xyz) as tools an assistant can call, over the
 [Model Context Protocol](https://modelcontextprotocol.io). HEY is the
 builder-discovery layer for Robinhood Chain; it answers one question — **which

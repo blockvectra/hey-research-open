@@ -101,15 +101,18 @@ describe('the HEY MCP server', () => {
     const instructions = client.getInstructions() ?? '';
 
     expect(instructions).toMatch(/not investment advice/i);
-    expect(instructions).toMatch(/holds no wallet data/i);
+    expect(instructions).toMatch(/holds no wallet data and no cross-token address data/i);
     /*
      * The claim narrowed on 2026-09-17 because the broad one had become
      * false: since the founder's 2026-09-14 amendment HEY does keep a daily
      * snapshot of a single token's largest balances, for the distribution map
-     * on that token's market page. What stays true, and is what a model needs,
-     * is that no tool here returns any of it.
+     * on that token's market page. It narrowed again on 2026-09-26, because
+     * "no tool returns holder data of any kind" was false too: get_token_market
+     * prints that token's concentration summary and names its deployer. The
+     * sentence now says exactly that, and that nothing else does.
      */
-    expect(instructions).toMatch(/No tool here returns holder data of any kind/i);
+    expect(instructions).toMatch(/get_token_market: it returns one token's supply-concentration summary and names only that token's contract deployer/i);
+    expect(instructions).toMatch(/No other tool here returns holder data/i);
     // Absence is a real answer, and the model is told so before it asks anything.
     expect(instructions).toMatch(/Absent means HEY does not know/i);
   });
