@@ -21,6 +21,14 @@ record.
   ecosystem registry lists. A follow-up deployment from the deployer of a token nothing ties to
   the project counts only once a repository or a site ties them. The pages are hidden, not
   deleted, and remain searchable by contract as launch records.
+- **Research Terminal search suggests while typing.** The header search and the search page list
+  matching projects, contracts and Terminal views as the reader types, grouped the way the search
+  page groups its results, with full keyboard and screen-reader support; without JavaScript the
+  search is the same form as before. The suggestions come from a Terminal-only route that answers
+  only readers the Terminal lets in (a preview reader gets nothing) and is never cached.
+- **Faster first paint on phones.** Marks the site font does not carry (⋯, ◆, ●, ■, ↗ and the
+  subscript in compact prices) are drawn instead of typed, so the first layout no longer waits for a
+  fallback font. A compact price still copies as its full decimal (`$0.0000254`).
 
 ## 2026-09-25
 

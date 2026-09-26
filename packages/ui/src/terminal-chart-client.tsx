@@ -15,6 +15,7 @@ import {
   formatTerminalPriceLong,
   formatUsdCompact,
 } from './format';
+import { Glyph } from './glyph';
 import { MarketChange, describeMarketChange } from './market-change';
 
 /**
@@ -87,6 +88,13 @@ export type ChartModel = {
   latest: number;
   /** The day the readout opens on. */
   initial: number;
+  /**
+   * The server's UTC day (`YYYY-MM-DD`) when it built the model. Dates are
+   * formatted against it, never against the browser's clock, so the year a
+   * label hides or prints is the same in the server's HTML and in the
+   * hydrating render (remaining issues, 2026-09-26: React #418).
+   */
+  today: string;
 };
 
 const W = 1000;
@@ -199,9 +207,12 @@ function draw(model: ChartModel): { paths: Paths; y: (v: number) => number; cw: 
 const close = (row: ChartRow | undefined): number | null =>
   row && row.length > 1 ? (row[4] ?? null) : null;
 
+/** The reference day every date label is written against: the model's, never the browser clock. */
+const referenceDay = (model: ChartModel) => new Date(`${model.today}T12:00:00Z`);
+
 function Readout({ model, at }: { model: ChartModel; at: number }) {
   const row = model.rows[at]!;
-  const date = formatShortDate(row[0]);
+  const date = formatShortDate(row[0], referenceDay(model));
   const events = model.lane.filter((e) => e.i === at);
   const money = (v: number | null) => (v === null ? '—' : formatTerminalPrice(v));
   let line1;
@@ -282,7 +293,7 @@ function Readout({ model, at }: { model: ChartModel; at: number }) {
           <>
             {events.slice(0, 2).map((e, n) => (
               <span key={n} className="inline-flex min-w-0 items-baseline gap-1.5">
-                <span aria-hidden="true">{e.g}</span>
+                <Glyph glyph={e.g} />
                 <span className="text-hey-ink">{e.k}</span>·{' '}
                 <span className="max-w-[18rem] truncate text-hey-ink">{e.t}</span>· {e.w}
                 {e.h ? (
@@ -717,7 +728,7 @@ export function TerminalChartInteractive({
                 className="absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-[var(--hey-radius-tooltip)] bg-[var(--hey-tooltip-bg)] px-1.5 py-0.5 text-[var(--hey-tooltip-ink)]"
                 style={{ left: x(at) }}
               >
-                {formatShortDate(model.rows[at]![0])}
+                {formatShortDate(model.rows[at]![0], referenceDay(model))}
               </span>
             ) : null}
           </div>
@@ -754,9 +765,9 @@ export function TerminalChartInteractive({
           {numbered.map((e, k) => (
             <li key={k} className="flex min-w-0 items-baseline gap-1.5">
               <span className="text-hey-ink">{e.n}</span>
-              <span aria-hidden="true">{e.g}</span>
+              <Glyph glyph={e.g} />
               <span className="min-w-0 flex-1 truncate text-hey-ink">{e.t}</span>
-              <span className="whitespace-nowrap">· {formatShortDate(model.rows[e.i]![0])}</span>
+              <span className="whitespace-nowrap">· {formatShortDate(model.rows[e.i]![0], referenceDay(model))}</span>
               {e.h ? (
                 <a href={e.h} className="whitespace-nowrap font-medium text-hey-ink">
                   Open →
@@ -800,7 +811,7 @@ export function TerminalChartInteractive({
                       key={row[0]}
                       className="border-b border-hey-border text-hey-ink last:border-0"
                     >
-                      <td className="py-1.5 pr-3 font-sans">{formatShortDate(row[0])}</td>
+                      <td className="py-1.5 pr-3 font-sans">{formatShortDate(row[0], referenceDay(model))}</td>
                       {row.length === 1 ? (
                         <td colSpan={6} className="py-1.5 pr-3 font-sans text-hey-secondary">
                           No reading

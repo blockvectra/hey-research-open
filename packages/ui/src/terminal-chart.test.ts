@@ -92,6 +92,11 @@ describe('buildChartModel', () => {
     candle('2026-09-12', 1.3, 1.25), // down
   ];
 
+  it('carries the server’s day, so the island dates its labels against it rather than the browser clock', () => {
+    // React #418 (2026-09-26): a label that hides "this year" must hide it on both renders.
+    expect(buildChartModel(days, [], { todayUtc: TODAY })!.model.today).toBe(TODAY);
+  });
+
   it('never passes a gap to the direction function and keeps it as a bare day', () => {
     const built = buildChartModel(days, [], { todayUtc: TODAY })!;
     const gaps = built.model.rows.filter((row) => row.length === 1);

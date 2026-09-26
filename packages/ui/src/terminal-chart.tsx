@@ -345,6 +345,7 @@ export function buildChartModel(
     lane,
     latest,
     initial: asked ?? latest,
+    today: options.todayUtc,
   };
 
   /* The whole chart as one sentence, for the figure's caption. */
