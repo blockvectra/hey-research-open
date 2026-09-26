@@ -4,6 +4,14 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-09-27
+
+- **`origin` on a revised change is the event's own.** A revision of history HEY indexed at the
+  start (`bootstrap`) or later (`backfill`) keeps that origin; it was reported as `live`, so
+  webhooks could have pushed old releases as news. 973 rows were corrected.
+- **Terminal: Filters no longer cover the project table**, and sortable column headers show that
+  they sort.
+
 ## 2026-09-26
 
 - **A deployer's other projects are published projects.** `/api/contracts` `otherProjectsCount`
