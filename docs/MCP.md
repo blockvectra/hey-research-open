@@ -1,32 +1,58 @@
-# MCP server (2026-09-05)
+# MCP server (2026-09-05; reworked 2026-09-26)
 
 HEY answers one question: **which projects on Robinhood Chain are still building, what have
 they shipped, and which of them is nobody looking at?** That is the shape of a question
-someone asks an assistant, so HEY is available as an MCP server — twenty-two tools an assistant
-can call while answering.
+someone asks an assistant, so HEY is an MCP server — fourteen tools an assistant can call
+while answering, hosted at `https://heyresearch.xyz/mcp` or run beside the assistant.
 
-It runs **beside the assistant**, not on HEY's servers. It holds no database and no
-credentials: it reads the same [public API](PUBLIC_API.md) anyone can `curl`. That is why
-the API came first — the catalogue's rules live in one place, and this is a thin client over
-them.
+It holds no database and no credentials of its own: every tool reads the same
+[public API](PUBLIC_API.md) anyone can `curl`, through the typed SDK. That is the rule the
+whole server is built on — **the MCP can say nothing the API does not.**
 
-## Install
+## Connect
 
-There is no hosted MCP endpoint and no URL to paste. The server is a small program that
-runs on your machine and calls the public API (Node 20 or newer).
+### Hosted (2026-09-26)
 
-**It is not on npm yet** (checked 2026-09-19): the `@hey-research` scope has not been created,
-so `npx -y @hey-research/mcp` does not resolve. Build it from source — this is the working
-path today.
+```bash
+claude mcp add --transport http hey-research https://heyresearch.xyz/mcp
+```
+
+Any client that speaks MCP's **Streamable HTTP** transport works the same way: point it at
+`https://heyresearch.xyz/mcp`. With an API key, add
+`--header "Authorization: Bearer hey_…"`; the calls are then metered against the key's
+allowance, exactly as they would be on the API.
+
+What the hosted endpoint is:
+
+- **Stateless and read-only.** Each `POST` is answered on its own, as JSON; there is no
+  session id and no server-sent event stream. `GET` and `DELETE` answer `405`, which is also
+  the liveness check; the site's health is `GET /api/health`.
+- **Metered as you.** The tools read the public API on the server's own loopback address,
+  forwarding your address and — only to that loopback address — your key. The API's
+  per-minute limit (120 a minute per address, a key's tier otherwise), monthly quota and
+  holds apply unchanged. On top of that, 60 JSON-RPC calls a minute per address bound
+  `initialize` and `tools/list`.
+- **Guarded.** A request whose `Origin` is not on the allowlist is refused (server-to-server
+  clients send none and are allowed); the body is capped at 64 KB; cookies are ignored, so
+  nothing here acts as a signed-in user.
+- **Counted, not recorded.** HEY's request table records which tool a call served, whether
+  it failed or was cut, how long it took and how large the answer was. Never the arguments,
+  the question, or the answer's text.
+
+Operator settings, both optional: `MCP_ALLOWED_ORIGINS` (comma-separated https origins,
+default `https://claude.ai,https://heyresearch.xyz`) and `MCP_INTERNAL_API_URL` (the loopback
+address the tools read, default `http://127.0.0.1:$PORT`; anything but plain http on a
+loopback host is refused at start-up). `market_integrity` follows the site's own
+`HEY_MARKET_INTEGRITY` flag.
+
+### Local
+
+**The npm package is not published yet** (the `@hey-research` scope has not been created),
+so `npx -y @hey-research/mcp` does not resolve. Build it from source (Node 20 or newer):
 
 ```bash
 # in a clone of HEY's public repository
 pnpm install && pnpm --filter @hey-research/mcp build
-```
-
-Then point a client at the built entrypoint, `apps/mcp/dist/index.js`:
-
-```bash
 claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist/index.js
 ```
 
@@ -43,111 +69,123 @@ claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist
 }
 ```
 
-**Once the package is published**, the same server starts with `npx` and nothing needs
-cloning — `claude mcp add hey-research -- npx -y @hey-research/mcp`, or `"command": "npx"`
-with `"args": ["-y", "@hey-research/mcp"]`. Releases will be tagged `mcp-v*` and published
-from the private repository; the public repository mirrors the source.
+Set `HEY_API_URL` to read a different instance (`http://localhost:3000` while developing;
+anything else must be https, because the key rides on every request). Set `HEY_API_KEY` to
+read with your key's allowance; the server never prints the key. Start it with
+`HEY_MARKET_INTEGRITY=public` only where the site publishes Market Integrity.
 
-Set `HEY_API_URL` to read a different instance (`http://localhost:3000` while developing). Set `HEY_API_KEY`
-to read with your key's allowance (M13-E); the server never prints the key.
-It defaults to `https://heyresearch.xyz`.
+## The fourteen tools
 
-**`market_integrity` is not one of the twenty-two** (2026-09-25). Market Integrity is internal
-until the site's `HEY_MARKET_INTEGRITY` flag reaches `public`, and until then
-`/api/projects/{slug}/market-integrity` answers 404. The server used to offer the tool anyway,
-so every call an assistant made to it failed. It is now offered only when the MCP process
-itself is started with `HEY_MARKET_INTEGRITY=public` — the same flag, the same value — which
-makes twenty-three tools. `server.test.ts` pins both counts.
+One tool per real question. The twenty-two tools before 2026-09-26 were replaced, not
+aliased: nothing was published and the MCP had been called once.
 
-## The twenty-two tools
+| Tool | The question it answers | Replaces |
+|---|---|---|
+| `find_projects` | "What is *AgentOS*?" · "What is still being built?" · "Who is building quietly?" · "Who is shipping faster?" · "Top builders on Pons?" — a name, ticker or contract, or one of HEY's surfaces with the catalogue's filters. A pasted `0x…` address is answered as `lookup_token` would. | `search_projects`, `list_projects`, `shipping_in_silence`, `builder_comebacks`, `accelerating_builders`, `list_builders` |
+| `lookup_token` | "Is anyone building this token?" — activity status in HEY's words, ship records and meaningful ships in 30 days, the last ship with its source, whether the project names the contract. | — |
+| `get_project_snapshot` | "Tell me about X." — identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. | `get_project`, `project_intelligence` |
+| `get_changes` | "What changed?" · "Anything new on X since Monday?" — the change ledger, one event per change, with its own time, precision, when HEY knew and its evidence; browse or sync with a cursor. | `list_ships`, `list_signals`, `contract_changes` |
+| `get_project_timeline` | "Show me X's history." — every kind of evidence on one axis, paged with a cursor. | `project_timeline` |
+| `get_project_coverage` | "What does HEY not know about X?" — a state per dimension, never a score. | — |
+| `explain_fact` | "Why does HEY show this valuation / status / momentum?" — the rule, the source, the inputs, the lineage and the evidence ids. | — |
+| `get_evidence` | "What backs this?" — one typed evidence id as a receipt. | — |
+| `get_token_market` | "Does this token still trade? What did HEY check on the contract?" — HEY's daily index, lifecycle, pools, a supply-concentration summary (shares only), contract checks; `include: ["moves"]` adds each valuation move with what shipped before it. | `events_before_market_change` |
+| `get_contract` | "What is this contract?" — creation, deployer, verified source, proxy kind and implementation history, interface counts and changes, activity; by address, or every contract of a project. | — |
+| `project_diff` | "What changed for X between two dates?" — then and now from persisted points, the changes recorded between. | — |
+| `compare_projects` | "Compare A and B." — two to four projects, tagged lines, no winner. | — |
+| `ask_hey` | A free-text question about one project (English or Malay), answered only from HEY's record. | — |
+| `chain_overview` | "How active is Robinhood Chain?" — day by day, this week's rollup, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention. | `chain_activity`, `this_week`, `weekly_report`, `upcoming_unlocks` |
 
-| Tool | The question it answers |
-|---|---|
-| `search_projects` | "What is *AgentOS*?" · "Whose token is `0xa000…`?" |
-| `list_projects` | "What is still being built?" · "What launched on Pons?" · "Which infra projects are active?" |
-| `get_project` | "Tell me everything about this project." |
-| `lookup_token` | One project by the contract address someone pasted: activity status in HEY's words, ships in the last 30 days, the last ship with its source. An address HEY publishes no page for answers plainly, with a scan link. |
-| `list_ships` | "What shipped this week?" · "Is this project alive?" |
-| `this_week` | "What happened on Robinhood Chain this week?" |
-| `list_bounties` | "Which research bounties are open, what do they pay, is this one claimed?" (read-only; claiming is a wallet sign-in on the site) |
-| `get_token_market` | "Does this token still trade? How has its liquidity moved? What did HEY check on the contract?" — HEY's own daily index (price, liquidity, volume, trades by day), the lifecycle, the checks, contract events and value locked (2026-09-13); the deployer, pools and 1% depth, and a supply-concentration summary with no addresses (2026-09-25) |
-| `list_signals` | "What changed on the chain this week? Any news on X?" — HEY Signal with figures before and after, source and confidence (2026-09-13) |
-| `list_builders` | "Who are the top builders? Most improved? Who is building on Pons?" — the Builder Radar, never ranked by price (2026-09-13) |
-| `weekly_report` | "What happened on Robinhood Chain in week 37?" — the archived weekly report (2026-09-13) |
-| `project_intelligence` | "Is X accelerating? How often does it ship? What changed on X this month?" — build velocity, release cadence, consistency, how fast HEY saw its ships, market attention as context, and 30-day changes; every line tagged FACT, DERIVED or UNKNOWN (2026-09-24) |
-| `ask_hey` | "What did X ship? Why did its momentum move? Did the contract change?" — a free-text question (English or Malay) answered only from HEY's record, every line FACT, DERIVED or UNKNOWN with its source (2026-09-24) |
-| `contract_changes` | "Which contracts were upgraded, redeployed, verified or changed their interface?" — evidence-backed, newest first (2026-09-24) |
-| `shipping_in_silence` | "Who is building quietly?" — verified shipping with comparatively little market attention; not a recommendation (2026-09-24) |
-| `accelerating_builders` | "Who is shipping faster?" — the last 30 days against the 30 before, by the velocity rule each project page shows; a research list, not a recommendation (2026-09-24) |
-| `events_before_market_change` | "Did anything ship before that move?" — each day-on-day market-cap move of 25% or more with the corroborated ships in the week up to it; a sequence, never a cause (2026-09-24) |
-| `builder_comebacks` | "Who came back?" — projects shipping again after 60+ quiet days (2026-09-24) |
-| `upcoming_unlocks` | "What unlocks soon?" — HoodLock's own schedule, SCHEDULED, with proof (2026-09-24) |
-| `project_timeline` | "Show me X's history" — every evidence kind on one axis, with time precision and lenses (2026-09-24) |
-| `compare_projects` | "Compare A and B" — two to four projects, FACT / DERIVED / UNKNOWN lines, no winner (2026-09-24) |
-| `chain_activity` | "How active is Robinhood Chain?" — DEX trades, volume, tokens and pools traded, transactions, launches recorded, projects published and ships, day by day (2026-09-13) |
+`market_integrity` is a fifteenth, offered only where the site publishes Market Integrity.
+`list_bounties` was dropped: bounties are not research, and they stay in the API and the SDK.
 
-`list_projects` takes HEY's own discovery surfaces as `surface`:
+### `find_projects` surfaces, one definition each
 
-- `still-building` — kept shipping through a market drawdown HEY tracked
-- `under-the-radar` — real activity, little market attention
-- `building-with-token` — verified building this month and a token with a live market read this week (2026-09-13; Radar's default)
-- `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes`
+- `building-with-token` — verified shipping, active or resumed, with a token whose market is live.
+- `still-building` — verified activity continuing through a market drawdown HEY tracked.
+- `under-the-radar` — a **positive Discovery Gap**: the market-attention percentile is below
+  the build percentile. It does not bound attention itself; a project at the 90th attention
+  percentile can be Under the Radar if it builds at the 99th.
+- `shipping-now` (status SHIPPING), `most-active` (shipping, active or resumed, by Build Momentum),
+  `new-builders` (recorded in the last 7 days), `utility`, `memes`.
+- `back-from-dormancy` — status RESUMED, **narrowed to verified builders native to the chain**;
+  `status: "RESUMED"` gives every resumed project.
+- `shipping-in-silence` — Under the Radar **and** below the 40th market-attention percentile.
+- `accelerating` — more meaningful events in the last 30 days than in the 30 before.
+- `builder-radar` — the Builder Radar, with `radar` for its views, never ranked by price.
 
-plus `kind`, `status`, `narrative`, `launchpad`, `has` (now including `liveMarket`, `verifiedToken`,
-`trading` and `github`), `stage` (`curve`, `graduated`, `dex`), `minLiquidity`, `minMarketCap`, `maxMarketCap` and `sort` (`liquidity` and
-`volume24h` joined the orders on 2026-09-12). A market order is context the caller asked for; the
-rendering says how many of the matching projects carry the figure and that the rest follow in
-activity order, and each line names the launch stage and the provider behind every figure. A project with no repository, changelog or feed reads "no builder signal yet" instead of "unknown" (2026-09-13) — unless it has a recorded ship (2026-09-25) — and a line ends with "trades on Uniswap v4" when the reading names its pool. A launch pool's own supply is printed as *"of its own supply in the launch pool — not a market reading"*, never as liquidity; a fully diluted valuation is printed as an FDV in `list_projects`, `compare_projects`, `this_week` and `events_before_market_change` (by the kind the API sends, never by comparing figures); and `lookup_token` says when the address is `MISMATCH` or unverified (2026-09-25).
+The catalogue filters are exactly the parameters `/api/projects` reads (`kind`, `status`,
+`narrative`, `launchpad`, `has`, `stage`, `minLiquidity`, `minMarketCap`, `maxMarketCap`,
+`minVolume`, `age`, `deployed`, `sort` including `shipped`, `limit`, `offset`); a test holds
+the tool's schema to the parser in both directions.
 
-## What the server will not let an assistant say
+## Resources and prompts
 
-The tool descriptions and the rendering are part of the product, not packaging: they are
-what a model reads before deciding whether HEY can answer, and what it quotes afterwards.
+Resources, for clients that attach context rather than call tools — the same reads and the
+same rendering:
 
-- **No tool ranks by price, values a token, or recommends anything**, because HEY does not.
-  `server.test.ts` fails if a description ever picks up the words *buy*, *invest*,
-  *undervalued*, *price target* or *predict*.
-- **"Still Building" never appears without its meaning.** Every rendering that shows the
-  badge carries: *verified activity continuing through a market drawdown HEY tracked — a
-  record of what happened, not a prediction and not a buy signal.* When the API sends the
-  claim's evidence (`stillBuildingEvidence`, since 2026-09-17) the line carries it too, as
-  two facts and no verdict: *down 62% from the HEY-tracked high, 5 verified ships since*
-  (2026-09-18).
-- **Absent stays absent.** A project with no market reading gets no market line — never a
-  zero, a dash or an "n/a" an assistant might average or compare. A project HEY has not
-  measured says so, in words, because that is a different answer from measuring and finding
-  nothing.
-- **A market figure never travels without its provider**, and the text says outright that
-  market data is context and that HEY never orders projects by price.
-- **Every ship carries how it is backed and where it came from**, so an assistant cites
-  rather than asserts, and a self-reported update can never read like a verified one.
-- **Unresearched is not a finding.** An `INDEXED` record renders as *"activity not
-  researched yet"*, never as its raw `UNKNOWN` status.
-- **Failure is not an empty answer.** An unreachable HEY, a rate limit or a missing slug
-  each come back as `isError` with a sentence saying what happened — never as "no results",
-  which an assistant would summarise as "there are no such projects".
+- `hey://project/{slug}` — the snapshot
+- `hey://project/{slug}/timeline` — the newest page of the timeline
+- `hey://project/{slug}/coverage`
+- `hey://contract/{chainId}/{address}`
+- `hey://changes/latest` — the newest thirty events
 
-The server's `instructions`, which a client shows the model before any call, state that HEY
-holds no wallet, holder or trading data and that none of this is investment advice.
+Prompts: `deep_research_project`, `what_changed_since`, `explain_metric`,
+`investigate_contract`. Each names the tools in the order that answers the question and the
+rules the answer must keep. A prompt fetches nothing.
+
+## What every answer does
+
+- **Tags each line** FACT (a value HEY recorded, with its source), DERIVED (a rule HEY
+  applied) or UNKNOWN (HEY does not hold it). The tag is never stronger than the API's own
+  explain engine gives the same fact: activity status and Build Momentum are DERIVED.
+- **Says what it showed of the whole** — "Showing 20 of 412" — and the exact parameter or
+  cursor that reads on.
+- **Prints time at its precision** — "week of 2026-09-14" for a week of code activity, "HEY
+  saw it 2026-09-20" when no source dates the event.
+- **Names a valuation by its kind.** An FDV is an FDV; a valuation whose kind the API did not
+  send is a "valuation", never a "market cap". A withheld valuation says it is withheld.
+- **Carries the source**, and ends with a `resource_link` to the JSON it was rendered from.
+- **Is capped at 24 KB**, cut on a line, with how many lines were cut and where the whole
+  answer is.
+- **Fails as an error**, never as an empty answer: an unreachable HEY, a rate limit (with how
+  long to wait) or a missing slug comes back as `isError` with a sentence.
+
+And never:
+
+- **ranks by price, values a token, or recommends anything** — the tests fail if a
+  description picks up *undervalued*, *price target* or *predict*;
+- **states a cause** — a change beside a market move is a sequence;
+- **prints "Still Building" without its meaning** — *verified activity continuing through a
+  market drawdown HEY tracked; a record of what happened, not a prediction and not a buy
+  signal*;
+- **turns unknown into zero** — a missing figure is absent or UNKNOWN, never 0, "none" or a dash;
+- **names an account** other than a contract's deployer, and never a partnership from a call;
+- **returns Terminal-only data** — the public API does not, so the MCP cannot.
 
 ## How it is built
 
 | Piece | Where |
 |---|---|
-| stdio entry point | `apps/mcp/src/index.ts` |
-| Tool definitions and descriptions | `apps/mcp/src/server.ts` |
-| HTTP client for the public API | `packages/sdk` (`@hey-research/sdk`, bundled into the server at build time; since 2026-09-19) |
-| Rendering (pure, unit-tested) | `apps/mcp/src/render.ts` |
-| Contract tests over a real MCP client | `apps/mcp/src/server.test.ts` |
+| Tools, renderers, resources, prompts (no transport) | `packages/mcp-core` (`@hey/mcp-core`) |
+| The tool list as data | `packages/mcp-core/src/tools.ts` — read by the server, `/developers`, and the tests |
+| stdio entry point (bundles the core) | `apps/mcp/src/index.ts` |
+| Hosted route | the web app's `POST /mcp` (Web-standard Streamable HTTP, stateless JSON) |
+| HTTP client for the public API | `packages/sdk` (`@hey-research/sdk`) |
+| Renderer tests, one per tool, on API-typed fixtures | `packages/mcp-core/src/render.test.ts`, `src/fixtures/api.ts` |
+| Server tests over a real MCP client | `packages/mcp-core/src/server.test.ts` |
 
-`server.test.ts` drives the server through an actual `Client` over the in-memory transport,
-so what is tested is the contract a client gets — the tool list, the argument schemas and
-the text that comes back, including on failure.
+The server tests drive it through an actual `Client` over the in-memory transport: the tool
+list (exactly fourteen, fifteen with the flag, every one titled and read-only, under the old
+list's size), every tool end to end on its fixture, the resources, the prompts, and every
+failure.
 
 ## What is deliberately not here
 
 - **No write tools.** Submitting a project, claiming ownership and posting an update are
-  things a person does on the site, signed in, with an audit trail. An agent must not do
-  them on someone's behalf.
-- **No HTTP transport yet.** stdio needs no hosting and adds no load to HEY's box. A remote
-  transport is worth building when someone actually wants to run this without a checkout.
+  things a person does on the site, signed in, with an audit trail.
+- **No sessions and no stream.** The producer behind the change ledger runs every few
+  minutes; polling `get_changes` with a cursor is as fresh as a stream would be, and a
+  stateless endpoint survives every deploy.
+- **No `outputSchema`.** Each result links the API's JSON instead; a second, hand-kept schema
+  for every shape would be a second source of truth.

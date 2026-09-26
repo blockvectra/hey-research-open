@@ -1,10 +1,9 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
 import { HeyClient } from '@hey-research/sdk';
+import { createHeyMcpServer, marketIntegrityFromEnv, MCP_VERSION } from '@hey/mcp-core';
 
 import { resolveBaseUrl } from './base-url';
-import { createHeyMcpServer, marketIntegrityFromEnv } from './server';
-import { MCP_VERSION } from './version';
 
 /**
  * `hey-research-mcp` — HEY Research over stdio (2026-09-05).
@@ -25,6 +24,8 @@ async function main(): Promise<void> {
   const server = createHeyMcpServer(new HeyClient({ baseUrl, ...(apiKey ? { apiKey } : {}), userAgent: `hey-research-mcp/${MCP_VERSION}` }), undefined, {
     // Offered only where the site publishes it: the same flag, the same value (2026-09-25).
     marketIntegrity: marketIntegrityFromEnv(process.env.HEY_MARKET_INTEGRITY),
+    // The canonical JSON behind each answer is linked on the instance the server reads.
+    publicBaseUrl: baseUrl,
   });
   await server.connect(new StdioServerTransport());
   // The origin, not the configured string: it is the host the key actually goes to, and a reader can check it at a glance.

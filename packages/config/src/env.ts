@@ -468,6 +468,24 @@ export const serverEnvSchema = z
       site: optionalString,
     }),
 
+    /**
+     * Webhook delivery (2026-09-26, docs/WEBHOOKS.md). `masterKey` derives
+     * every subscription's signing secret, which is never stored; without it
+     * no subscription can be made and nothing is sent. Web (to show a secret
+     * once) and worker (to sign) both need it. `denyAddresses` are addresses a
+     * callback may never resolve to — the origin behind the CDN — on top of
+     * HEY's own hostnames, which are always refused.
+     */
+    webhooks: z.object({
+      masterKey: optionalString,
+      denyAddresses: optionalString.transform((value) =>
+        (value ?? '')
+          .split(',')
+          .map((entry) => entry.trim())
+          .filter(Boolean),
+      ),
+    }),
+
     worker: z.object({
       heartbeatMs: numberWithDefault(DEFAULT_WORKER_HEARTBEAT_MS).pipe(z.number().int().positive()),
       /** How often the worker polls the job table. */
@@ -510,6 +528,14 @@ export const serverEnvSchema = z
         code: z.ZodIssueCode.custom,
         path: ['sessionSecret'],
         message: `SESSION_SECRET must be at least ${MIN_SESSION_SECRET_LENGTH} characters in production; generate one with: openssl rand -hex 32`,
+      });
+    }
+    // A short webhook master key would make every subscriber's secret guessable; refused anywhere it is set (2026-09-26).
+    if (env.webhooks.masterKey !== undefined && env.webhooks.masterKey.length < MIN_SESSION_SECRET_LENGTH) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['webhooks', 'masterKey'],
+        message: `WEBHOOK_MASTER_KEY must be at least ${MIN_SESSION_SECRET_LENGTH} characters; generate one with: openssl rand -hex 32`,
       });
     }
   });
@@ -602,6 +628,10 @@ function shapeEnv(raw: RawEnv) {
       credentialsJson: raw.GOOGLE_SEARCH_CONSOLE_CREDENTIALS,
       site: raw.GOOGLE_SEARCH_CONSOLE_SITE,
     },
+    webhooks: {
+      masterKey: raw.WEBHOOK_MASTER_KEY,
+      denyAddresses: raw.WEBHOOK_DENY_ADDRESSES,
+    },
     worker: {
       heartbeatMs: raw.WORKER_HEARTBEAT_MS,
       pollIntervalMs: raw.WORKER_POLL_INTERVAL_MS,
@@ -679,6 +709,8 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'alerts.telegramChatId': 'HEY_TELEGRAM_CHAT_ID',
   'searchConsole.credentialsJson': 'GOOGLE_SEARCH_CONSOLE_CREDENTIALS',
   'searchConsole.site': 'GOOGLE_SEARCH_CONSOLE_SITE',
+  'webhooks.masterKey': 'WEBHOOK_MASTER_KEY',
+  'webhooks.denyAddresses': 'WEBHOOK_DENY_ADDRESSES',
   'worker.heartbeatMs': 'WORKER_HEARTBEAT_MS',
   'worker.pollIntervalMs': 'WORKER_POLL_INTERVAL_MS',
   'worker.jobConcurrency': 'WORKER_JOB_CONCURRENCY',

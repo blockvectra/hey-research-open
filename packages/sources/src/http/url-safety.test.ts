@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertResolvesPublic, assertSafeUrl, isSafeUrl } from './url-safety';
+import { assertResolvesPublic, assertSafeUrl, ipv6Groups, isSafeUrl } from './url-safety';
 
 describe('assertSafeUrl', () => {
   it('allows ordinary public http and https URLs', () => {
@@ -117,5 +117,56 @@ describe('numeric host forms (2026-09-17)', () => {
     }
     expect(assertSafeUrl('https://example.com/').ok).toBe(true);
     expect(assertSafeUrl('http://8.8.8.8/').ok).toBe(true);
+  });
+});
+
+describe('special-purpose ranges (2026-09-26, audit M6 G1)', () => {
+  it.each([
+    'http://198.18.0.1/',
+    'http://198.19.255.254/',
+    'http://192.0.0.1/',
+    'http://192.0.2.10/',
+    'http://198.51.100.7/',
+    'http://203.0.113.9/',
+    'http://[::7f00:1]/',
+    'http://[::127.0.0.1]/',
+    'http://[64:ff9b::7f00:1]/',
+    'http://[64:ff9b::a00:1]/',
+    'http://[64:ff9b:1::1]/',
+    'http://[2002:7f00:1::]/',
+    'http://[2002:a00:1::1]/',
+    'http://[2001::1]/',
+    'http://[2001:db8::1]/',
+    'http://[100::1]/',
+    'http://[ff02::1]/',
+  ])('refuses %s', (url) => {
+    const result = assertSafeUrl(url);
+    expect(result.ok, url).toBe(false);
+  });
+
+  it('still allows ordinary public addresses near those ranges', () => {
+    for (const url of ['http://198.20.0.1/', 'http://192.0.1.1/', 'http://203.0.114.1/', 'http://[2606:4700::1111]/', 'http://[2001:4860:4860::8888]/']) {
+      expect(assertSafeUrl(url).ok, url).toBe(true);
+    }
+  });
+
+  it('refuses a hostname whose DNS answer is an IPv4-compatible, NAT64 or 6to4 address (rebinding through IPv6)', async () => {
+    for (const address of ['::7f00:1', '64:ff9b::a9fe:a9fe', '2002:c0a8:1::1', '198.18.0.1']) {
+      const result = await assertResolvesPublic('https://hook.example/', async () => [address]);
+      expect(result.ok, address).toBe(false);
+      if (!result.ok) expect(result.reason).toBe('PRIVATE_HOST');
+    }
+  });
+});
+
+describe('ipv6Groups', () => {
+  it('expands compressed forms and dotted tails, and refuses nonsense', () => {
+    expect(ipv6Groups('::1')).toEqual([0, 0, 0, 0, 0, 0, 0, 1]);
+    expect(ipv6Groups('[64:ff9b::7f00:1]')).toEqual([0x64, 0xff9b, 0, 0, 0, 0, 0x7f00, 1]);
+    expect(ipv6Groups('::ffff:127.0.0.1')).toEqual([0, 0, 0, 0, 0, 0xffff, 0x7f00, 1]);
+    expect(ipv6Groups('1:2:3:4:5:6:7:8')).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(ipv6Groups('1::2::3')).toBeUndefined();
+    expect(ipv6Groups('example.com')).toBeUndefined();
+    expect(ipv6Groups('12345::')).toBeUndefined();
   });
 });

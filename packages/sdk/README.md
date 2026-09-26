@@ -48,26 +48,64 @@ const hey = new HeyClient({ apiKey: process.env.HEY_API_KEY, userAgent: 'my-news
 
 ### Calls
 
+Every public route has a method (2026-09-26); each response type is held equal
+to the API's serialiser by a contract test.
+
 | Method | Route |
 |---|---|
-| `projects.list(query)` / `pages(query)` / `items(query)` | `GET /api/projects` |
-| `projects.get(slug)` | `GET /api/projects/{slug}` |
+| **One project** | |
+| `projects.snapshot(slug)` | `GET /api/projects/{slug}/snapshot` — the important state in one read |
+| `projects.coverage(slug)` | `GET /api/projects/{slug}/coverage` — what HEY knows and does not, as states |
+| `projects.explain(slug)` / `explain(slug, fact, { source })` | `GET /api/projects/{slug}/explain` — the facts HEY can explain / why it shows one |
+| `projects.get(slug)` | `GET /api/projects/{slug}` — the dossier |
 | `projects.market(slug, { days })` | `GET /api/projects/{slug}/market` |
+| `projects.marketMoves(slug, { days, min })` | `GET /api/projects/{slug}/market-moves` |
 | `projects.intelligence(slug)` | `GET /api/projects/{slug}/intelligence` |
 | `projects.timeline(slug, { lens, limit, before })` / `timelinePages(slug, { lens, limit })` | `GET /api/projects/{slug}/timeline` |
-| `changes.list(query)` / `pages(query)` / `items(query)` | `GET /api/changes` (browse, newest first) |
-| `changes.sync(cursor, query)` | `GET /api/changes?after=` (mirror: from a kept cursor to the head) |
+| `projects.history(slug, { series, from, to })` | `GET /api/projects/{slug}/history` |
+| `projects.diff(slug, { from, to })` | `GET /api/projects/{slug}/diff` |
+| `projects.contracts(slug)` | `GET /api/projects/{slug}/contracts` |
+| `projects.ask(slug, question)` | `GET /api/projects/{slug}/ask` |
+| `projects.marketIntegrity(slug)` | `GET /api/projects/{slug}/market-integrity` (404 until HEY publishes it) |
+| `projects.compare(slugs)` | `GET /api/compare` — two to four, no winner |
+| **Catalogue** | |
+| `projects.list(query)` / `pages(query)` / `items(query)` | `GET /api/projects` |
+| `search.suggest(q)` | `GET /api/search/suggest` |
 | `ships.list(query)` / `pages(query)` / `items(query)` | `GET /api/ships` |
 | `signals.list(query)` / `pages(query)` / `get(id)` | `GET /api/signals`, `/api/signals/{id}` |
 | `builders.list(query)` / `pages(query)` | `GET /api/builders` |
+| **Changes and evidence** | |
+| `changes.list(query)` / `pages(query)` / `items(query)` | `GET /api/changes` (browse, newest first) |
+| `changes.sync(cursor, query)` | `GET /api/changes?after=` (mirror: from a kept cursor to the head) |
+| `evidence.get(id)` | `GET /api/evidence/{id}` — a typed id as a receipt |
+| **Contracts and tokens** | |
+| `contracts.get(chainId, address)` | `GET /api/contracts/{chainId}/{address}` |
 | `token.lookup(chainId, address)` | `GET /api/token/{chainId}/{address}` |
+| `token.bulk(chainId, addresses)` | `GET /api/token/{chainId}?addresses=` — keyed only, at most 30 |
+| `snapshots.bulk(slugs)` | `GET /api/snapshots?slugs=` — keyed only, at most 10 |
+| **Partner cards** | |
 | `scanCard(chainId, address)` | `GET /api/v1/scan` |
-| `bounties.list({ status, limit })` / `get(id)` | `GET /api/bounties`, `/api/bounties/{id}` |
-| `reports.weekly.list()` / `get(week)` | `GET /api/reports/weekly`, `/api/reports/weekly/{week}` |
+| `scanCards(chainId, addresses)` | `GET /api/v1/scan?tokens=` — keyed only, at most 30 |
+| `builderCard(chainId, address)` | `GET /api/v1/builder` — snake_case, explicit nulls |
+| **The chain** | |
 | `chain({ days })` | `GET /api/chain` |
 | `thisWeek()` | `GET /api/this-week` |
+| `reports.weekly.list()` / `get(week)` | `GET /api/reports/weekly`, `/api/reports/weekly/{week}` |
+| `silence()` | `GET /api/chain/silence` — Under the Radar and below the 40th market-attention percentile |
+| `accelerating()` | `GET /api/chain/accelerating` |
+| `comebacks()` | `GET /api/chain/comebacks` — status RESUMED |
+| `unlocks({ days })` | `GET /api/chain/unlocks` — HoodLock only |
+| `buildMarket()` | `GET /api/chain/build-market` |
+| `contractChanges({ days })` | `GET /api/chain/contract-changes` |
+| **The rest** | |
+| `bounties.list({ status, limit })` / `get(id)` | `GET /api/bounties`, `/api/bounties/{id}` |
 | `status()` | `GET /api/status` |
 | `get<T>(path, params)` | any route, with the same headers and errors |
+
+A bulk read costs one request per item against both the per-minute bucket and
+the monthly allowance, answers every item in input order with its own
+`found`/`error`, and is refused whole with 400 `batch_too_large` past its
+maximum.
 
 Query fields mirror the parameters documented at
 [heyresearch.xyz/developers](https://heyresearch.xyz/developers). `has` takes an
@@ -160,6 +198,27 @@ The client sets a `user-agent` of `hey-research-sdk/<version>` (prefixed by your
 `userAgent` option) so HEY's traffic console can tell callers apart. Browsers
 treat `user-agent` as a forbidden header and drop it silently; the API does not
 need it, so nothing breaks — only the console's label.
+
+## Receiving webhooks
+
+HEY can POST its public changes to an endpoint you register at
+`/api/webhooks` (see `docs/WEBHOOKS.md`). Verify each delivery against the
+raw body before you trust it:
+
+```ts
+import { isReplay, parseWebhookEvent } from '@hey-research/sdk';
+
+const rawBody = await request.text();
+const event = await parseWebhookEvent({ rawBody, header: request.headers.get('hey-signature'), secret: process.env.HEY_WEBHOOK_SECRET! });
+if (!(await isReplay(event.deliveryId, seen))) {
+  // event.type: a HeyWebhookEventType, 'event.retracted' or 'ping'
+}
+```
+
+`verifyWebhookSignature` returns `{ ok, reason }` instead of throwing, uses
+Web Crypto (Node 18+, Deno, Bun, Workers, browsers) and compares in constant
+time; the default tolerance is five minutes either way. `WEBHOOK_EVENT_TYPES`
+lists what a subscription may ask for.
 
 ## What it will not say
 

@@ -151,8 +151,14 @@ try {
 - **The user-agent says who is calling.** Every request carries `hey-research-sdk/<version>`,
   which is how the lab's console counts SDK callers apart from the MCP and from `curl`.
 
-The MCP server (`@hey-research/mcp`) is this client with tool definitions around it; see
-`docs/MCP.md`. Releases of both come from the private repository, tagged `sdk-v*` / `mcp-v*`.
+- **Every route has a method** (2026-09-26): `projects.snapshot`, `coverage`, `explain`,
+  `history`, `diff` and `contracts`; `evidence.get`; `contracts.get`; the keyed bulk reads
+  `snapshots.bulk`, `token.bulk` and `scanCards`; the partner `builderCard`; and
+  `search.suggest`. The full table is in `packages/sdk/README.md`.
+
+The MCP server (`@hey-research/mcp`, hosted at `/mcp` since 2026-09-26) is this client with tool
+definitions around it; see `docs/MCP.md`. Releases of both come from the private repository,
+tagged `sdk-v*` / `mcp-v*`.
 
 ## `GET /api/projects`
 
@@ -552,6 +558,10 @@ caller can offer a live scan. Note this differs from `/api/v1/scan`, which answe
 **Optional fields are `null`, never invented.** No repository HEY counts as the project's own, no
 release, no post-launch deploy: each is `null` on its own.
 
+**The shape is held** (2026-09-26): the route answers through a named serialiser that the SDK's
+`HeyBuilderCard` and `builderCard(chain, token)` are held to by a contract test, and its key set is
+frozen by an end-to-end test. Nothing about the answer changed.
+
 ## Partner additive fields (2026-09-26)
 
 Additive only. No existing field changes meaning: `ships_30d`, `releases_30d`, `commits_30d` and
@@ -636,7 +646,10 @@ source is `400 source_required`.
 
 One published record by its typed id, the same ids the change feed and the timeline use:
 `ship:<uuid>`, `signal:<uuid>`, `abi:<uuid>`, `lock:<chainId>:<lockId>`, `source:<uuid>`,
-`claim:<uuid>`, `state:<projectUuid>:<key>:<transitionId>`, `impl:<chainId>:<address>:<block>:<logIndex>`.
+`claim:<uuid>`, `state:<projectUuid>:<key>:<transitionId>`, `impl:<chainId>:<address>:<block>:<logIndex>`
+(an upgrade log), `impl:<chainId>:<address>:rpc:<uuid>` (an implementation change HEY saw between
+two reads of the proxy, with no block to name), `narrative:<projectUuid>:<slug>` (a narrative HEY
+assigned; `sourceType` says who set it: `project`, `hey_moderator` or `hey_rules`).
 
 A receipt carries `project`, `domain`, `claimType`, `summary`, `sourceType`, `sourceUrl`,
 `publishedAt` (null when only HEY's observation dates it), `detectedAt`, `precision`,
@@ -932,7 +945,7 @@ status move — so each change is one event, not two.
 |---|---|---|
 | `build.release`, `build.ship`, `build.code_activity` | a ship (releases; other building types; a weekly code summary) | the publication, EXACT/DATE/WEEK |
 | `contract.deployed`, `contract.followup_deployed` | a deploy ship (the launch record; a later contract from the project's deployer) | the block time |
-| `contract.implementation_changed` | a proxy upgrade ship | null, OBSERVED (HEY's scan saw it) |
+| `contract.implementation_changed` | the implementation history: an upgrade log (id `impl:<chainId>:<address>:<block>:<logIndex>`), or a change HEY saw between two reads (`impl:<chainId>:<address>:rpc:<uuid>`, with the upgrade ship as evidence, never a second event). An old log indexed late is `origin: "backfill"` | the block time, EXACT (log); null, OBSERVED (two reads) |
 | `contract.source_verified`, `contract.source_unverified`, `contract.interface_changed` | an explorer ABI diff (counts only; the names stay in the Terminal) | null, OBSERVED |
 | `build.status_changed`, `build.dormant`, `build.resumed` | an activity-status move | null, OBSERVED |
 | `build.accelerating`, `build.slowing` | the development-window signals | the window's end, WINDOW |
@@ -945,6 +958,7 @@ status move — so each change is one event, not two.
 | `research.source_unavailable`, `research.source_restored` | a source that stopped answering, and came back (restores recorded from 2026-09-26) | null, OBSERVED |
 | `research.narrative_assigned` | a narrative assigned | the assignment, EXACT |
 | `lock.unlock_due` | a HoodLock unlock entering its last seven days | the unlock, SCHEDULED |
+| `lock.observed`, `lock.withdrawn` | the first sweep that read a HoodLock lock, and the first that read it withdrawn (forward-only from migration 0138; locks already there when collection began say nothing) | null, OBSERVED (the locker gives no times; `detectedAt` is HEY's) |
 
 **What the ledger cannot tell you.** State moves (status, market status, launch stage,
 verification, publication) are recorded from the deploy of migration 0136 (`ledger.transitionsFrom`);
@@ -954,6 +968,27 @@ announced. Market Integrity events are Terminal-only and never appear here.
 
 `ledger` on every page: `collectionStart` (the first event recorded), `transitionsFrom`,
 `newestRecordedAt`, `projectorRanAt`. `/api/status` reports the projector stale after 15 minutes.
+
+## Webhooks: `/api/webhooks` (2026-09-26)
+
+HEY can POST the change ledger's public events to an endpoint an API account registers: the same
+event `/api/changes` serves, signed with HMAC-SHA256 over `<timestamp>.<raw body>`. Keyed only;
+answers are `private, no-store`. The full contract — event types, payload, signature, retries,
+the SSRF rules a callback URL must pass, and TypeScript/curl examples — is in
+[`docs/WEBHOOKS.md`](WEBHOOKS.md).
+
+| Route | What it does |
+|---|---|
+| `GET /api/webhooks` | the account's subscriptions, the subscribable types, the account's limit (5) |
+| `POST /api/webhooks` | `{url, eventTypes, projects?, description?}` → `201 {subscription, secret, verification: "ping_queued"}`; the secret is shown this once |
+| `GET`, `PATCH`, `DELETE /api/webhooks/{id}` | read, change (`url`, `eventTypes`, `projects`, `description`, `status: active\|disabled`), remove |
+| `POST /api/webhooks/{id}/rotate` | a new secret, shown once; the old one keeps signing beside it for 24 h |
+| `POST /api/webhooks/{id}/ping` | `202`: a signed ping is queued; a 2xx answer activates a pending subscription |
+| `GET /api/webhooks/{id}/deliveries` | what was sent, newest first: status, attempts, next attempt, your status code, 256 characters of your answer |
+
+Webhooks and cursor polling of `/api/changes?after=` are the supported ways to follow HEY. A
+server-sent stream is not offered: the ledger is written every five minutes, so a stream could be
+no fresher than polling (see `docs/WEBHOOKS.md`).
 
 ## `GET /api/signals` and `GET /api/signals/{id}` (2026-09-13)
 
@@ -1166,6 +1201,23 @@ Input order is kept, duplicates included; an item that cannot be read fails on i
 (`found_count` on the snake_case partner route). Which addresses belong to a published project is
 one statement for the whole batch. The single-item routes are unchanged.
 
+## `POST /mcp` — hosted MCP (2026-09-26)
+
+The same data for an AI assistant: HEY's fourteen MCP tools over the Model Context Protocol's
+Streamable HTTP transport, stateless and read-only.
+
+```bash
+claude mcp add --transport http hey-research https://heyresearch.xyz/mcp
+```
+
+Each `POST` carries one JSON-RPC message (or a batch) and is answered as JSON; there is no session
+and no event stream, and `GET`/`DELETE` answer `405`. The tools read this API — on the server's own
+loopback address, as the caller — so every limit, key tier, quota and hold on this page applies to
+them unchanged, and they can say nothing this API does not. An `Origin` outside the allowlist is
+refused, the body is capped at 64 KB, and 60 JSON-RPC calls a minute per address bound handshake
+spam. Every answer tags its lines FACT, DERIVED or UNKNOWN and links the JSON route it was rendered
+from. The tools, resources and prompts are in `docs/MCP.md`.
+
 ## Feeds
 
 The same material is also published as RSS, for a reader rather than a script:
@@ -1182,7 +1234,7 @@ The same material is also published as RSS, for a reader rather than a script:
 Paths under `apps/web/` and `packages/domain/` are in HEY's **private** repository and are
 named here so a reader of that repository can find them; they are not part of the public export
 (2026-09-19). `packages/sdk`, `packages/sources`, `packages/scoring`, `packages/config`,
-`packages/ui` and `apps/mcp` are public.
+`packages/ui`, `packages/mcp-core` and `apps/mcp` are public.
 
 - Routes: `apps/web/src/app/api/projects/`, `apps/web/src/app/api/ships/`
 - Serialisers: `apps/web/src/lib/public-api-view.ts` (pure, unit-tested)
@@ -1193,8 +1245,11 @@ named here so a reader of that repository can find them; they are not part of th
 - Contract tests: `apps/web/e2e/public-api.spec.ts`
 - The SDK: `packages/sdk` (published as `@hey-research/sdk` once the npm organisation exists);
   the type-level contract between its response types and the serialisers:
-  `apps/web/src/lib/public-api-contract.{projects,feeds,misc}.test.ts` (2026-09-19; split by family
-  2026-09-26)
+  `apps/web/src/lib/public-api-contract.{projects,feeds,misc,changes,snapshot,contracts}.test.ts`
+  (2026-09-19; split by family 2026-09-26)
+- The hosted MCP (2026-09-26): `apps/web/src/app/mcp/route.ts` and `apps/web/src/lib/mcp-hosted.ts`
+  over `packages/mcp-core`; `apps/web/src/lib/mcp-tool-schema.test.ts` holds the tool schemas to the
+  parameters the parsers read
 
 Every route here reads HEY's own database and makes no third-party call (CLAUDE.md
 architecture rules 13–14) — with one deliberate exception, `POST /api/scan`, which exists to

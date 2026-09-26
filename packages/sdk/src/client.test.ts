@@ -417,3 +417,68 @@ describe('redirects and the change ledger (2026-09-26)', () => {
     expect(requested).toEqual(['?limit=1', '?limit=1&before=T2']);
   });
 });
+
+/*
+ * Every route Wave A added has a method (2026-09-26, B2). Each is tested for
+ * the only thing that can go wrong in it: the path, how the segments are
+ * encoded, and the parameters in the API's own spelling.
+ */
+describe('methods for the machine-layer routes (2026-09-26)', () => {
+  const pathAndQuery = (call: Call) => `${call.url.pathname}${call.url.search}`;
+
+  it('reads a project’s snapshot, coverage, explanations, history, diff and contracts', async () => {
+    const { client, calls } = recording({});
+    await client.projects.snapshot('agent os');
+    await client.projects.coverage('agentos');
+    await client.projects.explain('agentos');
+    await client.projects.explain('agentos', 'market.valuation');
+    await client.projects.explain('agentos', 'source.counted', { source: 'src-1' });
+    await client.projects.history('agentos', { series: ['status', 'valuation'], from: '2026-09-01', to: '2026-09-20' });
+    await client.projects.diff('agentos', { from: '2026-09-01', to: '2026-09-20' });
+    await client.projects.contracts('agentos');
+    expect(calls.map(pathAndQuery)).toEqual([
+      '/api/projects/agent%20os/snapshot',
+      '/api/projects/agentos/coverage',
+      '/api/projects/agentos/explain',
+      '/api/projects/agentos/explain?fact=market.valuation',
+      '/api/projects/agentos/explain?fact=source.counted&source=src-1',
+      '/api/projects/agentos/history?series=status%2Cvaluation&from=2026-09-01&to=2026-09-20',
+      '/api/projects/agentos/diff?from=2026-09-01&to=2026-09-20',
+      '/api/projects/agentos/contracts',
+    ]);
+  });
+
+  it('opens evidence by its typed id and a contract by chain and address, encoding both', async () => {
+    const { client, calls } = recording({});
+    await client.evidence.get('ship:2ac87a66-0000-0000-0000-000000000000');
+    await client.evidence.get('lock:4663:17');
+    await client.contracts.get(4663, '0xAbC0000000000000000000000000000000000001');
+    expect(calls.map(pathAndQuery)).toEqual([
+      '/api/evidence/ship%3A2ac87a66-0000-0000-0000-000000000000',
+      '/api/evidence/lock%3A4663%3A17',
+      '/api/contracts/4663/0xAbC0000000000000000000000000000000000001',
+    ]);
+  });
+
+  it('sends the bulk reads comma-joined, with the key, and keeps the partner routes’ spelling', async () => {
+    const { client, calls } = recording({ items: [] }, { apiKey: 'hey_test_key' });
+    await client.snapshots.bulk(['agentos', 'arrow']);
+    await client.token.bulk(4663, ['0x' + 'a'.repeat(40), '0x' + 'b'.repeat(40)]);
+    await client.scanCards(4663, ['0x' + 'c'.repeat(40)]);
+    await client.builderCard(4663, '0x' + 'd'.repeat(40));
+    await client.search.suggest('agent');
+    expect(calls.map(pathAndQuery)).toEqual([
+      '/api/snapshots?slugs=agentos%2Carrow',
+      `/api/token/4663?addresses=${'0x' + 'a'.repeat(40)}%2C${'0x' + 'b'.repeat(40)}`,
+      `/api/v1/scan?chain=4663&tokens=${'0x' + 'c'.repeat(40)}`,
+      `/api/v1/builder?chain=4663&token=${'0x' + 'd'.repeat(40)}`,
+      '/api/search/suggest?q=agent',
+    ]);
+    for (const call of calls) expect((call.init?.headers as Record<string, string>).authorization).toBe('Bearer hey_test_key');
+  });
+
+  it('reports a builder card for an unpublished contract as not_found, not as an empty card', async () => {
+    const error = await caught(failing(404, { error: 'not_found', message: 'HEY has not published a project for this contract.' }).builderCard(4663, '0x' + 'e'.repeat(40)));
+    expect(error.code).toBe('not_found');
+  });
+});

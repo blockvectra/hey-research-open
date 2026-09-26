@@ -22,6 +22,14 @@ describe('production secrets', () => {
     // Development keeps working with whatever is set.
     expect(() => parseServerEnv({ ...base, NODE_ENV: 'development', SESSION_SECRET: 'short' })).not.toThrow();
   });
+
+  it('refuses a short WEBHOOK_MASTER_KEY anywhere, and reads the deny list as addresses', () => {
+    const base = { DATABASE_URL: 'postgresql://hey:hey@localhost:5432/hey' };
+    expect(() => parseServerEnv({ ...base, WEBHOOK_MASTER_KEY: 'short' })).toThrow(/WEBHOOK_MASTER_KEY/);
+    const env = parseServerEnv({ ...base, WEBHOOK_MASTER_KEY: 'k'.repeat(64), WEBHOOK_DENY_ADDRESSES: ' 203.0.113.9, 2001:db8::1 ,' });
+    expect(env.webhooks).toEqual({ masterKey: 'k'.repeat(64), denyAddresses: ['203.0.113.9', '2001:db8::1'] });
+    expect(parseServerEnv(base).webhooks).toEqual({ masterKey: undefined, denyAddresses: [] });
+  });
 });
 
 describe('parseServerEnv', () => {

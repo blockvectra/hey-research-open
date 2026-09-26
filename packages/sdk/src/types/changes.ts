@@ -80,7 +80,8 @@ export type HeyChangeUpsert = {
   /** Records that restate this event (a release signal on its ship), by id. */
   annotations?: { signalIds?: string[] };
   facts?: Record<string, string | number | boolean>;
-  links: { project: string; evidence: string; timeline: string };
+  /** `evidence` is the receipt of the first typed evidence id; absent when none resolves. */
+  links: { project: string; evidence?: string; timeline: string };
 };
 
 /** The event is no longer public: drop your copy. It names nothing else. */

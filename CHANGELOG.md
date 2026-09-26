@@ -19,6 +19,39 @@ record.
   `truncated` and a `before=` cursor for older entries.
 - **The SDK follows a renamed project's redirect** when it stays on HEY's own API, and never
   any other.
+- **Webhooks.** An API account can register up to five HTTPS endpoints at `/api/webhooks` (or on
+  the account page) and receive HEY's public changes as they are recorded: releases, status
+  moves, deployments, contract upgrades, verification, market status and HoodLock locks, each
+  exactly as `/api/changes` serves it and signed with a secret shown once. Failed deliveries are
+  retried for about a day; redirects are never followed. See `docs/WEBHOOKS.md`.
+- **Every evidence id in a change resolves.** `/api/evidence/narrative:<project>:<slug>` answers the
+  narrative events the ledger cites, and says who set the narrative: the project itself, a
+  moderator or HEY's rules (a project's own choice was mislabelled as a moderator's). A change's
+  `links.evidence` now names its first typed evidence id; it named the change's own id, which
+  answered 400 for suffixed ids such as `source:<uuid>:added`, and is absent when none resolves.
+- **The SDK verifies webhooks.** `verifyWebhookSignature`, `parseWebhookEvent` and `isReplay`.
+- **Two more kinds of change.** `lock.observed` and `lock.withdrawn` (when HEY first read a
+  HoodLock lock, and first read it withdrawn), and contract upgrades from the chain's own logs,
+  dated by their block.
+- **Stricter address checks.** HEY's fetchers now also refuse benchmarking, documentation and
+  protocol ranges, and IPv6 forms that carry an IPv4 address (NAT64, 6to4, Teredo).
+- **HEY's MCP server is hosted.** `claude mcp add --transport http hey-research
+  https://heyresearch.xyz/mcp` — stateless Streamable HTTP, read-only, metered like the API. The
+  tools read the same public API, so they can say nothing it does not.
+- **Fourteen MCP tools replace twenty-two**, one per question: `find_projects`, `lookup_token`,
+  `get_project_snapshot`, `get_changes`, `get_project_timeline`, `get_project_coverage`,
+  `explain_fact`, `get_evidence`, `get_token_market`, `get_contract`, `project_diff`,
+  `compare_projects`, `ask_hey` and `chain_overview`. Every answer tags each line FACT, DERIVED or
+  UNKNOWN (activity status and Build Momentum are DERIVED), says how many it showed of how many
+  and how to read on, never calls an FDV or an unknown kind a market cap, and links the JSON it
+  came from. Resources and four research prompts come with them; the tools live in
+  `packages/mcp-core`.
+- **The SDK covers every route**: snapshot, coverage, explain, history, diff, contracts,
+  evidence, the keyed bulk reads, the `/api/v1/builder` card (now a typed `HeyBuilderCard`) and
+  search suggestions.
+- **`/developers` rebuilt**: first calls, auth and limits, snapshot, changes, history, evidence,
+  contracts, the rules every answer follows, the SDK, MCP hosted and local, status, and what HEY
+  deliberately does not provide.
 
 - **The Research Terminal, redesigned.** One header (Projects · What changed · Watchlist · search)
   and a search that is easy to find ("Search projects, tickers or contracts"), including on phones

@@ -8,6 +8,12 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ### Added
 
+- A method for every machine-layer route (2026-09-26): `projects.snapshot`,
+  `projects.coverage`, `projects.explain`, `projects.history`,
+  `projects.diff`, `projects.contracts`, `evidence.get`, `contracts.get`,
+  `snapshots.bulk`, `token.bulk`, `scanCards`, `builderCard` and
+  `search.suggest`. `HeyBuilderCard` (the `/api/v1/builder` card, now held to
+  the route by a contract test) and `HeySearchSuggestion(s)`.
 - `HeyTokenMarket.distributionRead` and `HeyDistributionReadOutcome`
   (2026-09-25), optional: what HEY's latest attempt to read the distribution
   found. `no_balance_change_in_window` means no balance moved inside the holder

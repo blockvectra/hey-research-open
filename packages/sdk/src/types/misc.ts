@@ -6,7 +6,7 @@
  * know.
  */
 
-import type { HeyLiquidityKind } from './projects';
+import type { HeyActivityStatus, HeyLiquidityKind } from './projects';
 
 /* ---------------------------------------------------------------- builders */
 
@@ -271,3 +271,63 @@ export type HeyCompare = {
   method: string;
   disclaimer: string;
 };
+
+/* ------------------------------------------------------- partner: builder */
+
+/**
+ * `GET /api/v1/builder?chain=&token=` (2026-09-20; typed 2026-09-26): the
+ * RHTools card, in the partner's snake_case. Explicit `null` is part of this
+ * contract (unlike the rest of the API, where absent means unknown); a
+ * contract HEY has not published answers 404, and another chain 400.
+ */
+export type HeyBuilderCard = {
+  contract_address: string;
+  chain_id: number;
+  /** ISO 8601, or null when HEY holds no meaningful activity for the project yet. */
+  last_activity_at: string | null;
+  /** Four values, never `abandoned`: HEY cannot see that a team stopped. */
+  status: 'active' | 'stale' | 'dormant' | 'unknown';
+  hey_status: HeyActivityStatus;
+  hey_status_label: string;
+  hey_status_help: string;
+  hey_project_name: string;
+  token_verification: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';
+  hey_project_url: string;
+  /** Only a repository HEY counts as the project's own evidence. */
+  repo_url: string | null;
+  /** HEY never stores a commit, so this is always null; `last_code_activity` carries what HEY holds. */
+  last_commit: null;
+  last_code_activity: {
+    summary: string;
+    /** Human commits the newest weekly summary recorded; a floor when `commits_partial`. */
+    commits: number | null;
+    commits_partial: boolean;
+    /** Commits in the thirty days before `as_of`, counted like the partner card's `commits_30d`; absent when unknown. */
+    commits_30d?: number;
+    commits_30d_partial?: true;
+    window_start?: string;
+    active_days: number | null;
+    contributors: number | null;
+    repo_url: string | null;
+    observed_at: string;
+  } | null;
+  latest_release: { title: string; url: string | null; timestamp: string; version: string | null } | null;
+  latest_deployment: { title: string; url: string | null; timestamp: string; environment: string } | null;
+  /** `INDEXED`, `RESEARCHED` or `VERIFIED_BUILDER`; always sent (2026-09-26). */
+  research_level: string;
+  /** False means `unknown` is not a finding: HEY holds no source it can read building from (2026-09-26). */
+  activity_measured: boolean;
+  /** When the project was last scored; null when never. */
+  as_of: string | null;
+  disclaimer: string;
+};
+
+/* ------------------------------------------------------------ search */
+
+/** One type-ahead row: a published project, or a launch record typed as one (never presented as a project). */
+export type HeySearchSuggestion =
+  | { type: 'project'; name: string; symbol?: string; contract?: string; target: string }
+  | { type: 'launch'; name: string; symbol?: string; contract: string; launchedVia: string; target: string };
+
+/** `GET /api/search/suggest?q=`: at most eight rows, HEY's own tables only. */
+export type HeySearchSuggestions = { q: string; suggestions: HeySearchSuggestion[] };

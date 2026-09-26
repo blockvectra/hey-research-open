@@ -8,6 +8,32 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ### Changed
 
+- **Fourteen tools replace twenty-two** (2026-09-26): `find_projects`,
+  `lookup_token`, `get_project_snapshot`, `get_changes`,
+  `get_project_timeline`, `get_project_coverage`, `explain_fact`,
+  `get_evidence`, `get_token_market` (`include: ["moves"]`), `get_contract`,
+  `project_diff`, `compare_projects`, `ask_hey` and `chain_overview`, plus
+  `market_integrity` where published. The old names are gone, not aliased;
+  `list_bounties` is dropped (bounties stay in the API and SDK).
+- Every answer tags its lines FACT / DERIVED / UNKNOWN no stronger than the
+  API's explain engine (activity status and Build Momentum are DERIVED), says
+  shown-of-total and how to read on, names a valuation by its kind (an unknown
+  kind is a "valuation", never a "market cap"), prints time at its precision,
+  is capped at 24 KB with the cut disclosed, and links the canonical JSON.
+- `under-the-radar` is described as the domain decides it (a positive
+  Discovery Gap, not "little attention"), and `back-from-dormancy` says it is
+  narrower than every RESUMED project.
+- The tools, renderers, resources and prompts moved to `packages/mcp-core`;
+  this package bundles them behind stdio. The same tools are hosted at
+  `https://heyresearch.xyz/mcp`.
+
+### Added
+
+- Resources `hey://project/{slug}`, `…/timeline`, `…/coverage`,
+  `hey://contract/{chainId}/{address}`, `hey://changes/latest`, and prompts
+  `deep_research_project`, `what_changed_since`, `explain_metric`,
+  `investigate_contract` (2026-09-26).
+
 - `market_integrity` is offered only when the process is started with
   `HEY_MARKET_INTEGRITY=public`, the site's own flag: until then its route
   answers 404 (2026-09-25). Twenty-two tools by default.

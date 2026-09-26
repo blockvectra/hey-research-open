@@ -55,6 +55,7 @@
   },
   "devDependencies": {
     "@hey-research/sdk": "workspace:*",
+    "@hey/mcp-core": "workspace:*",
     "@types/node": "^22.10.2",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",

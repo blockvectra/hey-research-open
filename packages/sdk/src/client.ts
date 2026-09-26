@@ -2,6 +2,16 @@ import { HeyApiError, errorFromResponse } from './error';
 import { cursorPages, itemsOf, nextOffsetPages, totalPages } from './paging';
 import type { HeyChangeEvent, HeyChangesPage, HeyChangesQuery } from './types/changes';
 import type {
+  HeyContract,
+  HeyDiff,
+  HeyHistory,
+  HeyHistoryQuery,
+  HeyProjectContracts,
+  HeyScanBulk,
+  HeySnapshotsBulk,
+  HeyTokenLookupBulk,
+} from './types/contracts';
+import type {
   HeyAccelerating,
   HeyBuildMarket,
   HeyChain,
@@ -22,13 +32,16 @@ import type {
   HeyBountiesQuery,
   HeyBountyDetail,
   HeyBountyPage,
+  HeyBuilderCard,
   HeyBuildersPage,
   HeyBuildersQuery,
   HeyCompare,
+  HeySearchSuggestions,
   HeyStatus,
   HeyWeeklyIndex,
   HeyWeeklyReport,
 } from './types/misc';
+import type { HeyEvidenceReceipt, HeyExplainedFact, HeyExplainFact, HeyExplainIndex, HeyProjectCoverage, HeyProjectSnapshot } from './types/snapshot';
 import type {
   HeyPage,
   HeyProject,
@@ -269,6 +282,35 @@ export class HeyClient {
       this.get(`/api/projects/${encodeURIComponent(slug)}/market-moves`, { days: options.days, min: options.min }),
     /** `GET /api/compare?slugs=`: two to four projects side by side, no winner. */
     compare: (slugs: readonly string[]): Promise<HeyCompare> => this.get('/api/compare', { slugs: slugs.join(',') }),
+    /**
+     * `GET /api/projects/{slug}/snapshot` (2026-09-26): the important state of
+     * one project in one read — identity, build, market with its withholding,
+     * on-chain, verification, locks, the newest changes, freshness and coverage.
+     */
+    snapshot: (slug: string): Promise<HeyProjectSnapshot> => this.get(`/api/projects/${encodeURIComponent(slug)}/snapshot`),
+    /** `GET /api/projects/{slug}/coverage`: what HEY knows and does not, per dimension, as states — never a score. */
+    coverage: (slug: string): Promise<HeyProjectCoverage> => this.get(`/api/projects/${encodeURIComponent(slug)}/coverage`),
+    /**
+     * `GET /api/projects/{slug}/explain?fact=&source=`: why HEY publishes a
+     * fact, from the persisted evaluation. Without `fact`, the facts HEY can
+     * explain for this project.
+     */
+    explain: ((slug: string, fact?: HeyExplainFact, options: { source?: string } = {}): Promise<HeyExplainedFact | HeyExplainIndex> =>
+      this.get(`/api/projects/${encodeURIComponent(slug)}/explain`, { fact, source: options.source })) as {
+      (slug: string): Promise<HeyExplainIndex>;
+      (slug: string, fact: HeyExplainFact, options?: { source?: string }): Promise<HeyExplainedFact>;
+    },
+    /**
+     * `GET /api/projects/{slug}/history?series=&from=&to=`: the points HEY
+     * persisted, each with its basis; a day HEY did not record is absent.
+     */
+    history: (slug: string, query: HeyHistoryQuery = {}): Promise<HeyHistory> =>
+      this.get(`/api/projects/${encodeURIComponent(slug)}/history`, { series: query.series, from: query.from, to: query.to }),
+    /** `GET /api/projects/{slug}/diff?from=&to=` (YYYY-MM-DD, at most 400 days apart): then and now, never a cause. */
+    diff: (slug: string, window: { from: string; to: string }): Promise<HeyDiff> =>
+      this.get(`/api/projects/${encodeURIComponent(slug)}/diff`, { from: window.from, to: window.to }),
+    /** `GET /api/projects/{slug}/contracts`: the project's contracts, each as `contracts.get` serves it. */
+    contracts: (slug: string): Promise<HeyProjectContracts> => this.get(`/api/projects/${encodeURIComponent(slug)}/contracts`),
     /** Every page, following `nextOffset` from `query.offset`. */
     pages: (query: HeyProjectsQuery = {}): AsyncIterable<HeyPage<HeyProject>> =>
       nextOffsetPages((offset) => this.projects.list({ ...query, offset }), query.offset ?? 0),
@@ -344,12 +386,62 @@ export class HeyClient {
     /** `GET /api/token/{chainId}/{address}`: `status: 'unknown'` is an answer, not an error. */
     lookup: (chainId: number, address: string): Promise<HeyTokenLookup> =>
       this.get(`/api/token/${encodeURIComponent(String(chainId))}/${encodeURIComponent(address)}`),
+    /**
+     * `GET /api/token/{chainId}?addresses=` (2026-09-26): up to 30 addresses in
+     * one call, each answered in input order with its own `found`/`error`.
+     * Keyed only; it costs one request per address.
+     */
+    bulk: (chainId: number, addresses: readonly string[]): Promise<HeyTokenLookupBulk> =>
+      this.get(`/api/token/${encodeURIComponent(String(chainId))}`, { addresses }),
   };
 
   /** `GET /api/v1/scan?chain=&token=`: the partner card; `found: false` means print nothing. */
   scanCard(chain: number, token: string): Promise<HeyScanCard> {
     return this.get('/api/v1/scan', { chain, token });
   }
+
+  /** `GET /api/v1/scan?chain=&tokens=` (2026-09-26): up to 30 partner cards in input order. Keyed only; one request per token. */
+  scanCards(chain: number, tokens: readonly string[]): Promise<HeyScanBulk> {
+    return this.get('/api/v1/scan', { chain, tokens });
+  }
+
+  /**
+   * `GET /api/v1/builder?chain=&token=` (2026-09-26 in the SDK): the RHTools
+   * card — builder activity by contract, snake_case, explicit nulls. A
+   * contract HEY has not published throws `not_found`; another chain `bad_request`.
+   */
+  builderCard(chain: number, token: string): Promise<HeyBuilderCard> {
+    return this.get('/api/v1/builder', { chain, token });
+  }
+
+  /* ------------------------------------------------- evidence and contracts */
+
+  readonly evidence = {
+    /**
+     * `GET /api/evidence/{id}` (2026-09-26): one published record by its typed
+     * id (`ship:<uuid>`, `signal:<uuid>`, `abi:<uuid>`, `lock:<chainId>:<lockId>`,
+     * `source:<uuid>`, `claim:<uuid>`, `state:…`, `impl:…`), as a receipt. A
+     * withdrawn or hidden record answers `withdrawn: true` and names nothing
+     * it may not.
+     */
+    get: (id: string): Promise<HeyEvidenceReceipt> => this.get(`/api/evidence/${encodeURIComponent(id)}`),
+  };
+
+  readonly contracts = {
+    /** `GET /api/contracts/{chainId}/{address}` (2026-09-26): one contract as a research entity — counts, proxy, source, interface, activity. */
+    get: (chainId: number, address: string): Promise<HeyContract> =>
+      this.get(`/api/contracts/${encodeURIComponent(String(chainId))}/${encodeURIComponent(address)}`),
+  };
+
+  readonly snapshots = {
+    /** `GET /api/snapshots?slugs=` (2026-09-26): up to 10 snapshots in input order. Keyed only; one request per slug. */
+    bulk: (slugs: readonly string[]): Promise<HeySnapshotsBulk> => this.get('/api/snapshots', { slugs }),
+  };
+
+  readonly search = {
+    /** `GET /api/search/suggest?q=`: type-ahead over names, symbols and contracts, 2–64 characters, at most eight rows. */
+    suggest: (q: string): Promise<HeySearchSuggestions> => this.get('/api/search/suggest', { q }),
+  };
 
   /* ---------------------------------------------------------------- the rest */
 

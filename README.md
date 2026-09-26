@@ -69,7 +69,8 @@ This is the published half of HEY: the parts that stand on their own and are saf
 | [`packages/sources`](packages/sources) | Every public-data adapter HEY reads — GitHub, Blockscout, DEX Screener, GeckoTerminal, CoinGecko, launchpads, feeds, npm — each with saved fixtures and contract tests. The tests fail on a real network call. |
 | [`packages/scoring`](packages/scoring) | Activity status, Build Momentum, Still Building and Under the Radar, deterministic and versioned. They read no price and no balance, and that is tested. |
 | [`packages/sdk`](packages/sdk) | `@hey-research/sdk`, the typed client over the public API. No dependencies, ESM and CJS, Node 18 or a browser. |
-| [`apps/mcp`](apps/mcp) | `@hey-research/mcp`, an MCP server: twelve read-only tools an assistant can call. Node 20. |
+| [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: fourteen read-only tools, each answer tagged FACT, DERIVED or UNKNOWN. |
+| [`apps/mcp`](apps/mcp) | `@hey-research/mcp`, the stdio entry point that bundles them. Node 20. The same tools are hosted at `https://heyresearch.xyz/mcp`. |
 | [`packages/config`](packages/config) | Environment schema and chain constants. |
 | [`packages/ui`](packages/ui) | The presentation components — cards, chips, status, formatting. |
 | [`docs/`](docs) | The public API, the MCP server, the source registry, and every data source with what it refuses and why. |
@@ -137,9 +138,12 @@ contract's deployer, its pools and 1% depth, and a supply-concentration summary 
 Paging follows the API's own cursor, a `429` arrives as `HeyApiError` with `retryAfterSeconds`
 and is never retried for you, and an absent field means HEY does not know — never a zero.
 
-**For an assistant** — twelve read-only tools over the same API, running on your machine:
+**For an assistant** — fourteen read-only tools over the same API, hosted or on your machine:
 
 ```bash
+claude mcp add --transport http hey-research https://heyresearch.xyz/mcp
+
+# or locally
 pnpm --filter @hey-research/mcp build
 claude mcp add hey-research -- node "$PWD/apps/mcp/dist/index.js"
 ```
