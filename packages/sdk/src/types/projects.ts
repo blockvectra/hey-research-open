@@ -503,7 +503,7 @@ export type HeyScanCard =
 /* ----------------------------------------------------------- intelligence */
 
 /**
- * Derived builder intelligence (2026-09-24, rules `intel-v2` since 2026-09-25): read from the
+ * Derived builder intelligence (2026-09-24; `rulesVersion` names the rules, `intel-v3` since 2026-09-25): read from the
  * same meaningful events as the activity status, never from a price. Every
  * figure is measured or explicitly not — a `state` that says why, and null.
  * Units: counts of meaningful events, days, weeks, hours, USD.

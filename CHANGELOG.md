@@ -6,6 +6,11 @@ record.
 
 ## 2026-09-26
 
+- **A deployer's other projects are published projects.** `/api/contracts` `otherProjectsCount`
+  and the market page's Deployer check no longer count unpublished records, and the market page
+  calls an account a launch service only when HEY's shared-deployer rule says so.
+- **The MCP's `project_diff` says UNKNOWN for build counts HEY does not measure**, and says when a
+  change count covers only part of the window.
 - **`GET /api/changes`: one canonical change event per meaningful change.** Releases, ships,
   status moves, contract deployments and interface changes, verification, publication, sources,
   narratives and scheduled unlocks, each with its own time and how precisely HEY knows it, when
@@ -29,6 +34,26 @@ record.
   moderator or HEY's rules (a project's own choice was mislabelled as a moderator's). A change's
   `links.evidence` now names its first typed evidence id; it named the change's own id, which
   answered 400 for suffixed ids such as `source:<uuid>:added`, and is absent when none resolves.
+- **History and diff no longer fail for busy projects.** `/api/projects/{slug}/history`
+  (`contractChanges`, `locks`) and `/diff` answered 500 for any project with more than a hundred
+  change events in the window; they now read every page.
+- **A diff says when HEY was not yet recording changes.** A window that ends before the change
+  ledger began is `UNAVAILABLE` rather than a measured zero, and one that starts before it says
+  `partial: true` with `collectedFrom`.
+- **A diff no longer reports zero releases for a project HEY cannot read.** `releasesAdded` and
+  `meaningfulShips` are `null` with `countsReason` when HEY holds no builder source it reads for
+  the project, as `/coverage` already said.
+- **Evidence receipts publish no more than the change ledger.** A `state:` receipt resolves only a
+  move the ledger announces (a demotion it records but never announces is not found), and an
+  `abi:` receipt gives the number of functions and events added and removed, not their names.
+- **Syncing from `/api/changes` no longer misses a project hidden for a few minutes.** A project
+  taken off the catalogue and put back between two ledger runs now has its events re-sent with new
+  `seq` values, after tombstones, so a client that synced while it was hidden receives them.
+- **A project returning to the catalogue does not replay its history through webhooks.** Its
+  events come back as `origin: backfill` unless they were live news within the last seven days,
+  and a subscription receives such a return only if it had received the event before.
+- **`/api/changes?contract=` now receives retractions.** A tombstone matches the contract or token
+  of the event it retracts; it still carries only the id.
 - **The SDK verifies webhooks.** `verifyWebhookSignature`, `parseWebhookEvent` and `isReplay`.
 - **Two more kinds of change.** `lock.observed` and `lock.withdrawn` (when HEY first read a
   HoodLock lock, and first read it withdrawn), and contract upgrades from the chain's own logs,
@@ -130,6 +155,45 @@ record.
 - **Market page additions.** Where the liquidity sits (pools holding it and the largest pool's
   share, collected from today on), launch milestones each on their own clock, and on-chain days
   that keep the measured calls when events could not be indexed.
+- **A project shipping from the chain is measured.** Activity counts as measured when HEY's status
+  rests on building it counted — a readable repository, changelog or feed, or at least one counted
+  building event in the scorer's window, on-chain follow-up deployments included. The snapshot,
+  the scan card, the intelligence route and the MCP no longer call such a project "UNKNOWN
+  activity, no source"; its coverage says `onchain_building_evidence`.
+- **One meaning of "counts as building".** The evidence receipt, the timeline and `/api/changes`
+  count what the scorer counts: corroborated building events, a week of code activity or
+  prereleases once. A self-reported update never counts.
+- **The Discovery Gap explanation adds up.** `/explain?fact=discovery_gap` shows the two
+  percentiles the gap was taken from, so the subtraction it prints holds, and shows no Build
+  Momentum percentile where momentum is not published.
+- **Explanations count what the scorer counts.** `/explain?fact=activity.status` counts only
+  corroborated building events, sends a count HEY did not measure as null rather than 0, and, where
+  a withdrawn ship leaves a published status with nothing under it, marks the status stale and says
+  the next rescore replaces it.
+- **A withdrawn ship moves the status at once.** When HEY withdraws a ship or source as not the
+  project's own, the project is rescored straight away instead of up to twelve hours later.
+- **The project page says why Build Momentum is missing.** "Not finished checking" only where
+  HEY's research has not run; otherwise that HEY holds no repository, changelog or feed it can
+  read.
+- **One valuation-kind rule.** Where HEY holds the provider's market cap and FDV, they decide
+  whether a figure is a market cap or an FDV on every surface, the daily chart included; the
+  supply test names only a stored day whose reading HEY no longer holds.
+- **A deployer is a launch service only by HEY's own rule.** `/api/contracts` said a token's
+  deployer was shared as soon as one other tracked project used it, while `/market` said it was
+  not. `sharedAcrossTrackedProjects` now follows the same three-project rule `/market` uses;
+  `otherProjectsCount` is still the plain count.
+- **A shared follow-up names the right project.** A contract two projects' deployer put up is
+  listed under each project as that project's own, with its own evidence; the contract on its own
+  names neither, rather than picking one by name.
+- **MCP answers no stronger than the API.** Status and market-state moves, signals and
+  market-integrity readings are tagged DERIVED in `get_evidence`, `get_changes` and the timeline;
+  `project_diff` names each valuation end by its own kind; an on-chain event count over a window
+  with unreadable days says so; the Builder Radar and chain overview keep the "not investment
+  advice" disclaimer; and the server instructions now say that `get_contract` names the deployer
+  with a count of other tracked projects.
+- **Under the Radar, one definition.** The MCP guide, `llms.txt` and the docs now describe it as
+  the surface lists it: eligible under the Under the Radar rule, with a positive Discovery Gap.
+- **Docs name the current intelligence rules**, `intel-v3`.
 
 ## 2026-09-25
 

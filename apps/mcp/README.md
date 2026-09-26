@@ -65,7 +65,7 @@ claude mcp add hey-research -- npx -y @hey-research/mcp
 
 | Tool | What it answers |
 |---|---|
-| `find_projects` | Find a project by name, ticker or contract, or browse a surface — `still-building`, `under-the-radar` (a positive Discovery Gap), `back-from-dormancy`, `shipping-in-silence`, `accelerating`, `builder-radar`, … — with the catalogue's filters. |
+| `find_projects` | Find a project by name, ticker or contract, or browse a surface — `still-building`, `under-the-radar` (eligible under the Under the Radar rule, with a positive Discovery Gap), `back-from-dormancy`, `shipping-in-silence`, `accelerating`, `builder-radar`, … — with the catalogue's filters. |
 | `lookup_token` | One project by contract address: is anyone building it, ship records and meaningful ships in 30 days, the last ship and its source. `unknown` is an answer, not an error. |
 | `get_project_snapshot` | One project in one read: identity, build, market with its valuation kind or why it is withheld, on-chain, verification, locks, latest changes, freshness, and what HEY does not know. |
 | `get_changes` | The change ledger: what changed chain-wide or on one project, one event per change with its own time and precision, when HEY knew, and its evidence; a cursor to follow along. |
@@ -94,10 +94,12 @@ source, and links the JSON it was rendered from. Nothing is rendered as zero or
 ## What it will not say
 
 HEY records public building activity. It is not investment advice, it does not
-predict or rank by price, and it holds no wallet data and no cross-token address
-data. The one exception is `get_token_market`: one token's supply-concentration
-summary (shares only), and the only account it names is that token's contract
-deployer. *Still Building* is a narrow claim — verified activity continuing
+predict or rank by price, and it holds no wallet data. The only account any
+tool names is a contract's deployer: `get_token_market` names it beside one
+token's supply-concentration summary (shares only), and `get_contract` names it
+with how many other tracked projects' tokens the same account deployed — a
+count, never a profile, called a launch service only on HEY's own
+shared-deployer rule. *Still Building* is a narrow claim — verified activity continuing
 through a market drawdown HEY tracked — and the server never states it without
 its meaning.
 

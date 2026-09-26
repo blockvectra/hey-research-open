@@ -31,11 +31,13 @@ export type HeyContract = {
   chainId: number;
   address: string;
   name?: string;
+  /** Null when no published project claims the contract, or when more than one shares the strongest link. */
   associatedProject: { slug: string; name: string; url: string } | null;
   role?: 'token' | 'declared' | 'followup';
   token?: { symbol?: string };
   watched: boolean;
   creation?: { tx?: string; at?: string; block?: number; precision: 'EXACT'; evidenceId?: string };
+  /** `sharedAcrossTrackedProjects` is HEY's one shared-deployer rule (the same flag `/market` publishes); `otherProjectsCount` counts other published projects' tokens from this account. */
   deployer?: { address: string; sharedAcrossTrackedProjects: boolean; otherProjectsCount: number };
   factory?: string;
   verifiedSource: { state: HeyMeasureState; verified?: boolean; compiler?: string; contractName?: string; readFrom?: string; checkedAt?: string };
@@ -146,9 +148,20 @@ export type HeyDiff = {
   project: { slug: string; name: string; url: string };
   from: string;
   to: string;
-  build: { clock: 'published'; releasesAdded: number; meaningfulShips: number; status: HeyDiffPair<string>; momentum: HeyDiffPair<number> };
+  build: {
+    clock: 'published';
+    /** Null, with `countsReason`, when HEY does not measure the project's building: a zero would not be a finding. */
+    releasesAdded: number | null;
+    meaningfulShips: number | null;
+    countsReason?: string;
+    status: HeyDiffPair<string>;
+    momentum: HeyDiffPair<number>;
+  };
   market: { state: 'MEASURED'; valuation: HeyDiffPair<number>; liquidity: HeyDiffPair<number> } | { state: 'NOT_APPLICABLE'; reason: string };
-  changes: { state: 'MEASURED'; clock: 'recorded'; total: number; byType: Record<string, number>; truncated: boolean; url: string } | { state: 'UNAVAILABLE'; reason: string };
+  /** A window that ends before the ledger began recording is UNAVAILABLE; one that starts before it is `partial`, counted from `collectedFrom`. */
+  changes:
+    | { state: 'MEASURED'; clock: 'recorded'; total: number; byType: Record<string, number>; truncated: boolean; collectedFrom?: string; partial?: boolean; url: string }
+    | { state: 'UNAVAILABLE'; reason: string };
   method: string;
   disclaimer: string;
 };

@@ -935,6 +935,9 @@ comparison window), `OBSERVED`, `SCHEDULED` (a future time the source fixed).
 
 `origin` is `live` for what the projector saw as it happened, `bootstrap` for history indexed at
 the first run, `backfill` for history indexed later (a project published with months of ships).
+A project that leaves the catalogue and returns gets its events back as new revisions past every
+cursor, so a sync sees them: `live` only when the event was first seen live and is still recent,
+otherwise `backfill`. A tombstone carries no fields, but a `contract=` or `token=` sync receives it.
 `countsAsBuilding` is present only on events the activity status counts. `annotations.signalIds`
 lists HEY Signals that restate the event — a release signal on its ship, a dormant signal on its
 status move — so each change is one event, not two.
@@ -1048,8 +1051,8 @@ Building, Under the Radar, the week's signals. `final` is true once the week has
 One project's intelligence in one answer: the card, its signals (90 days), its Builder Radar
 rank and 30-day history, and — for a token project — the market summary with the contract checks.
 
-Since 2026-09-24 it also carries `development`: derived builder intelligence under rules
-`intel-v1` (`rulesVersion`), computed from the same meaningful events as the activity status and
+Since 2026-09-24 it also carries `development`: derived builder intelligence under the rules
+`rulesVersion` names (`intel-v3` today, the `INTELLIGENCE_RULES_VERSION` constant), computed from the same meaningful events as the activity status and
 never from a price. Every figure is measured or carries a `state` that says why it is not.
 
 | Field | Meaning | Unknown when |
@@ -1129,9 +1132,9 @@ about that project.
 
 | Field | What it says |
 |---|---|
-| `associatedProject`, `role`, `token`, `watched` | the published project that knows this contract and how — `token`, `declared` (a contract the project names) or `followup` (deployed later by the account that launched the token; listed, **not yet watched**) |
+| `associatedProject`, `role`, `token`, `watched` | the published project that knows this contract and how — `token`, `declared` (a contract the project names) or `followup` (deployed later by the account that launched the token; listed, **not yet watched**). `null` when no published project claims it, or when more than one shares the strongest link (a follow-up two projects' deployer put up): HEY then names none rather than pick one. In `/api/projects/{slug}/contracts` a follow-up names the listing project and cites its own ship |
 | `creation` | `tx`, `at`, `block`, `precision: "EXACT"`, and an `evidenceId` for a follow-up |
-| `deployer` | the token's deployer — the only account this object ever names — with `sharedAcrossTrackedProjects` and `otherProjectsCount` |
+| `deployer` | the token's deployer — the only account this object ever names — with `sharedAcrossTrackedProjects` (HEY's stored shared-deployer flag, set once the account launched three tracked projects' tokens; the same flag `/market` publishes as `deployerShared`) and `otherProjectsCount` (a plain count, which may be above zero while the flag is false) |
 | `factory` | the factory that created the token, when one did |
 | `verifiedSource` | `state`, `verified`, `compiler`, `contractName`, `readFrom` (a proxy's implementation), `checkedAt` |
 | `proxy` | `state`, `status`, `kind` (`EIP1967`, `BEACON`, `EXPLORER_REPORTED`, `NONE_DETECTED`), `implementation`, `beacon`, `checkedAt`, `changedAt`, and `history[]` — each change with an `id` (`impl:<chainId>:<address>:<block>:<logIndex>` for a chain log), `occurredAt` and `precision: "EXACT"` for a log, or `occurredAt: null` and `precision: "OBSERVED"` for a change HEY saw between two reads (`source: "hey_reads"`) |
@@ -1181,8 +1184,11 @@ on or before the day, with that point's own `day` and `basis` — or `value: nul
 when there is none. `build.releasesAdded` and `build.meaningfulShips` count ships by when their
 source dates them (`clock: "published"`); `changes` counts the project's public ledger events by
 when HEY recorded them (`clock: "recorded"`, the same events `/api/changes` serves, with its `url`),
-or is `UNAVAILABLE` where the ledger is not live. Two facts in one window are two facts: nothing
-here says a release moved a market.
+or is `UNAVAILABLE` where the ledger is not live or the window ends before it began recording; a
+window that starts before that carries `collectedFrom` and `partial: true`. Where HEY does not
+measure the project's building (no readable source and no counted building evidence),
+`releasesAdded` and `meaningfulShips` are null with `countsReason`, never a zero. Two facts in one
+window are two facts: nothing here says a release moved a market.
 
 ## Bulk reads (2026-09-26)
 

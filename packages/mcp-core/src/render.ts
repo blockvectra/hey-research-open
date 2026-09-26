@@ -71,6 +71,27 @@ export function valuationWord(kind: 'marketCap' | 'fdv' | undefined): string {
 /** Activity status is a rule applied to recorded ships (the explain engine says DERIVED); UNKNOWN is its own tag. */
 export const activityTag = (status: string | null | undefined): 'DERIVED' | 'UNKNOWN' => (!status || status === 'UNKNOWN' ? 'UNKNOWN' : 'DERIVED');
 
+/** The state keys whose transitions are a rule HEY applied: activity status, market status and research level are DERIVED in the explain engine. */
+const DERIVED_STATE_KEYS: ReadonlySet<string> = new Set(['activity_status', 'market_status', 'catalog_status']);
+
+/**
+ * The tag one HEY record carries, read from its typed id (2026-09-26, audit
+ * §45 #8). One rule for receipts, change events and timeline entries.
+ *
+ * A state transition HEY computed (activity status, market status, research
+ * level), a signal over a window HEY measured (`signal:`, and the timeline's
+ * `resumed:`) and a market-integrity reading are rules HEY applied: DERIVED,
+ * as the explain engine and the snapshot tag the same facts. A ship, a
+ * release, a lock, a contract change, a verified claim, token verification
+ * and launch stage are records with a source: FACT.
+ */
+export function recordTag(id: string): 'FACT' | 'DERIVED' {
+  const [family, , key] = id.split(':');
+  if (family === 'signal' || family === 'resumed' || family === 'integrity') return 'DERIVED';
+  if (family === 'state') return DERIVED_STATE_KEYS.has(key ?? '') ? 'DERIVED' : 'FACT';
+  return 'FACT';
+}
+
 /** "in 2 days" for an instant ahead; "expired" once it has passed. */
 export function until(iso: string, now: Date = new Date()): string {
   const then = new Date(iso);
@@ -441,7 +462,8 @@ export function renderChain(chain: HeyChain): string {
     lines.push(`- FACT ${d.day}: ${parts.length > 0 ? parts.join(', ') : 'no figure indexed (unknown, not zero)'}`);
   }
   lines.push('', shownOf(Math.min(days.length, CHAIN_ROWS), days.length, `Newest first; the older days are in GET /api/chain?days=${days.length}.`));
-  lines.push(chain.volumeNote, 'Aggregates only; nobody is named. Context, never a ranking input.', TAG_LEGEND);
+  // The API's own disclaimer travels with the answer, as on every other listing (audit §45 #9).
+  lines.push(chain.volumeNote, 'Aggregates only; nobody is named. Context, never a ranking input.', TAG_LEGEND, chain.disclaimer);
   return lines.join('\n');
 }
 
@@ -457,7 +479,8 @@ export function renderBuilders(page: HeyBuildersPage, now: Date): string {
     );
   }
   lines.push('', shownOf(page.items.length, page.total, `For the rest, call find_projects again with surface=builder-radar and offset=${offsetOf(page.query) + page.items.length}.`));
-  lines.push(queryEcho(page.query));
+  // A ranking above all keeps the API's "not investment advice" (audit §45 #9).
+  lines.push(queryEcho(page.query), TAG_LEGEND, page.disclaimer);
   return lines.join('\n');
 }
 
@@ -465,7 +488,9 @@ export function renderBuilders(page: HeyBuildersPage, now: Date): string {
 export function renderWeeklyReport(report: HeyWeeklyReport): string {
   const o = report.overview;
   const lines: string[] = [`# Robinhood Chain, ${report.week} (${report.window.start.slice(0, 10)} → ${report.window.end.slice(0, 10)}${report.final ? '' : ', in progress'})`, report.headline, ''];
-  lines.push(`FACT overview: ${o.ships} verified ships from ${o.projectsShipping} projects · ${o.newBuilders} new verified builders · ${o.backToShipping} back to shipping · ${o.stillBuilding} Still Building · ${o.underTheRadar} Under the Radar · ${o.published} pages published in total, ${o.verifiedBuilders} verified builders.`);
+  // Ships and pages are records; a status move, a research level, Still Building and Under the Radar are rules HEY applied (audit §45 #8).
+  lines.push(`FACT overview: ${o.ships} verified ships from ${o.projectsShipping} projects · ${o.published} pages published in total.`);
+  lines.push(`DERIVED overview: ${o.newBuilders} new verified builders · ${o.backToShipping} back to shipping · ${o.stillBuilding} Still Building · ${o.underTheRadar} Under the Radar · ${o.verifiedBuilders} verified builders in total.`);
   const c = report.chain;
   const chain = [c.dexTrades === undefined ? undefined : `${c.dexTrades.toLocaleString('en-US')} DEX trades`, c.dexVolumeUsd === undefined ? undefined : `${money(c.dexVolumeUsd)} volume (USDG/WETH/ETH pairs)`, c.launches === undefined ? undefined : `${c.launches.toLocaleString('en-US')} launches recorded`, c.projectsPublished === undefined ? undefined : `${c.projectsPublished} pages published`].filter((v): v is string => Boolean(v));
   if (chain.length > 0) lines.push(`FACT chain (${c.days} days): ${chain.join(' · ')}.`);
@@ -498,8 +523,8 @@ export function renderThisWeek(week: HeyThisWeek): string {
     `Counted over the ${w.days} days to ${w.until.slice(0, 10)}, from HEY's own tables.`,
     '',
     `FACT ships: ${week.shipped.ships.toLocaleString('en-US')} from ${week.shipped.projects.toLocaleString('en-US')} ${week.shipped.projects === 1 ? 'project' : 'projects'}.`,
-    `FACT newly verified builders: ${week.newBuilders.total.toLocaleString('en-US')}.`,
-    `FACT back to shipping: ${week.backToShipping.total.toLocaleString('en-US')}.`,
+    `DERIVED newly verified builders: ${week.newBuilders.total.toLocaleString('en-US')}.`,
+    `DERIVED back to shipping: ${week.backToShipping.total.toLocaleString('en-US')}.`,
     `DERIVED Still Building: ${week.stillBuilding.total.toLocaleString('en-US')}.`,
     ...(week.underTheRadar ? [`DERIVED Under the Radar: ${week.underTheRadar.total.toLocaleString('en-US')}.`] : []),
   ];
@@ -592,14 +617,14 @@ export function renderAskAnswer(answer: HeyAskAnswer): string {
 
 const day = (iso: string | undefined) => (iso ? iso.slice(0, 10) : undefined);
 
-/** Under the Radar and below the 40th market-attention percentile (2026-09-24). Not a buy signal. */
+/** Eligible under the Under the Radar rule and below the 40th market-attention percentile (2026-09-24; audit §45 #25). Not a buy signal. */
 export function renderSilentBuilders(page: HeySilentBuilders): string {
   if (page.items.length === 0) return `No project meets the bar right now.\nMethod: ${page.method}\n\n${page.disclaimer}`;
   const lines = page.items.map(
     (item) =>
       `- DERIVED ${item.name}${item.symbol ? ` ($${item.symbol})` : ''} — FACT ${item.meaningfulShips30d} verified ships in 30 days${item.marketAttention ? `, market attention ${item.marketAttention.toLowerCase().replace('_', ' ')} (context)` : ''}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`,
   );
-  return `Under the Radar and below the 40th market-attention percentile:\n${lines.join('\n')}\n${shownOf(page.items.length, page.total, 'The API lists at most 100; the Radar page holds the rest.')}\nMethod: ${page.method}\nContinued building is not a buy signal.\n${TAG_LEGEND}\n\n${page.disclaimer}`;
+  return `Eligible under the Under the Radar rule (the gap itself not required) and below the 40th market-attention percentile:\n${lines.join('\n')}\n${shownOf(page.items.length, page.total, 'The API lists at most 100; the Radar page holds the rest.')}\nMethod: ${page.method}\nContinued building is not a buy signal.\n${TAG_LEGEND}\n\n${page.disclaimer}`;
 }
 
 export function renderAccelerating(page: HeyAccelerating): string {
@@ -666,7 +691,7 @@ export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
   const shown = timeline.items.slice(0, limit);
   const lines = shown.map(
     (item) =>
-      `- ${item.precision} ${atPrecision(item.at, item.precision)} · ${item.kind.replace(/_/g, ' ')} · ${item.title}${item.countsAsBuilding ? ' · counts as building' : ''}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}`,
+      `- ${recordTag(item.id)} ${item.precision} ${atPrecision(item.at, item.precision)} · ${item.kind.replace(/_/g, ' ')} · ${item.title}${item.countsAsBuilding ? ' · counts as building' : ''}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}`,
   );
   /*
    * Shown of the whole, and the parameter that reads on (2026-09-26, M2 G3).
@@ -678,7 +703,7 @@ export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
       : timeline.nextCursor
         ? `For older entries, call get_project_timeline again with before=${timeline.nextCursor}.`
         : undefined;
-  return `# ${timeline.project.name} — timeline (lens: ${timeline.lens})\n${timeline.project.url}\nEach entry is a FACT HEY recorded, dated at the precision shown (EXACT, DATE, WEEK, WINDOW, OBSERVED = HEY's own observation, SCHEDULED = not yet happened).\n${lines.length ? lines.join('\n') : 'Nothing HEY holds falls under this lens.'}\n\n${shownOf(shown.length, total, more)}\n\n${timeline.disclaimer}`;
+  return `# ${timeline.project.name} — timeline (lens: ${timeline.lens})\n${timeline.project.url}\nEach entry is tagged FACT (a record with its source) or DERIVED (a rule HEY applied: a return to building HEY detected, a market-integrity reading), dated at the precision shown (EXACT, DATE, WEEK, WINDOW, OBSERVED = HEY's own observation, SCHEDULED = not yet happened).\n${lines.length ? lines.join('\n') : 'Nothing HEY holds falls under this lens.'}\n\n${shownOf(shown.length, total, more)}\n\n${timeline.disclaimer}`;
 }
 
 /**
@@ -688,7 +713,7 @@ export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
  * on, so a model never mistakes a page for the whole.
  */
 export function renderChanges(page: HeyChangesPage): string {
-  const lines: string[] = ['# What changed — the HEY change ledger', 'Each event is a FACT HEY recorded; `occurredAt` only when a source dates it, else OBSERVED (HEY\'s own knowledge time).', ''];
+  const lines: string[] = ['# What changed — the HEY change ledger', 'Each event is tagged FACT (a record with its source) or DERIVED (a rule HEY applied: a status or market-state move, a window HEY measured, a market-integrity reading); `occurredAt` only when a source dates it, else OBSERVED (HEY\'s own knowledge time).', ''];
   if (page.items.length === 0) lines.push('No change matches in this page.');
   for (const item of page.items) {
     if (item.op === 'retract') {
@@ -697,7 +722,7 @@ export function renderChanges(page: HeyChangesPage): string {
     }
     const when = item.occurredAt ? `${item.precision} ${item.occurredAt.slice(0, 10)}${item.occurredUntil ? `–${item.occurredUntil.slice(0, 10)}` : ''}` : `OBSERVED (no source time; HEY saw it ${item.detectedAt.slice(0, 10)})`;
     const move = item.before !== undefined || item.after !== undefined ? ` (${String(item.before ?? '—')} → ${String(item.after ?? '—')})` : '';
-    lines.push(`- ${when} · ${item.type} · ${item.project.name} (${item.project.slug}): ${item.summary}${move}`);
+    lines.push(`- ${recordTag(item.id)} ${when} · ${item.type} · ${item.project.name} (${item.project.slug}): ${item.summary}${move}`);
     lines.push(`  id ${item.id} · revision ${item.revision}${item.origin === 'live' ? '' : ` · ${item.origin}`} · detected ${item.detectedAt.slice(0, 10)}${item.countsAsBuilding ? ' · counts as building' : ''}`);
     for (const evidence of item.evidence) if (evidence.url) lines.push(`  evidence: ${evidence.label} — ${evidence.url}`);
   }
@@ -711,7 +736,7 @@ export function renderChanges(page: HeyChangesPage): string {
     page.ledger.projectorRanAt ? `last indexed ${page.ledger.projectorRanAt.slice(0, 16).replace('T', ' ')} UTC` : undefined,
   ].filter((fact): fact is string => Boolean(fact));
   if (facts.length > 0) lines.push(`Ledger: ${facts.join('; ')}.`);
-  lines.push(queryEcho(page.query), 'A change is a fact HEY recorded, never a cause and never a recommendation.', '', page.disclaimer);
+  lines.push(queryEcho(page.query), 'A change is a record HEY kept, never a cause and never a recommendation.', TAG_LEGEND, '', page.disclaimer);
   return lines.join('\n');
 }
 

@@ -20,9 +20,20 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
   shown-of-total and how to read on, names a valuation by its kind (an unknown
   kind is a "valuation", never a "market cap"), prints time at its precision,
   is capped at 24 KB with the cut disclosed, and links the canonical JSON.
-- `under-the-radar` is described as the domain decides it (a positive
-  Discovery Gap, not "little attention"), and `back-from-dormancy` says it is
-  narrower than every RESUMED project.
+- `under-the-radar` is described as the surface decides it: eligible under the
+  Under the Radar rule (active, Build Momentum at least 30, two meaningful
+  events in 30 days with one beyond a commit summary, a fresh reading of a live
+  market) with a positive Discovery Gap, not "little attention" and not the
+  gap alone; `back-from-dormancy` says it is narrower than every RESUMED
+  project.
+- Status and market-state moves, signals and market-integrity readings are
+  DERIVED in `get_evidence`, `get_changes` and `get_project_timeline`, as the
+  explain engine says; `project_diff` names each valuation end by its own kind;
+  an on-chain event sum over unreadable days says so; the Builder Radar and
+  `chain_overview` keep the API disclaimer; `get_contract` calls a deployer a
+  launch service only on HEY's own shared-deployer flag; and the server
+  instructions name `get_contract` beside `get_token_market` as the tools that
+  name a deployer (2026-09-26, audit).
 - The tools, renderers, resources and prompts moved to `packages/mcp-core`;
   this package bundles them behind stdio. The same tools are hosted at
   `https://heyresearch.xyz/mcp`.

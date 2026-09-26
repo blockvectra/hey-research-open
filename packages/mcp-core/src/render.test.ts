@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import type { HeyPage, HeyProject, HeyThisWeek, HeyTokenMarket } from '@hey-research/sdk';
+import type { HeyDiff, HeyPage, HeyProject, HeyThisWeek, HeyTokenMarket } from '@hey-research/sdk';
 
 import * as fx from './fixtures/api';
 import {
@@ -159,6 +159,8 @@ describe('find_projects', () => {
     expect(text).toContain('DERIVED #3 AgentOS ($AOS)');
     expect(text).toContain('Market cap, price and volume take no part in it.');
     expect(text).toContain('Showing 1 of 715. For the rest, call find_projects again with surface=builder-radar and offset=1.');
+    // A ranking keeps the API's disclaimer (audit §45 #9).
+    expect(text).toContain(fx.builders.disclaimer);
   });
 });
 
@@ -204,6 +206,14 @@ describe('get_project_snapshot', () => {
     expect(text).toContain('UNKNOWN market integrity: WITHHELD');
   });
 
+  it('sums contract events over the days HEY could read, and never calls that sum the whole window (audit §45 #7)', () => {
+    const partial = renderSnapshot({ ...fx.snapshot, onchain: { events24h: 10, events7d: 30, daysCovered: 7, daysMeasured: 3, observedAt: '2026-09-25T18:00:00.000Z' } }, NOW);
+    expect(partial).toContain('- FACT 10 contract events on the newest day HEY could read, 30 over the 3 days HEY could read (4 of 7 days unreadable: unknown, not zero)');
+    expect(partial).not.toContain('30 over 7 days');
+    const whole = renderSnapshot({ ...fx.snapshot, onchain: { events24h: 10, events7d: 30, daysCovered: 7, daysMeasured: 7, observedAt: '2026-09-25T18:00:00.000Z' } }, NOW);
+    expect(whole).toContain('- FACT 10 contract events in 24 h, 30 over 7 days');
+  });
+
   it('prints the latest changes at their precision, with ids, and where the rest are', () => {
     expect(text).toContain('- EXACT 2026-09-24 10:00 UTC · build.release: Released v0.4 (id ship:2ac87a66-0000-0000-0000-000000000001)');
     expect(text).toContain('- WEEK week of 2026-09-14 · build.code_activity');
@@ -226,7 +236,7 @@ describe('get_project_snapshot', () => {
 describe('get_changes', () => {
   it('prints each event’s time and precision, its evidence, a retraction by id alone, and the cursor', () => {
     const text = renderChanges(fx.changes);
-    expect(text).toContain('- EXACT 2026-09-24 · build.release · AgentOS (agentos): Released v0.4');
+    expect(text).toContain('- FACT EXACT 2026-09-24 · build.release · AgentOS (agentos): Released v0.4');
     expect(text).toContain('evidence: GitHub release — https://github.com/agentos/sdk/releases/tag/v0.4');
     expect(text).toContain('- RETRACTED signal:0b0b0000-0000-0000-0000-000000000009 (revision 2');
     expect(text).toContain('Showing 2; more exist. Call get_changes again with before=YzEuMTIzNDU.');
@@ -245,17 +255,56 @@ describe('get_changes', () => {
     expect(observed).toContain('OBSERVED (no source time; HEY saw it 2026-09-24)');
     expect(observed).toContain('Cursor: KEEP.');
   });
+
+  it('tags a status or market-state move and a measured window DERIVED, as explain_fact does (audit §45 #8)', () => {
+    const release = fx.changes.items[0] as Extract<(typeof fx.changes.items)[number], { op: 'upsert' }>;
+    const move = (id: string, type: typeof release.type) => ({ ...release, id, type, occurredAt: null, precision: 'OBSERVED' as const, countsAsBuilding: undefined, summary: 'moved' });
+    const text = renderChanges({
+      ...fx.changes,
+      items: [
+        move('state:9b1c0000-0000-0000-0000-000000000001:activity_status:4', 'build.status_changed'),
+        move('state:9b1c0000-0000-0000-0000-000000000001:market_status:5', 'market.status_changed'),
+        move('signal:0b0b0000-0000-0000-0000-000000000001', 'build.accelerating'),
+        move('integrity:7a7a0000-0000-0000-0000-000000000001:lp_removed', 'market_integrity.event'),
+        move('state:9b1c0000-0000-0000-0000-000000000001:verification:6', 'token.verification_changed'),
+        release,
+      ],
+    });
+    expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · build.status_changed');
+    expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · market.status_changed');
+    expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · build.accelerating');
+    expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · market_integrity.event');
+    // Token verification is FACT in the explain engine, and a release is a record with its source.
+    expect(text).toContain('- FACT OBSERVED (no source time; HEY saw it 2026-09-24) · token.verification_changed');
+    expect(text).toContain('- FACT EXACT 2026-09-24 · build.release');
+    expect(text).not.toContain('Each event is a FACT');
+  });
 });
 
 describe('get_project_timeline', () => {
   it('prints precision in words, shown of total and the before cursor', () => {
     const text = renderTimeline(fx.timeline);
-    expect(text).toContain('- EXACT 2026-09-01 10:00 UTC · release · v1.2 · counts as building — https://github.com/equifold/core/releases/tag/v1.2');
-    expect(text).toContain('- WEEK week of 2026-08-24 · code activity · 12 commits');
-    expect(text).toContain('- SCHEDULED scheduled 2026-10-01 00:00 UTC · unlock');
+    expect(text).toContain('- FACT EXACT 2026-09-01 10:00 UTC · release · v1.2 · counts as building — https://github.com/equifold/core/releases/tag/v1.2');
+    expect(text).toContain('- FACT WEEK week of 2026-08-24 · code activity · 12 commits');
+    expect(text).toContain('- FACT SCHEDULED scheduled 2026-10-01 00:00 UTC · unlock');
     expect(text).toContain('Showing 3 of 412. For older entries, call get_project_timeline again with before=T2.');
     expect(renderTimeline(fx.timeline, 1)).toContain('Showing 1 of 412. Call get_project_timeline again with limit=1');
     expect(text).toMatch(TAGGED);
+  });
+
+  it('tags a detected return to building and a market-integrity reading DERIVED, never FACT (audit §45 #8)', () => {
+    const text = renderTimeline({
+      ...fx.timeline,
+      items: [
+        { id: 'resumed:0b0b0000-0000-0000-0000-000000000001', kind: 'resumed', at: '2026-09-20T00:00:00.000Z', precision: 'OBSERVED', title: 'Back to shipping', countsAsBuilding: false },
+        { id: 'integrity:7a7a0000-0000-0000-0000-000000000001', kind: 'market_integrity', at: '2026-09-19T00:00:00.000Z', precision: 'WINDOW', title: 'Liquidity removed', countsAsBuilding: false },
+        { id: 'token-verification', kind: 'verification', at: '2026-09-18T00:00:00.000Z', precision: 'OBSERVED', title: 'Token verified', countsAsBuilding: false },
+      ],
+    });
+    expect(text).toContain('- DERIVED OBSERVED HEY saw it 2026-09-20 · resumed · Back to shipping');
+    expect(text).toContain('- DERIVED WINDOW window ending 2026-09-19 · market integrity');
+    expect(text).toContain('- FACT OBSERVED HEY saw it 2026-09-18 · verification');
+    expect(text).not.toContain('Each entry is a FACT');
   });
 });
 
@@ -293,6 +342,17 @@ describe('get_evidence', () => {
     expect(text).toContain('FACT GITHUB_RELEASE (build): Released v0.4');
     expect(text).toContain('When: 2026-09-24 10:00 UTC (EXACT); HEY first knew 2026-09-24 11:00 UTC');
     expect(text).toContain('https://github.com/agentos/sdk/releases/tag/v0.4; backing: publicly verified; counts toward activity status');
+  });
+
+  it('tags a HEY state transition or signal DERIVED, as explain_fact does, and token verification FACT (audit §45 #8)', () => {
+    const live = fx.evidence as Extract<typeof fx.evidence, { withdrawn: false }>;
+    const state = (key: string) => ({ ...live, id: `state:514b4680-a7c1-4497-9e6a-1fa9ac342a8e:${key}:1`, claimType: `${key}_changed`, sourceType: 'hey', sourceUrl: null, verification: null, countsAsBuilding: undefined });
+    expect(renderEvidence({ ...state('activity_status'), domain: 'build', summary: 'activity status: SHIPPING → ACTIVE' })).toContain('DERIVED activity_status_changed (build): activity status: SHIPPING → ACTIVE');
+    expect(renderEvidence({ ...state('market_status'), domain: 'market', summary: 'market status: TRADING_INACTIVE → ACTIVE_MARKET' })).toContain('DERIVED market_status_changed (market)');
+    expect(renderEvidence({ ...state('catalog_status'), domain: 'research' })).toContain('DERIVED catalog_status_changed');
+    expect(renderEvidence({ ...live, id: 'signal:0b0b0000-0000-0000-0000-000000000001', claimType: 'development_spike', sourceType: 'hey' })).toContain('DERIVED development_spike');
+    expect(renderEvidence({ ...state('verification'), domain: 'token' })).toContain('FACT verification_changed');
+    expect(renderEvidence({ ...live, id: 'claim:0b0b0000-0000-0000-0000-000000000001', claimType: 'owner_verified', sourceType: 'hey' })).toContain('FACT owner_verified');
   });
 
   it('says a withdrawn record is withdrawn, and names no project it may not', () => {
@@ -351,8 +411,22 @@ describe('get_contract', () => {
     expect(text).toContain("EXACT 2026-08-01 12:05 UTC · BeaconUpgraded → 0x1111000000000000000000000000000000000001 (read from the chain's logs");
     expect(text).toContain('FACT interface: 24 functions, 6 events');
     expect(text).toContain('8400 calls in 7 days, events not indexed (unknown, not zero)');
-    expect(text).toContain('a deployer shared with 12 other tracked projects (a launch service, not one team)');
+    expect(text).toContain('HEY marks this deployer shared: it also deployed the token of 12 other tracked projects (a launch service, not one team');
     expect(text.toLowerCase()).not.toContain('partnership');
+  });
+
+  it("calls a deployer a launch service only on HEY's own shared flag; below it, a count with no label (audit §45 #19)", () => {
+    // Live: Rips' deployer, one other tracked project, stored flag false — /market says deployerShared false.
+    const one = renderContract({ ...fx.contract, deployer: { address: '0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b', sharedAcrossTrackedProjects: false, otherProjectsCount: 1 } });
+    expect(one).toContain('- FACT deployed by 0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b — the same account also deployed the token of 1 other tracked project\n');
+    expect(one).not.toMatch(/launch service|shared/);
+    const none = renderContract({ ...fx.contract, deployer: { address: '0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b', sharedAcrossTrackedProjects: false, otherProjectsCount: 0 } });
+    expect(none).toContain('- FACT deployed by 0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b\n');
+  });
+
+  it('says no single project, rather than none, when a contract has no associated project (audit §45 #20)', () => {
+    const text = renderContract({ ...fx.contract, associatedProject: null, role: undefined });
+    expect(text).toContain('UNKNOWN project: no single published project claims this contract (none does, or more than one does equally).');
   });
 
   it('never reads an unread proxy as "not a proxy", and an older check says what it read', () => {
@@ -375,6 +449,36 @@ describe('project_diff', () => {
     expect(text).toContain('FACT valuation: then $104.0K on 2026-09-01, observed → now $208.6K on 2026-09-25, observed');
     expect(text).toContain('never a cause');
     expect(text.toLowerCase()).not.toMatch(/because|led to|caused/);
+  });
+
+  it("names each end of the valuation by its own kind, never one end's kind for both (audit §45 #6)", () => {
+    type Valuation = Extract<HeyDiff['market'], { state: 'MEASURED' }>['valuation'];
+    const withValuation = (valuation: Valuation) =>
+      renderDiff({ ...fx.diff, market: { state: 'MEASURED', valuation, liquidity: { then: { value: null, reason: 'withheld' }, now: { value: null, reason: 'withheld' } } } });
+    // Live arrow, 2026-09-17 → 2026-09-25: no kind on the first day (no supply read), a market cap on the last.
+    const arrow = withValuation({ then: { value: 2_731_838, day: '2026-09-17', basis: 'observed' }, now: { value: 4_305_227, day: '2026-09-25', basis: 'observed', kind: 'marketCap' } });
+    expect(arrow).toContain('- FACT valuation: then valuation $2.73M on 2026-09-17, observed → now market cap $4.31M on 2026-09-25, observed');
+    expect(arrow).toContain('not the same measure');
+    expect(arrow).not.toContain('FACT market cap:');
+    const mixed = withValuation({ then: { value: 1_000_000, day: '2026-09-01', basis: 'observed', kind: 'fdv' }, now: { value: 400_000, day: '2026-09-25', basis: 'observed', kind: 'marketCap' } });
+    expect(mixed).toContain('then FDV $1.00M on 2026-09-01, observed → now market cap $400.0K');
+    const same = withValuation({ then: { value: 1_000_000, day: '2026-09-01', basis: 'observed', kind: 'fdv' }, now: { value: 400_000, day: '2026-09-25', basis: 'observed', kind: 'fdv' } });
+    expect(same).toContain('- FACT FDV: then $1.00M on 2026-09-01, observed → now $400.0K');
+    expect(same).not.toContain('not the same measure');
+    const missing = withValuation({ then: { value: null, reason: 'no persisted point' }, now: { value: 400_000, day: '2026-09-25', basis: 'observed', kind: 'marketCap' } });
+    expect(missing).toContain('then UNKNOWN (no persisted point) → now market cap $400.0K');
+    expect(missing).not.toContain('not the same measure');
+  });
+});
+
+describe('project_diff counts HEY cannot measure', () => {
+  it('prints null build counts as UNKNOWN with their reason, and says a change count is partial (audit §45 #16, #17)', () => {
+    const unmeasured = renderDiff({ ...fx.diff, build: { ...fx.diff.build, releasesAdded: null, meaningfulShips: null, countsReason: 'HEY holds no builder source it can read for this project.' } });
+    expect(unmeasured).toContain('- UNKNOWN releases added and meaningful ships: HEY holds no builder source it can read for this project.');
+    expect(unmeasured).not.toContain('releases added: null');
+    if (fx.diff.changes.state !== 'MEASURED') throw new Error('fixture diff has measured changes');
+    const partial = renderDiff({ ...fx.diff, changes: { ...fx.diff.changes, partial: true, collectedFrom: '2026-09-26T11:32:48.791Z' } });
+    expect(partial).toContain('(partial: the ledger began recording on 2026-09-26, so only from then)');
   });
 });
 
@@ -407,6 +511,8 @@ describe('chain_overview', () => {
     expect(text).toContain('2 newly verified builders');
     expect(text).toContain('nobody is named');
     expect(text).toMatch(TAGGED);
+    // The API's disclaimer travels with the overview (audit §45 #9).
+    expect(text.endsWith(fx.chain.disclaimer)).toBe(true);
   });
 
   it('this-week: the captured payload without an undefined, a valuation by kind, and Still Building’s meaning', () => {
@@ -425,6 +531,9 @@ describe('chain_overview', () => {
   it('weekly-report: tagged, with Still Building’s meaning', () => {
     const text = renderWeeklyReport(fx.weeklyReport);
     expect(text).toContain('FACT overview: 9 verified ships');
+    // Still Building, Under the Radar and status moves are rules HEY applied, as renderThisWeek says (audit §45 #8).
+    expect(text).toMatch(/^DERIVED overview: .* Still Building · .* Under the Radar/m);
+    expect(text).not.toMatch(/^FACT overview: .*(Still Building|Under the Radar|back to shipping)/m);
     expect(text).toContain(STILL_BUILDING_MEANING);
   });
 

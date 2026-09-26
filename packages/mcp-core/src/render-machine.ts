@@ -15,7 +15,7 @@ import type {
   HeySourceFreshness,
 } from '@hey-research/sdk';
 
-import { STILL_BUILDING_MEANING, TAG_LEGEND, activityTag, atPrecision, liquidityWords, money, shownOf, stillBuildingEvidence, tokenMarketWords, valuationWord } from './render';
+import { STILL_BUILDING_MEANING, TAG_LEGEND, activityTag, atPrecision, liquidityWords, money, recordTag, shownOf, stillBuildingEvidence, tokenMarketWords, valuationWord } from './render';
 
 /**
  * The machine-layer reads as text (2026-09-26): snapshot, coverage, explain,
@@ -117,10 +117,19 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   const o = s.onchain;
   if (!o) lines.push('- UNKNOWN on-chain use: HEY holds no reading of the contract.');
   else {
+    /*
+     * The event sums cover only the days HEY could read (audit §45 #7): with a
+     * blind day in the window, the figure is over those days, the rest are
+     * unknown, and the newest readable day may not be the latest one.
+     */
+    const partial = o.daysMeasured < o.daysCovered;
+    const events = partial
+      ? `- FACT ${o.events24h} contract events on the newest day HEY could read${o.events7d === undefined ? '' : `, ${o.events7d} over the ${o.daysMeasured} days HEY could read`} (${o.daysCovered - o.daysMeasured} of ${o.daysCovered} days unreadable: unknown, not zero)`
+      : `- FACT ${o.events24h} contract events in 24 h${o.events7d === undefined ? '' : `, ${o.events7d} over ${o.daysCovered} days`}`;
     lines.push(
       o.events24h === undefined
         ? `- UNKNOWN contract events: HEY could not index them (${o.daysMeasured} of ${o.daysCovered} days readable)${o.calls24h === undefined ? '' : `; FACT ${o.calls24h} calls in 24 h`}`
-        : `- FACT ${o.events24h} contract events in 24 h${o.events7d === undefined ? '' : `, ${o.events7d} over ${o.daysCovered} days`}${o.calls24h === undefined ? '' : `; ${o.calls24h} calls in 24 h`} (read ${o.observedAt.slice(0, 10)}). Usage says the contract is used, not that anyone is building.`,
+        : `${events}${o.calls24h === undefined ? '' : `; ${o.calls24h} calls in 24 h`} (read ${o.observedAt.slice(0, 10)}). Usage says the contract is used, not that anyone is building.`,
     );
   }
 
@@ -207,7 +216,8 @@ export function renderEvidence(r: HeyEvidenceReceipt): string {
     return [`# ${r.id} — withdrawn`, `HEY no longer makes this claim (${pretty(r.withdrawalReason)}). Do not cite it.${r.project ? ` Project: ${r.project.name} — ${r.project.url}` : ''}`, '', r.disclaimer].join('\n');
   }
   const lines: string[] = [`# Evidence ${r.id}`, `${r.project.name} — ${r.project.url}`, ''];
-  lines.push(`FACT ${r.claimType} (${r.domain}): ${r.summary}`);
+  // A status or market-state move and a signal are rules HEY applied: DERIVED, as explain_fact says (audit §45 #8).
+  lines.push(`${recordTag(r.id)} ${r.claimType} (${r.domain}): ${r.summary}`);
   lines.push(`When: ${atPrecision(r.publishedAt, r.precision, r.detectedAt)} (${r.precision}); HEY first knew ${r.detectedAt.slice(0, 16).replace('T', ' ')} UTC; recorded ${r.recordedAt.slice(0, 10)}.`);
   lines.push(`Source: ${r.sourceType}${r.sourceUrl ? ` — ${r.sourceUrl}` : ' (no public URL; HEY\'s own observation)'}${r.verification ? `; backing: ${pretty(r.verification)}` : ''}${r.countsAsBuilding ? '; counts toward activity status' : ''}.`);
   if (r.sources && r.sources.length > 0) lines.push('', 'Evidence rows:', ...r.sources.map((row) => `- ${row.sourceType}: ${row.sourceUrl} (observed ${row.observedAt.slice(0, 10)})`));
@@ -229,12 +239,25 @@ function proxyWords(proxy: HeyContract['proxy']): string {
     : `FACT no proxy pattern detected in the EIP-1967 implementation slot${when} (an older check that did not read the beacon slot)`;
 }
 
+/**
+ * What HEY says about a token's deployer (audit §45 #19). "A launch service"
+ * only on HEY's own shared-deployer flag — the rule that stops crediting its
+ * later deployments to the project, the one /market reads too. Below it, a
+ * count of other tracked projects is a count, never a label.
+ */
+function deployerWords(d: NonNullable<HeyContract['deployer']>): string {
+  const n = d.otherProjectsCount;
+  const others = `${n} other tracked ${n === 1 ? 'project' : 'projects'}`;
+  if (d.sharedAcrossTrackedProjects) return ` — HEY marks this deployer shared: it also deployed the token of ${others} (a launch service, not one team; none of its later deployments is credited to a project)`;
+  return n > 0 ? ` — the same account also deployed the token of ${others}` : '';
+}
+
 function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
   const lines: string[] = [];
   lines.push(`${c.name ? `${c.name} — ` : ''}chain ${c.chainId}, ${c.address}${c.role ? ` (${c.role})` : ''}${c.watched ? '' : ' — listed, not watched: HEY does not re-read this contract'}`);
-  lines.push(c.associatedProject ? `- FACT project: ${c.associatedProject.name} — ${c.associatedProject.url}` : '- UNKNOWN project: no published project claims this contract.');
+  lines.push(c.associatedProject ? `- FACT project: ${c.associatedProject.name} — ${c.associatedProject.url}` : '- UNKNOWN project: no single published project claims this contract (none does, or more than one does equally).');
   if (c.creation) lines.push(`- FACT created ${c.creation.at ? atPrecision(c.creation.at, c.creation.precision) : 'at an unread time'}${c.creation.tx ? ` in ${c.creation.tx}` : ''}${c.creation.block ? `, block ${c.creation.block}` : ''}`);
-  if (c.deployer) lines.push(`- FACT deployed by ${c.deployer.address}${c.deployer.sharedAcrossTrackedProjects ? ` — a deployer shared with ${c.deployer.otherProjectsCount} other tracked projects (a launch service, not one team)` : ''}`);
+  if (c.deployer) lines.push(`- FACT deployed by ${c.deployer.address}${deployerWords(c.deployer)}`);
   if (c.factory) lines.push(`- FACT created through factory ${c.factory}`);
   const src = c.verifiedSource;
   lines.push(src.state === 'MEASURED' ? `- FACT verified source: ${src.verified ? 'yes' : 'no'}${src.compiler ? `; compiler ${src.compiler}` : ''}${src.contractName ? `; name ${src.contractName}` : ''}${src.checkedAt ? ` (checked ${src.checkedAt.slice(0, 10)})` : ''}` : `- UNKNOWN verified source: ${pretty(src.state)}`);
@@ -283,20 +306,32 @@ function end<T>(label: string, e: HeyDiffEnd<T>, format: (value: T) => string): 
 export function renderDiff(d: HeyDiff): string {
   const lines: string[] = [`# ${d.project.name} — what changed between ${d.from} and ${d.to}`, d.project.url, ''];
   lines.push('## Build (counts on the date each item was published)');
-  lines.push(`- FACT releases added: ${d.build.releasesAdded}; meaningful ships: ${d.build.meaningfulShips}`);
+  if (d.build.releasesAdded === null || d.build.meaningfulShips === null) {
+    lines.push(`- UNKNOWN releases added and meaningful ships: ${d.build.countsReason ?? 'HEY does not read building for this project, so no count here is a measured zero.'}`);
+  } else {
+    lines.push(`- FACT releases added: ${d.build.releasesAdded}; meaningful ships: ${d.build.meaningfulShips}`);
+  }
   lines.push(`- DERIVED activity status: ${end('then', d.build.status.then, pretty)} → ${end('now', d.build.status.now, pretty)}`);
   lines.push(`- DERIVED Build Momentum: ${end('then', d.build.momentum.then, String)} → ${end('now', d.build.momentum.now, String)}`);
   lines.push('', '## Market (context)');
   if (d.market.state === 'NOT_APPLICABLE') lines.push(`- NOT APPLICABLE: ${d.market.reason}`);
   else {
+    /*
+     * Each end is named by its own kind (audit §45 #6): a day with no supply
+     * read has no kind, and an FDV beside a market cap is two measures, not
+     * one figure moving. One shared word only when both ends agree.
+     */
     const v = d.market.valuation;
-    lines.push(`- FACT ${valuationWord(v.now.kind ?? v.then.kind)}: ${end('then', v.then, money)} → ${end('now', v.now, money)}`);
+    const same = v.then.kind === v.now.kind;
+    const endOf = (label: string, e: HeyDiffEnd<number>) => end(same || e.value === null ? label : `${label} ${valuationWord(e.kind)}`, e, money);
+    lines.push(`- FACT ${same ? valuationWord(v.now.kind) : 'valuation'}: ${endOf('then', v.then)} → ${endOf('now', v.now)}`);
+    if (!same && v.then.value !== null && v.now.value !== null) lines.push('  The two ends are not the same measure, so the difference between them is not one figure moving.');
     lines.push(`- FACT liquidity: ${end('then', d.market.liquidity.then, money)} → ${end('now', d.market.liquidity.now, money)}`);
   }
   lines.push('', '## Changes recorded in the window (by the time HEY recorded them)');
   if (d.changes.state === 'UNAVAILABLE') lines.push(`- UNKNOWN: ${d.changes.reason}`);
   else {
-    lines.push(`- FACT ${d.changes.total} change${d.changes.total === 1 ? '' : 's'}${d.changes.truncated ? ' (counted up to the cap; more exist)' : ''}: ${Object.entries(d.changes.byType).map(([type, n]) => `${type} ${n}`).join(', ') || 'none'}`);
+    lines.push(`- FACT ${d.changes.total} change${d.changes.total === 1 ? '' : 's'}${d.changes.truncated ? ' (counted up to the cap; more exist)' : ''}${d.changes.partial && d.changes.collectedFrom ? ` (partial: the ledger began recording on ${d.changes.collectedFrom.slice(0, 10)}, so only from then)` : ''}: ${Object.entries(d.changes.byType).map(([type, n]) => `${type} ${n}`).join(', ') || 'none'}`);
     lines.push(`  Read them: get_changes with project=${d.project.slug} and since/until, or ${d.changes.url}`);
   }
   lines.push('', 'Two readings side by side, never a cause.', d.method, TAG_LEGEND, d.disclaimer);

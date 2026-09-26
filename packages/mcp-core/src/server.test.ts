@@ -7,7 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HeyClient } from '@hey-research/sdk';
 
 import * as fx from './fixtures/api';
-import { MAX_OUTPUT_BYTES, capOutput, createHeyMcpServer, marketIntegrityFromEnv, type HeyMcpCallEvent, type HeyMcpOptions } from './server';
+import { MAX_OUTPUT_BYTES, UNDER_THE_RADAR_RULE, capOutput, createHeyMcpServer, marketIntegrityFromEnv, type HeyMcpCallEvent, type HeyMcpOptions } from './server';
 import { HEY_MCP_GATED_TOOLS, HEY_MCP_TOOLS } from './tools';
 
 /**
@@ -98,9 +98,12 @@ describe('the HEY MCP server', () => {
   it('describes Under the Radar as the domain does, and says back-from-dormancy is narrower (M2 G1/G2)', async () => {
     const client = await connect(fixtures);
     const find = (await client.listTools()).tools.find((tool) => tool.name === 'find_projects')!;
-    expect(find.description).toContain('under-the-radar: a positive Discovery Gap');
+    // The surface's eligibility plus a positive gap, never the gap alone (audit §45 #25).
+    expect(find.description).toContain(`under-the-radar: eligible under HEY's Under the Radar rule (${UNDER_THE_RADAR_RULE}) and a positive Discovery Gap`);
+    expect(find.description).toContain('a positive gap alone is not enough');
+    expect(find.description).not.toMatch(/under-the-radar: a positive Discovery Gap/);
     expect(find.description).toContain('it does not bound attention itself');
-    expect(find.description).toContain('shipping-in-silence: under-the-radar AND below the 40th market-attention percentile');
+    expect(find.description).toContain('shipping-in-silence: eligible under the Under the Radar rule AND below the 40th market-attention percentile');
     expect(find.description).toContain('back-from-dormancy: status RESUMED, narrowed to verified builders');
     expect(find.description?.toLowerCase()).not.toContain('little market attention');
   });
@@ -119,9 +122,15 @@ describe('the HEY MCP server', () => {
   it('tells the model, up front, what HEY does not hold, and what the tags mean', async () => {
     const instructions = (await connect(fixtures)).getInstructions() ?? '';
     expect(instructions).toMatch(/not investment advice/i);
-    expect(instructions).toMatch(/holds no wallet data and no cross-token address data/i);
-    expect(instructions).toMatch(/get_token_market: it returns one token's supply-concentration summary and names only that token's contract deployer/i);
+    expect(instructions).toMatch(/holds no wallet data/i);
+    // What the tools return, not less (audit §45 #21): get_contract names the deployer and a count of other projects' tokens.
+    expect(instructions).not.toMatch(/no cross-token address data/i);
+    expect(instructions).not.toMatch(/The one exception is get_token_market/i);
+    expect(instructions).toMatch(/get_token_market names that token's deployer/i);
+    expect(instructions).toMatch(/get_contract .* names the deployer with how many other tracked projects' tokens the same account deployed/i);
     expect(instructions).toMatch(/No other tool here returns holder data/i);
+    const contract = (await (await connect(fixtures)).listTools()).tools.find((tool) => tool.name === 'get_contract')!;
+    expect(contract.description).toContain("with a count of other tracked projects' tokens it deployed");
     expect(instructions).toMatch(/Absent means HEY does not know/i);
     expect(instructions).toMatch(/FACT .*DERIVED .*UNKNOWN/);
   });

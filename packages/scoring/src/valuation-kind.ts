@@ -13,16 +13,21 @@
  * Now there is one rule, in order:
  *
  *  1. No positive valuation: no kind.
- *  2. The provider's FDV equals the valuation (or the reading carried no
- *     market cap, so the valuation *is* the FDV): `fdv`.
- *  3. The valuation implies at least `FDV_IMPLIED_SUPPLY_SHARE` of the total
- *     supply at the reading's price: `fdv` — a whole-supply valuation is an
- *     FDV whatever the provider named it.
- *  4. The provider's fields are known and differ: `marketCap`, a circulating
- *     figure.
- *  5. The provider's fields are unknown (a stored daily close whose snapshot
- *     is gone) and the supply test did not say `fdv`: no kind. An FDV is never
- *     called a market cap on a guess; unknown prints as "Valuation".
+ *  2. The provider's fields are known: they decide. Its FDV equals the
+ *     valuation (or the reading carried no market cap, so the valuation *is*
+ *     the FDV): `fdv`; otherwise `marketCap`, a circulating figure.
+ *  3. The provider's fields are unknown (a stored daily close whose snapshot
+ *     is gone): the supply test decides — a close implying at least
+ *     `FDV_IMPLIED_SUPPLY_SHARE` of the total supply at its price is `fdv`;
+ *     anything else has no kind. An FDV is never called a market cap on a
+ *     guess; unknown prints as "Valuation".
+ *
+ * The supply test used to apply to known fields too (audit §45 finding 24):
+ * only the daily series could pass a share — cards, the API, the snapshot,
+ * explain, the map and the pulse hold no total supply — so one reading of
+ * $990k market cap and $1M FDV at 98 % of the supply was "Market cap" in the
+ * market endpoint's `current` and "FDV" in the same day's close. Where HEY
+ * holds the provider's two fields, every surface now names it by them.
  *
  * Pure and dependency-free, so `@hey/ui` can import it from the browser. The
  * SQL twin is `marketValuationKindSql` in `@hey/domain`; a parity test holds
@@ -46,7 +51,10 @@ export type ValuationKindInput = {
    * fields (the daily index stores one column). Default true.
    */
   providerFieldsKnown?: boolean;
-  /** `valueUsd / priceUsd / totalSupply`, where HEY knows the price and the supply. */
+  /**
+   * `valueUsd / priceUsd / totalSupply`, where HEY knows the price and the
+   * supply. Read only when `providerFieldsKnown` is false.
+   */
   impliedSupplyShare?: number | null | undefined;
 };
 
@@ -56,9 +64,9 @@ export function valuationKindOf(input: ValuationKindInput): ValuationKind | null
   const { valueUsd, fdvUsd, impliedSupplyShare } = input;
   const providerFieldsKnown = input.providerFieldsKnown ?? true;
   if (!positive(valueUsd)) return null;
-  if (providerFieldsKnown && (!positive(fdvUsd) ? false : fdvUsd === valueUsd)) return 'fdv';
+  if (providerFieldsKnown) return positive(fdvUsd) && fdvUsd === valueUsd ? 'fdv' : 'marketCap';
   if (typeof impliedSupplyShare === 'number' && Number.isFinite(impliedSupplyShare) && impliedSupplyShare >= FDV_IMPLIED_SUPPLY_SHARE) return 'fdv';
-  return providerFieldsKnown ? 'marketCap' : null;
+  return null;
 }
 
 /**

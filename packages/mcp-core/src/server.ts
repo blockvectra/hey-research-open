@@ -54,8 +54,15 @@ import { MCP_VERSION } from './version';
  * when deciding whether a tool fits, and what stops it reaching for HEY to
  * answer a question HEY cannot answer.
  */
-const NOT_ADVICE =
-  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data and no cross-token address data. The one exception is get_token_market: it returns one token\'s supply-concentration summary and names only that token\'s contract deployer. No other tool here returns holder data.';
+/*
+ * What the tools actually return about accounts (audit §45 #21): two of them
+ * name a token's deployer, and each can say how many other tracked projects'
+ * tokens that one account deployed — a count about one contract's creator,
+ * never a profile. The sentence names both, so it does not promise less than
+ * get_contract prints.
+ */
+export const NOT_ADVICE =
+  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data. The only account any tool names is a contract\'s deployer: get_token_market names that token\'s deployer beside one token\'s supply-concentration summary (shares only), and get_contract (for one contract or a project\'s contracts) names the deployer with how many other tracked projects\' tokens the same account deployed — a count, never a profile, and HEY marks it a launch service only on its own shared-deployer rule. No other tool here returns holder data or anything about an address across tokens.';
 
 /** The activity surfaces the site itself offers; held to the SDK's list, which the contract test holds to the domain's. */
 const SURFACES = [
@@ -77,19 +84,31 @@ void ALL_SURFACES;
 const VIEWS = ['shipping-in-silence', 'accelerating', 'builder-radar'] as const;
 
 /**
- * One definition per surface (2026-09-26, M2 G1/G2), in the domain's words.
- * `under-the-radar` is a positive Discovery Gap, not "little attention";
- * `back-from-dormancy` is narrower than every RESUMED project.
+ * Under the Radar as the surface decides it (audit §45 #25): the scoring
+ * rule's eligibility (`isUnderTheRadarEligible`, `UNDER_THE_RADAR` in
+ * `@hey/scoring`) plus a positive Discovery Gap — a positive gap alone is not
+ * enough, and explain_fact calls that one POSITIVE. The same sentence is in
+ * llms.txt and docs/MCP.md; `apps/web/src/app/mcp/definitions.test.ts` holds
+ * all three to the scoring constants.
  */
-const SURFACE_HELP = [
+export const UNDER_THE_RADAR_RULE =
+  'status shipping, active or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of a live market for the project\'s own token';
+
+/**
+ * One definition per surface (2026-09-26, M2 G1/G2), in the domain's words.
+ * `under-the-radar` is the surface's eligibility plus a positive Discovery
+ * Gap, not "little attention"; `back-from-dormancy` is narrower than every
+ * RESUMED project; `shipping-in-silence` takes the eligibility, not the gap.
+ */
+export const SURFACE_HELP = [
   'building-with-token: verified shipping, active or resumed, with a token whose market is live.',
   'still-building: verified activity continuing through a market drawdown HEY tracked.',
-  'under-the-radar: a positive Discovery Gap — market-attention percentile below the build percentile; it does not bound attention itself.',
+  `under-the-radar: eligible under HEY's Under the Radar rule (${UNDER_THE_RADAR_RULE}) and a positive Discovery Gap — market-attention percentile below the build percentile; a positive gap alone is not enough, and it does not bound attention itself.`,
   'shipping-now: status SHIPPING. most-active: shipping, active or resumed, by Build Momentum.',
   'new-builders: recorded in the last 7 days.',
   'back-from-dormancy: status RESUMED, narrowed to verified builders native to the chain (status=RESUMED gives every resumed project).',
   'utility, memes: by kind.',
-  'shipping-in-silence: under-the-radar AND below the 40th market-attention percentile.',
+  'shipping-in-silence: eligible under the Under the Radar rule AND below the 40th market-attention percentile.',
   'accelerating: more meaningful events in 30 days than in the 30 before.',
   'builder-radar: the Builder Radar, ranked by verified development, on-chain use and research, never price.',
   'shipping-in-silence and accelerating take no other argument (at most 100 rows); builder-radar takes query, radar, limit and offset.',
@@ -464,7 +483,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_contract',
     {
       ...describe('get_contract', [
-        'A contract as a research entity: creation, deployer (the only account ever named), factory, verified source and compiler, proxy kind and implementation history,',
+        'A contract as a research entity: creation, deployer (the only account ever named, with a count of other tracked projects\' tokens it deployed), factory, verified source and compiler, proxy kind and implementation history,',
         'interface size and changes (counts), and activity. Give chainId and address for one contract, or slug for every contract a project has. A proxy HEY did not read is "not read", never "not a proxy".',
       ]),
       inputSchema: {

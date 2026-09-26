@@ -60,6 +60,10 @@ chain's archive, for example) is on `/api/changes` and never pushed. A
 subscription starts at the ledger's position when it is made: earlier events
 are for `/api/changes`.
 
+An event that comes back after a retraction (a project hidden and then restored, say) is pushed as
+news only when it was first seen live and is still recent. Otherwise it is sent only to a
+subscription that received it and was told it was gone.
+
 A later revision of an event you were sent is delivered again only when what
 it says changed (its summary, facts, evidence, time or precision) — not when
 it only gained an annotation, such as the release signal that restates a

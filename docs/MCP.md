@@ -103,14 +103,20 @@ aliased: nothing was published and the MCP had been called once.
 
 - `building-with-token` — verified shipping, active or resumed, with a token whose market is live.
 - `still-building` — verified activity continuing through a market drawdown HEY tracked.
-- `under-the-radar` — a **positive Discovery Gap**: the market-attention percentile is below
-  the build percentile. It does not bound attention itself; a project at the 90th attention
-  percentile can be Under the Radar if it builds at the 99th.
+- `under-the-radar` — **eligible under HEY's Under the Radar rule** (status shipping, active
+  or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one
+  of them a ship rather than a commit summary; a fresh reading of a live market for the
+  project's own token) **and a positive Discovery Gap**: the market-attention percentile is
+  below the build percentile. A
+  positive gap alone is not enough (`explain_fact` calls that one `POSITIVE`). It does not bound
+  attention itself; an eligible project at the 90th attention percentile can be Under the Radar
+  if it builds at the 99th.
 - `shipping-now` (status SHIPPING), `most-active` (shipping, active or resumed, by Build Momentum),
   `new-builders` (recorded in the last 7 days), `utility`, `memes`.
 - `back-from-dormancy` — status RESUMED, **narrowed to verified builders native to the chain**;
   `status: "RESUMED"` gives every resumed project.
-- `shipping-in-silence` — Under the Radar **and** below the 40th market-attention percentile.
+- `shipping-in-silence` — eligible under the Under the Radar rule **and** below the 40th
+  market-attention percentile (the gap itself is not required).
 - `accelerating` — more meaningful events in the last 30 days than in the 30 before.
 - `builder-radar` — the Builder Radar, with `radar` for its views, never ranked by price.
 
@@ -138,13 +144,23 @@ rules the answer must keep. A prompt fetches nothing.
 
 - **Tags each line** FACT (a value HEY recorded, with its source), DERIVED (a rule HEY
   applied) or UNKNOWN (HEY does not hold it). The tag is never stronger than the API's own
-  explain engine gives the same fact: activity status and Build Momentum are DERIVED.
+  explain engine gives the same fact: activity status and Build Momentum are DERIVED, and so is
+  every record HEY derived — a status or market-state transition, a signal over a window HEY
+  measured, a market-integrity reading — in `get_changes`, `get_project_timeline`
+  and `get_evidence`, one rule by the record's typed id. Still Building and Under the Radar
+  counts are DERIVED wherever they appear.
+- **Keeps the API's disclaimer** on every answer, the Builder Radar ranking and
+  `chain_overview` included.
 - **Says what it showed of the whole** — "Showing 20 of 412" — and the exact parameter or
   cursor that reads on.
 - **Prints time at its precision** — "week of 2026-09-14" for a week of code activity, "HEY
   saw it 2026-09-20" when no source dates the event.
 - **Names a valuation by its kind.** An FDV is an FDV; a valuation whose kind the API did not
-  send is a "valuation", never a "market cap". A withheld valuation says it is withheld.
+  send is a "valuation", never a "market cap". A withheld valuation says it is withheld. In
+  `project_diff` each end carries its own kind, and two ends of different kinds are said to be
+  two measures, not one figure moving.
+- **Counts only what HEY could read.** An on-chain event sum over a window with unreadable days
+  says "over the N days HEY could read", and the rest are unknown, never zero.
 - **Carries the source**, and ends with a `resource_link` to the JSON it was rendered from.
 - **Is capped at 24 KB**, cut on a line, with how many lines were cut and where the whole
   answer is.
@@ -160,7 +176,11 @@ And never:
   market drawdown HEY tracked; a record of what happened, not a prediction and not a buy
   signal*;
 - **turns unknown into zero** — a missing figure is absent or UNKNOWN, never 0, "none" or a dash;
-- **names an account** other than a contract's deployer, and never a partnership from a call;
+- **names an account** other than a contract's deployer, and never a partnership from a call.
+  `get_token_market` and `get_contract` name the deployer; `get_contract` adds how many other
+  tracked projects' tokens the same account deployed — a count, never a profile — and calls it a
+  launch service only on HEY's own shared-deployer flag (three projects), the rule `/market`
+  reads;
 - **returns Terminal-only data** — the public API does not, so the MCP cannot.
 
 ## How it is built

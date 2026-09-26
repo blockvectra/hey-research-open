@@ -20,9 +20,14 @@ describe('valuationKindOf: the one rule', () => {
     expect(valuationKindOf({ valueUsd: 1_050_000, fdvUsd: 1_050_000, impliedSupplyShare: 0.6 })).toBe('fdv');
   });
 
-  it('calls a whole-supply valuation an FDV whatever the provider named it', () => {
-    expect(valuationKindOf({ valueUsd: 990_000, fdvUsd: 1_000_000, impliedSupplyShare: 0.99 })).toBe('fdv');
-    expect(valuationKindOf({ valueUsd: 990_000, fdvUsd: 1_000_000, impliedSupplyShare: FDV_IMPLIED_SUPPLY_SHARE })).toBe('fdv');
+  // Audit §45 finding 24: the share decides only where the provider's fields are unknown, so a card
+  // (which holds no supply) and the day's close (which does) cannot name one reading two ways.
+  it('lets the provider’s known fields decide, whatever the supply share', () => {
+    expect(valuationKindOf({ valueUsd: 990_000, fdvUsd: 1_000_000, impliedSupplyShare: 0.99 })).toBe('marketCap');
+    expect(valuationKindOf({ valueUsd: 990_000, fdvUsd: 1_000_000, impliedSupplyShare: FDV_IMPLIED_SUPPLY_SHARE })).toBe(
+      valuationKindOf({ valueUsd: 990_000, fdvUsd: 1_000_000 }),
+    );
+    expect(valuationKindOf({ valueUsd: 990_000, providerFieldsKnown: false, impliedSupplyShare: FDV_IMPLIED_SUPPLY_SHARE })).toBe('fdv');
   });
 
   it('calls a figure below the FDV, with the provider fields known, a market cap', () => {
