@@ -4,6 +4,24 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-09-26
+
+- **The Research Terminal, redesigned.** One header (Projects · What changed · Watchlist · search)
+  and a search that is easy to find ("Search projects, tickers or contracts"), including on phones
+  (`/terminal/search`). A project's workspace groups its eleven views into six (Overview,
+  Timeline, Build, Market, On-chain, Research), and every old URL still opens. The Command Centre
+  now answers "what changed on Robinhood Chain", and every item links to its exact record.
+- **Market candles are green and red.** A measured up move is green and a down move is red; an
+  unchanged day is neutral, and a missing or incomplete day gets no colour. Every direction also
+  carries ▲/▼ or a sign, never colour alone. Builder state keeps its own labelled chip and never
+  implies a market direction.
+- **Fewer pages published on thin evidence.** "Contract verified" now means the explorer verified
+  the project's own contract source. A token's own launch deploy is no longer a ship for
+  publication. An X account several pages declare is not identity, except on protocols a curated
+  ecosystem registry lists. A follow-up deployment from the deployer of a token nothing ties to
+  the project counts only once a repository or a site ties them. The pages are hidden, not
+  deleted, and remain searchable by contract as launch records.
+
 ## 2026-09-25
 
 - **Research Terminal early access.** With the console's preview switch on, a reader the Terminal
