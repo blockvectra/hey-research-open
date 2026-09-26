@@ -1,0 +1,82 @@
+{
+  "versions": [
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.3.0"
+      },
+      "relationType": "SOURCE_REPO",
+      "relationProvenance": "SLSA_ATTESTATION",
+      "slsaProvenances": [
+        {
+          "sourceRepository": "https://github.com/useboardwalk/boardwalk-sdk",
+          "commit": "d8f38b500482f55f24566d22d657fa4ff4241311",
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@0.3.0",
+          "verified": true
+        }
+      ],
+      "attestations": [
+        {
+          "type": "https://slsa.dev/provenance/v1",
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@0.3.0",
+          "verified": true,
+          "sourceRepository": "https://github.com/useboardwalk/boardwalk-sdk",
+          "commit": "d8f38b500482f55f24566d22d657fa4ff4241311"
+        }
+      ]
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.4.0"
+      },
+      "relationType": "SOURCE_REPO",
+      "relationProvenance": "SLSA_ATTESTATION",
+      "slsaProvenances": [
+        {
+          "sourceRepository": "https://github.com/useboardwalk/boardwalk-sdk",
+          "commit": "8671281cdba0a0f8b74f0279c8231491e0503232",
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@0.4.0",
+          "verified": true
+        }
+      ],
+      "attestations": [
+        {
+          "type": "https://slsa.dev/provenance/v1",
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@0.4.0",
+          "verified": true,
+          "sourceRepository": "https://github.com/useboardwalk/boardwalk-sdk",
+          "commit": "8671281cdba0a0f8b74f0279c8231491e0503232"
+        }
+      ]
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.4.1"
+      },
+      "relationType": "SOURCE_REPO",
+      "relationProvenance": "SLSA_ATTESTATION",
+      "slsaProvenances": [
+        {
+          "sourceRepository": "https://github.com/useboardwalk/boardwalk-sdk",
+          "commit": "aed7376fb633588e8ec4421468e0e53bca942e08",
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@0.4.1",
+          "verified": true
+        }
+      ],
+      "attestations": [
+        {
+          "type": "https://slsa.dev/provenance/v1",
+          "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@0.4.1",
+          "verified": true,
+          "sourceRepository": "https://github.com/useboardwalk/boardwalk-sdk",
+          "commit": "aed7376fb633588e8ec4421468e0e53bca942e08"
+        }
+      ]
+    }
+  ]
+}

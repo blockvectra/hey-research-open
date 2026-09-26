@@ -1,0 +1,70 @@
+{
+  "versions": [
+    {
+      "versionKey": {
+        "system": "GO",
+        "name": "github.com/madeonsol/robinhood-chain-sdk",
+        "version": "v0.1.0"
+      },
+      "relationType": "SOURCE_REPO",
+      "relationProvenance": "GO_ORIGIN",
+      "slsaProvenances": [],
+      "attestations": []
+    },
+    {
+      "versionKey": {
+        "system": "GO",
+        "name": "github.com/madeonsol/robinhood-chain-sdk",
+        "version": "v0.1.1"
+      },
+      "relationType": "SOURCE_REPO",
+      "relationProvenance": "GO_ORIGIN",
+      "slsaProvenances": [],
+      "attestations": []
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "robinhood-chain-sdk",
+        "version": "0.1.0"
+      },
+      "relationType": "SOURCE_REPO",
+      "relationProvenance": "UNVERIFIED_METADATA",
+      "slsaProvenances": [],
+      "attestations": []
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "robinhood-chain-sdk",
+        "version": "0.1.1"
+      },
+      "relationType": "SOURCE_REPO",
+      "relationProvenance": "UNVERIFIED_METADATA",
+      "slsaProvenances": [],
+      "attestations": []
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "robinhood-chain-sdk",
+        "version": "0.1.0"
+      },
+      "relationType": "ISSUE_TRACKER",
+      "relationProvenance": "UNVERIFIED_METADATA",
+      "slsaProvenances": [],
+      "attestations": []
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "robinhood-chain-sdk",
+        "version": "0.1.1"
+      },
+      "relationType": "ISSUE_TRACKER",
+      "relationProvenance": "UNVERIFIED_METADATA",
+      "slsaProvenances": [],
+      "attestations": []
+    }
+  ]
+}

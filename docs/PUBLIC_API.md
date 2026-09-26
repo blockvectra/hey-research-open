@@ -620,12 +620,65 @@ endpoint, `asOf` and `scoringVersion`.
 `latestChanges` is `{ available: true, items }` from the change ledger, or `{ available: false,
 reason }` when the ledger cannot answer: never an empty list standing in for "unknown".
 
+Two context blocks, added 2026-09-27 (additive; both absent when HEY holds nothing to say):
+
+- `protocolEconomics` — for a project matched to a DefiLlama protocol: `protocols[]` (at most
+  five, largest TVL first), each `{ protocol, protocolName, category?, tvlUsd, tvlDay, matchedBy,
+  fees24h, revenue24h, dexVolume24h, economicsDay?, auditLinks[], methodologyUrl?, parentProtocol? }`,
+  plus `source: "defillama"` and `contextOnly: true`. Each metric is `{ state: "MEASURED", valueUsd }`
+  (a measured zero is `0`) or `{ state }` with `NOT_TRACKED` (DefiLlama publishes no figure for it on
+  this chain), `SOURCE_UNAVAILABLE` (HEY's read of that overview failed that day) or `NOT_ENOUGH_YET`
+  (not read yet) — never a zero standing in for any of them. Audit links and the methodology link
+  are the registry's, verbatim: links, never verdicts.
+- `market.promotion` — for a token HEY has seen promoted or taken over on DEX Screener:
+  `{ entries[], total, contextOnly: true }`, the newest ten, each `{ kind, channel, providerAt?,
+  firstObservedAt, lastObservedAt, source }`. `kind` is `MARKET_PROMOTION_OBSERVED` or
+  `COMMUNITY_TAKEOVER_PROFILE_OBSERVED`; `providerAt` is the provider's own date and absent when it
+  gave none (then only `firstObservedAt`, HEY's observation, dates it). No amount, spend or reach is
+  ever sent.
+
+Neither block is an input to activity status, Build Momentum, the Discovery Gap, the Radar or any
+ordering, neither is a change event (they never appear in `latestChanges`, `/api/changes` or a
+webhook), and neither names a wallet.
+
 ### `GET /api/projects/{slug}/coverage`
 
 What HEY knows about a project, dimension by dimension, as states and never a score:
 `identity`, `builderEvidence`, `repositories`, `releases`, `marketCurrent`, `marketHistory`,
 `contractDeployment`, `contractActivity`, `contractSource`, `contractInterface`, `distribution`,
-`locks`, `marketIntegrity`, `timeline`. Each is `{ state, since?, asOf?, reason?, detailUrl? }`.
+`locks`, `marketIntegrity`, `timeline`, `officialDocs`, `apiDocs`, `sourceChanges`, `protocolEconomics`, `gitHost`, `package`, `securityContext` (2026-09-27). Each is
+`{ state, since?, asOf?, reason?, detailUrl? }`.
+
+The three site dimensions (2026-09-27, additive) describe the project's own site:
+
+- `officialDocs`: `MEASURED` (`official_docs`) when HEY holds the project's own docs;
+  `NO_SOURCE` with `no_docs_link_found` when HEY read the site and found no docs link (a page
+  rendered by script can hold docs HEY cannot see, so this is not a zero), `context_only_docs`,
+  or `no_official_site`; `NOT_ENOUGH_YET` (`site_not_read_yet`); `SOURCE_UNAVAILABLE`
+  (`website_unreachable`, `site_disallows_reading` when robots.txt disallows HEY);
+  `NOT_APPLICABLE` for a meme.
+- `apiDocs`: `MEASURED` (`api_description_read`) when the site links an OpenAPI description HEY
+  read; `NO_SOURCE` (`no_api_description_linked`, `site_not_corroborated`, `no_official_site`);
+  `NOT_ENOUGH_YET` (`site_files_not_read_yet`); `SOURCE_UNAVAILABLE`
+  (`api_description_disallowed`, `api_description_unreadable`, `site_unreachable`,
+  `site_disallows_reading`); `NOT_APPLICABLE` for a meme or a launch with no repository and no
+  docs (`no_developer_surface`).
+- `sourceChanges`: material changes in what the official site declares (a new or removed
+  repository, docs or feed link, a new sitemap section, changed llms.txt links or security
+  contact, OpenAPI operations added or removed). `MEASURED` with `since` = HEY's first read of
+  the site's files, which is a baseline and never a change (`changes_since_first_read` or
+  `no_change_since_first_read`); `NOT_ENOUGH_YET` (`no_baseline_yet`); `STALE` after three
+  missed weekly reads; `NO_SOURCE` / `SOURCE_UNAVAILABLE` as above. A source change is never a
+  ship and never counts toward activity.
+
+The developer footprint dimensions (2026-09-27, additive): `gitHost` (what the official
+repositories declare and their newest production deployment; `NOT_APPLICABLE` with no own
+repository), `package` (published packages tied to the project; `MEASURED` with
+`accepted_package_links`, `NOT_ENOUGH_YET` with `claimed_package_links_only` when packages only name
+the repository, `MEASURED` with `none_found_in_package_index` after the lookup found none,
+`NOT_APPLICABLE` for a token project with no repository and no package) and `securityContext` (OSV
+advisories about an accepted package's published version, or deps.dev's Scorecard checks;
+`NOT_APPLICABLE` without either; never a verdict or a score).
 
 | State | Meaning |
 |---|---|
@@ -634,13 +687,25 @@ What HEY knows about a project, dimension by dimension, as states and never a sc
 | `NOT_ENOUGH_YET` | HEY has not read enough of it yet |
 | `STALE` | read, and older than its freshness limit |
 | `SOURCE_UNAVAILABLE` | the source HEY holds no longer answers |
-| `NOT_APPLICABLE` | it does not apply (no token) |
+| `NOT_APPLICABLE` | it does not apply (no token; for the developer footprint, no own repository, or a token project with no repository and no package) |
 | `NOT_RESEARCHED` | HEY indexed the record and did not research it |
 | `ERROR` | HEY's last read failed; earlier figures stand |
 | `WITHHELD` | measured, and deliberately not published here (Market Integrity; an implausible market) |
 
+`contractSource` says whose code a verified token is (2026-09-27): `source_verified_template_token`
+(a launchpad template, a name verified on five or more projects, or an immutable clone),
+`source_verified_explorer_matched` (the explorer matched the bytecode to source published for
+another contract), `source_verified_project_authored` (source published for this address, on the
+explorer or on Sourcify), `source_verified_authorship_unconfirmed` (verified; how is not read yet),
+or `source_not_verified`. Every verified reason starts `source_verified`, and a template is never
+counted as the project's own. `contractInterface` says
+`changes_since_first_read_template_interface` for a template's interface.
+
 `locks` reads HoodLock only: `hoodlock_only_none_found` is a reading of HoodLock, not of every
-locker. `freshness[]` gives each source's last read and its limit. The answer also carries the
+locker. `protocolEconomics` is `NOT_APPLICABLE` (`no_protocol_listing`) for a project no DefiLlama
+protocol is matched to — never a deficiency; `NO_SOURCE` (`not_tracked_by_registry`) when the
+registry tracks none of fees, revenue or volume for it; `SOURCE_UNAVAILABLE`, `STALE` (older than
+three days) or `MEASURED` (`registry_context_only`) otherwise. `freshness[]` gives each source's last read and its limit. The answer also carries the
 state meanings as `states`.
 
 ### `GET /api/projects/{slug}/explain?fact=<fact>`
@@ -1223,7 +1288,7 @@ about that project.
 | `proxy` | `state`, `status`, `kind` (`EIP1967`, `BEACON`, `EXPLORER_REPORTED`, `NONE_DETECTED`), `implementation`, `beacon`, `checkedAt`, `changedAt`, and `history[]` — each change with an `id` (`impl:<chainId>:<address>:<block>:<logIndex>` for a chain log), `occurredAt` and `precision: "EXACT"` for a log, or `occurredAt: null` and `precision: "OBSERVED"` for a change HEY saw between two reads (`source: "hey_reads"`) |
 | `interface` | `state`, `functionCount`, `eventCount`, `baselineSince` and `changes[]` (ids and counts) |
 | `activity` | over the last seven days: `daysMeasured`, `calls7d` (null when no reading counted calls), `events7d` (null when any day was the decoding source's blind spot) |
-| `activity.methods` (2026-09-27) | calls per method over the last seven complete UTC days HEY read (`source: "decoded_calls"`): `window` (`from`, `to`, `days`), `collectedFrom`/`collectedThrough` (the contiguous days HEY holds; a day outside them is unknown), `calls`, `buckets` (`erc20Standard` — the ERC-20 surface as one bucket, `named` — the contract's own named functions, `undecoded`), `distinctFunctions` (named functions and undecoded selectors called, never the ERC-20 bucket) and `top[]` (the five most-called methods by `rank`, `bucket` and `calls`). `names: "WITHHELD"`: function names stay in the Terminal. `state: "NOT_READ"` carries no counts at all — never zero. Counts only: no caller is read or stored |
+| `activity.methods` (2026-09-27) | calls per method over the last seven complete UTC days HEY read (`source: "decoded_calls"`): `window` (`from`, `to`, `days`), `collectedFrom`/`collectedThrough` (the contiguous days HEY holds; a day outside them is unknown), `calls`, `buckets` (`erc20Standard` — the ERC-20 surface as one bucket, `named` — the contract's own named functions, named by the call decoder or, since 2026-09-27, by the contract's own verified ABI, `undecoded` — calls nothing names; a call to the contract's creation code is its deployment and is in no bucket and not in `calls`), `distinctFunctions` (named functions and undecoded selectors called, never the ERC-20 bucket) and `top[]` (the five most-called methods by `rank`, `bucket` and `calls`). `names: "WITHHELD"`: function names stay in the Terminal. `state: "NOT_READ"` carries no counts at all — never zero. Counts only: no caller is read or stored |
 | `freshness`, `evidence` | when each part was read; the typed ids the object is built from |
 
 Every section carries `state`: `MEASURED`, `NOT_READ` (HEY knows the contract but has not read it

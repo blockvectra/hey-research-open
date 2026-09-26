@@ -1,0 +1,463 @@
+{
+ "totalDataChart": [],
+ "totalDataChartBreakdown": [],
+ "breakdown24h": null,
+ "breakdown30d": null,
+ "chain": "Robinhood Chain",
+ "allChains": [
+  "Solana",
+  "Robinhood Chain",
+  "Ethereum",
+  "Base",
+  "BSC"
+ ],
+ "total24h": 1396709372.9999998,
+ "total48hto24h": 1514989448.1899998,
+ "total7d": 10215428535.910006,
+ "total14dto7d": 11764355669.169998,
+ "total30d": 55370565345.189995,
+ "total60dto30d": 15025853300.719992,
+ "total1y": 83806543553.86987,
+ "total7DaysAgo": 1637915407.45,
+ "total30DaysAgo": 874443394.37,
+ "totalAllTime": 91381964620.13,
+ "change_1d": -7.81,
+ "change_7d": -14.73,
+ "change_1m": 59.73,
+ "change_7dover7d": -13.17,
+ "change_30dover30d": 268.5,
+ "protocols": [
+  {
+   "total24h": 24511,
+   "total48hto24h": 19200,
+   "total7d": 336704,
+   "total14dto7d": 1982513,
+   "total30d": 3174724,
+   "total60dto30d": 82535415,
+   "total1y": 85899936.19,
+   "annualized1y": 387079959.3746913,
+   "total7DaysAgo": 469731,
+   "total30DaysAgo": 259,
+   "totalAllTime": 85924447.19,
+   "average1y": 235342.29093150684,
+   "monthlyAverage1y": 7163819.3359550685,
+   "change_1d": 27.66,
+   "change_7d": -94.78,
+   "change_1m": 9363.71,
+   "change_7dover7d": -83.02,
+   "change_30dover30d": -96.15,
+   "defillamaId": "3",
+   "name": "Curve DEX",
+   "displayName": "Curve DEX",
+   "module": "curve",
+   "category": "Dexs",
+   "logo": "https://icons.llamao.fi/icons/protocols/curve",
+   "chains": [
+    "Ethereum",
+    "OP Mainnet",
+    "Gnosis",
+    "Avalanche",
+    "Polygon",
+    "Arbitrum",
+    "Fantom",
+    "Fraxtal",
+    "Celo",
+    "Base",
+    "Sonic",
+    "Hyperliquid L1",
+    "Plasma",
+    "Mantle",
+    "Ink",
+    "Unichain",
+    "Monad",
+    "Stable",
+    "Robinhood Chain",
+    "BSC",
+    "Etherlink"
+   ],
+   "protocolType": "protocol",
+   "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/dexs/curve",
+   "methodology": {
+    "UserFees": "Swap fees paid by traders.",
+    "Fees": "Swap fees paid by traders, set per pool (roughly 0.01% on stable pools, up to a few percent on volatile pools).",
+    "Revenue": "The share of swap fees taken by the protocol rather than paid to liquidity providers - usually half of the fee.",
+    "ProtocolRevenue": "10% of the protocol's share, sent to the Curve DAO treasury.",
+    "HoldersRevenue": "90% of the protocol's share, distributed to veCRV holders.",
+    "SupplySideRevenue": "The share of swap fees paid to liquidity providers - usually half of the fee.",
+    "Volume": "Value swapped in Curve pools, counting one side of each trade. Deposits and withdrawals are not counted as volume."
+   },
+   "parentProtocol": "parent#curve-finance",
+   "slug": "curve-dex",
+   "linkedProtocols": [
+    "Curve Finance",
+    "Curve DEX",
+    "Curve LlamaLend"
+   ],
+   "id": "3"
+  },
+  {
+   "total24h": 870,
+   "total48hto24h": 1093,
+   "total7d": 3073,
+   "total14dto7d": 48311,
+   "total30d": 288645.45,
+   "total60dto30d": 27991.1,
+   "total1y": 691592.55,
+   "annualized1y": 3883558.165384616,
+   "total7DaysAgo": 278,
+   "total30DaysAgo": 423,
+   "totalAllTime": 691592.55,
+   "average1y": 1926.4416434540392,
+   "monthlyAverage1y": 58640.88362674096,
+   "change_1d": -20.4,
+   "change_7d": 212.95,
+   "change_1m": 105.67,
+   "change_7dover7d": -93.64,
+   "change_30dover30d": 931.2,
+   "defillamaId": "194",
+   "name": "PancakeSwap AMM",
+   "displayName": "PancakeSwap AMM",
+   "module": "pancakeswap-v2",
+   "category": "Dexs",
+   "logo": "https://icons.llamao.fi/icons/protocols/pancakeswap-amm",
+   "chains": [
+    "BSC",
+    "Ethereum",
+    "Polygon zkEVM",
+    "ZKsync Era",
+    "Arbitrum",
+    "Linea",
+    "Base",
+    "opBNB",
+    "Aptos",
+    "Monad",
+    "Robinhood Chain"
+   ],
+   "protocolType": "protocol",
+   "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/dexs/pancakeswap-v2.ts",
+   "methodology": {
+    "UserFees": "User pays 0.25% fees on each swap.",
+    "Fees": "All fees comes from the user.",
+    "Revenue": "All revenue generated comes from user fees.",
+    "ProtocolRevenue": "Treasury receives 0.0225% of each swap.",
+    "HoldersRevenue": "0.0575% is used to facilitate CAKE buyback and burn.",
+    "SupplySideRevenue": "LPs receive 0.17% of the fees."
+   },
+   "parentProtocol": "parent#pancakeswap",
+   "slug": "pancakeswap-amm",
+   "linkedProtocols": [
+    "PancakeSwap",
+    "PancakeSwap AMM",
+    "PancakeSwap StableSwap",
+    "PancakeSwap AMM V1",
+    "PancakeSwap AMM V3",
+    "PancakeSwap Infinity",
+    "PancakeSwap Prediction",
+    "PancakeSwap Lottery"
+   ],
+   "breakdownMethodology": {
+    "Fees": {
+     "Token Swap Fees": "User pays 0.25% fees on each swap"
+    },
+    "Revenue": {
+     "Swap Fees To Protocol": "Treasury receives 0.0225% of each swap.",
+     "Swap Fees To Holders": "0.0575% is used to facilitate CAKE buyback and burn."
+    },
+    "ProtocolRevenue": {
+     "Swap Fees To Protocol": "Treasury receives 0.0225% of each swap."
+    },
+    "SupplySideRevenue": {
+     "Swap Fees To Liquidity Providers": "LPs receive 0.17% of the fees."
+    },
+    "HoldersRevenue": {
+     "Buy Back And Burn CAKE": "0.0575% is used to facilitate CAKE buyback and burn."
+    }
+   },
+   "id": "194"
+  },
+  {
+   "total24h": 301857538,
+   "total48hto24h": 662851816,
+   "total7d": 4197702993,
+   "total14dto7d": 4975256733,
+   "total30d": 24238668736,
+   "total60dto30d": 7136875286,
+   "total1y": 39385701953.55,
+   "annualized1y": 134353095449.02573,
+   "total7DaysAgo": 762444110,
+   "total30DaysAgo": 388338341,
+   "totalAllTime": 39687559491.55,
+   "average1y": 107906032.74945207,
+   "monthlyAverage1y": 3284659636.893321,
+   "change_1d": -54.46,
+   "change_7d": -60.41,
+   "change_1m": -22.27,
+   "change_7dover7d": -15.63,
+   "change_30dover30d": 239.63,
+   "defillamaId": "2198",
+   "name": "Uniswap V3",
+   "displayName": "Uniswap V3",
+   "module": "uniswap-v3",
+   "category": "Dexs",
+   "logo": "https://icons.llamao.fi/icons/protocols/uniswap-v3",
+   "chains": [
+    "Ethereum",
+    "Arbitrum",
+    "OP Mainnet",
+    "Polygon",
+    "Celo",
+    "ZKsync Era",
+    "Sei",
+    "Taiko",
+    "Scroll",
+    "Rootstock",
+    "Filecoin",
+    "Boba",
+    "Moonbeam",
+    "Manta",
+    "Mantle",
+    "Linea",
+    "BSC",
+    "Avalanche",
+    "Base",
+    "Polygon zkEVM",
+    "Blast",
+    "Gnosis",
+    "BOB",
+    "Lisk",
+    "Corn",
+    "Unichain",
+    "Hemi",
+    "Saga",
+    "LightLink",
+    "GOAT",
+    "XDC",
+    "Lens",
+    "Telos",
+    "World Chain",
+    "Nibiru",
+    "Plasma",
+    "Monad",
+    "Etherlink",
+    "Sonic",
+    "X Layer",
+    "Zora",
+    "Robinhood Chain",
+    "Ink",
+    "Tempo",
+    "0G",
+    "Arc",
+    "Redbelly"
+   ],
+   "protocolType": "protocol",
+   "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/dexs/uniswap-v3.ts",
+   "methodology": {
+    "UserFees": "User pays fees on each swap.",
+    "Fees": "Swap fees from paid by users.",
+    "Revenue": "From 28 Dec 2025, a portion of fees a collected to buy back and burn UNI on Ethereum, From 8 Mar 2026, on Optimism, Arbitrum, Base, WC, Zora, XLayer, From 2 Jun 2026, on Polygon, BSC, Celo, From 27 Jul 2026, on Robinhood",
+    "ProtocolRevenue": "Protocol make no revenue.",
+    "HoldersRevenue": "From 28 Dec 2025, a portion of fees a collected to buy back and burn UNI on Ethereum, From 8 Mar 2026, on Optimism, Arbitrum, Base, WC, Zora, XLayer, From 2 Jun 2026, on Polygon, BSC, Celo, From 27 Jul 2026, on Robinhood",
+    "SupplySideRevenue": "Fees distributed to LPs post protocol fee collection",
+    "Volume": "Swap volume, excluding wash trading: pools whose daily trades come from too few distinct addresses to be organic, unless every pool token is a core asset or CoinGecko-listed."
+   },
+   "parentProtocol": "parent#uniswap",
+   "slug": "uniswap-v3",
+   "linkedProtocols": [
+    "Uniswap",
+    "Uniswap V1",
+    "Uniswap V2",
+    "Uniswap V3",
+    "Uniswap V4",
+    "Uniswap Auctions"
+   ],
+   "id": "2198"
+  },
+  {
+   "total24h": null,
+   "total48hto24h": null,
+   "total30d": 547019,
+   "total60dto30d": 286040,
+   "total1y": 833059,
+   "annualized1y": 50677755.83333333,
+   "total30DaysAgo": 155565,
+   "totalAllTime": 833059,
+   "average1y": 7573.263636363637,
+   "monthlyAverage1y": 230530.1450909091,
+   "change_30dover30d": 91.24,
+   "defillamaId": "8023",
+   "name": "BrownFi V3",
+   "displayName": "BrownFi V3",
+   "module": "brownfi-v3",
+   "category": "Dexs",
+   "logo": "https://icons.llamao.fi/icons/protocols/brownfi-v3",
+   "chains": [
+    "Berachain",
+    "Hyperliquid L1",
+    "Arbitrum",
+    "Linea",
+    "Robinhood Chain"
+   ],
+   "protocolType": "protocol",
+   "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/dexs/brownfi-v3",
+   "methodology": {
+    "UserFees": "Fees from swap transactions.",
+    "Fees": "Fees from swap transactions.",
+    "Revenue": "Protocol share from swap fees.",
+    "ProtocolRevenue": "Protocol share from swap fees.",
+    "HoldersRevenue": "Holders do not earn any revenue.",
+    "SupplySideRevenue": "Liquidity providers share from swap fees."
+   },
+   "parentProtocol": "parent#brownfi",
+   "slug": "brownfi-v3",
+   "linkedProtocols": [
+    "BrownFi",
+    "BrownFi V2",
+    "BrownFi V3",
+    "BrownFi CLAMM"
+   ],
+   "breakdownMethodology": {
+    "Fees": {
+     "Token Swap Fees": "Fees from swap transactions."
+    },
+    "Revenue": {
+     "Swap Fees to Protocol": "Protocol share from swap fees."
+    },
+    "ProtocolRevenue": {
+     "Swap Fees to Protocol": "Protocol share from swap fees."
+    },
+    "SupplySideRevenue": {
+     "Swap Fees to Liquidity Providers": "Liquidity providers share from swap fees."
+    }
+   },
+   "id": "8023"
+  },
+  {
+   "total24h": 136111,
+   "total48hto24h": 258922,
+   "total7d": 4643265,
+   "total14dto7d": 10478010,
+   "total30d": 23015755,
+   "total60dto30d": 474255,
+   "total1y": 23597946,
+   "annualized1y": 130503792.27272727,
+   "total7DaysAgo": 1412359,
+   "total30DaysAgo": 14312,
+   "totalAllTime": 23734057,
+   "average1y": 357544.63636363635,
+   "monthlyAverage1y": 10883658.73090909,
+   "change_1d": -47.43,
+   "change_7d": -90.36,
+   "change_1m": 851.03,
+   "change_7dover7d": -55.69,
+   "change_30dover30d": 4753.03,
+   "defillamaId": "8251",
+   "name": "GIGA V2",
+   "displayName": "GIGA V2",
+   "module": "giga-dex",
+   "category": "Dexs",
+   "logo": "https://icons.llamao.fi/icons/protocols/giga-v2",
+   "chains": [
+    "Robinhood Chain"
+   ],
+   "protocolType": "protocol",
+   "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/dexs/giga-dex",
+   "methodology": {
+    "UserFees": "Traders pay the full swap fee on every trade.",
+    "Fees": "Swap fees paid by traders across GIGA DEX Classic (stable + volatile) and BrownFi oracle-based pools, per-pair fee rate read on-chain.",
+    "Revenue": "Share of swap fees collected by the GIGA fee center for veGIGA stakers, read per pair on-chain (pair.protocolFee() on Classic, feeSplit on BrownFi): 100% on gauged pairs (pairs receiving GIGA emissions), 3% on non-gauged Classic pairs.",
+    "ProtocolRevenue": "The protocol treasury keeps no direct share of swap fees, it earns as a veGIGA staker.",
+    "HoldersRevenue": "Share of swap fees distributed to veGIGA stakers (all of the protocol's share).",
+    "SupplySideRevenue": "Share of swap fees kept by liquidity providers: 0% on gauged pairs (LPs there earn GIGA emissions instead), 97% on non-gauged Classic pairs, the non-feeSplit part on BrownFi pairs."
+   },
+   "parentProtocol": "parent#giga",
+   "slug": "giga-v2",
+   "linkedProtocols": [
+    "GIGA",
+    "GIGA V2",
+    "GIGA V3"
+   ],
+   "breakdownMethodology": {
+    "Fees": {
+     "Token Swap Fees": "Swap fees paid by traders."
+    },
+    "UserFees": {
+     "Trading fees": "Full swap fee paid by traders on every trade."
+    },
+    "Revenue": {
+     "Protocol fees": "Per-pool protocol share of swap fees, read on-chain, collected for veGIGA stakers."
+    },
+    "HoldersRevenue": {
+     "Tokenholder fees": "Per-pool protocol share of swap fees distributed to veGIGA stakers."
+    },
+    "SupplySideRevenue": {
+     "LP fees": "Swap fees kept by liquidity providers (total fees minus the veGIGA share)."
+    }
+   },
+   "id": "8251"
+  },
+  {
+   "total24h": 4535651,
+   "total48hto24h": 6954254,
+   "total7d": 40386124,
+   "total14dto7d": 69828143,
+   "total30d": 543022280,
+   "total60dto30d": 71985433,
+   "total1y": 625479043,
+   "annualized1y": 3357350745.5147057,
+   "total7DaysAgo": 6538948,
+   "total30DaysAgo": 18496415,
+   "totalAllTime": 630014694,
+   "average1y": 9198221.220588235,
+   "monthlyAverage1y": 279993853.9547059,
+   "change_1d": -34.78,
+   "change_7d": -30.64,
+   "change_1m": -75.48,
+   "change_7dover7d": -42.16,
+   "change_30dover30d": 654.35,
+   "defillamaId": "8256",
+   "name": "GIGA V3",
+   "displayName": "GIGA V3",
+   "module": "giga-dex-cl",
+   "category": "Dexs",
+   "logo": "https://icons.llamao.fi/icons/protocols/giga-v3",
+   "chains": [
+    "Robinhood Chain"
+   ],
+   "protocolType": "protocol",
+   "methodologyURL": "https://github.com/DefiLlama/dimension-adapters/blob/master/dexs/giga-dex-cl",
+   "methodology": {
+    "UserFees": "Traders pay the full swap fee on every trade.",
+    "Fees": "Swap fees paid by traders on GIGA DEX CL pools, per the pool's fee tier.",
+    "Revenue": "Share of swap fees collected by the GIGA fee center for veGIGA stakers, read per pool from slot0.feeProtocol: 100% on gauged pools (pools receiving GIGA emissions), 3% on non-gauged pools.",
+    "ProtocolRevenue": "The protocol treasury keeps no direct share of swap fees, it earns as a veGIGA staker.",
+    "HoldersRevenue": "Share of swap fees distributed to veGIGA stakers (all of the protocol's share).",
+    "SupplySideRevenue": "Share of swap fees kept by liquidity providers: 0% on gauged pools (LPs there earn GIGA emissions instead), 97% on non-gauged pools."
+   },
+   "parentProtocol": "parent#giga",
+   "slug": "giga-v3",
+   "linkedProtocols": [
+    "GIGA",
+    "GIGA V2",
+    "GIGA V3"
+   ],
+   "breakdownMethodology": {
+    "Fees": {
+     "Token Swap Fees": "Swap fees paid by traders."
+    },
+    "UserFees": {
+     "Trading fees": "Full swap fee paid by traders on every trade."
+    },
+    "Revenue": {
+     "Protocol fees": "Per-pool protocol share of swap fees, read on-chain, collected for veGIGA stakers."
+    },
+    "HoldersRevenue": {
+     "Tokenholder fees": "Per-pool protocol share of swap fees distributed to veGIGA stakers."
+    },
+    "SupplySideRevenue": {
+     "LP fees": "Swap fees kept by liquidity providers (total fees minus the veGIGA share)."
+    }
+   },
+   "id": "8256"
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+User-Agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/admin/
+Disallow: /api/cron/
+Disallow: /dashboard
+
+User-Agent: SERankingBacklinksBot
+Allow: /
+Disallow: /admin/
+Disallow: /api/admin/
+Disallow: /api/cron/
+Disallow: /dashboard
+Disallow: /api/
+
+Sitemap: https://axon-agents.com/sitemap.xml

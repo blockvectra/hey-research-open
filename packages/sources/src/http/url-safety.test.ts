@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { assertResolvesPublic, assertSafeUrl, ipv6Groups, isSafeUrl } from './url-safety';
+import { assertResolvesPublic, assertSafeUrl, ipv6Groups, isPrivateAddress, isSafeUrl, raceWithSignal } from './url-safety';
 
 describe('assertSafeUrl', () => {
   it('allows ordinary public http and https URLs', () => {
@@ -168,5 +168,62 @@ describe('ipv6Groups', () => {
     expect(ipv6Groups('1::2::3')).toBeUndefined();
     expect(ipv6Groups('example.com')).toBeUndefined();
     expect(ipv6Groups('12345::')).toBeUndefined();
+  });
+});
+
+/*
+ * Audit G S2 (2026-09-27): the IPv6 range checks compared text prefixes on
+ * any hostname, so real domains beginning with `fc`, `fd` or `fe8`–`fef` were
+ * refused as private addresses. Three production projects were recorded as
+ * website_unreachable:BLOCKED_URL for it (fc-footy.vercel.app, fcgnews.com,
+ * feathercult.com).
+ */
+describe('IPv6 ranges apply to IPv6 literals only (audit G S2)', () => {
+  it('allows public names that merely begin with an IPv6 range prefix', () => {
+    for (const host of ['fedoraproject.org', 'fcc.gov', 'fdic.gov', 'feature.io', 'fcbarcelona.com', 'febreze.com', 'fc-footy.vercel.app', 'fcgnews.com', 'feathercult.com', 'fe80.example']) {
+      expect(isSafeUrl(`https://${host}/`), host).toBe(true);
+    }
+  });
+
+  it('still refuses every private IPv6 literal', () => {
+    for (const literal of ['[fe80::1]', '[fe80::1%25eth0]', '[febf::1]', '[fec0::1]', '[fc00::1]', '[fd12:3456::1]', '[::1]', '[::]', '[::ffff:127.0.0.1]']) {
+      expect(isSafeUrl(`http://${literal}/`), literal).toBe(false);
+    }
+  });
+
+  it('reads the range from the address, not its spelling: 00fc:: is not fc00::/7', () => {
+    expect(isSafeUrl('http://[fc::1]/')).toBe(true);
+    expect(isSafeUrl('http://[2606:4700:4700::1111]/')).toBe(true);
+    expect(isPrivateAddress('fc::1')).toBe(false);
+    expect(isPrivateAddress('fd00::1')).toBe(true);
+    expect(isPrivateAddress('fedoraproject.org')).toBe(false);
+  });
+
+  it('resolves a name that begins with a range prefix and judges its addresses', async () => {
+    const result = await assertResolvesPublic('https://fedoraproject.org/', async () => ['38.145.60.20']);
+    expect(result.ok).toBe(true);
+  });
+});
+
+describe('the DNS lookup is bounded by the request signal (audit G S7)', () => {
+  it('gives up when the signal fires, with the signal’s reason', async () => {
+    const never = () => new Promise<string[]>(() => {});
+    const started = Date.now();
+    await expect(assertResolvesPublic('https://slow-dns.example/', never, AbortSignal.timeout(50))).rejects.toMatchObject({ name: 'TimeoutError' });
+    expect(Date.now() - started).toBeLessThan(1_000);
+  });
+
+  it('still reports a name that fails to resolve as unresolvable, not as a timeout', async () => {
+    const failing = async (): Promise<string[]> => {
+      throw new Error('ENOTFOUND');
+    };
+    const result = await assertResolvesPublic('https://nope.invalid/', failing, AbortSignal.timeout(5_000));
+    expect(result).toMatchObject({ ok: false, reason: 'UNRESOLVABLE_HOST' });
+  });
+
+  it('raceWithSignal passes a result through and rejects at once on an aborted signal', async () => {
+    await expect(raceWithSignal(Promise.resolve(1), AbortSignal.timeout(1_000))).resolves.toBe(1);
+    await expect(raceWithSignal(Promise.resolve(1), undefined)).resolves.toBe(1);
+    await expect(raceWithSignal(new Promise(() => {}), AbortSignal.abort())).rejects.toMatchObject({ name: 'AbortError' });
   });
 });

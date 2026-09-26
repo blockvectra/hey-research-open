@@ -1,0 +1,130 @@
+{
+ "file_path": "contracts/tokenbridge/libraries/ClonableBeaconProxy.sol",
+ "creation_status": "success",
+ "source_code": "// SPDX-License-Identifier: Apache-2.0\n// solhint-disable-next-line compiler-version\npragma solidity >=0.6.0 <0.9.0;\n\nim...trimmed for the fixture",
+ "deployed_bytecode": "0x60806040523661001357610011610017565b005b6100115b610027610022610067565b610100565b565b606061004e838360405180606001604052...trimmed for the fixture",
+ "optimization_enabled": true,
+ "verified_twin_address_hash": null,
+ "is_verified": true,
+ "github_repository_metadata": null,
+ "compiler_settings": {
+  "libraries": {},
+  "metadata": {
+   "useLiteralContent": true
+  },
+  "optimizer": {
+   "enabled": true,
+   "runs": 100
+  },
+  "outputSelection": {
+   "*": {
+    "": [
+     "*"
+    ],
+    "*": [
+     "*"
+    ]
+   }
+  }
+ },
+ "optimization_runs": 100,
+ "sourcify_repo_url": null,
+ "compiler_version": "v0.8.16+commit.07a7930e",
+ "is_verified_via_verifier_alliance": false,
+ "verified_at": "2026-07-17T03:41:26.895198Z",
+ "implementations": [
+  {
+   "address_hash": "0xEf3b461697C6bd38c5458AFa31e1250C98fd0f5F",
+   "name": "StandardArbERC20"
+  }
+ ],
+ "proxy_type": "eip1967_beacon",
+ "external_libraries": [],
+ "creation_bytecode": "0x608060405234801561001057600080fd5b50336001600160a01b03166359659e906040518163ffffffff1660e01b81526004016020604051808303...trimmed for the fixture",
+ "name": "ClonableBeaconProxy",
+ "is_blueprint": false,
+ "license_type": "none",
+ "is_fully_verified": true,
+ "is_verified_via_eth_bytecode_db": true,
+ "language": "solidity",
+ "evm_version": "default",
+ "can_be_visualized_via_sol2uml": true,
+ "is_verified_via_sourcify": false,
+ "additional_sources": [
+  {
+   "file_path": "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol",
+   "source_code": "...trimmed"
+  },
+  {
+   "file_path": "contracts/tokenbridge/libraries/ITransferAndCall.sol",
+   "source_code": "...trimmed"
+  }
+ ],
+ "certified": false,
+ "conflicting_implementations": null,
+ "abi": [
+  {
+   "inputs": [],
+   "stateMutability": "nonpayable",
+   "type": "constructor"
+  },
+  {
+   "anonymous": false,
+   "inputs": [
+    {
+     "indexed": false,
+     "internalType": "address",
+     "name": "previousAdmin",
+     "type": "address"
+    },
+    {
+     "indexed": false,
+     "internalType": "address",
+     "name": "newAdmin",
+     "type": "address"
+    }
+   ],
+   "name": "AdminChanged",
+   "type": "event"
+  },
+  {
+   "anonymous": false,
+   "inputs": [
+    {
+     "indexed": true,
+     "internalType": "address",
+     "name": "beacon",
+     "type": "address"
+    }
+   ],
+   "name": "BeaconUpgraded",
+   "type": "event"
+  },
+  {
+   "anonymous": false,
+   "inputs": [
+    {
+     "indexed": true,
+     "internalType": "address",
+     "name": "implementation",
+     "type": "address"
+    }
+   ],
+   "name": "Upgraded",
+   "type": "event"
+  },
+  {
+   "stateMutability": "payable",
+   "type": "fallback"
+  },
+  {
+   "stateMutability": "payable",
+   "type": "receive"
+  }
+ ],
+ "is_changed_bytecode": false,
+ "is_partially_verified": false,
+ "package_name": null,
+ "constructor_args": null,
+ "_fixture": "Live GET robinhoodchain.blockscout.com/api/v2/smart-contracts/0x0bb40d7fbae7f0c69bc5910c601987dce697d85f on 2026-09-27; long source and bytecode strings trimmed."
+}

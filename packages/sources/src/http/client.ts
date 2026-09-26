@@ -8,7 +8,7 @@ import {
 import { errorCodeForStatus, SourceError } from '../errors';
 import type { Agent } from 'undici';
 
-import { isIpLiteralHost, pinnedDispatcher, withDispatcherClose } from './pinned';
+import { isIpLiteralHost, pinnedDispatcher } from './pinned';
 import { assertResolvesPublic, assertSafeUrl, systemLookup } from './url-safety';
 
 /** 5 MB ceiling on any single response body (PRD V4 section 27). */
@@ -97,6 +97,7 @@ const parseRetryAfterMs = (header: string | null): number | undefined => {
 async function readBodyCapped(response: Response, maxBytes: number): Promise<string> {
   const declared = Number(response.headers.get('content-length') ?? Number.NaN);
   if (Number.isFinite(declared) && declared > maxBytes) {
+    await cancelBody(response);
     throw new SourceError('TOO_LARGE', `response declares ${declared} bytes (cap ${maxBytes})`);
   }
 
@@ -129,8 +130,33 @@ async function readBodyCapped(response: Response, maxBytes: number): Promise<str
   return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength))).toString('utf8');
 }
 
-/** Headers that carry a secret and must not follow a redirect to another host. */
-const CREDENTIAL_HEADERS = new Set(['authorization', 'cookie', 'x-api-key', 'x-auth-token', 'proxy-authorization', 'if-none-match', 'if-modified-since']);
+/** Headers that carry a secret. */
+const SECRET_HEADERS = new Set(['authorization', 'cookie', 'x-api-key', 'x-auth-token', 'proxy-authorization']);
+
+/** Headers that must not follow a redirect to another host: the secrets, and validators meant for this one. */
+const CREDENTIAL_HEADERS = new Set([...SECRET_HEADERS, 'if-none-match', 'if-modified-since']);
+
+/**
+ * Let go of a response HEY will not read (2026-09-27, audit G S4/S5). An
+ * unread body kept its socket open until garbage collection or the server's
+ * own timeout, and closing a pinned dispatcher waited for it — a redirect with
+ * a trickling body spent the whole request deadline in `close()`. The body is
+ * cancelled first; then the dispatcher is destroyed, which does not wait.
+ */
+async function cancelBody(response: Response): Promise<void> {
+  const body = response.body as { cancel?: () => Promise<void>; locked?: boolean } | null;
+  if (body && typeof body.cancel === 'function' && !body.locked) await body.cancel().catch(() => undefined);
+}
+
+async function discard(response: Response, dispatcher: Agent | undefined): Promise<void> {
+  await cancelBody(response);
+  await dispatcher?.destroy().catch(() => undefined);
+}
+
+const isAbort = (error: unknown): boolean => {
+  const name = error instanceof Error || error instanceof DOMException ? error.name : '';
+  return name === 'TimeoutError' || name === 'AbortError';
+};
 
 async function attemptOnce(
   request: HttpRequest,
@@ -156,14 +182,30 @@ async function attemptOnce(
   let body = request.body;
   let response: Response;
   let hops = 0;
+  let dispatcher: Agent | undefined;
 
   // Redirects are followed manually rather than by the runtime. Letting undici
   // follow them would hide every hop, so a public URL could redirect into a
   // private address and bypass the SSRF guard entirely.
   for (;;) {
-    let dispatcher: Agent | undefined;
+    dispatcher = undefined;
     if (request.enforceUrlSafety === true) {
-      const resolved = await assertResolvesPublic(currentUrl, ctx.lookupImpl ?? systemLookup);
+      /*
+       * A stranger's URL is read on the scheme's own port (2026-09-27, audit G
+       * S10): `https://example.com:6379` passed every check. No production
+       * website or source URL names a port, so nothing real is refused.
+       */
+      if (new URL(currentUrl).port !== '') {
+        throw new SourceError('BLOCKED_URL', `${currentUrl} names a port other than the scheme's own`);
+      }
+      let resolved: Awaited<ReturnType<typeof assertResolvesPublic>>;
+      try {
+        // Inside the request's deadline (2026-09-27, audit G S7).
+        resolved = await assertResolvesPublic(currentUrl, ctx.lookupImpl ?? systemLookup, signal);
+      } catch (error) {
+        if (isAbort(error)) throw new SourceError('TIMEOUT', `resolving ${currentUrl} timed out`);
+        throw error;
+      }
       if (!resolved.ok) throw new SourceError('BLOCKED_URL', resolved.detail);
       // Pin the connection to what was checked; an IP literal needs no pin.
       if (!isIpLiteralHost(currentUrl)) dispatcher = pinnedDispatcher(resolved.addresses);
@@ -180,9 +222,9 @@ async function attemptOnce(
         ...(dispatcher ? ({ dispatcher } as Record<string, unknown>) : {}),
       });
     } catch (error) {
+      await dispatcher?.destroy().catch(() => undefined);
       if (error instanceof SourceError) throw error;
-      const name = error instanceof Error ? error.name : '';
-      if (name === 'TimeoutError' || name === 'AbortError') {
+      if (isAbort(error)) {
         throw new SourceError('TIMEOUT', `request to ${currentUrl} timed out`);
       }
       throw new SourceError(
@@ -191,14 +233,13 @@ async function attemptOnce(
       );
     }
 
-    if (!isRedirect(response.status)) {
-      if (dispatcher) response = withDispatcherClose(response, dispatcher);
-      break;
-    }
-    await dispatcher?.close().catch(() => undefined);
+    if (!isRedirect(response.status)) break;
 
     const location = response.headers.get('location');
     if (!location) break; // A 3xx without Location is handled as a normal response.
+    // The redirect's own body is never read: cancelled, not waited for (audit G S4).
+    await discard(response, dispatcher);
+    dispatcher = undefined;
 
     hops += 1;
     if (hops > MAX_REDIRECTS) {
@@ -236,12 +277,27 @@ async function attemptOnce(
       // A fresh object: the one already handed to fetch stays as it was sent.
       headers = Object.fromEntries(Object.entries(headers).filter(([name]) => !CREDENTIAL_HEADERS.has(name.toLowerCase())));
     }
+    /*
+     * No secret in clear text (2026-09-27, audit G S6). The cross-host rule
+     * compares hosts only, so `https://api.x/…` answering with a redirect to
+     * `http://api.x/…` would have sent the bearer unencrypted. A downgrade that
+     * still carries a secret is refused; one that carries none is followed.
+     */
+    const downgrade = new URL(currentUrl).protocol === 'https:' && new URL(nextUrl).protocol === 'http:';
+    if (downgrade && Object.keys(headers).some((name) => SECRET_HEADERS.has(name.toLowerCase()))) {
+      throw new SourceError('BLOCKED_URL', `redirect from ${currentUrl} downgrades to http while carrying credentials`);
+    }
     currentUrl = nextUrl;
   }
 
-  if (response.status === 304) return { kind: 'not_modified' };
+  // From here the response is either read or discarded, and the pinned dispatcher always released.
+  if (response.status === 304) {
+    await discard(response, dispatcher);
+    return { kind: 'not_modified' };
+  }
 
   if (!response.ok) {
+    await discard(response, dispatcher);
     /*
      * GitHub answers a primary or secondary rate limit with 403, not 429,
      * distinguished only by `Retry-After` or an exhausted `X-RateLimit`
@@ -271,15 +327,26 @@ async function attemptOnce(
      * built for, and a response that will not say what it is has not met it.
      */
     if (contentType === undefined) {
+      await discard(response, dispatcher);
       throw new SourceError('UNSUPPORTED_CONTENT_TYPE', 'response carries no content type');
     }
     const base = contentType.split(';')[0]?.trim().toLowerCase() ?? '';
     if (!request.allowedContentTypes.some((allowed) => base === allowed)) {
+      await discard(response, dispatcher);
       throw new SourceError('UNSUPPORTED_CONTENT_TYPE', `unexpected content type ${base}`);
     }
   }
 
-  const responseBody = await readBodyCapped(response, request.maxBytes ?? MAX_RESPONSE_BYTES);
+  let responseBody: string;
+  try {
+    responseBody = await readBodyCapped(response, request.maxBytes ?? MAX_RESPONSE_BYTES);
+  } catch (error) {
+    if (isAbort(error)) throw new SourceError('TIMEOUT', `reading ${currentUrl} timed out`);
+    throw error;
+  } finally {
+    // Read to the end or given up on: either way the connection is finished with.
+    await dispatcher?.destroy().catch(() => undefined);
+  }
 
   return {
     kind: 'ok',

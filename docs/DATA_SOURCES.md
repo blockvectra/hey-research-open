@@ -43,6 +43,9 @@ depends on a live API.
 | `bitquery-discovery` | The week's traded tokens network-wide, by volume, 1,000 token×venue rows a page: symbol, name, decimals, venue, trades, volume, distinct-trader count (2026-09-12) | 1 h | Paid (Pro plan, points-metered), `BITQUERY_API_KEY` on the worker only; `Holders` is queried for the token-distribution map rule 1 allows (2026-09-14), `Balances` is not; FDV = price × the ERC-20 supply stored on `tokens`; source `bitquery`; budget `bitquery` 4,000 req/day, paced at 60/min against the plan's documented 90 |
 | `robinhood-stock-assets` / `robinhood-stock-price` | Tokenized-equity assets, multipliers and raw underlying bid/ask | 1 h / 60 s | Off by default (`HEY_STOCK_TOKEN_PRICES_ENABLED`); price only, no market cap; source `robinhood-stock-api` |
 | launchpad | Interface + registry only | — | No provider ships until its access is public, documented and permitted |
+| `github-deployments` | Newest deployment to an environment named production (2026-09-27) | 30 min | ETag; name, time and commit only; context, never a ship; budget 1,000/day |
+| `depsdev-packageversions` / `-package` / `-version` / `-project` | Packages naming an official repository, their versions, the latest version's links and provenance, the repository's Scorecard checks (2026-09-27) | 1 h | Keyless deps.dev v3; no stars, forks or aggregate score; budget `depsdev` 2,000/day |
+| `osv-querybatch` / `osv-vuln` | Advisories about accepted packages' published versions (2026-09-27) | 1 h | Keyless; context, never a verdict or a score; budget `osv` 500/day |
 
 ### On-chain activity (RPC, 2026-09-12)
 
@@ -86,6 +89,21 @@ is the project's site, or when its X handle is the project's official X; the row
 unmatched protocols keep their rows. Shown on the project page, the public API and MCP as
 context — money in the contracts says the product is used — and never as an activity-status or
 ranking input.
+
+Since 2026-09-27 the registry is read **once a UTC day and shared** (`defi_protocols`) by the TVL
+job, ecosystem discovery and the logo backfill, and the same daily job records **Protocol
+Economics** — fees, revenue and DEX volume on the chain from DefiLlama's three free chain
+overviews (`defi_protocol_days`; each metric `MEASURED`, `NOT_TRACKED` or `UNREAD`, never a zero
+for unknown). The snapshot carries it as `protocolEconomics`. A protocol's declared
+`robinhood:0x…` token that HEY holds on another record is filed for moderator review, never merged.
+
+### Promotion and takeover context (DEX Screener, 2026-09-27)
+
+DEX Screener's community-takeover and ad feeds (hourly) and each published token's order history
+(about weekly) record *that* a paid boost, ad or profile order, or a community takeover, was
+observed for a token HEY holds, with the provider's own date (`token_market_context_events`). No
+amount, spend or reach is stored; none of it is a ship, a ranking input or a change event. The
+snapshot's `market.promotion` shows it.
 
 ## Guarantees
 
@@ -207,8 +225,9 @@ answers "Network not supported" on the PRO base for chain 4663, so Bitquery is t
 this. The realtime window reaches back about five days, which bounds the edges: a line on the map
 means "moved recently", never "related".
 
-Reviewed and not added (2026-09-12): DefiLlama token addresses (mainnet governance tokens, none
-on chain 4663); CoinMarketCap (duplicates CoinGecko's role as corroboration); Exa and X (social
-volume is not building activity); rh-scan.com (undocumented, unlicensed; founder decision).
-Alchemy/QuickNode are a dedicated RPC endpoint (`RH_RPC_URL`), not a data source.
+Reviewed and not added (2026-09-12): CoinMarketCap (duplicates CoinGecko's role as
+corroboration); Exa and X (social volume is not building activity); rh-scan.com (undocumented, unlicensed; founder decision).
+Alchemy/QuickNode are a dedicated RPC endpoint (`RH_RPC_URL`), not a data source. DefiLlama token
+addresses were on this list on 2026-09-12 (none on chain 4663 then); by 2026-09-27 52 protocols
+declared a `robinhood:0x…` token, and they are read as identity candidates for review (above).
 

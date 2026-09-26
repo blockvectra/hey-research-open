@@ -1,0 +1,11 @@
+{
+  "projectKey": {
+    "id": "github.com/wevm/viem"
+  },
+  "openIssuesCount": 17,
+  "starsCount": 3567,
+  "forksCount": 1536,
+  "license": "non-standard",
+  "description": "TypeScript Interface for Ethereum",
+  "homepage": "https://viem.sh"
+}

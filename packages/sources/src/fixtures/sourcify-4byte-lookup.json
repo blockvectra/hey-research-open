@@ -1,0 +1,1 @@
+{"ok":true,"result":{"function":{"0xa9059cbb":[{"name":"transfer(address,uint256)","filtered":false,"hasVerifiedContract":true}],"0x10bb5827":[{"name":"limitWindow()","filtered":false,"hasVerifiedContract":true}],"0x9e95c73f":null,"0xe5eb36c8":[{"name":"transferFromNFT(address,address,uint256,address)","filtered":false,"hasVerifiedContract":true}]},"event":{}}}

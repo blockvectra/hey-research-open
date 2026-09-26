@@ -47,6 +47,13 @@ const pairSchema = z.object({
   // A move too large for numeric(12,4), or not a number, is unknown (2026-09-25): one such value failed the whole batch.
   priceChange: z.object({ h1: priceChangePct, h6: priceChangePct, h24: priceChangePct }).nullish(),
   pairCreatedAt: z.number().nullish(),
+  /*
+   * Kept since 2026-09-27 (audit D §3): whether the pair carries an active
+   * paid boost, and the pool's version labels (`v4`). The boost count is read
+   * only as "any"; it is a spend proxy and is never stored as a number.
+   */
+  boosts: z.object({ active: z.number().nullish() }).nullish(),
+  labels: z.array(z.string()).nullish(),
   info: z
     .object({
       imageUrl: z.string().nullish(),
@@ -96,6 +103,10 @@ export type TokenScreening = {
   priceChange1hPct?: number;
   priceChange6hPct?: number;
   priceChange24hPct?: number;
+  /** A pair of this token carries an active paid boost right now. Presence only — never a count or an amount. */
+  promotionActive?: true;
+  /** The deepest pair's version labels as DEX Screener shows them (`v4`). */
+  pairLabels?: string[];
 };
 
 const CACHE_TTL_SECONDS = 300;
@@ -209,6 +220,8 @@ export function createDexscreenerTokensAdapter(): SourceAdapter<
                   'pairCreatedAt',
                   createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : undefined,
                 ),
+                ...(tokenPairs.some((row) => (row.boosts?.active ?? 0) > 0) ? { promotionActive: true as const } : {}),
+                ...opt('pairLabels', pair.labels && pair.labels.length > 0 ? pair.labels.filter((label) => /^[A-Za-z0-9._-]{1,16}$/.test(label)).slice(0, 5) : undefined),
               });
             }
 

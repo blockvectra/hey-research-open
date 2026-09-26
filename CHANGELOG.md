@@ -6,6 +6,90 @@ record.
 
 ## 2026-09-27
 
+- **Search understands more, and everywhere the same way.** One matcher now serves the homepage and
+  `/search` suggestions, `/search` itself, the `?q=` box on every listing and the Research Terminal. It
+  finds a project by name, ticker, `$ticker`, token contract (or its first characters), a contract the
+  project deployed later, an old address of its page, its verified website (`uniswap.org` finds
+  `app.uniswap.org`) or its GitHub repository, and forgives a typo (`uniswp` finds Uniswap). Results are
+  ranked by how exactly they match — never by market cap, price or payment. `GET /api/search/suggest`
+  keeps its shape; its order follows the new ranking, and its `project` items may now come from those
+  new keys.
+- **Pasting a contract into `/search` is fast again**: the result count took seconds for a whole
+  address.
+- **The Research Terminal's search works in preview.** Readers waiting for early access can search
+  projects, tickers and contracts from the header (⌘K included), see suggestions and results by name,
+  ticker and contract, and open a project's preview. Research stays behind early access. The list says
+  "Searching…" and "No match — press Enter to search", remembers your last five searches in this
+  browser, and shows the short contract when two projects share a ticker.
+- **Sites on a shared host are told apart.** Two sites on the same hosting platform (two
+  `*.vercel.app` sites, two `*.github.io` pages) are no longer treated as one site. A repository
+  whose homepage is someone else's site on the same platform no longer counts as the project's
+  own, and docs or feeds on another site there are not credited to the project. Repository matches
+  made the old way are re-checked; the ones that no longer hold stay on the page as context.
+- **Some real websites were refused as private addresses.** Sites whose names begin with `fc`,
+  `fd` or `fe` (for example `fedoraproject.org`) were blocked by the address guard; they are read
+  now. Private addresses are still refused.
+- **Hostile pages and feeds cost nothing.** A page built to stall the reader, a character
+  reference past the end of Unicode, or a feed full of recursive entities is read (or refused) in
+  milliseconds instead of stalling or failing the read.
+
+- **Three new coverage dimensions: `officialDocs`, `apiDocs`, `sourceChanges`** (additive) on
+  `/api/projects/{slug}/coverage` and the snapshot. They say whether HEY holds a project's own
+  docs, whether its site links an API description HEY read, and whether HEY watches its official
+  site for material changes — as states, never scores. A meme is `NOT_APPLICABLE`, not deficient.
+- **Builder sites are read for docs and feeds.** A project that already has a repository is now
+  crawled for its docs and feeds too (never re-resolved for repositories), and every repository,
+  docs and feed link a read finds is kept as candidate evidence, classified by rules from where
+  the link points — never by what the page says about itself.
+- **Official sites' well-known files.** HEY reads robots.txt first and honours it, then the
+  sitemap, llms.txt, security.txt and an OpenAPI description only when the site links one —
+  weekly, conditionally. A single-page app answering 200 for `/llms.txt` is recorded as absent.
+  A changed API surface is a source change, never a release or a ship.
+- **Source authority.** Every source HEY reads now has a written answer to "what may it prove":
+  a DEX profile, a package registry and an MCP listing are context only; a model's reading is a
+  candidate only.
+- **More of a contract's calls have names.** A call the decoder could not name is named when the
+  contract's own verified source declares the function, so `activity.methods.buckets.named` on
+  `/api/contracts/{chainId}/{address}` now includes those calls and `undecoded` shrinks to the few
+  nothing names (99.7 % of them on 2026-09-27). The call that deployed a contract is no longer
+  counted as an undecoded method. First-called and called-again facts can now include these
+  functions.
+- **Signature candidates are only candidates.** For the handful of selectors nothing names, the
+  Terminal can show what a public signature database offers, labelled "signature candidate" —
+  never as the method's name, and never in a count or a fact.
+- **Verified source says whose code it is.** Coverage's `contractSource` separates a launchpad
+  template token from source published for the contract itself and from a bytecode match to
+  someone else's source; a contract's verified-source item on the timeline says "Source
+  published" or "Source matched by explorer" accordingly.
+- **Sourcify as a second opinion.** HEY records Sourcify's independent verification for watched
+  contracts the explorer calls unverified, and for proxies.
+
+- **Protocol economics.** For a project matched to a DefiLlama protocol, the snapshot
+  (`/api/projects/{slug}/snapshot`) carries `protocolEconomics`: its TVL, and its fees, revenue and
+  DEX volume on Robinhood Chain over the last day, each either a measurement (a zero included) or a
+  plain reason there is none — `NOT_TRACKED`, `SOURCE_UNAVAILABLE`, `NOT_ENOUGH_YET` — never a zero
+  standing in for unknown. Audit and methodology links come as the registry gives them. A new
+  coverage dimension, `protocolEconomics`, says which applies. Context only: none of it touches
+  activity status, Build Momentum, the Discovery Gap or the Radar.
+- **Promotion and takeover context.** When DEX Screener shows a paid boost, ad or profile order, or
+  a community takeover, for a token HEY holds, the snapshot's `market.promotion` lists it with the
+  provider's own date where it gives one. Never an amount, never a ranking input, never a change
+  event or webhook.
+- **DEX Screener profiles hourly.** New and recently edited token profiles reach HEY's candidate
+  review within the hour instead of once a day.
+- **Duplicate pages from a registry's token.** When DefiLlama names a protocol's token and HEY holds
+  that token on another record, a moderator is asked to review the pair; nothing is merged
+  automatically.
+- **Developer footprint.** HEY now reads what each official repository declares (topics, licence,
+  language, owner type) and its newest deployment to an environment named production, notes what
+  kind of files a GitHub release carries (desktop app, mobile build, command-line binary,
+  checksums), records the published packages tied to a project — as the project's own only when an
+  official link, a verified build attestation, a Go module path or the official domain says so, and
+  as a claim otherwise — and keeps OSV advisories about those packages' published versions. All of
+  it is context: never a ship, never scored, never a verdict. `/api/projects/{slug}/coverage` gains
+  `gitHost`, `package` and `securityContext` (additive); a token project with no repository and no
+  package is `NOT_APPLICABLE` there. A package version that matches a GitHub release is noted on
+  that release, not counted twice.
 - **Serial launchers.** An account that created 100 or more contracts in the last 90 days launches
   contracts for many projects, so the contracts it deploys after a token launch no longer count as
   that project's building. They stay on record as context; the market page's deployer check says

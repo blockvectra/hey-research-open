@@ -27,16 +27,24 @@ import { DEXSCREENER_DEFAULT_BASE_URL } from './dexscreener';
  * a URL and is not stored. Links were either `{label: "Website" | "Docs", url}`
  * or `{type: "twitter" | "telegram" | …, url}`, and some carried only `{url}`.
  */
-export type DexscreenerProfileFeed = 'profiles' | 'boosts-latest' | 'boosts-top';
+export type DexscreenerProfileFeed = 'profiles' | 'profiles-updates' | 'boosts-latest' | 'boosts-top';
 
+/*
+ * `/token-profiles/recent-updates/v1` added 2026-09-27 (audit D §3): profiles
+ * as their teams edit them, the same record shape plus `updatedAt`. A profile
+ * that changed its website or links reaches the candidate store the hour it
+ * changes rather than never.
+ */
 export const DEXSCREENER_PROFILE_FEEDS: readonly DexscreenerProfileFeed[] = [
   'profiles',
+  'profiles-updates',
   'boosts-latest',
   'boosts-top',
 ];
 
 const FEED_PATHS: Record<DexscreenerProfileFeed, string> = {
   profiles: '/token-profiles/latest/v1',
+  'profiles-updates': '/token-profiles/recent-updates/v1',
   'boosts-latest': '/token-boosts/latest/v1',
   'boosts-top': '/token-boosts/top/v1',
 };
@@ -61,6 +69,8 @@ const profileSchema = z.object({
   description: z.string().nullish(),
   links: z.array(linkSchema).nullish(),
   cto: z.boolean().nullish(),
+  /** Recent-updates feed only: when the team last edited the profile. */
+  updatedAt: z.string().nullish(),
   /** Boost feeds only. Read so the payload validates; never surfaced. */
   amount: z.number().nullish(),
   totalAmount: z.number().nullish(),
@@ -89,7 +99,16 @@ export type TokenProfile = {
   profileUrl?: string;
   /** Marked by DEX Screener as a community takeover. */
   communityTakeover?: boolean;
+  /** Recent-updates feed only: the provider's time of the edit. */
+  updatedAt?: Date;
   feed: DexscreenerProfileFeed;
+};
+
+/** A provider timestamp, or nothing when it is absent or unparseable. */
+export const providerDate = (value: string | number | null | undefined): Date | undefined => {
+  if (value === null || value === undefined || value === '') return undefined;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? undefined : date;
 };
 
 const isWebsiteLabel = (label: string | null | undefined): boolean =>
@@ -172,6 +191,7 @@ export function createDexscreenerProfilesAdapter(): SourceAdapter<
                 ...opt('imageUrl', cleanHttpUrl(record.icon)),
                 ...opt('profileUrl', cleanHttpUrl(record.url)),
                 ...opt('communityTakeover', record.cto ?? undefined),
+                ...opt('updatedAt', providerDate(record.updatedAt)),
               });
             }
 

@@ -1,0 +1,140 @@
+{
+  "packageKey": {
+    "system": "NPM",
+    "name": "@useboardwalk/sdk"
+  },
+  "versions": [
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.1.0"
+      },
+      "publishedAt": "2026-06-09T08:33:58Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.2.0"
+      },
+      "publishedAt": "2026-06-11T14:50:33Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.3.0"
+      },
+      "publishedAt": "2026-06-20T17:50:11Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.4.0"
+      },
+      "publishedAt": "2026-06-20T18:57:03Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.4.1"
+      },
+      "publishedAt": "2026-06-21T09:32:29Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "0.4.2"
+      },
+      "publishedAt": "2026-06-22T16:20:58Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "1.0.0"
+      },
+      "publishedAt": "2026-07-22T15:13:44Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "1.0.1"
+      },
+      "publishedAt": "2026-07-31T09:45:06Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "1.0.2"
+      },
+      "publishedAt": "2026-07-31T10:43:43Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "2.0.0"
+      },
+      "publishedAt": "2026-08-06T10:23:52Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "2.1.0"
+      },
+      "publishedAt": "2026-08-10T11:47:55Z",
+      "isDefault": false,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    },
+    {
+      "versionKey": {
+        "system": "NPM",
+        "name": "@useboardwalk/sdk",
+        "version": "2.1.1"
+      },
+      "publishedAt": "2026-09-25T15:20:08Z",
+      "isDefault": true,
+      "isDeprecated": false,
+      "deprecatedReason": ""
+    }
+  ]
+}

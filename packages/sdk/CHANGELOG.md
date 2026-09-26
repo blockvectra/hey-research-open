@@ -8,6 +8,13 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ### Added
 
+- Protocol economics and promotion context on the snapshot (2026-09-27),
+  additive: `HeyProjectSnapshot.protocolEconomics` (`HeyProtocolEconomics`,
+  each metric a `HeyEconomicsMetric` — `MEASURED` with `valueUsd`, or
+  `NOT_TRACKED` / `SOURCE_UNAVAILABLE` / `NOT_ENOUGH_YET` with no number),
+  `HeyProjectSnapshot.market.promotion` (`HeyMarketPromotion`, dated by the
+  provider where it gives a date, never an amount), and the coverage dimension
+  `protocolEconomics` in `HeyCoverageDimension`.
 - A method for every machine-layer route (2026-09-26): `projects.snapshot`,
   `projects.coverage`, `projects.explain`, `projects.history`,
   `projects.diff`, `projects.contracts`, `evidence.get`, `contracts.get`,

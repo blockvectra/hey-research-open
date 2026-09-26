@@ -68,6 +68,10 @@ export type VerifiedContract = {
   flaggedScam: boolean;
   isProxy: boolean;
   implementationAddress?: string;
+  /** Sourcify listing rows only (2026-09-27): its match quality, so an exact match and a partial one stay apart. */
+  sourcifyMatch?: 'exact_match' | 'match';
+  /** Sourcify listing rows only: the row's `matchId`, the sweep's watermark. */
+  matchId?: string;
 };
 
 export type VerifiedContractPage = {

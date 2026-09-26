@@ -1,0 +1,70 @@
+{
+  "projectKey": {
+    "id": "github.com/metamask/metamask-extension"
+  },
+  "openIssuesCount": 2810,
+  "starsCount": 13220,
+  "forksCount": 5593,
+  "license": "non-standard",
+  "description": ":globe_with_meridians: :electric_plug: The MetaMask browser extension enables browsing Ethereum blockchain enabled websites",
+  "homepage": "https://metamask.io",
+  "scorecard": {
+    "date": "2026-08-24T00:00:00Z",
+    "repository": {
+      "name": "github.com/MetaMask/metamask-extension",
+      "commit": "a8448955cc70119935c3f6ecbb18642f5c65d8d3"
+    },
+    "scorecard": {
+      "version": "v5.5.1-0.20260815060127-d1fab88f5463",
+      "commit": "d1fab88f54636ff366076edfc5c239f97b3c8e66"
+    },
+    "checks": [
+      {
+        "name": "Maintained",
+        "documentation": {
+          "shortDescription": "Determines if the project is \"actively maintained\".",
+          "url": "https://github.com/ossf/scorecard/blob/d1fab88f54636ff366076edfc5c239f97b3c8e66/docs/checks.md#maintained"
+        },
+        "score": 10,
+        "reason": "30 commit(s) and 4 issue activity found in the last 90 days -- score normalized to 10",
+        "details": []
+      },
+      {
+        "name": "Code-Review",
+        "documentation": {
+          "shortDescription": "Determines if the project requires human code review before pull requests (aka merge requests) are merged.",
+          "url": "https://github.com/ossf/scorecard/blob/d1fab88f54636ff366076edfc5c239f97b3c8e66/docs/checks.md#code-review"
+        },
+        "score": 10,
+        "reason": "all changesets reviewed",
+        "details": []
+      },
+      {
+        "name": "Packaging",
+        "documentation": {
+          "shortDescription": "Determines if the project is published as a package that others can easily download, install, easily update, and uninstall.",
+          "url": "https://github.com/ossf/scorecard/blob/d1fab88f54636ff366076edfc5c239f97b3c8e66/docs/checks.md#packaging"
+        },
+        "score": -1,
+        "reason": "packaging workflow not detected",
+        "details": [
+          "Warn: no GitHub/GitLab publishing workflow detected."
+        ]
+      },
+      {
+        "name": "Signed-Releases",
+        "documentation": {
+          "shortDescription": "Determines if the project cryptographically signs release artifacts.",
+          "url": "https://github.com/ossf/scorecard/blob/d1fab88f54636ff366076edfc5c239f97b3c8e66/docs/checks.md#signed-releases"
+        },
+        "score": 4,
+        "reason": "3 out of the last 5 releases have a total of 3 signed artifacts.",
+        "details": [
+          "Info: signed release artifact: metamask-chrome-13.45.0-flask.0.zip.sigstore.json: https://github.com/MetaMask/metamask-extension/releases/tag/v13.45.0"
+        ]
+      }
+    ],
+    "overallScore": 6.5,
+    "metadata": []
+  }
+}

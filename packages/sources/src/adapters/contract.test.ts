@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 
 import type { SourceAdapter } from '../adapter';
 import { createBlockscoutAdapter } from './blockscout';
+import { createExplorerContractAdapter } from './blockscout-contract';
 import { createDexscreenerAdapter } from './dexscreener';
 import { createFeedAdapter } from './feed';
 import { createGeckoterminalAdapter } from './geckoterminal';
 import { createGithubReleasesAdapter, createGithubRepoAdapter } from './github';
 import { createRpcContractAdapter } from './rpc';
+import { createSignatureLookupAdapter } from './signatures';
 import { createSourcifyAdapter } from './sourcify';
 import { createWebsiteAdapter } from './website';
 
@@ -22,12 +24,15 @@ const ADAPTERS: SourceAdapter<any, unknown>[] = [
   createWebsiteAdapter(),
   createFeedAdapter(),
   createSourcifyAdapter(),
+  createSignatureLookupAdapter(),
+  createExplorerContractAdapter(),
 ];
 
 describe('SourceAdapter contract', () => {
   it('covers every source class the milestone requires', () => {
     expect(ADAPTERS.map((adapter) => adapter.name).sort()).toEqual([
       'blockscout',
+      'blockscout-contract',
       'dexscreener',
       'feed',
       'geckoterminal',
@@ -35,6 +40,7 @@ describe('SourceAdapter contract', () => {
       'github-repo',
       'rpc-contract',
       'sourcify',
+      'sourcify-4byte',
       'website',
     ]);
   });

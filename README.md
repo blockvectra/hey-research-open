@@ -66,7 +66,7 @@ This is the published half of HEY: the parts that stand on their own and are saf
 
 | Path | What it is |
 | --- | --- |
-| [`packages/sources`](packages/sources) | Every public-data adapter HEY reads — GitHub, Blockscout, DEX Screener, GeckoTerminal, CoinGecko, launchpads, feeds, npm — each with saved fixtures and contract tests. The tests fail on a real network call. |
+| [`packages/sources`](packages/sources) | Every public-data adapter HEY reads — GitHub, Blockscout, Sourcify (verification and its signature database), DEX Screener, GeckoTerminal, CoinGecko, launchpads, feeds, npm, deps.dev, OSV — each with saved fixtures and contract tests. The tests fail on a real network call. All of them go through one fetch guard (private-address and DNS-rebinding checks, redirect and credential rules, size, time and content-type limits) and bounded HTML and XML parsers, tested against hostile pages and feeds. |
 | [`packages/scoring`](packages/scoring) | Activity status, Build Momentum, Still Building and Under the Radar, deterministic and versioned. They read no price and no balance, and that is tested. |
 | [`packages/sdk`](packages/sdk) | `@hey-research/sdk`, the typed client over the public API. No dependencies, ESM and CJS, Node 18 or a browser. |
 | [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: fourteen read-only tools, each answer tagged FACT, DERIVED or UNKNOWN. |

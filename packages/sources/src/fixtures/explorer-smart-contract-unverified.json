@@ -1,0 +1,9 @@
+{
+ "conflicting_implementations": null,
+ "creation_bytecode": "0x60a0604052346103f957610bfa80380380610019816103fd565b9283398101906060818303126103f95780516001600160401b0381116103f95782...trimmed for the fixture",
+ "creation_status": "success",
+ "deployed_bytecode": "0x6080806040526004361015610012575f80fd5b5f3560e01c90816302669b52146105625750806306fdde0314610490578063095ea7b31461040e57...trimmed for the fixture",
+ "implementations": [],
+ "proxy_type": null,
+ "_fixture": "Live GET robinhoodchain.blockscout.com/api/v2/smart-contracts/0x99c0af645a9000b7d523ce30d8eb848c6a1e600d on 2026-09-27; long source and bytecode strings trimmed."
+}

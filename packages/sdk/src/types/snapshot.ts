@@ -30,7 +30,19 @@ export type HeyCoverageDimension =
   | 'distribution'
   | 'locks'
   | 'marketIntegrity'
-  | 'timeline';
+  | 'timeline'
+  /** The project's own site (2026-09-27): official docs, a published API description, material source changes. */
+  | 'officialDocs'
+  | 'apiDocs'
+  | 'sourceChanges'
+  /** DefiLlama fees, revenue and DEX volume for a matched protocol (2026-09-27). `NOT_APPLICABLE` when none is matched. */
+  | 'protocolEconomics'
+  /** Developer footprint (2026-09-27): official repositories' declared metadata and production deployments. */
+  | 'gitHost'
+  /** Published packages tied to the project; `NOT_APPLICABLE` for a token project with no repository and no package. */
+  | 'package'
+  /** OSV advisories about accepted packages, or deps.dev's Scorecard checks; context, never a verdict. */
+  | 'securityContext';
 
 export type HeyCoverageEntry = {
   state: HeyCoverageState;
@@ -179,6 +191,57 @@ export type HeySnapshotChange =
     }
   | { id: string; revision: number; op: 'retract'; recordedAt: string };
 
+/** One DefiLlama metric: a figure only when measured; otherwise why not — never a zero standing in for unknown. */
+export type HeyEconomicsMetric =
+  | { state: 'MEASURED'; valueUsd: number }
+  | { state: 'NOT_TRACKED' | 'SOURCE_UNAVAILABLE' | 'NOT_ENOUGH_YET' };
+
+/**
+ * Protocol Economics (2026-09-27): what the DefiLlama registry measures of a
+ * matched protocol's use on this chain. Context only — never an input to
+ * activity status, Build Momentum, the Discovery Gap or the Radar.
+ */
+export type HeyProtocolEconomics = {
+  protocols: {
+    protocol: string;
+    protocolName: string;
+    category?: string;
+    tvlUsd: number;
+    tvlDay: string;
+    matchedBy: string;
+    fees24h: HeyEconomicsMetric;
+    revenue24h: HeyEconomicsMetric;
+    dexVolume24h: HeyEconomicsMetric;
+    /** The day the three figures are for; absent before HEY's first read. */
+    economicsDay?: string;
+    /** Registry links, verbatim. Links, never verdicts. */
+    auditLinks: string[];
+    methodologyUrl?: string;
+    parentProtocol?: string;
+  }[];
+  source: 'defillama';
+  contextOnly: true;
+};
+
+/**
+ * Paid promotion and community-takeover sightings for a token (2026-09-27).
+ * `providerAt` is the provider's own date, absent when it gave none (then
+ * `firstObservedAt` is HEY's observation). Never an amount or a ranking input.
+ */
+export type HeyMarketPromotion = {
+  entries: {
+    kind: 'MARKET_PROMOTION_OBSERVED' | 'COMMUNITY_TAKEOVER_PROFILE_OBSERVED';
+    channel: string;
+    providerAt?: string;
+    firstObservedAt: string;
+    lastObservedAt: string;
+    source: string;
+  }[];
+  /** Rows in all; `entries` holds the newest ten. */
+  total: number;
+  contextOnly: true;
+};
+
 /** `GET /api/projects/{slug}/snapshot`: one project's important state in one read. */
 export type HeyProjectSnapshot = {
   identity: {
@@ -222,8 +285,12 @@ export type HeyProjectSnapshot = {
     venue?: string;
     tokenMarket?: NonNullable<HeyProject['tokenMarket']>;
     launchStage?: NonNullable<HeyProject['launchStage']>;
+    /** Absent when HEY has observed no promotion or takeover for the token. */
+    promotion?: HeyMarketPromotion;
     url: string;
   };
+  /** Absent when the project is matched to no DefiLlama protocol (`coverage.protocolEconomics` says why). */
+  protocolEconomics?: HeyProtocolEconomics;
   onchain?: { events24h?: number; events7d?: number; calls24h?: number; daysCovered: number; daysMeasured: number; observedAt: string };
   contracts: { url: string };
   verification: {

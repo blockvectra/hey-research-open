@@ -1,0 +1,80 @@
+{
+  "versionKey": {
+    "system": "NPM",
+    "name": "@useboardwalk/sdk",
+    "version": "2.1.1"
+  },
+  "publishedAt": "2026-09-25T15:20:08Z",
+  "isDefault": true,
+  "isDeprecated": false,
+  "deprecatedReason": "",
+  "licenses": [
+    "MIT"
+  ],
+  "advisoryKeys": [],
+  "links": [
+    {
+      "label": "HOMEPAGE",
+      "url": "https://www.useboardwalk.com"
+    },
+    {
+      "label": "ISSUE_TRACKER",
+      "url": "https://github.com/useboardwalk/boardwalk-sdk/issues"
+    },
+    {
+      "label": "ATTESTATION",
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@2.1.1"
+    },
+    {
+      "label": "ORIGIN",
+      "url": "https://registry.npmjs.org/@useboardwalk%2Fsdk/2.1.1"
+    },
+    {
+      "label": "SOURCE_REPO",
+      "url": "git+https://github.com/useboardwalk/boardwalk-sdk.git"
+    }
+  ],
+  "slsaProvenances": [
+    {
+      "sourceRepository": "https://github.com/useboardwalk/boardwalk-sdk",
+      "commit": "c8bbe329e78a5da85c2e19a99a6a84e9f2960328",
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@2.1.1",
+      "verified": true
+    }
+  ],
+  "attestations": [
+    {
+      "type": "https://slsa.dev/provenance/v1",
+      "url": "https://registry.npmjs.org/-/npm/v1/attestations/@useboardwalk%2fsdk@2.1.1",
+      "verified": true,
+      "sourceRepository": "https://github.com/useboardwalk/boardwalk-sdk",
+      "commit": "c8bbe329e78a5da85c2e19a99a6a84e9f2960328"
+    }
+  ],
+  "registries": [
+    "https://registry.npmjs.org/"
+  ],
+  "relatedProjects": [
+    {
+      "projectKey": {
+        "id": "github.com/useboardwalk/boardwalk-sdk"
+      },
+      "relationProvenance": "UNVERIFIED_METADATA",
+      "relationType": "ISSUE_TRACKER"
+    },
+    {
+      "projectKey": {
+        "id": "github.com/useboardwalk/boardwalk-sdk"
+      },
+      "relationProvenance": "UNVERIFIED_METADATA",
+      "relationType": "SOURCE_REPO"
+    },
+    {
+      "projectKey": {
+        "id": "github.com/useboardwalk/boardwalk-sdk"
+      },
+      "relationProvenance": "SLSA_ATTESTATION",
+      "relationType": "SOURCE_REPO"
+    }
+  ]
+}

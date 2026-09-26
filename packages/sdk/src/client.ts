@@ -439,7 +439,7 @@ export class HeyClient {
   };
 
   readonly search = {
-    /** `GET /api/search/suggest?q=`: type-ahead over names, symbols and contracts, 2–64 characters, at most eight rows. */
+    /** `GET /api/search/suggest?q=`: type-ahead over names, symbols, contracts, old slugs, verified domains and corroborated repositories (one matcher with the site, 2026-09-27), 2–64 characters, at most eight rows. */
     suggest: (q: string): Promise<HeySearchSuggestions> => this.get('/api/search/suggest', { q }),
   };
 

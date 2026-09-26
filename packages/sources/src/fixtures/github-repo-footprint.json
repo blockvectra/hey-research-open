@@ -1,0 +1,46 @@
+{
+  "full_name": "KeeperHub/keeperhub",
+  "description": "Automate on-chain events and actions reliably and securely. Build Workflows in minutes without the need for infrastructure, code or wallet management. Get instant alerts and never miss what matters.",
+  "html_url": "https://github.com/KeeperHub/keeperhub",
+  "homepage": "https://keeperhub.com",
+  "default_branch": "staging",
+  "pushed_at": "2026-09-25T18:09:59Z",
+  "updated_at": "2026-09-25T16:30:34Z",
+  "created_at": "2025-12-02T09:46:49Z",
+  "archived": false,
+  "fork": false,
+  "is_template": false,
+  "stargazers_count": 28,
+  "forks_count": 104,
+  "open_issues_count": 116,
+  "size": 38831,
+  "topics": [
+    "agent-infrastructure",
+    "ai-agents",
+    "automation",
+    "blockchain",
+    "defi",
+    "defi-automation",
+    "ethereum",
+    "keeper",
+    "mcp",
+    "monitoring",
+    "web3",
+    "workflow",
+    "x402"
+  ],
+  "license": {
+    "key": "other",
+    "name": "Other",
+    "spdx_id": "NOASSERTION",
+    "url": null,
+    "node_id": "MDc6TGljZW5zZTA="
+  },
+  "language": "TypeScript",
+  "visibility": "public",
+  "has_pages": false,
+  "owner": {
+    "login": "KeeperHub",
+    "type": "Organization"
+  }
+}

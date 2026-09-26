@@ -1,9 +1,9 @@
-import { XMLParser } from 'fast-xml-parser';
 import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
-import { sanitizeText } from '../html';
+import { decodeEntities, sanitizeText } from '../html';
 import { performSourceFetch } from '../http/perform';
+import { parseBoundedXml } from '../xml';
 import { hashContent } from './website';
 
 /**
@@ -42,23 +42,25 @@ const FEED_CONTENT_TYPES = [
   'text/html',
 ] as const;
 
-const parser = new XMLParser({
-  ignoreAttributes: false,
-  attributeNamePrefix: '@_',
-  trimValues: true,
-});
-
 const asArray = <T>(value: T | T[] | undefined | null): T[] => {
   if (value === null || value === undefined) return [];
   return Array.isArray(value) ? value : [value];
 };
 
+/**
+ * Element text as HEY keeps it. The parser expands no entities (`xml.ts`), so
+ * the XML escape layer is decoded here first — `&lt;p&gt;` becomes markup the
+ * sanitizer then strips, as when the parser decoded it — by the bounded,
+ * non-recursive decoder.
+ */
+const feedText = (raw: string): string => sanitizeText(decodeEntities(raw));
+
 const text = (value: unknown): string | undefined => {
-  if (typeof value === 'string') return sanitizeText(value);
+  if (typeof value === 'string') return feedText(value);
   if (typeof value === 'number') return String(value);
   if (value && typeof value === 'object' && '#text' in value) {
     const inner = (value as { '#text': unknown })['#text'];
-    return typeof inner === 'string' ? sanitizeText(inner) : undefined;
+    return typeof inner === 'string' ? feedText(inner) : undefined;
   }
   return undefined;
 };
@@ -93,10 +95,11 @@ const linkOf = (entry: Record<string, unknown>, feedUrl: string): string | undef
   for (const candidate of asArray(entry.link as unknown)) {
     if (candidate && typeof candidate === 'object') {
       const record = candidate as Record<string, unknown>;
-      const rel = record['@_rel'];
+      const rel = typeof record['@_rel'] === 'string' ? decodeEntities(record['@_rel']) : record['@_rel'];
       const href = record['@_href'];
+      // Attribute values arrive undecoded too: `?a=1&amp;b=2` is `?a=1&b=2`.
       if (typeof href === 'string' && (rel === undefined || rel === 'alternate')) {
-        return absoluteHttpUrl(href, feedUrl);
+        return absoluteHttpUrl(decodeEntities(href), feedUrl);
       }
     }
   }
@@ -175,7 +178,7 @@ export function createFeedAdapter(): SourceAdapter<FeedInput, FeedResult> {
         },
         {
           schema: z.object({ body: z.string(), document: z.record(z.unknown()) }),
-          parse: (body) => ({ body, document: parser.parse(body) as Record<string, unknown> }),
+          parse: (body) => ({ body, document: parseBoundedXml(body, MAX_FEED_BYTES) }),
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: ({ body, document }, response): FeedResult => ({
             ...normalizeEntries(document, response.url ?? input.url),

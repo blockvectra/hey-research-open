@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
+import { keepToProviderHost } from './provider-host';
 
 /**
  * GitHub — the core builder-activity source (PRD V4 section 26).
@@ -32,6 +33,16 @@ export const githubRepoSchema = z.object({
   open_issues_count: z.number().optional(),
   /** Kilobytes; 0 means the repository has no content yet. */
   size: z.number().optional(),
+  /*
+   * Developer footprint (2026-09-27, brief §17): already in every `/repos`
+   * answer HEY receives, dropped until now. Owner-declared context: topics,
+   * the licence GitHub detected, the main language and whether the owner is a
+   * user or an organisation. Never a ship, never scored.
+   */
+  topics: z.array(z.string()).nullish(),
+  license: z.object({ spdx_id: z.string().nullish(), key: z.string().nullish() }).nullish(),
+  language: z.string().nullish(),
+  owner: z.object({ type: z.string().nullish() }).nullish(),
 });
 
 export const githubReleasesSchema = z.array(
@@ -45,8 +56,30 @@ export const githubReleasesSchema = z.array(
     prerelease: z.boolean().optional(),
     published_at: z.string().nullish(),
     created_at: z.string().nullish(),
+    /*
+     * Release assets (2026-09-27, brief §17): the files attached to a release,
+     * already in the payload HEY reads. Name, size and content type only —
+     * `download_count` is deliberately not declared, so it never leaves the
+     * parser: a count of downloads is popularity, not building.
+     */
+    assets: z
+      .array(
+        z.object({
+          name: z.string(),
+          size: z.number().nullish(),
+          content_type: z.string().nullish(),
+        }),
+      )
+      .nullish(),
   }),
 );
+
+/** One file attached to a release: what it is called, how big, and what GitHub says it is. */
+export type GithubReleaseAsset = {
+  name: string;
+  sizeBytes?: number;
+  contentType?: string;
+};
 
 export type GithubRelease = {
   externalId: string;
@@ -56,6 +89,12 @@ export type GithubRelease = {
   publishedAt: Date;
   isPrerelease: boolean;
   body?: string;
+  /**
+   * Files attached to the release (never their download counts). The adapter
+   * always sets it, empty when there are none; optional so a release built by
+   * hand elsewhere need not invent one.
+   */
+  assets?: GithubReleaseAsset[];
 };
 
 export type GithubRepoActivity = {
@@ -75,6 +114,14 @@ export type GithubRepoActivity = {
   stars?: number;
   /** Repository size in kilobytes; 0 is an empty repository. */
   sizeKb?: number;
+  /** Owner-declared topics, lowercased as GitHub stores them. Context only. */
+  topics?: string[];
+  /** SPDX id of the licence GitHub detected (`MIT`, `NOASSERTION`). */
+  licenseSpdx?: string;
+  /** GitHub's main language for the repository. */
+  language?: string;
+  /** `Organization` or `User`, as GitHub reports the owner account. */
+  ownerType?: string;
 };
 
 export type GithubRepoInput = {
@@ -134,6 +181,10 @@ export function createGithubRepoAdapter(): SourceAdapter<GithubRepoInput, Github
             ...opt('createdAt', toDate(raw.created_at)),
             ...opt('stars', raw.stargazers_count),
             ...opt('sizeKb', raw.size),
+            ...(raw.topics ? { topics: raw.topics } : {}),
+            ...opt('licenseSpdx', raw.license?.spdx_id ?? undefined),
+            ...opt('language', raw.language ?? undefined),
+            ...opt('ownerType', raw.owner?.type ?? undefined),
           }),
         },
       );
@@ -179,6 +230,11 @@ export function createGithubReleasesAdapter(): SourceAdapter<GithubRepoInput, Gi
                 title: release.name?.trim() || release.tag_name,
                 publishedAt,
                 isPrerelease: release.prerelease ?? false,
+                assets: (release.assets ?? []).map((asset) => ({
+                  name: asset.name,
+                  ...opt('sizeBytes', asset.size ?? undefined),
+                  ...opt('contentType', asset.content_type ?? undefined),
+                })),
                 ...opt('url', release.html_url),
                 ...opt('body', release.body ?? undefined),
               })),
@@ -294,6 +350,90 @@ export function createGithubSearchAdapter(): SourceAdapter<GithubSearchInput, Gi
           }),
         },
       );
+    },
+  };
+}
+
+/**
+ * The latest deployment to an environment named `production` (2026-09-27,
+ * brief §17). One request per official repository, sent with the ETag of the
+ * last answer, so an unchanged list costs a 304.
+ *
+ * GitHub filters `environment` server-side and, as measured on 2026-09-27,
+ * without regard to case (`PRODUCTION` and `production` returned the same
+ * list), so Vercel's `Production` is found by the same request. The adapter
+ * still keeps only rows whose name is exactly production, whatever the case,
+ * and drops transient (preview) environments. Only the environment's name, the
+ * creation time and the commit are kept — never who deployed.
+ *
+ * A deployment record is not a ship, not a success and not activity: a
+ * workflow creates one on every push to a branch it watches, and one audited
+ * repository carried 36,000 of them. It is shown as dated context only.
+ */
+export const githubDeploymentsSchema = z.array(
+  z.object({
+    id: z.number(),
+    environment: z.string(),
+    created_at: z.string(),
+    sha: z.string().nullish(),
+    transient_environment: z.boolean().optional(),
+  }),
+);
+
+export type GithubProductionDeployment = {
+  environment: string;
+  createdAt: Date;
+  sha?: string;
+};
+
+export type GithubDeploymentsReading = {
+  /** Absent when the repository has no deployment to a production environment. */
+  latestProduction?: GithubProductionDeployment;
+};
+
+/** The only environment name read as production. */
+export const PRODUCTION_ENVIRONMENT = /^production$/i;
+
+const DEPLOYMENTS_MAX_BYTES = 512 * 1024;
+const DEPLOYMENTS_TIMEOUT_MS = 15_000;
+
+export function createGithubDeploymentsAdapter(): SourceAdapter<GithubRepoInput, GithubDeploymentsReading> {
+  return {
+    name: 'github-deployments',
+
+    canHandle(input) {
+      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
+    },
+
+    async fetch(input, ctx: SourceContext): Promise<SourceResult<GithubDeploymentsReading>> {
+      const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
+      const url = `${base}/repos/${input.owner}/${input.repo}/deployments?environment=production&per_page=5`;
+
+      const result = await performSourceFetch(
+        { ...ctx, timeoutMs: Math.min(ctx.timeoutMs, DEPLOYMENTS_TIMEOUT_MS) },
+        { url, headers: authHeaders(input.token), maxBytes: DEPLOYMENTS_MAX_BYTES, allowedContentTypes: ['application/json'] },
+        {
+          schema: githubDeploymentsSchema,
+          parse: (body) => JSON.parse(body) as unknown,
+          cacheTtlSeconds: CACHE_TTL_SECONDS,
+          normalize: (raw): GithubDeploymentsReading => {
+            const latest = raw
+              .filter((row) => PRODUCTION_ENVIRONMENT.test(row.environment) && row.transient_environment !== true)
+              .map((row) => ({ row, at: toDate(row.created_at) }))
+              .filter((entry): entry is { row: (typeof raw)[number]; at: Date } => entry.at !== undefined)
+              .sort((a, b) => b.at.getTime() - a.at.getTime())[0];
+            if (!latest) return {};
+            return {
+              latestProduction: {
+                environment: latest.row.environment,
+                createdAt: latest.at,
+                ...opt('sha', latest.row.sha ?? undefined),
+              },
+            };
+          },
+        },
+      );
+      return keepToProviderHost(result, base);
     },
   };
 }

@@ -1,0 +1,326 @@
+{
+ "openapi": "3.1.0",
+ "info": {
+  "title": "Axon API",
+  "version": "0.1.0"
+ },
+ "servers": [
+  {
+   "url": "/api",
+   "description": "Current server"
+  }
+ ],
+ "paths": {
+  "/commerce/profiles": {
+   "get": {
+    "summary": "List your commerce profiles"
+   },
+   "post": {
+    "summary": "Store a delivery profile"
+   },
+   "delete": {
+    "summary": "Erase a profile's stored details"
+   }
+  },
+  "/commerce/mandates": {
+   "get": {
+    "summary": "List spend mandates, with spend to date"
+   },
+   "post": {
+    "summary": "Grant an agent a spending budget"
+   },
+   "delete": {
+    "summary": "Revoke a mandate"
+   }
+  },
+  "/commerce/intents": {
+   "get": {
+    "summary": "Purchases proposed, approved and completed"
+   }
+  },
+  "/commerce/intents/{intentId}/decision": {
+   "get": {
+    "summary": "The exact text to sign to approve"
+   },
+   "post": {
+    "summary": "Approve or decline a purchase"
+   }
+  },
+  "/commerce/intents/{intentId}/payment": {
+   "get": {
+    "summary": "Which payment handler to run for this purchase"
+   }
+  },
+  "/commerce/kill": {
+   "post": {
+    "summary": "Stop all agent spending immediately"
+   }
+  },
+  "/agents": {
+   "get": {
+    "summary": "Search agents"
+   },
+   "post": {
+    "summary": "Register an agent"
+   }
+  },
+  "/agents/{agentId}": {
+   "get": {
+    "summary": "Get agent by ID"
+   },
+   "patch": {
+    "summary": "Update agent fields"
+   }
+  },
+  "/tasks": {
+   "post": {
+    "summary": "Dispatch a task"
+   }
+  },
+  "/tasks/{taskId}": {
+   "get": {
+    "summary": "Get task status + output"
+   }
+  },
+  "/tasks/plan": {
+   "post": {
+    "summary": "Self-assembling planner (Phase 11)"
+   }
+  },
+  "/tasks/{taskId}/subcontract": {
+   "get": {
+    "summary": "List a task's subcontracts (Phase 11)"
+   },
+   "post": {
+    "summary": "Subcontract part of a task (Phase 11)"
+   }
+  },
+  "/agents/{agentId}/optimize": {
+   "get": {
+    "summary": "Recommend a price from the agent's receipts (Phase 11)"
+   },
+   "post": {
+    "summary": "Recommend and optionally apply a new price (Phase 11)"
+   }
+  },
+  "/open-tasks": {
+   "get": {
+    "summary": "Discover open tasks available to bid on"
+   },
+   "post": {
+    "summary": "Open a task for bidding"
+   }
+  },
+  "/open-tasks/{openTaskId}": {
+   "get": {
+    "summary": "Get an open task and all its bids"
+   },
+   "delete": {
+    "summary": "Cancel an open task (poster only)"
+   }
+  },
+  "/open-tasks/{openTaskId}/bids": {
+   "get": {
+    "summary": "List bids on an open task"
+   },
+   "post": {
+    "summary": "Submit a bid"
+   }
+  },
+  "/open-tasks/{openTaskId}/accept": {
+   "post": {
+    "summary": "Accept a bid, converts to a task at the agreed price (paid bids require a paymen"
+   }
+  },
+  "/tasks/{taskId}/splits": {
+   "get": {
+    "summary": "View a task's escrow split and projected per-recipient payouts (payer only)"
+   },
+   "post": {
+    "summary": "Define how a task's escrow is split across multiple agents (payer only, before s"
+   }
+  },
+  "/workflow-templates": {
+   "get": {
+    "summary": "Discover reusable workflow templates"
+   },
+   "post": {
+    "summary": "Create a reusable workflow template"
+   }
+  },
+  "/workflow-templates/{templateId}": {
+   "get": {
+    "summary": "Get a workflow template"
+   },
+   "delete": {
+    "summary": "Delete a workflow template (owner only)"
+   }
+  },
+  "/workflow-templates/{templateId}/instantiate": {
+   "post": {
+    "summary": "Instantiate a template, resolve its task and start a real workflow"
+   }
+  },
+  "/agents/{agentId}/attestations": {
+   "get": {
+    "summary": "List an agent's capability attestations"
+   },
+   "post": {
+    "summary": "Submit a signed capability attestation (the verifier signature is the auth, no A"
+   }
+  },
+  "/agents/{agentId}/attestations/{attestationId}": {
+   "delete": {
+    "summary": "Revoke an attestation (only the original verifier, proven by signature)"
+   }
+  },
+  "/tasks/{taskId}/sla": {
+   "get": {
+    "summary": "Get a task's SLA and its current status"
+   },
+   "post": {
+    "summary": "Define (or replace) a task's SLA, a deadline and a breach penalty. The task's pa"
+   }
+  },
+  "/abuse-reports": {
+   "get": {
+    "summary": "The moderation queue (moderator only)"
+   },
+   "post": {
+    "summary": "File an abuse report against an agent"
+   }
+  },
+  "/abuse-reports/{reportId}/resolve": {
+   "post": {
+    "summary": "Resolve or dismiss a report (moderator only)"
+   }
+  },
+  "/fee-policy": {
+   "get": {
+    "summary": "The platform's published fee policy"
+   }
+  },
+  "/protocol": {
+   "get": {
+    "summary": "The protocol versions and capabilities this server speaks"
+   },
+   "post": {
+    "summary": "Negotiate a common protocol version"
+   }
+  },
+  "/explorer": {
+   "get": {
+    "summary": "Public network explorer: recent tasks, settlements, and totals (metadata only)"
+   }
+  },
+  "/status": {
+   "get": {
+    "summary": "Public platform status: components, overall health, and live metrics"
+   }
+  },
+  "/receipts/{taskId}/public": {
+   "get": {
+    "summary": "Public, shareable receipt, metadata, tamper-evidence hashes and settlement only "
+   }
+  },
+  "/receipts/{taskId}": {
+   "get": {
+    "summary": "Get the full receipt for a task (task, payment, webhooks, and dispute/refund not"
+   },
+   "post": {
+    "summary": "Attach a dispute note to the payment (refund notes are system-generated)"
+   }
+  },
+  "/agents/{agentId}/tasks": {
+   "get": {
+    "summary": "Get task history for an agent"
+   }
+  },
+  "/auth/keys": {
+   "get": {
+    "summary": "List API keys"
+   },
+   "post": {
+    "summary": "Create a new API key"
+   }
+  },
+  "/auth/keys/{keyId}": {
+   "delete": {
+    "summary": "Revoke an API key"
+   }
+  },
+  "/allowance": {
+   "get": {
+    "summary": "Read the allowance behind this key"
+   }
+  },
+  "/allowance/payments": {
+   "get": {
+    "summary": "List payments made from the allowance"
+   }
+  },
+  "/allowance/keys": {
+   "get": {
+    "summary": "List allowance keys"
+   },
+   "post": {
+    "summary": "Create an allowance key"
+   }
+  },
+  "/allowance/keys/{keyId}": {
+   "delete": {
+    "summary": "Revoke an allowance key"
+   }
+  },
+  "/webhooks": {
+   "get": {
+    "summary": "List webhooks for an agent"
+   },
+   "post": {
+    "summary": "Register a webhook"
+   }
+  },
+  "/agents/{agentId}/budget": {
+   "get": {
+    "summary": "Get budget and today's spend"
+   },
+   "post": {
+    "summary": "Create or replace budget"
+   },
+   "delete": {
+    "summary": "Delete budget"
+   }
+  },
+  "/agents/{agentId}/threshold": {
+   "get": {
+    "summary": "Get spend alert threshold and current window spend"
+   },
+   "put": {
+    "summary": "Set spend alert threshold"
+   },
+   "delete": {
+    "summary": "Delete spend alert threshold"
+   }
+  },
+  "/health": {
+   "get": {
+    "summary": "Liveness check"
+   }
+  },
+  "/ready": {
+   "get": {
+    "summary": "Readiness check"
+   }
+  },
+  "/tasks/quorum": {
+   "post": {
+    "summary": "Create a quorum task"
+   }
+  },
+  "/quorum/{quorumId}": {
+   "get": {
+    "summary": "Get quorum task status"
+   }
+  }
+ }
+}

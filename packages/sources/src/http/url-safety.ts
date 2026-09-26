@@ -116,13 +116,20 @@ export function ipv6Groups(address: string): number[] | undefined {
 
 const v4Of = (high: number, low: number): string => [(high >>> 8) & 255, high & 255, (low >>> 8) & 255, low & 255].join('.');
 
+/**
+ * Only an IPv6 literal is read as one (2026-09-27, audit G S2). The range
+ * checks used to compare text prefixes on any hostname, so `fedoraproject.org`,
+ * `fcc.gov` and `feathercult.com` began with "unique local" or "site-local"
+ * and were refused as private addresses — three production projects recorded
+ * as `website_unreachable:BLOCKED_URL`. A host without a colon is a name; DNS
+ * decides where it points, and `assertResolvesPublic` checks that. The ranges
+ * are read from the parsed groups now, so `fc::1` (which is `00fc::1`) is no
+ * longer mistaken for `fc00::/7` either.
+ */
 const isPrivateIpv6 = (host: string): boolean => {
-  const normalized = host.replace(/^\[|\]$/g, '').toLowerCase();
+  const normalized = host.replace(/^\[|\]$/g, '').split('%')[0]!.toLowerCase();
+  if (!normalized.includes(':')) return false;
   if (normalized === '::1' || normalized === '::') return true;
-  if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true; // unique local fc00::/7
-  // Link-local is fe80::/10: the first ten bits, so fe80 through febf (audit H05).
-  if (/^fe[89ab]/.test(normalized)) return true;
-  if (/^fec/.test(normalized) || /^fed/.test(normalized) || /^fee/.test(normalized) || /^fef/.test(normalized)) return true; // site-local fec0::/10, deprecated but routable
 
   const mapped = mappedIpv4(normalized.split(':'));
   if (mapped) return isPrivateIpv4(mapped);
@@ -134,8 +141,15 @@ const isPrivateIpv6 = (host: string): boolean => {
    * packet really goes, and HEY has no reason to reach any of them.
    */
   const groups = ipv6Groups(normalized);
-  if (!groups) return false;
+  // A colon-bearing host that does not parse as an address is not one HEY can vouch for.
+  if (!groups) return true;
   const [g0 = 0, g1 = 0, g2 = 0, g3 = 0, g4 = 0, g5 = 0, g6 = 0, g7 = 0] = groups;
+  // fc00::/7, unique local.
+  if ((g0 & 0xfe00) === 0xfc00) return true;
+  // fe80::/10, link-local: the first ten bits, so fe80 through febf (audit H05).
+  if ((g0 & 0xffc0) === 0xfe80) return true;
+  // fec0::/10, site-local: deprecated but routable.
+  if ((g0 & 0xffc0) === 0xfec0) return true;
   // ::/96, IPv4-compatible (deprecated): `[::7f00:1]` is 127.0.0.1 on a stack that still honours it.
   if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0) return true;
   // 64:ff9b::/96 and the local-use 64:ff9b:1::/48: NAT64, which reaches whatever IPv4 address the low bits name.
@@ -214,6 +228,32 @@ export function isSafeUrl(candidate: string): boolean {
 /** Resolves a hostname to every address it currently points at. */
 export type AddressLookup = (hostname: string) => Promise<string[]>;
 
+/**
+ * A lookup bounded by the request's signal (2026-09-27, audit G S7). The DNS
+ * lookup ran before the fetch and outside its deadline, so a nameserver that
+ * never answered held the request (and a libuv threadpool thread) past the
+ * timeout. The request now gives up when its signal fires; the resolver's own
+ * thread finishes in the background, as `getaddrinfo` cannot be cancelled.
+ */
+export function raceWithSignal<T>(work: Promise<T>, signal: AbortSignal | undefined): Promise<T> {
+  if (!signal) return work;
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    work.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
 /** Node's resolver, as the crawler uses it. Tests inject a stub instead. */
 export const systemLookup: AddressLookup = async (hostname) => {
   const { lookup } = await import('node:dns/promises');
@@ -249,6 +289,7 @@ export type ResolvedUrlSafetyResult =
 export async function assertResolvesPublic(
   candidate: string,
   lookup: AddressLookup = systemLookup,
+  signal?: AbortSignal,
 ): Promise<ResolvedUrlSafetyResult> {
   const literal = assertSafeUrl(candidate);
   if (!literal.ok) return literal;
@@ -258,8 +299,10 @@ export async function assertResolvesPublic(
 
   let addresses: string[];
   try {
-    addresses = await lookup(hostname);
-  } catch {
+    addresses = await raceWithSignal(lookup(hostname), signal);
+  } catch (error) {
+    // The request's own deadline, not the name: the caller reports a timeout.
+    if (signal?.aborted) throw error;
     return { ok: false, reason: 'UNRESOLVABLE_HOST', detail: `host ${hostname} does not resolve` };
   }
   if (addresses.length === 0) {

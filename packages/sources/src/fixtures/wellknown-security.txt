@@ -1,0 +1,5 @@
+# Security contact for Example Protocol
+Contact: mailto:security@example.org
+Contact: https://example.org/security
+Expires: 2027-01-01T00:00:00.000Z
+Policy: https://example.org/security-policy

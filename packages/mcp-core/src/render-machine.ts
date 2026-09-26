@@ -49,7 +49,14 @@ const DIMENSION_WORDS: Record<HeyCoverageDimension, string> = {
   distribution: 'supply distribution',
   locks: 'locks',
   marketIntegrity: 'market integrity',
+  protocolEconomics: 'protocol economics',
   timeline: 'timeline',
+  officialDocs: 'official docs',
+  apiDocs: 'API description',
+  sourceChanges: 'official source changes',
+  gitHost: 'repository metadata',
+  package: 'published packages',
+  securityContext: 'package advisories',
 };
 
 function coverageLine(dimension: HeyCoverageDimension, entry: HeyCoverageEntry): string {

@@ -1,0 +1,70 @@
+{
+  "id": "GHSA-35jp-ww65-95wh",
+  "summary": "axios Vulnerable to Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy`",
+  "details": "# Vulnerability Disclosure: Full Man-in-the-Middle via Prototype Pollution Gadget in `config.proxy`\n\n## Summary\n\nThe Axios library is vulnerable to a Prototype Pollution \"Gadget\" attack that allows any `Object.prototype` pollution in the application's dependency tree to be escalated into a **full Man-in-the-Middle (MITM) attack** \u2014 intercepting, reading, and modifying all HTTP traffic including au",
+  "aliases": [
+    "CVE-2026-44494"
+  ],
+  "modified": "2026-09-10T03:51:04.268287831Z",
+  "published": "2026-05-29T16:04:00Z",
+  "database_specific": {
+    "cwe_ids": [
+      "CWE-1321",
+      "CWE-441"
+    ],
+    "severity": "HIGH",
+    "github_reviewed": true,
+    "github_reviewed_at": "2026-05-29T16:04:00Z",
+    "nvd_published_at": "2026-06-11T17:16:33Z"
+  },
+  "references": [
+    {
+      "type": "WEB",
+      "url": "https://github.com/axios/axios/security/advisories/GHSA-35jp-ww65-95wh"
+    },
+    {
+      "type": "ADVISORY",
+      "url": "https://nvd.nist.gov/vuln/detail/CVE-2026-44494"
+    },
+    {
+      "type": "ADVISORY",
+      "url": "https://github.com/advisories/GHSA-fvcv-3m26-pcqx"
+    },
+    {
+      "type": "PACKAGE",
+      "url": "https://github.com/axios/axios"
+    }
+  ],
+  "affected": [
+    {
+      "package": {
+        "name": "axios",
+        "ecosystem": "npm",
+        "purl": "pkg:npm/axios"
+      },
+      "ranges": [
+        {
+          "type": "SEMVER",
+          "events": [
+            {
+              "introduced": "1.0.0"
+            },
+            {
+              "fixed": "1.16.0"
+            }
+          ]
+        }
+      ],
+      "database_specific": {
+        "source": "https://github.com/github/advisory-database/blob/main/advisories/github-reviewed/2026/05/GHSA-35jp-ww65-95wh/GHSA-35jp-ww65-95wh.json"
+      }
+    }
+  ],
+  "schema_version": "1.9.0",
+  "severity": [
+    {
+      "type": "CVSS_V3",
+      "score": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:C/C:H/I:H/A:N"
+    }
+  ]
+}

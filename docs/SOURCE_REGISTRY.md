@@ -19,6 +19,28 @@ reader can see where a rule is decided, not as links to follow here.
 
 ## Tier A — Robinhood Chain native / canonical
 
+### Sourcify (2026-09-27)
+
+| | |
+| --- | --- |
+| Base URL | `https://sourcify.dev/server` (v2) |
+| Purpose | Independent verification: creation and runtime bytecode matched to published source |
+| Reads | The newest-first listing `/v2/contracts/4663` (daily, back to the last `matchId` read, 30 pages at most, `source_sync_state` `SOURCIFY_VERIFIED`); per address `/v2/contract/4663/{a}?fields=abi,compilation,deployment,proxyResolution` for watched contracts the explorer calls unverified, and proxies (40/day, `SOURCIFY_LOOKUP`) |
+| Kept | Match, creation and runtime match, contract name, compiler, ABI signatures, proxy resolution, creating transaction and block. **Never the deployer.** |
+| Auth / free | None / yes. Chain 4663 is `supported` |
+| Rate limit | None published; one request a second, metered under `sourcify` (500/day) |
+| Verified | 2026-09-27: a verified contract 200 (~5 KB with these fields), an unverified one 404 `{match:null}` (read as "not on Sourcify") |
+
+### Sourcify signature database (2026-09-27)
+
+| | |
+| --- | --- |
+| Endpoint | `https://api.4byte.sourcify.dev/signature-database/v1/lookup?function=a,b,…&filter=true` |
+| Purpose | Signature **candidates** for selectors no verified ABI names — never a method name |
+| Kept | Every candidate with provider, lookup date and `hasVerifiedContract`, in `signature_candidates`; a candidate that does not hash to its selector is dropped |
+| Rate limit | None published; 25 selectors a GET, ten GETs a day at most, metered under `sourcify` |
+| Verified | 2026-09-27: 3 of 4 leftover selectors answered; `0xa9059cbb` returns 13 signatures unfiltered (the collision fixture). OpenChain serves the same database; 4byte.directory answers one selector a request with less coverage — neither is read |
+
 ### Robinhood Chain public RPC
 
 | | |
@@ -79,6 +101,17 @@ Adapter: `packages/sources/src/adapters/hooddev.ts`. `socials` is parsed as JSON
 is JSON, scanned for absolute URLs otherwise, and ignored when it is neither — nothing is
 guessed. Job: `DISCOVER_LISTINGS`, source id `HOODDEV`, `discovered_via = 'hooddev'`,
 `launchpad = 'hooddev'`.
+
+### Robinhood Chain Blockscout — smart-contract record (2026-09-27)
+
+| | |
+| --- | --- |
+| Endpoint | `https://robinhoodchain.blockscout.com/api/v2/smart-contracts/{address}` (instance, no key) |
+| Purpose | The ABI watch's read: verified or not, the ABI as canonical signatures, how the source was verified (`is_verified_via_eth_bytecode_db`, `_sourcify`, `_verifier_alliance`), full or partial, `verified_at`, `proxy_type` and `implementations` |
+| Not kept | Source code, bytecode, constructor arguments, compiler settings |
+| Rate limit | Undocumented. One call per watched contract on its recheck, under `blockscout-source` (1,000/day, 60/min); a clone's implementation once a run |
+| Verified | 2026-09-27 from this machine and from the production host: 200, `application/json`, 0.4–0.7 MB |
+| Fallback | PRO API `getsourcecode` (with `RH_BLOCKSCOUT_API_KEY`) when the record does not answer; it keeps the ABI and leaves the verification method as it was |
 
 ### Robinhood Chain Blockscout
 
@@ -290,20 +323,26 @@ inventory and factory events, then reconciles each candidate against this
 provider in batches.
 | Fallback | GeckoTerminal for market context; discovery degrades to the other sources |
 
-`ads` and paid `orders` are **not** read. Paid placement is not evidence of building,
-and treating it as such would make ranking purchasable.
+Since 2026-09-27 the batch endpoint's `boosts.active` is kept as presence only (an undated
+"promotion observed" sighting, never the count) and the deepest pair's `labels` (`v4`) are kept
+in the adapter's output; neither is a market figure or a ranking input.
+
+Paid placement is not evidence of building, and treating it as such would make ranking
+purchasable. Since 2026-09-27 ads, takeovers and paid orders **are read — as dated market
+context only** (below): never a ship, a badge, a signal, a ranking input or a change event, and
+never an amount.
 
 #### DEX Screener token profiles (and boost lists, for enumeration only)
 
 | | |
 | --- | --- |
-| Endpoints | `/token-profiles/latest/v1`, `/token-boosts/latest/v1`, `/token-boosts/top/v1` |
+| Endpoints | `/token-profiles/latest/v1`, `/token-profiles/recent-updates/v1` (2026-09-27), `/token-boosts/latest/v1`, `/token-boosts/top/v1` |
 | Purpose | Which tokens on the chain have a team-written profile: description, icon, website, docs, socials |
 | Fields used | `chainId`, `tokenAddress`, `description`, `icon`, `links[].{label,type,url}`, `url`, `cto` |
 | **Dropped** | `amount`, `totalAmount` (boost spend) — validated so the payload parses, never stored, never scored |
 | Auth | None |
 | Free | Yes |
-| Rate limit | Documented ~60 req/min. Three requests per daily run |
+| Rate limit | Documented ~60 req/min. **Hourly since 2026-09-27** (`DISCOVER_DEXSCREENER_FEEDS`): four profile feeds plus the two feeds below, six requests an hour, 144 a day against the `dexscreener-profiles` budget of 300. The feeds hold ~30 records across every chain; the old daily read (24 requests in seven days) let most Robinhood profiles scroll past |
 | Cache policy | 15m — the lists roll over constantly |
 | Reliability | **Medium** (self-declared to an aggregator). Rank 10 in the candidate store, so it fills gaps and never overwrites a launchpad's identity |
 | Verified | 2026-09-03: each feed returned 30 records, cross-chain; **20 / 14 / 14** were `chainId: "robinhood"`. Profile `icon` is a CDN URL; boost `icon` is a bare CMS id (`_bNkrynaHAamIH5s`) and is not stored. Links came as `{label:"Website"|"Docs",url}`, `{type:"twitter"|"telegram"|"tiktok"|"instagram",url}` or plain `{url}` |
@@ -315,6 +354,25 @@ for nothing else — the chain-locked filter is applied on `chainId === 'robinho
 website is the first `Website`-labelled or unlabelled non-social link, social hosts are
 recognised by hostname even when untyped, and the spend never leaves the adapter. This
 is the one deliberate exception to "boosts are not read", and it does not touch ranking.
+A boost-list entry and a profile's `cto: true` are also recorded as undated market-context
+sightings (`boosts_feed`, `profile_cto`) for tokens HEY holds.
+
+#### DEX Screener promotion and community-takeover context (2026-09-27)
+
+| | |
+| --- | --- |
+| Endpoints | `/community-takeovers/latest/v1` (hourly), `/ads/latest/v1` (hourly), `/orders/v1/{chain}/{token}` (each published token about weekly) |
+| Purpose | That a paid promotion or a community takeover was observed for a token HEY holds, of which kind, and **the provider's own date** (`claimDate`, an ad's `date`, an order's or boost's `paymentTimestamp`) |
+| Stored in | `token_market_context_events`: `MARKET_PROMOTION_OBSERVED` or `COMMUNITY_TAKEOVER_PROFILE_OBSERVED`, a channel word (`token_ad`, `takeover_claim`, `token_profile_order`, `community_takeover_order`, `boost_order`, and the undated `boost_active`, `boosts_feed`, `profile_cto`), `provider_at` (null when the provider dates nothing), first and last observed |
+| **Dropped** | `impressions`, `amount`, `totalAmount`, the boost count — validated, never stored; orders that are not `approved` are counted and never recorded |
+| Never | a ship, a badge, a signal, a ranking or ordering input, a change-ledger event or webhook (a paid boost must not buy a place in a feed), a candidate (a takeover profile is the community's, not the team's) |
+| Rate limit | 60 req/min documented. Orders: budget `dexscreener-orders` 1,000/day, paced 30/min, 25 tokens an hour, keyset cursor `source_sync_state` `DEXSCREENER_ORDERS`; a cycle over the ~2,300 published tokens takes about four days and the next starts a week after the last began |
+| Verified | 2026-09-27 live: takeovers 2 of 13 records on `robinhood`, ads 12 of 30; an order read for a Robinhood token returned one approved `tokenProfile` order and one boost with `paymentTimestamp`; an unknown token `{"orders":[],"boosts":[]}` |
+| Surface | `GET /api/projects/{slug}/snapshot` → `market.promotion` |
+
+Adapter: `packages/sources/src/adapters/dexscreener-promotions.ts`; domain
+`packages/domain/src/market-promotions.ts`; CLI `pnpm --filter @hey/worker data:defi orders`
+(dry run by default).
 
 ### GeckoTerminal
 
@@ -332,6 +390,16 @@ is the one deliberate exception to "boosts are not read", and it does not touch 
 | Reliability | **Medium** (aggregator) |
 | Verified | `/pools` returns 20 per page and **stops at page 10** (200 pools max); page 11 is empty. `new_pools` also returns 20. `/networks/robinhood` itself 404s — only the sub-resources exist |
 | Fallback | DEX Screener |
+
+**`/tokens/multi/{≤30}` — measured and not adopted (2026-09-27).** It would screen 30 fallback
+tokens per call, but only the tokens with no pool anywhere are saved a per-token read: production
+wrote 152 "no pool" answers against 2,802 GeckoTerminal readings in the 24 hours to 27 Sep (~5%),
+so a 30-token screen saves about 1.5 calls and costs 1, at the head of a sweep already at its
+10-a-minute ceiling. As a *replacement* for the per-token read it would change a published figure:
+its `top_pools` lists fewer pools than `/tokens/{a}/pools` (one of two for the sampled token) and
+`total_reserve_in_usd` is a different liquidity measure. `launchpad_details.completed_at` (a dated
+graduation) arrives only on that endpoint; none of the responses HEY already fetches carries it,
+so it is not surfaced.
 
 The 200-pool ceiling is the real bound on HEY's discovery universe today — see
 `docs/REAL_DATA_PIPELINE.md`.
@@ -388,10 +456,26 @@ they stay candidates and the gate must not publish them as projects.
 | | |
 | --- | --- |
 | Base URL | `https://api.llama.fi` |
-| Purpose | Protocol category and TVL for mature protocols only |
+| Purpose | The protocol registry for the chain (discovery, identity candidates, TVL) and, since 2026-09-27, **Protocol Economics**: fees, revenue and DEX volume on the chain |
+| Endpoints | `/protocols` (~9 MB, all chains; filtered to `Robinhood Chain`); `/overview/fees/Robinhood%20Chain`, the same with `dataType=dailyRevenue`, `/overview/dexs/Robinhood%20Chain` — each with `excludeTotalDataChart=true&excludeTotalDataChartBreakdown=true` (~0.5 MB) |
+| Fields used | registry: name, slug, url, twitter, github, category, chains, chainTvls (exact chain label only), listedAt, symbol, logo, and since 2026-09-27 `id`, `address` (only `robinhood:0x…`; a bare `0x…` is Ethereum), `audits`, `audit_links`, `methodology` (capped 2,000 chars), `tvlCodePath`, `gecko_id`, `parentProtocolSlug`, `forkedFromIds`, `deadUrl`, `dimensions` (the keys only); overviews: `slug`, `defillamaId`, `total24h`/`7d`/`30d`, `methodologyURL`. The chain's own row (`protocolType: chain`) is skipped |
+| **Not used** | `mcap`, `change_*` (would duplicate the canonical market figures), `hallmarks` (editorial notes with no primary source), `treasury`, per-protocol `/protocol/{slug}` polling |
 | Auth | None |
-| **Status** | **NOT INTEGRATED in this bootstrap** |
-| Rationale | Robinhood Chain has no listed protocols to enrich yet. Absence from DefiLlama is explicitly *not* a negative signal, so integrating it now would add requests and change nothing |
+| Free | Yes |
+| Rate limit | None stated. **Four requests a day** under budget `defillama` (200): the registry once a UTC day, shared by `DEFI_TVL_SNAPSHOT`, `DISCOVER_ECOSYSTEM` and `BACKFILL_LOGOS` through `defi_protocols` (it was downloaded three times a day, twice unmetered), and the three overviews |
+| Null semantics | a protocol absent from an overview, or listed with `total24h: null`, is `NOT_TRACKED`, never zero; an overview HEY could not read is `UNREAD` for that day; only a number is `MEASURED`, and a measured zero stays zero |
+| Verified | 2026-09-27: 8,385 protocols, **197** on Robinhood Chain; overviews 206 fee, 203 revenue, 102 volume rows. Of the **192 protocols matched to a published page**, fees are measured for 107 (37 of them zero), revenue for 104 (47 zero), DEX volume for 60 (15 zero) |
+| Reliability | **Medium** (curated registry of self-submitted adapters). Context only: nothing it says reaches activity status, Build Momentum, the Discovery Gap or the Radar |
+| Surface | `GET /api/projects/{slug}/snapshot` → `protocolEconomics`; coverage dimension `protocolEconomics` |
+
+A declared `robinhood:0x…` token is an identity **candidate**: when HEY holds it on a record other
+than the protocol's page, the weekly `DEFI_IDENTITY_REVIEW` files one `DUPLICATE_PROJECT`
+moderation flag on that record (the published-twin review path), never a merge. Declared GitHub
+organisations are still attached by `promote-listing.ts` as official `AUTHORITATIVE_LINK`
+sources (29 on production, all already on their page) — whether a registry-declared link keeps
+that tier is an open founder decision (audit D §6.1). Adapters:
+`packages/sources/src/adapters/defillama.ts`, `defillama-overview.ts`; domain
+`packages/domain/src/defi/`; CLI `pnpm --filter @hey/worker data:defi economics|identity|github-orgs`.
 
 ---
 
@@ -468,22 +552,91 @@ discovery: `packages/domain/src/builders/discover-code.ts`; candidates carry
 Adapter: `packages/sources/src/adapters/npm.ts`; discovery:
 `packages/domain/src/builders/discover-npm.ts`; terms `NPM_DISCOVERY_TERMS`.
 
+### Developer footprint (2026-09-27)
+
+Context about a project's public developer surface, read by one serial job
+(`REFRESH_DEVELOPER_FOOTPRINT`, hourly, one at a time; CLI `pnpm data:packages`, dry run by
+default). **Never a ship, never scored, never an input to activity status, Build Momentum, the
+Discovery Gap or the Radar** (`packages/domain/src/footprint/neutrality.test.ts`). Tables:
+`repo_footprints`, `project_packages`, `security_advisories` (migration 0150).
+
+#### GitHub — repository metadata, release assets, production deployments
+
+| | |
+| --- | --- |
+| Endpoints | `GET /repos/{o}/{r}` (ETag) — `topics`, `license.spdx_id`, `language`, `owner.type`, `homepage`; `GET /repos/{o}/{r}/releases` (already read by ship ingestion) — `assets[].name/size/content_type`; `GET /repos/{o}/{r}/deployments?environment=production&per_page=5` (ETag) |
+| Purpose | Owner-declared repository context; kind hints for release assets (desktop, mobile, cli, checksums, other) on the release's own evidence (`ship_event_evidence.metadata.assets/assetKinds/assetCount`); the newest deployment to an environment named production, with its name, time and commit |
+| Not used | `download_count`, `stargazers_count`, forks, the deployment's creator, Actions runs, tags, merged PRs |
+| Budget | `github-repo` (shared, 2,000/day), `github-deployments` 1,000/day; both paced at 60/minute. Asset hints cost no request |
+| Verified | 2026-09-27: KeeperHub/keeperhub 13 topics, licence `NOASSERTION`, TypeScript, Organization; TokenBrice/pharos-watch `environment=production` and `=PRODUCTION` return the same list (the filter ignores case), latest `production` 2026-09-26; textile-stitch v0.1.280 carries 22 assets (a `.dmg`, per-platform CLI archives, `.sha256` files) |
+| Reliability | A deployment record is not a success and not activity (one audited repository has 36,000 staging deployments); only exactly `production`, whatever the case, and never a transient environment |
+
+#### deps.dev (Open Source Insights) — packages and Scorecard
+
+| | |
+| --- | --- |
+| Base URL | `https://api.deps.dev` (v3, keyless) |
+| Endpoints | `GET /v3/projects/github.com%2F{o}%2F{r}:packageversions`; `GET /v3/systems/{s}/packages/{name}`; `GET /v3/systems/{s}/packages/{name}/versions/{v}`; `GET /v3/projects/github.com%2F{o}%2F{r}` (Scorecard block only) |
+| Purpose | Which packages name an official repository and how deps.dev knows (`SLSA_ATTESTATION`, `GO_ORIGIN`, `UNVERIFIED_METADATA`); each package's versions, publication times and default; the latest version's homepage, typed repository and verified provenance; OpenSSF Scorecard checks when deps.dev holds them |
+| Not used | `starsCount`, `forksCount`, `overallScore` (no aggregate verdict), advisory keys (OSV is asked directly) |
+| Budget | `depsdev` 2,000/day, paced at 60/minute; two reads per official repository and two per package, weekly |
+| Cache | `cache-control: public, max-age=3600`; no ETag; an unknown project is a plain-text 404, read as "no package" |
+| Verified | 2026-09-27: `useboardwalk/boardwalk-sdk` → `@useboardwalk/sdk` with verified SLSA provenance naming the repository; 14 official repositories behind claimed npm links: every npm entry `UNVERIFIED_METADATA`; all 6 `GO_ORIGIN` entries were TypeScript repositories with no go.mod (a Go proxy artifact, so a Go entry is kept only for a repository GitHub calls Go); MetaMask/metamask-extension carries a Scorecard dated 2026-08-24, viem none |
+| Reliability | The repository a package names is typed by its publisher. A package is **ACCEPTED** only when an official source links its page, a verified attestation names an official repository, a Go module path is under an official repository or owner, or its homepage is on the official domain (the exact host on shared hosting); otherwise **CLAIMED**, shown as a claim and never queried for advisories |
+
+#### OSV — advisories about accepted packages
+
+| | |
+| --- | --- |
+| Base URL | `https://api.osv.dev` (keyless) |
+| Endpoints | `POST /v1/querybatch` (≤ 1,000 `{package:{ecosystem,name},version}` per request); `GET /v1/vulns/{id}` for ids HEY has not read or that changed |
+| Purpose | Advisory id, aliases, a one-line summary, the ranges OSV gives for this package and the fixed versions, for the latest version of each **accepted** package, weekly. Stored with `subject = PUBLISHED_PACKAGE`; no dependency or lockfile is ever queried |
+| Not used | `details`, references, severity ratings |
+| Budget | `osv` 500/day, paced at 60/minute; one batch a run plus at most 50 advisory reads |
+| Verified | 2026-09-27: `@useboardwalk/sdk@2.1.1` → no advisory; control `axios@1.6.0` → advisories (e.g. `GHSA-35jp-ww65-95wh`, aliases, SEMVER range introduced 1.0.0, fixed 1.16.0) |
+| Reliability | Context about a published package version, never a verdict about a project; an advisory a later query no longer returns is marked cleared, not deleted |
+
 ### Official project websites and docs
 
 | | |
 | --- | --- |
 | Purpose | The strongest promotion evidence: does a real project exist behind this token |
-| Fields used | `<title>`, description, canonical URL, outbound GitHub/docs links, RSS/Atom feed discovery |
+| Fields used | `<title>`, description, canonical URL, outbound GitHub/docs links, RSS/Atom feed discovery; GitLab.com and Codeberg repository links counted as `forgeUrls` (2026-09-27, never ingested, never a self-hosted forge) |
 | Auth | None |
 | Rate limit | Self-imposed: one fetch per project per run, conditional on ETag/Last-Modified |
 | Cache policy | 12–24h |
 | Reliability | **Authoritative** for the project's own identity claims |
-| Safety | http/https only; private, loopback and link-local addresses blocked; redirects revalidated per hop; response size capped; content-type allowlisted |
+| Safety | http/https only, on the scheme's own port; private, loopback and link-local addresses blocked (IPv6 ranges on IPv6 literals only); every name resolved inside the request deadline and the connection pinned to the checked address; redirects revalidated per hop, credentials dropped across hosts and an https→http hop carrying a secret refused; unread bodies cancelled; response size capped (2 MB for pages and feeds); content-type allowlisted |
+| Parsing limits (2026-09-27) | HTML: one linear scan over the first 512 Ki characters, at most 4,000 anchors, tags over 8 KB skipped, numeric entities clamped to U+FFFD. XML (`xml.ts`): entity expansion off, 64 levels of nesting, 2 Mi characters |
+| Same site | The registrable domain, where each tenant of a shared host (`*.vercel.app`, `*.github.io`, `*.netlify.app` …, `registrable.ts`) is its own site: docs and feeds on another tenant are not the project's |
 | Fallback | Unreachable site → the candidate keeps whatever evidence it already has and is judged on that |
 
 Structured data is preferred over HTML in every case: RSS, Atom, JSON-LD and GitHub
 releases before parsing a page. HTML metadata is read only from pages the project
 publishes publicly.
+
+Since 2026-09-27 a project that already has a repository is still crawled for docs and feeds
+(it is not re-resolved for repositories), and every repository, docs and feed link a crawl
+extracts is kept as candidate evidence (`evidence_candidates`), classified by rules — never
+by what the page says about itself.
+
+### Official site well-known files (2026-09-27)
+
+| | |
+| --- | --- |
+| Files | `robots.txt` (read first), `sitemap.xml` (or the robots `Sitemap:` line), `llms.txt`, `/.well-known/security.txt`, an OpenAPI description only when `llms.txt` or the sitemap links it, and the conventional feed paths (`/rss.xml`, `/feed.xml`, `/atom.xml`, `/feed`, `/blog/rss.xml`, `/changelog.xml`) at most monthly while the site has no feed |
+| Purpose | Official docs, API descriptions, feeds and repository links the site declares about itself; material changes in what it declares (`source_content_changes`, a `SOURCE_CHANGE_OBSERVED` fact, never a ship) |
+| Sites | Published projects whose website is corroborated: an own `WEBSITE` source, or the homepage its official repository names |
+| Fields used | robots groups for `HEYResearchBot` or `*` (Allow/Disallow, `Sitemap:`); sitemap `<loc>`/`<lastmod>` (first 5,000, no index recursion); llms.txt heading and links; security.txt `Contact:`/`Expires:`/`Policy:`; OpenAPI `openapi`/`swagger`, `info.title`/`info.version`, path and operation counts, `servers[].url` as text. **Not used:** any prose, summaries, schemas or examples; no operation is ever called |
+| Auth | None |
+| Rate limit | Self-imposed: weekly per host, conditional (`If-None-Match`/`If-Modified-Since`), budget `site-wellknown` 2,000/day, cool-off per host (`site-wellknown:<host>`) |
+| Safety | Same client as page reads: DNS-checked and pinned on every hop, 5 redirects, redirect off the site's registrable domain = not the file; per-file caps (robots 512 KiB, sitemap 2 MiB, llms 256 KiB, security 64 KiB, OpenAPI 2 MiB); content-type allow-list **and** body shape, so an SPA's 200 `text/html` fallback is a soft 404, never a present file; a robots Disallow for HEY or `*` is honoured before every other read |
+| Verified | 2026-09-27: axon-agents.com robots (`*` group, `Sitemap:`), sitemap (urlset), llms.txt (Setext heading, `Label: url` lines, names `/api/openapi`), OpenAPI 3.1.0 "Axon API" 0.1.0 (46 paths, 73 operations, server `/api`); own.money robots disallows `/api/`; sighttrue.com `/.well-known/security.txt` answers 200 `text/html` (soft 404). Fixtures `packages/sources/src/fixtures/wellknown-*` |
+| Fallback | A host that does not answer is `UNREACHABLE` for that pass and asked again next week; nothing is inferred from absence |
+
+Adapter: `packages/sources/src/adapters/site-wellknown.ts`; authority: every provider HEY
+records is classified in `packages/domain/src/sources/authority.ts` (what it may prove, whether
+it can create a ship, its cadence), with an exhaustiveness test over every discovery value.
 
 ---
 
@@ -524,7 +677,9 @@ factory reader (`REFRESH_LAUNCH_STAGE`, `getLaunchedToken(token).phase`, daily, 
 | --- | --- |
 | Nansen, Arkham, Kaito, Birdeye, LunarCrush | Paid, and all are wallet/attention analytics HEY does not build |
 | X / Twitter firehose | Paid; PRD V4 forbids a paid social dependency for MVP |
-| DEX Screener ads / orders; boost **amounts** | Paid placement is not evidence of building. The boost *lists* are read only to learn which tokens have a profile; the spend is dropped in the adapter |
+| DEX Screener boost, ad and order **amounts**, impressions and boost counts | Paid placement is not evidence of building and never a figure HEY publishes. Since 2026-09-27 *that* a promotion or takeover was observed, and the provider's date, is kept as market context; the spend and the reach are dropped in the adapter |
+| GeckoTerminal holders, `developer_address`, developer holding share, `is_honeypot`, `gt_score` | Holder and wallet analytics and risk scoring (product rule 1, the /scan boundary); the single-token distribution map already has one canonical source. Deliberately not parsed |
+| GeckoTerminal `/tokens/multi` | Measured 2026-09-27: it removes fewer calls than it adds on the fallback sweep, and as a replacement it changes the liquidity figure (see GeckoTerminal) |
 | Any wallet endpoint on any provider, and any holder endpoint beyond the single-token distribution map | CLAUDE.md product rule 1 as amended 2026-09-14 — enforced by a schema test, not by convention |
 | Blockscout (currently) | Returns 403; working around it would mean bypassing an anti-bot control |
 | Blockscout `/api/v2/tokens/{addr}` for market data | Answers 200 only with a browser-like User-Agent (which HEY will not send); its `exchange_rate` / `circulating_market_cap` are null for every token CoinGecko does not list — nothing additive (checked 2026-09-03) |

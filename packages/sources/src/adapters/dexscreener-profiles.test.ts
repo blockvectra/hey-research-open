@@ -14,7 +14,7 @@ const boosts = () => ({ status: 200, body: readFixture('dexscreener-token-boosts
 describe('DEX Screener token profiles adapter', () => {
   const adapter = createDexscreenerProfilesAdapter();
 
-  it('handles the three documented feeds and nothing else', () => {
+  it('handles the four documented profile feeds and nothing else', () => {
     for (const feed of DEXSCREENER_PROFILE_FEEDS) {
       expect(adapter.canHandle({ ...input, feed })).toBe(true);
     }
@@ -31,6 +31,7 @@ describe('DEX Screener token profiles adapter', () => {
     }
     expect(paths).toEqual([
       'https://api.dexscreener.com/token-profiles/latest/v1',
+      'https://api.dexscreener.com/token-profiles/recent-updates/v1',
       'https://api.dexscreener.com/token-boosts/latest/v1',
       'https://api.dexscreener.com/token-boosts/top/v1',
     ]);
@@ -120,5 +121,17 @@ describe('DEX Screener token profiles adapter', () => {
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.status).toBe('rate_limited');
     expect(result.retryAfterSeconds).toBe(30);
+  });
+
+  it('reads the recent-updates feed with the edit time and the takeover flag (2026-09-27 live fixture)', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('dexscreener-token-profile-updates.json') });
+    const result = await adapter.fetch({ ...input, feed: 'profiles-updates' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(hasData(result)).toBe(true);
+    expect(result.data?.length).toBe(3);
+    for (const profile of result.data ?? []) {
+      expect(profile.feed).toBe('profiles-updates');
+      expect(profile.updatedAt).toBeInstanceOf(Date);
+      expect(typeof profile.communityTakeover).toBe('boolean');
+    }
   });
 });

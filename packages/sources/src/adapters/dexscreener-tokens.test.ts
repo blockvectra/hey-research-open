@@ -56,4 +56,25 @@ describe('dexscreener batch adapter: a price move HEY cannot store', () => {
     expect(row!.priceChange6hPct).toBe(-12.5);
     expect(row!.venue).toEqual(expect.any(String));
   });
+
+  it('keeps whether a pair carries an active boost — presence, never the count — and the pool labels (2026-09-27)', async () => {
+    const pair = (address: string, boosts: number | undefined, labels?: string[]) => ({
+      chainId: 'robinhood',
+      dexId: 'uniswap',
+      pairAddress: address,
+      baseToken: { address, name: 'T', symbol: 'T' },
+      priceUsd: '1',
+      liquidity: { usd: 100 },
+      ...(boosts === undefined ? {} : { boosts: { active: boosts } }),
+      ...(labels ? { labels } : {}),
+    });
+    const a = '0x' + 'a'.repeat(40);
+    const b = '0x' + 'b'.repeat(40);
+    const stub = stubFetch({ status: 200, body: JSON.stringify([pair(a, 10, ['v4', '<bad label>']), pair(b, undefined)]) });
+    const result = await createDexscreenerTokensAdapter().fetch({ chainId: 4663, chainSlug: 'robinhood', addresses: [a, b] }, testContext({ fetchImpl: stub.fetchImpl }));
+    const byAddress = Object.fromEntries((result.data ?? []).map((row) => [row.contractAddress, row]));
+    expect(byAddress[a]).toMatchObject({ promotionActive: true, pairLabels: ['v4'] });
+    expect(byAddress[b]).not.toHaveProperty('promotionActive');
+    expect(JSON.stringify(result.data)).not.toMatch(/"active"|10}/);
+  });
 });
