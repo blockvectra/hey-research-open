@@ -6,6 +6,20 @@ record.
 
 ## 2026-09-26
 
+- **`GET /api/changes`: one canonical change event per meaningful change.** Releases, ships,
+  status moves, contract deployments and interface changes, verification, publication, sources,
+  narratives and scheduled unlocks, each with its own time and how precisely HEY knows it, when
+  HEY first knew, and its evidence. `after=` syncs forward without missing a fact HEY published
+  late, and a retraction arrives as a tombstone that names only its id. The SDK has
+  `changes.sync(cursor)`, and the MCP a `get_changes` tool.
+- **Signals say when HEY recorded them.** `/api/signals` items add `detectedAt` and, for release
+  and deploy signals, `shipId`; the page adds `nextOffset`. A release HEY read late now gets its
+  signal.
+- **The timeline says what it left out.** `/api/projects/{slug}/timeline` adds `totals`, `total`,
+  `truncated` and a `before=` cursor for older entries.
+- **The SDK follows a renamed project's redirect** when it stays on HEY's own API, and never
+  any other.
+
 - **The Research Terminal, redesigned.** One header (Projects · What changed · Watchlist · search)
   and a search that is easy to find ("Search projects, tickers or contracts"), including on phones
   (`/terminal/search`). A project's workspace groups its eleven views into six (Overview,
@@ -37,6 +51,52 @@ record.
   listed". On the market page and in the MCP, the launch stage reads "HEY first saw it on DEX on" a
   date instead of "since", and a contract that is not a proxy reads "No proxy pattern detected in
   the EIP-1967 implementation slot at the last check."
+- **Snapshot, coverage, explain and evidence.** `GET /api/projects/{slug}/snapshot` answers a
+  project's important state in one read; `/coverage` says what HEY knows, dimension by dimension,
+  as states and never a score; `/explain?fact=` says why HEY publishes a figure (value, rule,
+  inputs, lineage, evidence ids, what is unknown); `GET /api/evidence/{id}` resolves a typed id
+  (`ship:…`, `signal:…`, `lock:4663:17`, …) to its receipt. Ships carry `precision` and
+  `evidenceId`.
+- **One rule for FDV or market cap.** Every `marketCapUsd` has a `valuationKind` beside it; the
+  daily series names its closes by the same rule. A market that is not live has its valuation
+  withheld on the dossier and in `/market` `days[]`, with the reason
+  (`valuationWithheld`, `marketCapCloseWithheld`); `has=marketCap` and the market-cap filters count
+  only valuations a card prints. Liquidity HEY's chain index measures as unsellable is not believed.
+- **Knowledge time.** `/api/projects/{slug}` sends `firstRecordedByHeyAt` and, where an outside
+  registry or launchpad dates the project, `externalListedAt` and `externalListedSource`.
+  `firstSeenAt` is kept as a deprecated alias; `sort=newest` orders by knowledge time.
+- **No measured-looking zero for an unmeasured project.** `/intelligence` sends `null` Build
+  Momentum and velocity for a project HEY holds no readable builder source for, with
+  `development.activityMeasured: false`.
+- **Partner fields, additive.** `/api/v1/scan` adds `research_level`, `activity_measured`,
+  `coverage`, `as_of`, `activity.meaningful_ships_30d` and `activity.last_ship_url`; the token
+  lookup adds `activityMeasured`, `meaningfulShipsLast30Days` and `asOf`; `/api/v1/builder` adds
+  `research_level`, `activity_measured`, `as_of` and a thirty-day `commits_30d` that agrees with the
+  card. The zero address on `/api/v1/scan` is still a 400 and no longer counts against a key.
+- **Beacon proxies are read as proxies.** Tokens behind a beacon (such as the bridged stock
+  tokens) were reported as plain contracts. The proxy check now reads the implementation slot, the
+  beacon and its implementation, and the explorer's own report, and says which one answered
+  (`contract.proxy.kind` on `/api/projects/{slug}/market`). It never says "not a proxy" — only that
+  no proxy pattern was detected.
+- **Contracts as research entities.** `GET /api/contracts/{chainId}/{address}` and
+  `GET /api/projects/{slug}/contracts`: creation, deployer, factory, verified source, proxy kind and
+  implementation history, interface counts and changes, and seven-day use — each section saying
+  whether HEY measured it. Counts, never function lists.
+- **History and diff.** `GET /api/projects/{slug}/history` returns the points HEY recorded at the
+  time, each labelled as what HEY concluded, what it observed, or what was reconstructed from the
+  chain later, with each series' collection start; a day HEY did not record is absent, never zero.
+  `GET /api/projects/{slug}/diff?from=&to=` compares two days and counts what happened between
+  them, without claiming a cause.
+- **Bulk reads, keyed.** `/api/snapshots?slugs=` (up to 10), `/api/token/{chainId}?addresses=` and
+  `/api/v1/scan?tokens=` (up to 30): one request per item against the key's limits, input order
+  kept, one bad item never failing the batch.
+- **One error shape.** Every public route answers errors as
+  `{error, message, requestId, retryable, retryAfterSeconds?}`, readable from a browser, including
+  the 500 and an unknown path. Listings of contract changes, quiet builders, comebacks and unlocks
+  say how many rows exist in all.
+- **Market page additions.** Where the liquidity sits (pools holding it and the largest pool's
+  share, collected from today on), launch milestones each on their own clock, and on-chain days
+  that keep the measured calls when events could not be indexed.
 
 ## 2026-09-25
 

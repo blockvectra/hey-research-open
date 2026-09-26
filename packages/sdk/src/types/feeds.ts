@@ -5,6 +5,7 @@
  * held equal to its serialiser by `public-api-contract.*.test.ts`, and absent
  * means HEY does not know.
  */
+import type { HeyListingTotals } from './contracts';
 
 /* ------------------------------------------------------------------- chain */
 
@@ -20,6 +21,8 @@ export type HeyChainDay = {
   projectsPublished?: number;
   ships?: number;
   buildersShipping?: number;
+  /** Published projects HEY recorded as Verified Builders that day (2026-09-26): knowledge time. */
+  buildersVerified?: number;
   chainObservedAt?: string;
 };
 
@@ -38,7 +41,12 @@ export type HeySignal = {
   severity: string;
   confidence: number;
   importance: number;
+  /** The window's end or the event's own time; not when HEY recorded it. */
   observedAt: string;
+  /** When HEY recorded the signal: sync on this (or on `/api/changes`), never on `observedAt`. */
+  detectedAt: string;
+  /** For a release or follow-up deploy signal, the ship it announces. */
+  shipId?: string;
   title: string;
   summary: string;
   before?: number;
@@ -54,6 +62,8 @@ export type HeySignal = {
 export type HeySignalPage = {
   query: Record<string, string | number>;
   total: number;
+  /** Where the next page starts; absent on the last page. */
+  nextOffset?: number;
   items: HeySignal[];
   disclaimer: string;
 };
@@ -129,12 +139,16 @@ export type HeySignalsQuery = {
 
 export type HeyContractChange =
   | {
+      /** `ship:<uuid>`, resolvable by the evidence route (2026-09-26). */
+      id: string;
       kind: 'CONTRACT_UPGRADE' | 'CONTRACT_DEPLOY_FOLLOWUP';
       project: { slug: string; name: string };
       count: number;
       latest: { title: string; publishedAt: string; source?: string };
     }
   | {
+      /** `abi:<uuid>` (2026-09-26). */
+      id: string;
       kind: 'VERIFIED' | 'UNVERIFIED' | 'INTERFACE_CHANGED';
       project: { slug: string; name: string };
       address: string;
@@ -145,7 +159,8 @@ export type HeyContractChange =
       detectedAt: string;
       source: string;
     };
-export type HeyContractChanges = { days: number; items: HeyContractChange[]; disclaimer: string };
+/** `total` counts rows before the 100-per-family cap; `truncated` when `items` shows fewer (2026-09-26). */
+export type HeyContractChanges = { days: number; items: HeyContractChange[]; total: number; truncated: boolean; disclaimer: string };
 
 /* ------------------------------------------------------- command centre */
 
@@ -156,7 +171,7 @@ export type HeySilentBuilders = {
   items: (HeyCentreProject & { meaningfulShips30d: number; marketAttention?: 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIGH' })[];
   method: string;
   disclaimer: string;
-};
+} & HeyListingTotals;
 
 export type HeyAccelerating = {
   items: (HeyCentreProject & { velocity: { windowDays: number; current: number; previous: number | null; changePct: number | null } })[];
@@ -204,6 +219,9 @@ export type HeyMarketMoves = {
   project: { slug: string; name: string; url: string };
   threshold: { minChangePct: number; lookbackDays: number; windowDays: number };
   daysRead: number;
+  /** Days of index HEY holds and withholds because the market is not live (2026-09-26); `daysRead` is then 0. */
+  withheldDays?: number;
+  withheldReason?: string;
   items: {
     day: string;
     previousDay: string;
@@ -218,7 +236,7 @@ export type HeyMarketMoves = {
   disclaimer: string;
 };
 
-export type HeyComebacks = { items: HeyCentreProject[]; method: string; disclaimer: string };
+export type HeyComebacks = { items: HeyCentreProject[]; method: string; disclaimer: string } & HeyListingTotals;
 
 export type HeyUnlocks = {
   days: number;
@@ -231,9 +249,13 @@ export type HeyUnlocks = {
     shareOfSupplyPct?: number;
     proof: string;
     precision: 'SCHEDULED';
+    /** `lock:<chainId>:<lockId>` (2026-09-26). */
+    id: string;
   }[];
+  /** HoodLock's locker only: no row here is "no HoodLock lock", not "no lock". */
+  scope: 'hoodlock';
   disclaimer: string;
-};
+} & HeyListingTotals;
 
 export type HeyBuildMarket = { items: (HeyCentreProject & { buildMomentum: number; marketAttentionPercentile: number })[]; method: string; disclaimer: string };
 
@@ -241,7 +263,8 @@ export type HeyTimelineEntry = {
   id: string;
   kind: string;
   at: string;
-  precision: 'EXACT' | 'DATE' | 'WEEK' | 'OBSERVED' | 'SCHEDULED';
+  /** How exactly the entry is dated; `WINDOW` only on a market-integrity window. */
+  precision: 'EXACT' | 'DATE' | 'WEEK' | 'WINDOW' | 'OBSERVED' | 'SCHEDULED';
   title: string;
   summary?: string;
   recordedAt?: string;
@@ -257,4 +280,17 @@ export type HeyTimelineEntry = {
   };
 };
 
-export type HeyTimeline = { project: { slug: string; name: string; url: string }; lens: string; items: HeyTimelineEntry[]; disclaimer: string };
+export type HeyTimeline = {
+  project: { slug: string; name: string; url: string };
+  lens: string;
+  items: HeyTimelineEntry[];
+  /** Entries per family in this lens, whatever the page held. */
+  totals: { ships: number; contractSource: number; locks: number; resumed: number; marketIntegrity: number; verification: number };
+  /** The sum of `totals`. */
+  total: number;
+  /** True when entries exist beyond this page. */
+  truncated: boolean;
+  /** Send as `before` for the next, older page; null on the last. */
+  nextCursor: string | null;
+  disclaimer: string;
+};

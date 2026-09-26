@@ -46,3 +46,22 @@ export async function* itemsOf<T>(pages: AsyncIterable<{ items: T[] }>): AsyncGe
     for (const item of page.items) yield item;
   }
 }
+
+/**
+ * Pages that carry an opaque `nextCursor` (2026-09-26): the change ledger and
+ * a project's timeline. The walk ends when the cursor is null, when the page
+ * says there is no more (`hasMore: false`), or when a cursor repeats — so a
+ * sync that has reached the head stops instead of polling in a loop.
+ */
+export async function* cursorPages<P extends { items: unknown[]; nextCursor: string | null; hasMore?: boolean }>(
+  fetchPage: (cursor: string | undefined) => Promise<P>,
+  start?: string,
+): AsyncGenerator<P, void, undefined> {
+  let cursor = start;
+  for (;;) {
+    const page = await fetchPage(cursor);
+    yield page;
+    if (page.nextCursor === null || page.hasMore === false || page.items.length === 0 || page.nextCursor === cursor) return;
+    cursor = page.nextCursor;
+  }
+}

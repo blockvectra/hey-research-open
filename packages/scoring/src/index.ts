@@ -10,3 +10,4 @@ export * from './scan-evidence';
 export * from './intelligence';
 export * from './momentum';
 export * from './market-integrity';
+export * from './valuation-kind';

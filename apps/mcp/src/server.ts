@@ -6,6 +6,7 @@ import {
   type HeyBountyPage,
   type HeyBuildersPage,
   type HeyChain,
+  type HeyChangeType,
   type HeyClient,
   type HeyPage,
   type HeyProject,
@@ -34,6 +35,7 @@ import {
   renderBounties,
   renderBuilders,
   renderChain,
+  renderChanges,
   renderProject,
   renderProjectIntelligence,
   renderAskAnswer,
@@ -342,6 +344,48 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
   );
 
   server.tool(
+    'get_changes',
+    [
+      'The canonical change ledger: what changed on Robinhood Chain or on one project — releases, ships, status moves, contract deployments and interface changes,',
+      'verification, publication, sources, narratives, scheduled unlocks — one event per change, each with its own time and how precisely HEY knows it,',
+      'when HEY first knew, and its evidence. Use this first for "what changed", "what happened since", "anything new on X".',
+      'Browse newest first by default; to follow along, pass after=c1.0 (or a cursor you kept) and keep the cursor each answer gives.',
+      'A retraction means HEY no longer makes that claim. Facts, never causes and never recommendations.',
+    ].join(' '),
+    {
+      project: z.string().optional().describe("A project slug, to read one project's changes."),
+      contract: z.string().regex(/^\d{1,10}:0x[0-9a-fA-F]{40}$/).optional().describe('<chainId>:<address>: changes about that contract or token.'),
+      domain: z.array(z.enum(['build', 'contract', 'market', 'token', 'research', 'lock'])).optional(),
+      type: z.array(z.string()).optional().describe('Event types, e.g. build.release, build.dormant, contract.interface_changed, lock.unlock_due.'),
+      since: z.string().optional().describe("ISO date: only events whose own time is at or after it (events with no source time are left out)."),
+      until: z.string().optional(),
+      detectedSince: z.string().optional().describe('ISO instant: start a sync at the first event HEY recorded at or after it.'),
+      after: z.string().max(64).optional().describe('Sync forward from this cursor (c1.0 is the start).'),
+      before: z.string().max(64).optional().describe('Browse older than this cursor.'),
+      limit: z.number().int().min(1).max(100).optional().describe('Default 30.'),
+    },
+    async ({ project, contract, domain, type, since, until, detectedSince, after, before, limit }) => {
+      try {
+        const page = await client.changes.list({
+          ...(project ? { project } : {}),
+          ...(contract ? { contract } : {}),
+          ...(domain ? { domain } : {}),
+          ...(type ? { type: type as HeyChangeType[] } : {}),
+          ...(since ? { since } : {}),
+          ...(until ? { until } : {}),
+          ...(detectedSince ? { detectedSince } : {}),
+          ...(after ? { after } : {}),
+          ...(before ? { before } : {}),
+          limit: limit ?? 30,
+        });
+        return text(renderChanges(page));
+      } catch (error) {
+        return failure(error);
+      }
+    },
+  );
+
+  server.tool(
     'shipping_in_silence',
     'Robinhood Chain projects that are Under the Radar (verified recent shipping, a positive Discovery Gap) and below the 40th market-attention percentile. Newest ship first; never ordered by price, and not a recommendation.',
     {},
@@ -431,10 +475,13 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     {
       slug: z.string().min(1).describe('The project slug.'),
       lens: z.enum(['everything', 'build', 'code', 'onchain', 'market', 'locks']).optional(),
+      limit: z.number().int().min(1).max(100).optional().describe('Entries per page; default 30.'),
+      before: z.string().max(400).optional().describe('The cursor the previous answer gave, to read older entries.'),
     },
-    async ({ slug, lens }) => {
+    async ({ slug, lens, limit, before }) => {
       try {
-        return text(renderTimeline(await client.get<HeyTimeline>(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens })));
+        const size = limit ?? 30;
+        return text(renderTimeline(await client.get<HeyTimeline>(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens, limit: size, before }), size));
       } catch (error) {
         return failure(error);
       }

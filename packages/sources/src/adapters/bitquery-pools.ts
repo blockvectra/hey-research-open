@@ -143,7 +143,17 @@ export type BitqueryTokenPools = {
   depthOnePctBase?: number;
   /** Pool events seen in the window; a pool with none is quiet, not absent. */
   events: number;
+  /**
+   * Each pool on its own (2026-09-26), from the same rows the sum above is
+   * made of — no extra field is asked for, so the document and its grant are
+   * unchanged. `liquidityUsd` is both sides, `quoteSideUsd` the side that is
+   * not this token; either is absent when the provider did not price it, and
+   * 0 only when it priced every side at nothing. Largest first.
+   */
+  venues?: BitqueryPoolVenue[];
 };
+
+export type BitqueryPoolVenue = { pool: string; liquidityUsd?: number; quoteSideUsd?: number };
 
 const money = (value: number | string | null | undefined): number | undefined => {
   const parsed = toNumber(value);
@@ -166,9 +176,12 @@ export function normalizeBitqueryPools(
   addresses: readonly string[],
 ): BitqueryTokenPools[] {
   const wanted = new Set(addresses.map((address) => address.toLowerCase()));
-  const byToken = new Map<string, BitqueryTokenPools & { seen: Set<string>; seenDepth: Set<string>; seenLiquidity?: Set<string>; sawEmpty?: boolean }>();
+  const byToken = new Map<
+    string,
+    BitqueryTokenPools & { seen: Set<string>; seenDepth: Set<string>; seenLiquidity?: Set<string>; sawEmpty?: boolean; venueOf: Map<string, BitqueryPoolVenue> }
+  >();
   const at = (token: string) => {
-    const current = byToken.get(token) ?? { tokenAddress: token, pools: 0, events: 0, seen: new Set<string>(), seenDepth: new Set<string>() };
+    const current = byToken.get(token) ?? { tokenAddress: token, pools: 0, events: 0, venues: [], seen: new Set<string>(), seenDepth: new Set<string>(), venueOf: new Map<string, BitqueryPoolVenue>() };
     byToken.set(token, current);
     return current;
   };
@@ -201,6 +214,27 @@ export function normalizeBitqueryPools(
       entry.liquidityUsd = (entry.liquidityUsd ?? 0) + total;
       if (pool) (entry.seenLiquidity ??= new Set<string>()).add(pool);
     }
+    /*
+     * The same pool, kept on its own (2026-09-26). The first priced reading of
+     * a pool is the one the sum above used, so the parts add up to the whole.
+     */
+    // A v4 pool is a 32-byte id rather than a contract; both identify a market.
+    if (pool && /^0x(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(pool)) {
+      const venue = entry.venueOf.get(pool) ?? { pool };
+      if (venue.liquidityUsd === undefined || venue.liquidityUsd === 0) {
+        const allZero = raw.length > 0 && raw.every((value) => Number(value) === 0);
+        if (total > 0) {
+          venue.liquidityUsd = total;
+          const quote = money(side === 'a' ? row.PoolEvent.Liquidity?.b : row.PoolEvent.Liquidity?.a);
+          if (quote !== undefined) venue.quoteSideUsd = quote;
+          else delete venue.quoteSideUsd;
+        } else if (allZero && venue.liquidityUsd === undefined) {
+          venue.liquidityUsd = 0;
+          venue.quoteSideUsd = 0;
+        }
+      }
+      entry.venueOf.set(pool, venue);
+    }
   }
 
   for (const row of data.depth ?? []) {
@@ -224,9 +258,10 @@ export function normalizeBitqueryPools(
   return [...byToken.values()]
     // Every priced reading empty and none with liquidity: the pools hold nothing, so say 0 rather than
     // leave the figure unknown — an unknown kept the pre-drain total in the index all day.
-    .map(({ seen: _seen, seenDepth: _seenDepth, seenLiquidity: _seenLiquidity, sawEmpty, ...rest }) =>
-      rest.liquidityUsd === undefined && sawEmpty ? { ...rest, liquidityUsd: 0 } : rest,
-    )
+    .map(({ seen: _seen, seenDepth: _seenDepth, seenLiquidity: _seenLiquidity, sawEmpty, venueOf, ...rest }) => {
+      const venues = [...venueOf.values()].sort((a, b) => (b.liquidityUsd ?? -1) - (a.liquidityUsd ?? -1) || a.pool.localeCompare(b.pool));
+      return rest.liquidityUsd === undefined && sawEmpty ? { ...rest, liquidityUsd: 0, venues } : { ...rest, venues };
+    })
     .sort((a, b) => a.tokenAddress.localeCompare(b.tokenAddress));
 }
 

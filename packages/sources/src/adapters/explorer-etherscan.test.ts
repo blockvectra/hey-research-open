@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { readFixture, stubFetch, testContext } from '../testing';
-import { abiSignatures, createAddressTxListAdapter, createContractCreationAdapter, createContractSourceAdapter } from './explorer-etherscan';
+import { abiSignatures, createAddressTxListAdapter, createContractCreationAdapter, createContractSourceAdapter, explorerProxyClaim } from './explorer-etherscan';
 
 const api = { baseUrl: 'https://api.blockscout.com', chainId: 4663, apiKey: 'proapi_secret' };
 const TOKEN = '0xb33eb16782776b4d738c0fd643577cb0284db610';
@@ -94,10 +94,37 @@ describe('explorer etherscan-style reads (Blockscout PRO)', () => {
     for (const signature of [...abi.functions, ...abi.events]) expect(signature).toMatch(/^[A-Za-z_$][\w$]*\([^\s]*\)$/);
   });
 
+  it('reads the explorer’s proxy claim for a ClonableBeaconProxy (2026-09-26, M4 G1)', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('explorer-getsourcecode-beacon.json') });
+    const address = '0x5f10a1f6a2b1b0e3c1d7c6c4b0e0f2a1d3c549c3';
+    const result = await createContractSourceAdapter().fetch({ ...api, address }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.data).toMatchObject({ address, verified: true, name: 'ClonableBeaconProxy', isProxy: true, implementation: '0xb354c1a2e3d4f5a6b7c8d9e0f1a2b3c4d5e65ae2' });
+    // The proxy's own ABI: events only, which is why a baseline read from it is empty of functions.
+    expect(result.data!.abi?.functions ?? []).toEqual([]);
+  });
+
+  it('says nothing about proxying when the explorer said nothing', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('explorer-getsourcecode.json') });
+    const result = await createContractSourceAdapter().fetch({ ...api, address: '0xcb199e9bbd4a3e52331eb1e90d17e6d3746b5fc6' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.data).not.toHaveProperty('isProxy');
+    expect(result.data).not.toHaveProperty('implementation');
+  });
+
   it('holds no ABI for an unverified contract', async () => {
     const stub = stubFetch({ status: 200, body: readFixture('explorer-getsourcecode-unverified.json') });
     const result = await createContractSourceAdapter().fetch({ ...api, address: '0x000000000000000000000000000000000000dead' }, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.data).toEqual({ address: '0x000000000000000000000000000000000000dead', verified: false });
+  });
+});
+
+describe('explorerProxyClaim', () => {
+  it('reads both explorer dialects and refuses a zero implementation', () => {
+    expect(explorerProxyClaim({ IsProxy: 'false' })).toEqual({ isProxy: false });
+    expect(explorerProxyClaim({ Proxy: '1', Implementation: '0xABCDEFabcdefABCDEFabcdefABCDEFabcdefABCD' })).toEqual({ isProxy: true, implementation: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd' });
+    expect(explorerProxyClaim({ IsProxy: 'true', ImplementationAddress: '0x0000000000000000000000000000000000000000' })).toEqual({ isProxy: true });
+    expect(explorerProxyClaim({ ImplementationAddresses: ['0x' + '12'.repeat(20)] })).toEqual({ implementation: '0x' + '12'.repeat(20) });
+    expect(explorerProxyClaim({ IsProxy: 'false', ImplementationAddress: '0x' + '12'.repeat(20) })).toEqual({ isProxy: false });
+    expect(explorerProxyClaim({})).toEqual({});
   });
 });
 

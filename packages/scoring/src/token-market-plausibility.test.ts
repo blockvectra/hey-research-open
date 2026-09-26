@@ -93,6 +93,28 @@ describe('token market: readings HEY will not believe', () => {
     expect(liquidityImplausible(22_387_333, undefined, index, now)).toBe(false);
   });
 
+  it('calls liquidity the chain index agrees on implausible when almost none of it is sellable (M1 G1, 2026-09-26)', () => {
+    // blorb, 2026-09-26: $13.76M claimed, the index agrees on liquidity, $6.20 of one-per-cent depth, $368 of volume.
+    const blorb = { observedAt: hoursAgo(0.5), liquidityUsd: 13_763_338.81, volume24hUsd: 368.04, fdvUsd: 137_608_415 };
+    const index = { observedAt: hoursAgo(5), liquidityUsd: 13_736_350, depthOnePctUsd: 6.199893 };
+    const verdict = classifyTokenMarket({ now, latest: blorb, peakLiquidityUsd: 25_000_000, chainIndex: index });
+    expect(verdict).toEqual({ status: 'INSUFFICIENT_DATA', reason: 'readings_implausible' });
+    expect(marketFiguresBelievable(verdict.reason)).toBe(false);
+    // A depth read in the last week still counts; one older does not decide.
+    expect(liquidityImplausible(13_763_338.81, 368.04, { ...index, observedAt: hoursAgo(6 * 24) }, now)).toBe(true);
+    expect(liquidityImplausible(13_763_338.81, 368.04, { ...index, observedAt: hoursAgo(8 * 24) }, now)).toBe(false);
+    // Depth in proportion to the pool is a market: a constant-product pool sells about 0.25 % of its liquidity per 1 %.
+    expect(classifyTokenMarket({ now, latest: blorb, peakLiquidityUsd: 25_000_000, chainIndex: { ...index, depthOnePctUsd: 30_000 } }).status).toBe('ACTIVE_MARKET');
+    // Trading a real share of the pool is a market whatever the depth reads.
+    expect(liquidityImplausible(13_763_338.81, 50_000, index, now)).toBe(false);
+    // An unread depth decides nothing, and neither does unknown volume.
+    const { depthOnePctUsd: _depth, ...noDepth } = index;
+    expect(liquidityImplausible(13_763_338.81, 368.04, noDepth, now)).toBe(false);
+    expect(liquidityImplausible(13_763_338.81, undefined, index, now)).toBe(false);
+    // Under the $25K floor nothing is implausible.
+    expect(liquidityImplausible(20_000, 0, { observedAt: hoursAgo(1), liquidityUsd: 20_000, depthOnePctUsd: 0 }, now)).toBe(false);
+  });
+
   it('needs a stronger contradiction when the chain index has no fresh reading', () => {
     const stale = { observedAt: hoursAgo(72), liquidityUsd: 5 };
     // $22M with $53 of trading is past even the uncorroborated line ($10 per $1M).

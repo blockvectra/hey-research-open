@@ -259,12 +259,15 @@ export type HeyCompare = {
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply (2026-09-25). */
     liquidityKind?: HeyLiquidityKind;
-    velocity?: { state: string; current: number; previous: number | null };
+    /** `current` is null with state `NOT_MEASURED` when HEY has not measured the project's building (2026-09-26). */
+    velocity?: { state: string; current: number | null; previous: number | null };
     cadence?: { state: string; medianIntervalDays?: number };
     consistency?: { activeWeeks: number | null; windowWeeks: number };
     marketAttention?: string;
   }[];
   missing: string[];
+  /** Slugs in the request that were malformed or past the fourth, and so were not compared (2026-09-26). */
+  ignoredSlugs: string[];
   method: string;
   disclaimer: string;
 };

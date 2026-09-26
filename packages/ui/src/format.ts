@@ -4,6 +4,9 @@
  * The interface says "Shipped 2d ago", never "DGS percentile". Internal jargon
  * belongs on the methodology page, not on a card.
  */
+
+import { valuationKindOf } from '@hey/scoring/valuation-kind';
+
 export function formatRelativeTime(date: Date, now: Date = new Date()): string {
   const delta = (now.getTime() - date.getTime()) / 1000;
   /*
@@ -298,8 +301,9 @@ export function plainText(value: string | null | undefined): string {
  * cap (the founder's 2026-09-23 rule). Five surfaces had each chosen a label
  * on their own; 672 of 1,058 live valuations were FDV-only.
  */
-export function isFullyDiluted(valueUsd: number | null | undefined, fdvUsd: number | null | undefined): boolean {
-  return valueUsd !== null && valueUsd !== undefined && fdvUsd !== null && fdvUsd !== undefined && fdvUsd === valueUsd;
+export function isFullyDiluted(valueUsd: number | null | undefined, fdvUsd: number | null | undefined, impliedSupplyShare?: number): boolean {
+  // The one rule (2026-09-26): `valuationKindOf` in @hey/scoring, shared with the daily series and the SQL.
+  return valuationKindOf({ valueUsd, fdvUsd, impliedSupplyShare }) === 'fdv';
 }
 
 /**

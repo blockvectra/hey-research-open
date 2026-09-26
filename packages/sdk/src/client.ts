@@ -1,5 +1,6 @@
 import { HeyApiError, errorFromResponse } from './error';
-import { itemsOf, nextOffsetPages, totalPages } from './paging';
+import { cursorPages, itemsOf, nextOffsetPages, totalPages } from './paging';
+import type { HeyChangeEvent, HeyChangesPage, HeyChangesQuery } from './types/changes';
 import type {
   HeyAccelerating,
   HeyBuildMarket,
@@ -85,6 +86,23 @@ export type HeyClientOptions = {
 
 export type QueryParams = Record<string, string | number | boolean | readonly string[] | undefined>;
 
+/** A change query in the API's spelling: lists travel comma-joined. */
+function changeParams(query: HeyChangesQuery): QueryParams {
+  const list = (value: string | readonly string[] | undefined) => (value === undefined ? undefined : typeof value === 'string' ? value : value.join(','));
+  return {
+    project: query.project,
+    contract: query.contract,
+    domain: list(query.domain),
+    type: list(query.type),
+    since: query.since,
+    until: query.until,
+    detectedSince: query.detectedSince,
+    after: query.after,
+    before: query.before,
+    limit: query.limit,
+  };
+}
+
 /** A 3xx, or the opaque stand-in a browser returns for one under `redirect: 'manual'`. */
 function isRedirect(response: Response): boolean {
   if (response.type === 'opaqueredirect') return true;
@@ -98,6 +116,19 @@ function locationHost(location: string | null, requestUrl: URL): string {
     return new URL(location, requestUrl).host;
   } catch {
     return 'an unreadable location';
+  }
+}
+
+/** The redirect's target when it stays on the request's origin and under `/api/`; undefined for anything else. */
+function sameOriginApiRedirect(response: Response, requestUrl: URL): URL | undefined {
+  if (response.type === 'opaqueredirect') return undefined;
+  const location = response.headers?.get('location');
+  if (!location) return undefined;
+  try {
+    const target = new URL(location, requestUrl);
+    return target.origin === requestUrl.origin && target.pathname.startsWith('/api/') ? target : undefined;
+  } catch {
+    return undefined;
   }
 }
 
@@ -140,22 +171,54 @@ export class HeyClient {
       if (encoded !== undefined) url.searchParams.set(key, encoded);
     }
 
+    let response = await this.fetchOnce(url);
+    /*
+     * One redirect, and only to HEY's own API (2026-09-26, M2 G5). A renamed
+     * project's old slug answers `308` to its new API path, and refusing
+     * every redirect failed 1,124 published projects' old slugs with a
+     * message blaming the base URL. A 3xx to the same origin, under `/api/`,
+     * is followed once with the key; anything else — another host, a page, a
+     * second hop, a browser's opaque redirect — is still the error below, and
+     * the key is never sent to where it pointed.
+     */
+    const target = isRedirect(response) ? sameOriginApiRedirect(response, url) : undefined;
+    if (target) response = await this.fetchOnce(target);
+
+    /*
+     * A redirect is a misconfigured base URL, and it is reported as one. The
+     * browser fetch hides the target behind an opaque response, so the
+     * message says what it can: the host when the header is readable, and
+     * otherwise that there was one.
+     */
+    if (isRedirect(response)) {
+      const host = locationHost(response.headers?.get('location') ?? null, target ?? url);
+      throw new HeyApiError(
+        `HEY at ${this.baseUrl} answered with a redirect to ${host}. The SDK follows one redirect to HEY's own API and no other, because the API key travels with the request; point baseUrl at the origin that answers directly.`,
+        { code: 'http', status: response.status || undefined },
+      );
+    }
+
+    if (!response.ok) {
+      const body: unknown = await response.json().catch(() => undefined);
+      throw errorFromResponse({ status: response.status, body, retryAfter: response.headers?.get('retry-after') ?? null, baseUrl: this.baseUrl });
+    }
+
+    return (await response.json()) as T;
+  }
+
+  /** One request, never following a redirect itself. */
+  private async fetchOnce(url: URL): Promise<Response> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
-    let response: Response;
     try {
-      response = await this.fetchImpl(url.toString(), {
+      return await this.fetchImpl(url.toString(), {
         signal: controller.signal,
         /*
-         * The key never follows a redirect (round-9 security, 2026-09-19).
-         *
-         * `fetch` follows up to twenty hops by default and replays the request
-         * headers on each one, so a caller pointed at a base URL that answers
-         * 302 — a shortener, a stale vanity domain, a proxy someone else
-         * controls — handed the bearer token to whatever host the `Location`
-         * named, silently. Manual, and a 3xx is an error naming that host:
-         * HEY's public API answers every documented route directly, so a
-         * redirect is a misconfigured base URL, not a thing to chase.
+         * The key never follows a redirect by itself (round-9 security,
+         * 2026-09-19). `fetch` follows up to twenty hops by default and
+         * replays the request headers on each one, so a caller pointed at a
+         * base URL that answers 302 handed the bearer token to whatever host
+         * the `Location` named, silently. Manual; `get` decides.
          */
         redirect: 'manual',
         headers: {
@@ -173,27 +236,6 @@ export class HeyClient {
     } finally {
       clearTimeout(timer);
     }
-
-    /*
-     * A redirect is a misconfigured base URL, and it is reported as one. The
-     * browser fetch hides the target behind an opaque response, so the
-     * message says what it can: the host when the header is readable, and
-     * otherwise that there was one.
-     */
-    if (isRedirect(response)) {
-      const target = locationHost(response.headers?.get('location') ?? null, url);
-      throw new HeyApiError(
-        `HEY at ${this.baseUrl} answered with a redirect to ${target}. The SDK does not follow redirects, because the API key travels with the request; point baseUrl at the origin that answers directly.`,
-        { code: 'http', status: response.status || undefined },
-      );
-    }
-
-    if (!response.ok) {
-      const body: unknown = await response.json().catch(() => undefined);
-      throw errorFromResponse({ status: response.status, body, retryAfter: response.headers?.get('retry-after') ?? null, baseUrl: this.baseUrl });
-    }
-
-    return (await response.json()) as T;
   }
 
   /* ---------------------------------------------------------------- projects */
@@ -210,8 +252,16 @@ export class HeyClient {
     intelligence: (slug: string): Promise<HeyProjectIntelligence> => this.get(`/api/projects/${encodeURIComponent(slug)}/intelligence`),
     /** `GET /api/projects/{slug}/ask?q=`: a question matched to the evidence HEY holds, every line tagged. */
     ask: (slug: string, question: string): Promise<HeyAskAnswer> => this.get(`/api/projects/${encodeURIComponent(slug)}/ask`, { q: question }),
-    /** `GET /api/projects/{slug}/timeline?lens=`: every kind of evidence on one axis. */
-    timeline: (slug: string, options: { lens?: string } = {}): Promise<HeyTimeline> => this.get(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens: options.lens }),
+    /**
+     * `GET /api/projects/{slug}/timeline?lens=&limit=&before=`: every kind of
+     * evidence on one axis, newest first, with `totals`, `truncated` and a
+     * `nextCursor` to pass as `before`.
+     */
+    timeline: (slug: string, options: { lens?: string; limit?: number; before?: string } = {}): Promise<HeyTimeline> =>
+      this.get(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens: options.lens, limit: options.limit, before: options.before }),
+    /** Every page of a project's timeline, older and older, until `nextCursor` is null. */
+    timelinePages: (slug: string, options: { lens?: string; limit?: number } = {}): AsyncIterable<HeyTimeline> =>
+      cursorPages((before) => this.projects.timeline(slug, { ...options, ...(before ? { before } : {}) })),
     /** `GET /api/projects/{slug}/market-integrity`: the tracked token market beside the builder activity, and their conflicts (404 until published). */
     marketIntegrity: (slug: string): Promise<HeyMarketIntegrity> => this.get(`/api/projects/${encodeURIComponent(slug)}/market-integrity`),
     /** `GET /api/projects/{slug}/market-moves?days=&min=`: day-on-day market moves with what shipped in the week up to each — a sequence, never a cause. */
@@ -244,6 +294,32 @@ export class HeyClient {
     /** Every page, stepping by what each page held until `total`. */
     pages: (query: HeySignalsQuery = {}): AsyncIterable<HeySignalPage> =>
       totalPages((offset) => this.signals.list({ ...query, offset }), query.offset ?? 0),
+  };
+
+  /* ------------------------------------------------------------- changes */
+
+  /**
+   * The change ledger (`GET /api/changes`, 2026-09-26): one canonical event
+   * per meaningful change HEY recorded.
+   *
+   * `sync` is the mirroring contract: start from `'c1.0'` (or a cursor you
+   * kept), apply each page in order — an upsert replaces your copy of its id
+   * when its `revision` is higher, a retract deletes it — and keep the page's
+   * `nextCursor` once applied. It ends at the head; call it again later with
+   * the kept cursor. Nothing is missed: a fact HEY published late gets a new
+   * position after your cursor.
+   */
+  readonly changes = {
+    /** One page. With `after` it syncs forward; with `before`, or no cursor, it browses newest first. */
+    list: (query: HeyChangesQuery = {}): Promise<HeyChangesPage> => this.get('/api/changes', changeParams(query)),
+    /** Browse every page, newest first, following `nextCursor` as `before`. */
+    pages: (query: Omit<HeyChangesQuery, 'after' | 'detectedSince'> = {}): AsyncIterable<HeyChangesPage> =>
+      cursorPages((before) => this.changes.list({ ...query, ...(before ? { before } : {}) }), query.before),
+    /** Every event, newest first. */
+    items: (query: Omit<HeyChangesQuery, 'after' | 'detectedSince'> = {}): AsyncIterable<HeyChangeEvent> => itemsOf(this.changes.pages(query)),
+    /** Sync forward from `cursor` (default the start, `c1.0`) to the head, page by page. */
+    sync: (cursor = 'c1.0', query: Omit<HeyChangesQuery, 'after' | 'before' | 'detectedSince'> = {}): AsyncIterable<HeyChangesPage> =>
+      cursorPages((after) => this.changes.list({ ...query, after: after ?? cursor }), cursor),
   };
 
   readonly builders = {

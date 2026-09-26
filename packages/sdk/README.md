@@ -54,6 +54,9 @@ const hey = new HeyClient({ apiKey: process.env.HEY_API_KEY, userAgent: 'my-news
 | `projects.get(slug)` | `GET /api/projects/{slug}` |
 | `projects.market(slug, { days })` | `GET /api/projects/{slug}/market` |
 | `projects.intelligence(slug)` | `GET /api/projects/{slug}/intelligence` |
+| `projects.timeline(slug, { lens, limit, before })` / `timelinePages(slug, { lens, limit })` | `GET /api/projects/{slug}/timeline` |
+| `changes.list(query)` / `pages(query)` / `items(query)` | `GET /api/changes` (browse, newest first) |
+| `changes.sync(cursor, query)` | `GET /api/changes?after=` (mirror: from a kept cursor to the head) |
 | `ships.list(query)` / `pages(query)` / `items(query)` | `GET /api/ships` |
 | `signals.list(query)` / `pages(query)` / `get(id)` | `GET /api/signals`, `/api/signals/{id}` |
 | `builders.list(query)` / `pages(query)` | `GET /api/builders` |
@@ -72,16 +75,29 @@ array and is sent comma-joined. Undefined and empty values are not sent.
 
 ### Paging
 
-Two listings page two ways, and the helpers follow each:
+Listings page three ways, and the helpers follow each:
 
 - `projects` and `ships` say where the next page starts (`nextOffset`, absent
   when the listing ends). `pages()` follows it; `items()` flattens the rows.
 - `signals` and `builders` say only how many there are (`total`). `pages()`
   steps by the rows each page actually held until the total is reached.
+- `changes` and a project's timeline carry an opaque `nextCursor`
+  (`cursorPages`, exported).
+
+To keep a copy of what changed, sync the change ledger — it is the one
+mirroring contract, and nothing is missed: a fact HEY recorded or published
+late gets a position after your cursor, and a retraction arrives as a
+tombstone.
 
 ```ts
-for await (const ship of hey.ships.items({ sort: 'detected', detectedSince: watermark })) {
-  // mirror along detectedAt, never publishedAt
+let cursor = await store.get('hey-cursor') ?? 'c1.0';
+for await (const page of hey.changes.sync(cursor, { type: ['build.release'] })) {
+  for (const event of page.items) {
+    if (event.op === 'retract') await store.delete(event.id);
+    else await store.upsertIfNewer(event.id, event.revision, event);
+  }
+  cursor = page.nextCursor!; // keep it only after the page is applied
+  await store.set('hey-cursor', cursor);
 }
 ```
 
@@ -127,13 +143,16 @@ The message is the sentence HEY sent, when it sent one. `status` and the parsed
 `retryAfterSeconds` and you decide. A paging walk ends with the same error a
 single call would throw.
 
-**No redirects.** The API key is sent as a bearer token on every request, so the
-client asks `fetch` not to follow redirects: a 3xx becomes a `http` error naming
-the host the `Location` pointed at, rather than a key handed to that host. If
-you see one, `baseUrl` is pointing somewhere that forwards — give it the origin
-that answers directly (`https://heyresearch.xyz`, not an `http://` or vanity
-form of it). A `fetchImpl` of your own must keep that property: do not replay
-the `Authorization` header across origins.
+**One redirect, and only to HEY's own API.** The API key is sent as a bearer
+token on every request, so the client asks `fetch` not to follow redirects
+itself. A renamed project's old slug answers `308` to its new API path; the
+client follows that one hop when it stays on the same origin under `/api/`
+(since 2026-09-26). Any other 3xx — another host, a page, a second hop —
+becomes a `http` error naming the host the `Location` pointed at, and the key
+is never sent there. If you see one, `baseUrl` is pointing somewhere that
+forwards — give it the origin that answers directly (`https://heyresearch.xyz`,
+not an `http://` or vanity form of it). A `fetchImpl` of your own must keep
+that property: do not replay the `Authorization` header across origins.
 
 ### In a browser
 

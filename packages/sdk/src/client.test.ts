@@ -323,3 +323,97 @@ describe('HeyApiError', () => {
     expect(error.message).toMatch(/did not answer within 10 ms/);
   });
 });
+
+describe('redirects and the change ledger (2026-09-26)', () => {
+  /** A client whose answers are scripted per request, recording what it sent. */
+  function scripted(answers: Response[], apiKey = 'hey_abc') {
+    const sent: { url: string; auth: string | undefined }[] = [];
+    const client = new HeyClient({
+      baseUrl: 'https://hey.test',
+      apiKey,
+      fetchImpl: async (input, init) => {
+        sent.push({ url: input, auth: (init?.headers as Record<string, string> | undefined)?.authorization });
+        const next = answers.shift();
+        if (!next) throw new Error('no scripted answer left');
+        return next;
+      },
+    });
+    return { client, sent };
+  }
+
+  it('follows one 308 to HEY’s own API, with the key, for a renamed slug (M2 G5)', async () => {
+    const { client, sent } = scripted([ok({}, 308, { location: '/api/projects/0xcb-by-virtuals' }), ok({ slug: '0xcb-by-virtuals' })]);
+    const project = await client.projects.get('0xcb-by-virtuals-39b4b8');
+    expect(project).toEqual({ slug: '0xcb-by-virtuals' });
+    expect(sent).toEqual([
+      { url: 'https://hey.test/api/projects/0xcb-by-virtuals-39b4b8', auth: 'Bearer hey_abc' },
+      { url: 'https://hey.test/api/projects/0xcb-by-virtuals', auth: 'Bearer hey_abc' },
+    ]);
+  });
+
+  it('still refuses a redirect to another origin, and never sends the key there', async () => {
+    const { client, sent } = scripted([ok({}, 308, { location: 'https://evil.example/api/projects/x' })]);
+    const error = await caught(client.projects.get('x'));
+    expect(error.message).toContain('evil.example');
+    expect(sent.map((call) => call.url)).toEqual(['https://hey.test/api/projects/x']);
+  });
+
+  it('refuses a redirect off the API, and a second hop', async () => {
+    const page = scripted([ok({}, 308, { location: '/project/x' })]);
+    expect((await caught(page.client.projects.get('x'))).code).toBe('http');
+    expect(page.sent).toHaveLength(1);
+    const twice = scripted([ok({}, 308, { location: '/api/projects/y' }), ok({}, 308, { location: '/api/projects/z' })]);
+    expect((await caught(twice.client.projects.get('x'))).status).toBe(308);
+    expect(twice.sent).toHaveLength(2);
+  });
+
+  it('syncs the ledger from a kept cursor to the head, and resumes where it stopped', async () => {
+    const pages: Record<string, unknown> = {
+      'c1.0': { query: {}, items: [{ id: 'ship:a', op: 'upsert' }, { id: 'ship:b', op: 'upsert' }], nextCursor: 'CUR2', hasMore: true, ledger: {}, disclaimer: '' },
+      CUR2: { query: {}, items: [{ id: 'ship:a', op: 'retract' }], nextCursor: 'CUR3', hasMore: false, ledger: {}, disclaimer: '' },
+      CUR3: { query: {}, items: [{ id: 'ship:c', op: 'upsert' }], nextCursor: 'CUR4', hasMore: false, ledger: {}, disclaimer: '' },
+    };
+    const requested: string[] = [];
+    const client = new HeyClient({
+      baseUrl: 'https://hey.test',
+      fetchImpl: async (input) => {
+        const url = new URL(input);
+        requested.push(url.pathname + url.search);
+        return ok(pages[url.searchParams.get('after') ?? '']);
+      },
+    });
+    let kept = 'c1.0';
+    const seen: string[] = [];
+    for await (const page of client.changes.sync(kept, { type: ['build.release', 'build.ship'] })) {
+      seen.push(...page.items.map((item) => `${item.op}:${item.id}`));
+      kept = page.nextCursor!;
+    }
+    expect(seen).toEqual(['upsert:ship:a', 'upsert:ship:b', 'retract:ship:a']);
+    expect(kept).toBe('CUR3');
+    // Later: the kept cursor picks up exactly what came after it.
+    for await (const page of client.changes.sync(kept)) seen.push(...page.items.map((item) => `${item.op}:${item.id}`));
+    expect(seen.at(-1)).toBe('upsert:ship:c');
+    expect(requested).toEqual([
+      '/api/changes?type=build.release%2Cbuild.ship&after=c1.0',
+      '/api/changes?type=build.release%2Cbuild.ship&after=CUR2',
+      '/api/changes?after=CUR3',
+    ]);
+  });
+
+  it('pages a project timeline with its cursor until it is null', async () => {
+    const requested: string[] = [];
+    const client = new HeyClient({
+      baseUrl: 'https://hey.test',
+      fetchImpl: async (input) => {
+        const url = new URL(input);
+        requested.push(url.search);
+        const before = url.searchParams.get('before');
+        return ok({ items: [{ id: before ?? 'first' }], nextCursor: before ? null : 'T2', truncated: !before, total: 2 });
+      },
+    });
+    const ids: string[] = [];
+    for await (const page of client.projects.timelinePages('equifold', { limit: 1 })) ids.push(...page.items.map((item) => item.id));
+    expect(ids).toEqual(['first', 'T2']);
+    expect(requested).toEqual(['?limit=1', '?limit=1&before=T2']);
+  });
+});

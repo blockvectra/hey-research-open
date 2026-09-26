@@ -34,6 +34,12 @@ describe('the Bitquery archive grant', () => {
     expect(files.length).toBeGreaterThan(4);
   });
 
+  it('checks the upgrade-events document, which reads the archive (2026-09-26)', () => {
+    expect(files).toContain('bitquery-upgrades.ts');
+    const source = readFileSync(join(DIR, 'bitquery-upgrades.ts'), 'utf8');
+    expect(source).toMatch(/dataset: combined/);
+  });
+
   for (const name of files) {
     const source = readFileSync(join(DIR, name), 'utf8');
     /*

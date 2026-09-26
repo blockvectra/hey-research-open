@@ -111,6 +111,9 @@ importers:
 
   packages/ui:
     dependencies:
+      '@hey/scoring':
+        specifier: workspace:*
+        version: link:../scoring
       lucide-react:
         specifier: ^1.39.0
         version: 1.48.0(react@19.3.0)

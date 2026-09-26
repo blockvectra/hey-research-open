@@ -12,7 +12,7 @@ import type {
   HeyTokenMarket,
   HeyWeeklyReport,
 } from '@hey-research/sdk';
-import type { HeyAskAnswer, HeyComebacks, HeyCompare, HeyContractChanges, HeySilentBuilders, HeyTimeline, HeyUnlocks, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip } from '@hey-research/sdk';
+import type { HeyAskAnswer, HeyChangesPage, HeyComebacks, HeyCompare, HeyContractChanges, HeySilentBuilders, HeyTimeline, HeyUnlocks, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip } from '@hey-research/sdk';
 
 /**
  * HEY's answers, as text a model reads (2026-09-05).
@@ -501,7 +501,7 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     lines.push('', 'What HEY checked on the contract (facts, never verdicts):');
     for (const check of market.checks) lines.push(`- ${check.label}: ${check.finding}${check.tone === 'noted' ? ' [noted]' : ''}${check.provenance ? ` — ${check.provenance}` : ''}`);
   }
-  if (market.onchainDays.length > 0) lines.push('', `Contract events by day: ${market.onchainDays.map((d) => `${d.day} ${d.events}${d.truncated ? '+' : ''}`).join(', ')}.`);
+  if (market.onchainDays.length > 0) lines.push('', `Contract events by day: ${market.onchainDays.map((d) => `${d.day} ${d.events === null ? 'not indexed' : d.events}${d.truncated ? '+' : ''}`).join(', ')}.`);
   if (market.tvlDays.length > 0) lines.push(`Value locked (DefiLlama, ${market.tvlDays[0]!.protocolName}): latest ${money(market.tvlDays[market.tvlDays.length - 1]!.tvlUsd)}.`);
   lines.push(
     '',
@@ -548,6 +548,18 @@ function queryEcho(query: Record<string, unknown> | undefined): string {
   return `Query as HEY read it: ${JSON.stringify(query)}. A filter HEY does not recognise is ignored rather than refused.`;
 }
 
+/**
+ * "Showing n of N" and exactly how to read the rest (2026-09-26, M2 G3). A
+ * listing that announced a total and then printed a page let a model answer
+ * about the whole from a part without knowing it.
+ */
+export function shownOf(shown: number, total: number, more: string | undefined): string {
+  if (total <= shown) return `Showing all ${total}.`;
+  return `Showing ${shown} of ${total}.${more ? ` ${more}` : ''}`;
+}
+
+const offsetOf = (query: Record<string, unknown> | undefined): number => (typeof query?.offset === 'number' ? query.offset : Number(query?.offset ?? 0) || 0);
+
 const fig = (value: number | undefined, unit: string | undefined) => (value === undefined ? undefined : unit === 'usd' || unit === 'usd/day' ? money(value) : value.toLocaleString('en-US'));
 
 /** HEY Signal as prose: what changed, before and after, source, confidence. Never a verdict. */
@@ -570,7 +582,9 @@ export function renderSignals(page: HeySignalPage, now: Date): string {
     }
     lines.push(`  ${s.url}`);
   }
-  lines.push('', queryEcho(page.query), 'Counts of trades, transfers and events only, never accounts. Context, never a recommendation.');
+  const next = page.nextOffset ?? offsetOf(page.query) + page.items.length;
+  lines.push('', shownOf(page.items.length, page.total, `For the rest, call list_signals again with offset=${next}.`));
+  lines.push(queryEcho(page.query), 'Counts of trades, transfers and events only, never accounts. Context, never a recommendation.');
   return lines.join('\n');
 }
 
@@ -582,7 +596,8 @@ export function renderBuilders(page: HeyBuildersPage, now: Date): string {
     const move = b.rank7d === undefined ? 'new' : b.rank7d === b.rank ? 'unchanged' : `${b.rank7d > b.rank ? '▲' : '▼'} ${Math.abs(b.rank7d - b.rank)} in 7d`;
     lines.push(`- #${b.rank} ${b.name}${b.symbol ? ` ($${b.symbol})` : ''} · overall ${Math.round(b.scores.overall)} (dev ${Math.round(b.scores.development)}, on-chain ${Math.round(b.scores.onchain)}, research ${Math.round(b.scores.research)}) · ${move} · ${b.activityStatus.toLowerCase()}${b.lastShippedAt ? ` · shipped ${ago(b.lastShippedAt, now)}` : ''}${b.liquidityHealth === undefined ? '' : ` · liquidity health ${Math.round(b.liquidityHealth)} (context)`}`, `  ${b.url}`);
   }
-  lines.push('', queryEcho(page.query), 'Market cap, price and volume take no part in the rank.');
+  lines.push('', shownOf(page.items.length, page.total, `For the rest, call list_builders again with offset=${offsetOf(page.query) + page.items.length}.`));
+  lines.push(queryEcho(page.query), 'Market cap, price and volume take no part in the rank.');
   return lines.join('\n');
 }
 
@@ -696,7 +711,11 @@ export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
     `# ${p.name}${p.symbol ? ` ($${p.symbol})` : ''} — ${notResearched ? 'Activity not researched yet' : p.activityLabel}`,
     notResearched ? 'HEY indexed this record from the chain but has not yet read its sources for building activity.' : `${p.activityHelp}`,
     '',
-    ...(notResearched ? [] : [`- ${ships} in the last 30 days, counted the way the project page counts them.`]),
+    ...(notResearched
+      ? []
+      : p.activityMeasured === false && p.shipsLast30Days === 0
+        ? ['- UNKNOWN activity: HEY holds no repository, changelog or feed it can read building from, so no ship count is a measured zero.']
+        : [`- ${ships} in the last 30 days, counted the way the project page counts them.`]),
   ];
   if (p.lastShip) {
     lines.push(
@@ -731,7 +750,9 @@ export function renderProjectIntelligence(intel: HeyProjectIntelligence): string
   }
   const v = dev.velocity;
   lines.push(
-    v.state === 'NEW'
+    v.state === 'NOT_MEASURED' || v.current === null
+      ? 'UNKNOWN build velocity: HEY holds no builder source it can read for this project, so no count is a measured zero.'
+      : v.state === 'NEW'
       ? `UNKNOWN build velocity: HEY has watched this project since ${dev.observedSince.slice(0, 10)}, under the 60 days a comparison needs (${v.current} meaningful events in the last ${v.windowDays} days).`
       : v.state === 'NO_RECENT_ACTIVITY'
         ? `DERIVED build velocity: no meaningful events in either of the last two ${v.windowDays}-day windows.`
@@ -745,7 +766,7 @@ export function renderProjectIntelligence(intel: HeyProjectIntelligence): string
   );
   const k = dev.consistency;
   lines.push(
-    `${k.activeWeeks === null ? 'UNKNOWN' : 'DERIVED'} consistency: ${k.activeWeeks === null ? `HEY has watched fewer than ${k.windowWeeks} weeks` : `active in ${k.activeWeeks} of the last ${k.windowWeeks} weeks`}; streak ${k.currentStreakWeeks} weeks (longest ${k.longestStreakWeeks}); ${k.daysSinceMeaningfulShip === null ? 'no meaningful ship recorded' : `${k.daysSinceMeaningfulShip} days since the last meaningful ship`}${k.longestSilenceDays === null ? '' : `; longest silence ${k.longestSilenceDays} days`}; ${k.resumptions} comeback${k.resumptions === 1 ? '' : 's'} after 60+ quiet days.`,
+    `${k.activeWeeks === null ? 'UNKNOWN' : 'DERIVED'} consistency: ${k.activeWeeks === null ? `HEY has watched fewer than ${k.windowWeeks} weeks` : `active in ${k.activeWeeks} of the last ${k.windowWeeks} weeks`}; ${k.currentStreakWeeks === null ? 'streak not measured' : `streak ${k.currentStreakWeeks} weeks`} (longest ${k.longestStreakWeeks}); ${k.daysSinceMeaningfulShip === null ? 'no meaningful ship recorded' : `${k.daysSinceMeaningfulShip} days since the last meaningful ship`}${k.longestSilenceDays === null ? '' : `; longest silence ${k.longestSilenceDays} days`}; ${k.resumptions === null ? 'comebacks not measured' : `${k.resumptions} comeback${k.resumptions === 1 ? '' : 's'} after 60+ quiet days`}.`,
   );
   const l = dev.discoveryLag;
   lines.push(
@@ -809,7 +830,9 @@ export function renderContractChanges(page: HeyContractChanges): string {
               .join('; ');
     return `- ${item.project.name} (${item.project.slug}) ${item.address}: ${detail}; seen by HEY ${item.detectedAt.slice(0, 10)} — ${item.source}`;
   });
-  return `Contract changes on Robinhood Chain, last ${page.days} days (evidence only; a change is a fact about a contract, not a judgement of it):\n${lines.join('\n')}\n\n${page.disclaimer}`;
+  // The route reads at most 100 of each kind (upgrades and deploys, interface changes); say so rather than imply completeness.
+  const cap = page.items.length >= 100 ? ' HEY lists at most 100 changes of each kind per window, so a busier window may hold more; ask for fewer days.' : '';
+  return `Contract changes on Robinhood Chain, last ${page.days} days (evidence only; a change is a fact about a contract, not a judgement of it):\n${lines.join('\n')}\n\nShowing ${page.items.length}.${cap}\n\n${page.disclaimer}`;
 }
 
 const day = (iso: string | undefined) => (iso ? iso.slice(0, 10) : undefined);
@@ -877,9 +900,54 @@ export function renderUnlocks(page: HeyUnlocks): string {
 }
 
 export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
-  const lines = timeline.items.slice(0, limit).map((item) => `- ${item.precision} ${item.at.slice(0, 10)} · ${item.kind.replace(/_/g, ' ')} · ${item.title}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}`);
-  const more = timeline.items.length > limit ? `\n…and ${timeline.items.length - limit} earlier entries.` : '';
-  return `# ${timeline.project.name} — timeline (lens: ${timeline.lens})\n${timeline.project.url}\n${lines.length ? lines.join('\n') : 'Nothing HEY holds falls under this lens.'}${more}\n\n${timeline.disclaimer}`;
+  const shown = timeline.items.slice(0, limit);
+  const lines = shown.map((item) => `- ${item.precision} ${item.at.slice(0, 10)} · ${item.kind.replace(/_/g, ' ')} · ${item.title}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}`);
+  /*
+   * Shown of the whole, and the parameter that reads on (2026-09-26, M2 G3):
+   * this used to stop at 30 with "…and N earlier entries" and no way to fetch them.
+   */
+  const total = typeof timeline.total === 'number' ? timeline.total : timeline.items.length;
+  const more =
+    shown.length < timeline.items.length
+      ? `Call project_timeline again with limit=${shown.length} and follow the before= cursor it gives to read on.`
+      : timeline.nextCursor
+        ? `For older entries, call project_timeline again with before=${timeline.nextCursor}.`
+        : undefined;
+  return `# ${timeline.project.name} — timeline (lens: ${timeline.lens})\n${timeline.project.url}\n${lines.length ? lines.join('\n') : 'Nothing HEY holds falls under this lens.'}\n\n${shownOf(shown.length, total, more)}\n\n${timeline.disclaimer}`;
+}
+
+/**
+ * The change ledger as prose (2026-09-26): each event's own time and how
+ * exactly HEY knows it, when HEY first knew, what it says, and its evidence.
+ * A retraction says only that an id is gone. The page ends with how to read
+ * on, so a model never mistakes a page for the whole.
+ */
+export function renderChanges(page: HeyChangesPage): string {
+  const lines: string[] = ['# What changed — the HEY change ledger', ''];
+  if (page.items.length === 0) lines.push('No change matches in this page.');
+  for (const item of page.items) {
+    if (item.op === 'retract') {
+      lines.push(`- RETRACTED ${item.id} (revision ${item.revision}, ${item.recordedAt.slice(0, 16).replace('T', ' ')} UTC): HEY no longer makes this claim; drop it.`);
+      continue;
+    }
+    const when = item.occurredAt ? `${item.precision} ${item.occurredAt.slice(0, 10)}${item.occurredUntil ? `–${item.occurredUntil.slice(0, 10)}` : ''}` : `OBSERVED (no source time; HEY saw it ${item.detectedAt.slice(0, 10)})`;
+    const move = item.before !== undefined || item.after !== undefined ? ` (${String(item.before ?? '—')} → ${String(item.after ?? '—')})` : '';
+    lines.push(`- ${when} · ${item.type} · ${item.project.name} (${item.project.slug}): ${item.summary}${move}`);
+    lines.push(`  id ${item.id} · revision ${item.revision}${item.origin === 'live' ? '' : ` · ${item.origin}`} · detected ${item.detectedAt.slice(0, 10)}${item.countsAsBuilding ? ' · counts as building' : ''}`);
+    for (const evidence of item.evidence) if (evidence.url) lines.push(`  evidence: ${evidence.label} — ${evidence.url}`);
+  }
+  lines.push('');
+  const sync = page.query.mode === 'sync';
+  if (page.hasMore && page.nextCursor) lines.push(`Showing ${page.items.length}; more exist. Call get_changes again with ${sync ? 'after' : 'before'}=${page.nextCursor}.`);
+  else lines.push(`Showing ${page.items.length}; that is the end of this ${sync ? 'sync (keep the cursor to read what comes next)' : 'listing'}.${sync && page.nextCursor ? ` Cursor: ${page.nextCursor}.` : ''}`);
+  const facts = [
+    page.ledger.collectionStart ? `ledger from ${page.ledger.collectionStart.slice(0, 10)}` : undefined,
+    page.ledger.transitionsFrom ? `status and market moves recorded from ${page.ledger.transitionsFrom.slice(0, 10)} (none earlier exist)` : undefined,
+    page.ledger.projectorRanAt ? `last indexed ${page.ledger.projectorRanAt.slice(0, 16).replace('T', ' ')} UTC` : undefined,
+  ].filter((fact): fact is string => Boolean(fact));
+  if (facts.length > 0) lines.push(`Ledger: ${facts.join('; ')}.`);
+  lines.push(queryEcho(page.query), 'A change is a fact HEY recorded, never a cause and never a recommendation.', '', page.disclaimer);
+  return lines.join('\n');
 }
 
 export function renderCompare(page: HeyCompare): string {
@@ -888,7 +956,9 @@ export function renderCompare(page: HeyCompare): string {
       `## ${project.name} — ${project.url}`,
       `FACT activity status: ${project.activityStatus.toLowerCase().replace(/_/g, ' ')}${project.lastMeaningfulShipAt ? `; last meaningful ship ${day(project.lastMeaningfulShipAt)}` : ''}`,
       project.buildMomentum === undefined ? 'UNKNOWN Build Momentum: not measured' : `FACT Build Momentum ${Math.round(project.buildMomentum)}`,
-      project.velocity ? `DERIVED velocity: ${project.velocity.state.toLowerCase()} (${project.velocity.current}${project.velocity.previous === null ? '' : ` vs ${project.velocity.previous}`})` : 'UNKNOWN velocity',
+      project.velocity && project.velocity.current !== null
+        ? `DERIVED velocity: ${project.velocity.state.toLowerCase()} (${project.velocity.current}${project.velocity.previous === null ? '' : ` vs ${project.velocity.previous}`})`
+        : 'UNKNOWN velocity',
       project.cadence?.medianIntervalDays !== undefined ? `DERIVED release cadence: every ${project.cadence.medianIntervalDays} days` : 'UNKNOWN release cadence',
       `FACT verified builder: ${project.verifiedBuilder ? 'yes' : 'no'}; sources ${project.sources.verified} verified of ${project.sources.total}`,
       // By the kind the API sends, not by comparing figures (2026-09-25): an FDV is never called a market cap.

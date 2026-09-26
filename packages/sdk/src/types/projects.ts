@@ -21,6 +21,7 @@
  * family file is public without an `index.ts` edit.
  */
 
+import type { HeyLifecycleExtras, HeyMarketContractExtras, HeyOnchainDay, HeyOnchainFreshness, HeyPoolStructure } from './contracts';
 import type { HeySignal } from './feeds';
 import type { HeyBuilderRadarDay } from './misc';
 
@@ -40,6 +41,9 @@ export type HeyToken = { chainId: number; contractAddress: string };
  * which the project page prints as "Not a market reading".
  */
 export type HeyLiquidityKind = 'market' | 'launch_inventory';
+
+/** Which measure a valuation is, by HEY's one rule (2026-09-26): `fdv` for a fully diluted valuation, never called a market cap. */
+export type HeyValuationKind = 'marketCap' | 'fdv';
 
 /**
  * What HEY's latest attempt to read a token's distribution found.
@@ -135,6 +139,10 @@ export type HeyShip = {
    * late-ingested ship is missed permanently rather than seen late.
    */
   detectedAt: string;
+  /** How much of `publishedAt` HEY knows (2026-09-26): `EXACT`, `DATE` (date-only), `WEEK` (a week of code activity) or `OBSERVED` (HEY's scan clock). */
+  precision: 'EXACT' | 'DATE' | 'WEEK' | 'OBSERVED';
+  /** The typed evidence id, `ship:<uuid>`, that resolves at `/api/evidence/{id}` (2026-09-26). */
+  evidenceId: string;
   /** How the claim is backed; self-reported and verified are different states. */
   verification: string;
   /** The public source HEY recorded it from, when there is one. */
@@ -184,15 +192,25 @@ export type HeyProjectDetail = HeyProject & {
   longDescription?: string;
   /** The newest ships, as `/api/ships?project=` would list them. */
   ships: HeyShip[];
+  /** Deprecated alias: on registry and launchpad pages it held the outside listing date. Read `firstRecordedByHeyAt` (2026-09-26). */
   firstSeenAt: string;
+  /** When HEY first recorded the project: knowledge time, never an outside date (2026-09-26). */
+  firstRecordedByHeyAt: string;
+  /** The date an outside registry or launchpad gives the project, and which (`defillama`, `virtuals`, …). Absent when HEY holds none. */
+  externalListedAt?: string;
+  externalListedSource?: string;
   /** Ownership: claimed by a verified builder, or self-reported at submission. */
   isClaimed: boolean;
   submitted: boolean;
   narratives: { slug: string; name: string; isPrimary: boolean }[];
   sources: { url: string; sourceType: string; isVerified: boolean; confidence: string; contextOnly: boolean; contextReason?: string }[];
   market?: {
+    /** The reading's valuation; `valuationKind` says which measure (2026-09-26). */
     marketCapUsd?: number;
+    valuationKind?: HeyValuationKind;
     fdvUsd?: number;
+    /** Present when the market is not live and the valuation is withheld: the market's reason code (2026-09-26). */
+    valuationWithheld?: string;
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply (2026-09-25). */
     liquidityKind?: HeyLiquidityKind;
@@ -276,9 +294,11 @@ export type HeyTokenMarket = {
    * Absent when HEY holds none of it. A fact about a contract, never a label
    * on a person.
    */
-  contract?: { deployer?: string; deployerShared?: boolean; creationTx?: string; createdAt?: string };
+  contract?: { deployer?: string; deployerShared?: boolean; creationTx?: string; createdAt?: string } & HeyMarketContractExtras;
   /** The token's pools on the latest day HEY read: how many, their liquidity, and how much can be sold before the price moves 1%, added across them. */
-  pools?: { day: string; observedAt: string; pools?: number; liquidityUsd?: number; depthOnePctUsd?: number };
+  pools?: { day: string; observedAt: string; pools?: number; liquidityUsd?: number; depthOnePctUsd?: number } & HeyPoolStructure;
+  /** How old the newest on-chain day is (2026-09-26). */
+  onchainFreshness?: HeyOnchainFreshness;
   /**
    * How concentrated the supply is, from HEY's daily snapshot of the token's
    * largest balances. Shares are 0–100; burned and pooled supply are excluded
@@ -308,7 +328,9 @@ export type HeyTokenMarket = {
   };
   current?: {
     priceUsd?: number;
+    /** The reading's valuation; `valuationKind` says which measure (2026-09-26). Absent for a market that is not live. */
     marketCapUsd?: number;
+    valuationKind?: HeyValuationKind;
     /** Fully diluted valuation from the same reading; equal to `marketCapUsd` when it stands in for one (2026-09-25). */
     fdvUsd?: number;
     liquidityUsd?: number;
@@ -333,8 +355,14 @@ export type HeyTokenMarket = {
     volume24hUsd?: number;
     /** The day's closing valuation; `marketCapCloseKind` says which measure (2026-09-25). */
     marketCapCloseUsd?: number;
-    /** `fdv` when the close equals price × total supply, `marketCap` when it is a circulating figure; absent when HEY does not know the supply. */
+    /** By HEY's one valuation rule (2026-09-26): the closing reading's own fields where HEY still holds it, the supply test otherwise; absent when neither can say. */
     marketCapCloseKind?: 'marketCap' | 'fdv';
+    /** Present when the day's valuation is withheld because the market is not live today: the reason code (2026-09-26). */
+    marketCapCloseWithheld?: string;
+    /** `launch_inventory` when `liquidityCloseUsd` is a launch pool's own supply (2026-09-26). */
+    liquidityCloseKind?: HeyLiquidityKind;
+    /** Present when the day's liquidity is withheld because HEY does not believe the market's figures (2026-09-26). */
+    liquidityCloseWithheld?: string;
     source?: string;
     trades?: number;
     buys?: number;
@@ -362,10 +390,10 @@ export type HeyTokenMarket = {
     liquidityBelowPeakPct?: number;
     priceChange7dPct?: number;
     priceChange30dPct?: number;
-  };
+  } & HeyLifecycleExtras;
   checks: { key: string; label: string; finding: string; provenance?: string; checkedAt?: string; tone: 'plain' | 'noted' }[];
-  /** `callers` is how many distinct addresses called the contract that day, when HEY read it: a count, never the addresses. */
-  onchainDays: { day: string; events: number; truncated: boolean; callers?: number }[];
+  /** `callers` is how many distinct addresses called the contract that day, when HEY read it: a count, never the addresses. `events` is null on a blind-spot day (2026-09-26). */
+  onchainDays: HeyOnchainDay[];
   tvlDays: { day: string; tvlUsd: number; protocolName: string }[];
   url: string;
   disclaimer: string;
@@ -391,9 +419,16 @@ export type HeyTokenLookupProject = {
   activityStatus: HeyActivityStatus;
   activityLabel: string;
   activityHelp: string;
-  /** Absent for a page HEY researched; `INDEXED` for a record it has only indexed. */
+  /** `INDEXED`, `RESEARCHED` or `VERIFIED_BUILDER`; sent for every published project. */
   researchLevel?: string;
+  /** Ship records in thirty days. With `activityMeasured` false, a 0 here is not a finding. */
   shipsLast30Days: number;
+  /** Whether HEY measured this project's building at all (2026-09-26, additive). */
+  activityMeasured: boolean;
+  /** Meaningful ships in thirty days by the rule behind the status (2026-09-26); absent when unmeasured and none. */
+  meaningfulShipsLast30Days?: number;
+  /** When the project was last scored (2026-09-26). */
+  asOf?: string;
   lastShipAt?: string;
   lastShip?: { title: string; publishedAt: string; sourceUrl?: string };
   deployedAt?: string;
@@ -435,6 +470,14 @@ export type HeyScanCard =
       verified_builder: boolean;
       /** Whether the project itself names this contract (2026-09-25). On `MISMATCH`, do not print the activity as this token's. */
       token_verification: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';
+      /** `INDEXED`, `RESEARCHED` or `VERIFIED_BUILDER` (2026-09-26). */
+      research_level: string;
+      /** Whether the counts below are measurements (2026-09-26, additive): false means `ships_30d: 0` is not a finding. */
+      activity_measured: boolean;
+      /** Why `activity_measured` is what it is. */
+      coverage: 'measured' | 'no_source' | 'not_researched';
+      /** When the project was last scored (2026-09-26). */
+      as_of?: string;
       activity: {
         /** Absent when the project has no repository HEY reads — never a zero that reads as "nobody committed". */
         commits_30d?: number;
@@ -442,8 +485,12 @@ export type HeyScanCard =
         commits_30d_partial?: true;
         releases_30d: number;
         ships_30d: number;
+        /** Meaningful ships by the rule behind the status (2026-09-26); absent when unmeasured and none. */
+        meaningful_ships_30d?: number;
         last_ship?: string;
         last_ship_title?: string;
+        /** The last ship's public source (2026-09-26). */
+        last_ship_url?: string;
       };
       project: { slug: string; name: string; symbol?: string };
       project_url: string;
@@ -466,13 +513,16 @@ export type HeyDevelopmentIntelligence = {
   computedAt: string;
   /** When HEY began watching the project: the floor under every window. */
   observedSince: string;
+  /** False without a builder source to read or on an UNKNOWN status: zero counts below are then null, never a measured nothing (2026-09-26). */
+  activityMeasured: boolean;
   /** Meaningful events in the last 30 days against the 30 before; `previous` is null while HEY has watched for under 60 days. */
   velocity: {
     windowDays: number;
-    current: number;
+    /** Null with `NOT_MEASURED` (2026-09-26). */
+    current: number | null;
     previous: number | null;
     changePct: number | null;
-    state: 'ACCELERATING' | 'STABLE' | 'SLOWING' | 'NEW' | 'NO_RECENT_ACTIVITY';
+    state: 'ACCELERATING' | 'STABLE' | 'SLOWING' | 'NEW' | 'NO_RECENT_ACTIVITY' | 'NOT_MEASURED';
   };
   /** Days between release days over the last 365; needs three release days. */
   cadence:
@@ -490,11 +540,13 @@ export type HeyDevelopmentIntelligence = {
   consistency: {
     activeWeeks: number | null;
     windowWeeks: number;
-    currentStreakWeeks: number;
+    /** Null when activity is not measured and HEY holds no streak (2026-09-26). */
+    currentStreakWeeks: number | null;
     longestStreakWeeks: number;
     daysSinceMeaningfulShip: number | null;
     longestSilenceDays: number | null;
-    resumptions: number;
+    /** Null when activity is not measured and HEY holds no comeback (2026-09-26). */
+    resumptions: number | null;
   };
   /** Hours from publication to HEY recording it, over events published while HEY was watching. */
   discoveryLag:
@@ -567,8 +619,17 @@ export type HeyProjectsQuery = {
   minLiquidity?: number;
   maxMarketCap?: number;
   minMarketCap?: number;
-  /** Default `activity` — most recently shipped first. A market order is context the caller asked for. */
-  sort?: 'activity' | 'marketCap' | 'newest' | 'liquidity' | 'volume24h';
+  /** Traded volume over 24 hours, in dollars, on the card's own reading; unknown is excluded. */
+  minVolume?: number;
+  /** How long ago the token's first pool opened. */
+  age?: 'day' | 'week' | 'month' | 'older';
+  /** How long ago the token contract was deployed. */
+  deployed?: 'day' | 'week' | 'month' | 'older';
+  /**
+   * Default `activity` (card completeness, then activity); `shipped` is most
+   * recently shipped first. A market order is context the caller asked for.
+   */
+  sort?: 'activity' | 'shipped' | 'marketCap' | 'newest' | 'liquidity' | 'volume24h';
   /** 1–48; default 24. */
   limit?: number;
   offset?: number;

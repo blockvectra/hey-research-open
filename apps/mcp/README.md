@@ -62,6 +62,7 @@ Any other MCP client: run `npx -y @hey-research/mcp` over stdio.
 | `get_token_market` | One token's market in depth from HEY's daily index: price, liquidity, volume and trades by day, lifecycle, contract checks, deployer, pools and 1% depth, supply-concentration summary. |
 | `project_intelligence` | How one project builds over time: velocity, release cadence, consistency, how fast HEY saw its ships, market attention as context, and 30-day changes — each line tagged FACT, DERIVED or UNKNOWN. |
 | `ask_hey` | A free-text question about one project, answered only from HEY's record; every line FACT, DERIVED or UNKNOWN. |
+| `get_changes` | The change ledger: what changed chain-wide or on one project, one event per change with its own time and precision, when HEY first knew, and its evidence; a cursor to follow along. |
 | `contract_changes` | Upgrades, follow-up deployments, newly verified contracts and interface changes, with evidence. |
 | `shipping_in_silence` | Building with comparatively little market attention — HEY's Under the Radar decision. |
 | `builder_comebacks` | Projects shipping again after 60+ quiet days. |

@@ -66,9 +66,9 @@ describe('the HEY MCP server', () => {
     const client = await connect(fetchOk(projectsPage));
     const { tools } = await client.listTools();
 
-    expect(tools.map((tool) => tool.name).sort()).toEqual(['accelerating_builders', 'ask_hey', 'builder_comebacks', 'chain_activity', 'compare_projects', 'contract_changes', 'events_before_market_change', 'get_project', 'get_token_market', 'list_bounties', 'list_builders', 'list_projects', 'list_ships', 'list_signals', 'lookup_token', 'project_intelligence', 'project_timeline', 'search_projects', 'shipping_in_silence', 'this_week', 'upcoming_unlocks', 'weekly_report']);
+    expect(tools.map((tool) => tool.name).sort()).toEqual(['accelerating_builders', 'ask_hey', 'builder_comebacks', 'chain_activity', 'compare_projects', 'contract_changes', 'events_before_market_change', 'get_changes', 'get_project', 'get_token_market', 'list_bounties', 'list_builders', 'list_projects', 'list_ships', 'list_signals', 'lookup_token', 'project_intelligence', 'project_timeline', 'search_projects', 'shipping_in_silence', 'this_week', 'upcoming_unlocks', 'weekly_report']);
 
-    expect(tools).toHaveLength(22);
+    expect(tools).toHaveLength(23);
     // No tool promises a valuation, a recommendation or a price ranking.
     const descriptions = tools.map((tool) => tool.description ?? '').join(' ').toLowerCase();
     for (const forbidden of ['buy', 'invest', 'undervalued', 'price target', 'predict']) {
@@ -87,7 +87,7 @@ describe('the HEY MCP server', () => {
     const shown = await connect(fetchOk(projectsPage), { marketIntegrity: true });
     const names = (await shown.listTools()).tools.map((tool) => tool.name);
     expect(names).toContain('market_integrity');
-    expect(names).toHaveLength(23);
+    expect(names).toHaveLength(24);
 
     expect(marketIntegrityFromEnv(undefined)).toBe(false);
     expect(marketIntegrityFromEnv('internal')).toBe(false);
@@ -115,6 +115,16 @@ describe('the HEY MCP server', () => {
     expect(instructions).toMatch(/No other tool here returns holder data/i);
     // Absence is a real answer, and the model is told so before it asks anything.
     expect(instructions).toMatch(/Absent means HEY does not know/i);
+  });
+
+  it('get_changes reads the change ledger with the caller’s filters and cursor (2026-09-26)', async () => {
+    const page = { query: { mode: 'sync', limit: 30 }, items: [], nextCursor: 'KEEP', hasMore: false, ledger: { collectionStart: null, transitionsFrom: null, newestRecordedAt: null, projectorRanAt: null }, disclaimer: 'd' };
+    const client = await connect(fetchOk(page));
+    const result = await client.callTool({ name: 'get_changes', arguments: { project: 'arrow', type: ['build.release', 'build.dormant'], after: 'c1.0' } });
+    const url = new URL(requested[0]!);
+    expect(url.pathname).toBe('/api/changes');
+    expect(Object.fromEntries(url.searchParams)).toEqual({ project: 'arrow', type: 'build.release,build.dormant', after: 'c1.0', limit: '30' });
+    expect((result.content as { text: string }[])[0]!.text).toContain('Cursor: KEEP.');
   });
 
   it('search_projects asks HEY for a text query and renders the answer', async () => {

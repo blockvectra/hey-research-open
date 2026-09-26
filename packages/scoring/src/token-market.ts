@@ -91,6 +91,22 @@ export const TOKEN_MARKET = {
    */
   implausibleUncorroboratedMinLiquidityUsd: 1_000_000,
   implausibleUncorroboratedMaxTurnover: 0.00001,
+  /**
+   * The chain's own depth contradicts the figure (2026-09-26, audit M1 G1).
+   * A pool of both sides worth L can absorb a sale of roughly a quarter of a
+   * per cent of L before the price moves one per cent; HEY's pool index
+   * measures that sale across every pool as `depthOnePctUsd`. When the index
+   * — read in the last `implausibleIndexMaxAgeDays` — finds at most this
+   * share of the claimed liquidity sellable for a one per cent move, and the
+   * day's volume is at most `implausibleMaxTurnover` of it, the figure is not
+   * a market: blorb claimed $13.76M with $6.20 of depth and $368 of volume,
+   * and the index's own liquidity agreed with the provider, so the index test
+   * above could not see it. A thousandth of the expected depth, so a thin
+   * concentrated pool is not caught; an unread depth decides nothing.
+   */
+  implausibleDepthShare: 0.00001,
+  /** The depth reading's age limit: the index HEY's market-status sweep reads reaches back a week. */
+  implausibleDepthMaxAgeDays: 7,
 } as const;
 
 export type TokenMarketEvidence = {
@@ -142,10 +158,17 @@ export type TokenMarketEvidence = {
    * provider's figure; a newer drained index reading also outranks an older
    * pool reading that still showed a market.
    */
-  chainIndex?: { observedAt: Date; liquidityUsd: number };
+  chainIndex?: ChainIndexReading;
   /** HEY's decoded trade close in the last two days: the preferred reference price. */
   chainPriceUsd?: number;
 };
+
+/**
+ * HEY's chain pool index, its newest day: liquidity across every pool, and
+ * — where the index measured it — how much of the token can be sold for a
+ * one per cent price move, in USD (`token_pool_days.depth_one_pct_usd`).
+ */
+export type ChainIndexReading = { observedAt: Date; liquidityUsd: number; depthOnePctUsd?: number };
 
 /** A reading other than the current one: another pool's, or the chain index's. */
 export type SecondReading = { observedAt: Date; liquidityUsd: number; volume24hUsd?: number; priceUsd?: number };
@@ -190,13 +213,20 @@ export function secondReadingBelievable(
 export function liquidityImplausible(
   liquidityUsd: number,
   volume24hUsd: number | undefined,
-  chainIndex: { observedAt: Date; liquidityUsd: number } | undefined,
+  chainIndex: ChainIndexReading | undefined,
   now: Date,
 ): boolean {
   if (volume24hUsd === undefined || liquidityUsd < TOKEN_MARKET.implausibleMinLiquidityUsd) return false;
   const indexFresh = chainIndex !== undefined && now.getTime() - chainIndex.observedAt.getTime() <= TOKEN_MARKET.implausibleIndexMaxAgeDays * DAY_MS;
+  const untraded = volume24hUsd <= liquidityUsd * TOKEN_MARKET.implausibleMaxTurnover;
+  // The index may agree on liquidity and still measure almost none of it as sellable (blorb, 2026-09-26).
+  const depth = chainIndex?.depthOnePctUsd;
+  const depthRecent = chainIndex !== undefined && now.getTime() - chainIndex.observedAt.getTime() <= TOKEN_MARKET.implausibleDepthMaxAgeDays * DAY_MS;
+  if (untraded && depthRecent && depth !== undefined && Number.isFinite(depth) && depth >= 0 && depth <= liquidityUsd * TOKEN_MARKET.implausibleDepthShare) {
+    return true;
+  }
   if (indexFresh) {
-    return volume24hUsd <= liquidityUsd * TOKEN_MARKET.implausibleMaxTurnover && chainIndex.liquidityUsd <= liquidityUsd * TOKEN_MARKET.implausibleIndexShare;
+    return untraded && chainIndex.liquidityUsd <= liquidityUsd * TOKEN_MARKET.implausibleIndexShare;
   }
   return liquidityUsd >= TOKEN_MARKET.implausibleUncorroboratedMinLiquidityUsd && volume24hUsd <= liquidityUsd * TOKEN_MARKET.implausibleUncorroboratedMaxTurnover;
 }

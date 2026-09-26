@@ -31,6 +31,7 @@ export * from './adapters/rpc';
 export * from './adapters/rpc-storage';
 export * from './adapters/bitquery-deployment';
 export * from './adapters/bitquery-pools';
+export * from './adapters/bitquery-upgrades';
 export * from './adapters/bitquery-surface';
 export * from './adapters/erc20-supply';
 export * from './adapters/rpc-logs';

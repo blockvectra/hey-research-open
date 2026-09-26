@@ -7,7 +7,7 @@
  */
 export { DEFAULT_BASE_URL, HeyClient, USER_AGENT, type FetchLike, type HeyClientOptions, type QueryParams } from './client';
 export { HeyApiError, retryAfterSeconds, type HeyApiErrorCode, type HeyApiErrorOptions } from './error';
-export { itemsOf, nextOffsetPages, totalPages } from './paging';
+export { cursorPages, itemsOf, nextOffsetPages, totalPages } from './paging';
 export { SDK_VERSION } from './version';
 /*
  * The response and query shapes, one file per family (2026-09-26). `export

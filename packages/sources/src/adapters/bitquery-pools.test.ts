@@ -38,6 +38,33 @@ describe('bitquery pools', () => {
     expect(rows.find((row) => row.tokenAddress === PONS)).toMatchObject({ pools: 1, events: 16 });
   });
 
+  it('keeps each pool on its own, with the side that is not the token (2026-09-26)', () => {
+    const POOL_C = '0x' + 'c'.repeat(64);
+    const rows = normalizeBitqueryPools(
+      {
+        pools: [
+          { PoolEvent: { Pool: { SmartContract: POOL_A, CurrencyA: { SmartContract: ETH }, CurrencyB: { SmartContract: HEY } }, Liquidity: { a: 300, b: 100 } }, events: '3' },
+          // A second reading of the same pool never replaces the first priced one.
+          { PoolEvent: { Pool: { SmartContract: POOL_A, CurrencyA: { SmartContract: ETH }, CurrencyB: { SmartContract: HEY } }, Liquidity: { a: 9, b: 9 } }, events: '1' },
+          // A v4 pool id, HEY on side A: its quote is B.
+          { PoolEvent: { Pool: { SmartContract: POOL_C, CurrencyA: { SmartContract: HEY }, CurrencyB: { SmartContract: ETH } }, Liquidity: { a: 40, b: 60 } }, events: '2' },
+          // Priced at nothing on every side: an empty pool, 0 rather than unknown.
+          { PoolEvent: { Pool: { SmartContract: POOL_B, CurrencyA: { SmartContract: HEY }, CurrencyB: { SmartContract: ETH } }, Liquidity: { a: 0, b: 0 } }, events: '1' },
+        ],
+        depth: [],
+      },
+      [HEY],
+    );
+    const hey = rows.find((row) => row.tokenAddress === HEY)!;
+    expect(hey.venues).toEqual([
+      { pool: POOL_A, liquidityUsd: 400, quoteSideUsd: 300 },
+      { pool: POOL_C, liquidityUsd: 100, quoteSideUsd: 60 },
+      { pool: POOL_B, liquidityUsd: 0, quoteSideUsd: 0 },
+    ]);
+    // The parts add up to the whole the token's row already carried.
+    expect(hey.liquidityUsd).toBeCloseTo(500, 6);
+  });
+
   it('reads the depth in the direction that sells the token', () => {
     const rows = normalizeBitqueryPools(
       {

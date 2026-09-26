@@ -150,7 +150,9 @@ that is a page, and it costs you nothing.
 ## The builder call: `GET /api/v1/builder?chain=4663&token=0x…` (2026-09-20)
 
 For a surface that already has the chart and wants the other half. Same two parameters as the card
-call, same validation, HEY's own tables only.
+call, HEY's own tables only. One difference in validation (2026-09-26, corrected): a chain other
+than 4663 is a **400** here, where the card call answers `200` with `found: false, reason: "chain"`;
+an unpublished contract is a **404** here, with `scan_url`.
 
 ```jsonc
 {
@@ -176,6 +178,12 @@ Five things worth knowing before you render it:
 - **Check `token_verification` (2026-09-25).** The activity belongs to the project; the verification
   belongs to this address. On `MISMATCH` the project's own site names a different contract — do not
   print the activity as this token's.
+- **Check `activity_measured` (2026-09-26).** `false` means HEY holds no repository, changelog or
+  feed it can read for this project (or its status is unknown): `unknown` is then not a finding.
+  `research_level` says how far HEY's research went; `as_of` when the project was last scored.
+  `last_code_activity.commits_30d` (with `commits_30d_partial` and `window_start`) is the same
+  thirty-day count as the card call's `commits_30d`, so the two calls agree; `commits` is the newest
+  weekly summary's own figure, as that week recorded it.
 
 ## The card call: `GET /api/v1/scan?chain=4663&token=0x…` (2026-09-18)
 
@@ -218,6 +226,38 @@ figures. Built for the Chit bot's line above its buy and sell buttons —
   the on-demand chain scan (ten an hour) — the name here is the partner's spelling.
 - The `cta` always points at the project page. There is no risk field, no score and no verdict;
   put a risk read from a tool that does that work beside this line.
+- **Is a zero a measurement? (2026-09-26, additive.)** `activity_measured: false` means HEY holds
+  no repository, changelog or feed it can read for this project, or cannot decide its status:
+  `ships_30d: 0` and `releases_30d: 0` are then not findings — print nothing rather than "0 ships".
+  `coverage` says why (`measured`, `no_source`, `not_researched`), `research_level` how far HEY's
+  research went, and `as_of` when the project was last scored. `activity.meaningful_ships_30d`
+  counts ships by the rule behind the status (a week of prereleases or code summaries counts once);
+  `ships_30d` stays the ship-record count the project page shows. `activity.last_ship_url` is the
+  last ship's public source.
+- The zero address (`0x000…000`), which bots send for a native coin, is a 400 like any non-token;
+  since 2026-09-26 it costs you nothing: no allowance, no rate bucket.
+
+## The partner contract: what never changes (2026-09-26)
+
+Every change to these three calls is **additive**. What is below keeps its meaning; a change of
+meaning would ship as a new versioned path, beside the old one for at least ninety days, with a
+migration note. `/api/v1/` is the partner namespace, not an API version.
+
+- **`/api/v1/scan`:** every key and type above; the lower-case six-state `status`; `found: false`
+  as a 200 for an unpublished token and for another chain; 400 for a malformed token; `last_ship` as
+  `YYYY-MM-DD`; `commits_30d` absent (not 0) without a readable repository; `ships_30d` and
+  `releases_30d` as numbers with their meaning; the CTA; the 60-second public cache; CORS `*`.
+- **`/api/v1/builder`:** the four-value `status` with no `abandoned`; `last_commit: null`; explicit
+  `null` for a field HEY does not hold; 404 with `scan_url` for an unpublished contract; 400 for
+  another chain.
+- **`/api/token/{chainId}/{address}`:** the camelCase shape; `status: "unknown"` as a 200; the chain
+  id in the path, digits only; `shipsLast30Days` as a number. `researchLevel` is sent for every
+  published project (the docs once said it was absent for a researched page; it never was).
+
+Additive fields so far: `token_verification` / `tokenVerification` (2026-09-25); `research_level`,
+`activity_measured`, `coverage`, `as_of`, `meaningful_ships_30d`, `last_ship_url`,
+`activityMeasured`, `meaningfulShipsLast30Days`, `asOf`, and the builder call's `commits_30d`,
+`commits_30d_partial`, `window_start` (2026-09-26).
 
 ## If you want more
 

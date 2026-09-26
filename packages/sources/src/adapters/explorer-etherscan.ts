@@ -187,6 +187,17 @@ export type ContractSource = {
   name?: string;
   compiler?: string;
   abi?: { functions: string[]; events: string[] };
+  /**
+   * The explorer's own answer to "is this a proxy" (2026-09-26), when it gave
+   * one: Blockscout sends `IsProxy` and `ImplementationAddress(es)`, the
+   * Etherscan form `Proxy` and `Implementation`. Absent when the explorer said
+   * nothing — never read as "not a proxy". These fields were in every answer
+   * and the schema dropped them, so five beacon-proxy tokens were published as
+   * plain contracts while the explorer was saying otherwise (M4 G1).
+   */
+  isProxy?: boolean;
+  /** The implementation the explorer resolves the proxy to, lower-cased. */
+  implementation?: string;
 };
 
 const sourceSchema = envelope(
@@ -195,8 +206,45 @@ const sourceSchema = envelope(
     SourceCode: z.string().nullish(),
     ABI: z.string().nullish(),
     CompilerVersion: z.string().nullish(),
+    IsProxy: z.union([z.string(), z.boolean()]).nullish(),
+    Proxy: z.union([z.string(), z.number()]).nullish(),
+    Implementation: z.string().nullish(),
+    ImplementationAddress: z.string().nullish(),
+    ImplementationAddresses: z.array(z.string()).nullish(),
   }),
 );
+
+const ZERO_ADDRESS = /^0x0{40}$/i;
+
+/**
+ * What the explorer claims about proxying, in one shape. `true`/`"true"`/`"1"`
+ * is a proxy, `false`/`"false"`/`"0"` is not, anything else is no answer. An
+ * implementation is taken only when it is a real, non-zero address.
+ */
+export function explorerProxyClaim(row: {
+  IsProxy?: string | boolean | null | undefined;
+  Proxy?: string | number | null | undefined;
+  Implementation?: string | null | undefined;
+  ImplementationAddress?: string | null | undefined;
+  ImplementationAddresses?: string[] | null | undefined;
+}): { isProxy?: boolean; implementation?: string } {
+  const flag = (value: unknown): boolean | undefined => {
+    const text = String(value ?? '').trim().toLowerCase();
+    if (text === 'true' || text === '1') return true;
+    if (text === 'false' || text === '0') return false;
+    return undefined;
+  };
+  const isProxy = flag(row.IsProxy) ?? flag(row.Proxy);
+  const candidates = [row.ImplementationAddress, ...(row.ImplementationAddresses ?? []), row.Implementation];
+  const implementation = candidates
+    .map((value) => value?.trim().toLowerCase())
+    .find((value): value is string => Boolean(value && ADDRESS.test(value) && !ZERO_ADDRESS.test(value)));
+  return {
+    ...(isProxy === undefined ? {} : { isProxy }),
+    /* An implementation named without the flag is still the explorer saying "proxy". */
+    ...(implementation && isProxy !== false ? { implementation } : {}),
+  };
+}
 
 type AbiParam = { type: string; components?: AbiParam[] | undefined };
 const abiParam: z.ZodType<AbiParam> = z.lazy(() => z.object({ type: z.string(), components: z.array(abiParam).optional() }));
@@ -253,12 +301,15 @@ export function createContractSourceAdapter(): SourceAdapter<ContractSourceInput
             // An empty ABI says nothing to compare; it is left out rather than stored as "no functions".
             const abi = parsedAbi && parsedAbi.functions.length + parsedAbi.events.length > 0 ? parsedAbi : undefined;
             const compiler = first?.CompilerVersion?.trim();
+            const proxy = first ? explorerProxyClaim(first) : {};
             return {
               address: input.address.toLowerCase(),
               verified,
               ...(name ? { name } : {}),
               ...(verified && compiler ? { compiler } : {}),
               ...(abi ? { abi } : {}),
+              ...(proxy.implementation && proxy.isProxy === undefined ? { isProxy: true } : {}),
+              ...proxy,
             };
           },
         },

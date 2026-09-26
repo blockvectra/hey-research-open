@@ -14,15 +14,28 @@ import { performSourceFetch } from '../http/perform';
  */
 export const EIP1967_IMPLEMENTATION_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
 export const EIP1967_BEACON_SLOT = '0xa3f0ad74e5423aebfd80d3ef4346578335a9a72aeaee59ff6cb3582b35133d50';
+/**
+ * `implementation()` (2026-09-26). A beacon proxy keeps its beacon in the
+ * EIP-1967 beacon slot, and the beacon — a contract — answers this call with
+ * the implementation every proxy behind it runs. Reading the implementation
+ * slot alone called five published beacon-proxy tokens plain (M4 G1).
+ */
+export const IMPLEMENTATION_CALL = '0x5c60da1b';
 
+/**
+ * One 32-byte word from a contract: a storage slot (`slot`) or the return of
+ * a no-argument view call (`call`, the four-byte selector). Exactly one.
+ */
 export type RpcStorageInput = {
   rpcUrl: string;
   address: string;
-  slot: string;
+  slot?: string;
+  call?: string;
 };
 
 export type StorageRead = {
   address: string;
+  /** The slot read, or the selector called. */
   slot: string;
   /** The raw 32-byte word, `0x` + 64 hex digits. */
   value: string;
@@ -44,11 +57,23 @@ export function createRpcStorageAdapter(): SourceAdapter<RpcStorageInput, Storag
     name: 'rpc-storage',
 
     canHandle(input) {
-      return Boolean(input.rpcUrl) && /^0x[a-fA-F0-9]{40}$/.test(input.address) && /^0x[a-fA-F0-9]{1,64}$/.test(input.slot);
+      const one = (input.slot === undefined) !== (input.call === undefined);
+      return (
+        one &&
+        Boolean(input.rpcUrl) &&
+        /^0x[a-fA-F0-9]{40}$/.test(input.address) &&
+        (input.slot === undefined || /^0x[a-fA-F0-9]{1,64}$/.test(input.slot)) &&
+        (input.call === undefined || /^0x[a-fA-F0-9]{8}$/.test(input.call))
+      );
     },
 
     fetch(input, ctx: SourceContext): Promise<SourceResult<StorageRead>> {
-      const body = JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'eth_getStorageAt', params: [input.address, input.slot, 'latest'] });
+      const slot = input.call ?? input.slot ?? '0x0';
+      const body = JSON.stringify(
+        input.call
+          ? { jsonrpc: '2.0', id: 1, method: 'eth_call', params: [{ to: input.address, data: input.call }, 'latest'] }
+          : { jsonrpc: '2.0', id: 1, method: 'eth_getStorageAt', params: [input.address, slot, 'latest'] },
+      );
 
       return performSourceFetch(
         ctx,
@@ -68,7 +93,7 @@ export function createRpcStorageAdapter(): SourceAdapter<RpcStorageInput, Storag
             const value = `0x${hex}`;
             const tail = hex.slice(24);
             const isAddress = /^0{24}[0-9a-f]{40}$/.test(hex) && /[1-9a-f]/.test(tail);
-            return { address: input.address, slot: input.slot, value, ...(isAddress ? { addressValue: `0x${tail}` } : {}) };
+            return { address: input.address, slot, value, ...(isAddress ? { addressValue: `0x${tail}` } : {}) };
           },
         },
       );

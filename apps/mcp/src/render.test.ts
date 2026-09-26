@@ -3,14 +3,18 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 
 import type { HeyTokenMarket } from '@hey-research/sdk';
-import type { HeyAskAnswer, HeyCompare, HeyContractChanges, HeySilentBuilders, HeyUnlocks, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip, HeyThisWeek } from '@hey-research/sdk';
+import type { HeyAskAnswer, HeyChain, HeyChangesPage, HeyComebacks, HeyCompare, HeyContractChanges, HeySilentBuilders, HeyUnlocks, HeyPage, HeyProject, HeyProjectDetail, HeyProjectIntelligence, HeyShip, HeyThisWeek } from '@hey-research/sdk';
 import {
   STILL_BUILDING_MEANING,
   ago,
   projectLine,
   renderAccelerating,
   renderAskAnswer,
+  renderBounties,
   renderBuilders,
+  renderChain,
+  renderChanges,
+  renderComebacks,
   renderCompare,
   renderContractChanges,
   renderMarketMoves,
@@ -21,6 +25,7 @@ import {
   renderSignals,
   renderSilentBuilders,
   renderThisWeek,
+  renderTimeline,
   renderTokenLookup,
   renderTokenMarket,
   renderUnlocks,
@@ -174,6 +179,7 @@ describe('renderProject', () => {
     ...project(),
     ships: [],
     firstSeenAt: '2026-06-01T00:00:00.000Z',
+    firstRecordedByHeyAt: '2026-06-01T00:00:00.000Z',
     isClaimed: false,
     submitted: false,
     narratives: [{ slug: 'ai-agents', name: 'AI Agents', isPrimary: true }],
@@ -252,6 +258,8 @@ describe('renderShips', () => {
     eventType: 'SDK_RELEASE',
     publishedAt: '2026-09-03T10:00:00.000Z',
     detectedAt: '2026-09-03T12:00:00.000Z',
+    precision: 'EXACT',
+    evidenceId: 'ship:ship-1',
     verification: 'SOURCE_VERIFIED',
     sourceUrl: 'https://github.com/org/repo/releases/tag/v0.4',
     project: project({ symbol: 'AOS' }),
@@ -418,7 +426,7 @@ describe('the renderers nothing was watching', () => {
         project: {
           slug: 'darkroute', name: 'DarkRoute', symbol: 'dark', url: 'https://hey/p/darkroute',
           activityStatus: 'SHIPPING', activityLabel: 'Shipping', activityHelp: 'Shipped in the last 7 days.',
-          shipsLast30Days: 4, lastShipAt: '2026-09-16T00:00:00Z',
+          shipsLast30Days: 4, activityMeasured: true, lastShipAt: '2026-09-16T00:00:00Z',
           lastShip: { title: 'v0.4', publishedAt: '2026-09-16T00:00:00Z', sourceUrl: 'https://github.com/x' },
           badgeUrl: 'b',
         },
@@ -438,12 +446,26 @@ describe('the renderers nothing was watching', () => {
         chainId: 4663, contractAddress: '0xabc', status: 'published', scanUrl: 's', disclaimer: 'D',
         project: {
           slug: 'x', name: 'X', url: 'u', activityStatus: 'SHIPPING', activityLabel: 'Shipping', activityHelp: 'h',
-          shipsLast30Days: 1, tokenVerification: { status: 'MISMATCH', reason: 'site_names_another_contract' }, badgeUrl: 'b',
+          shipsLast30Days: 1, activityMeasured: true, tokenVerification: { status: 'MISMATCH', reason: 'site_names_another_contract' }, badgeUrl: 'b',
         },
       },
       NOW,
     );
     expect(mismatch).toContain('MISMATCH: the project’s own site names a different contract');
+
+    // A zero HEY did not measure is not printed as one (2026-09-26).
+    const unmeasured = renderTokenLookup(
+      {
+        chainId: 4663, contractAddress: '0xabc', status: 'published', scanUrl: 's', disclaimer: 'D',
+        project: {
+          slug: 'x', name: 'X', url: 'u', activityStatus: 'UNKNOWN', activityLabel: 'Activity unknown', activityHelp: 'h',
+          shipsLast30Days: 0, activityMeasured: false, tokenVerification: { status: 'UNVERIFIED' }, badgeUrl: 'b',
+        },
+      },
+      NOW,
+    );
+    expect(unmeasured).toContain('UNKNOWN activity');
+    expect(unmeasured).not.toContain('0 ships');
   });
 });
 
@@ -502,7 +524,7 @@ describe('Still Building evidence (round-7 audit 2026-09-18)', () => {
     expect(line).toContain('STILL BUILDING (down 62% from the HEY-tracked high, 5 verified ships since)');
 
     const dossier = renderProject(
-      { ...project(evidenced), ships: [], firstSeenAt: '2026-06-01T00:00:00.000Z', isClaimed: false, submitted: false, narratives: [], sources: [], disclaimer: 'not investment advice' },
+      { ...project(evidenced), ships: [], firstSeenAt: '2026-06-01T00:00:00.000Z', firstRecordedByHeyAt: '2026-06-01T00:00:00.000Z', isClaimed: false, submitted: false, narratives: [], sources: [], disclaimer: 'not investment advice' },
       NOW,
     );
     expect(dossier).toContain(STILL_BUILDING_MEANING);
@@ -529,6 +551,7 @@ describe('renderProjectIntelligence (2026-09-24)', () => {
     rulesVersion: 'intel-v3',
     computedAt: '2026-09-24T12:00:00.000Z',
     observedSince: '2026-03-01T00:00:00.000Z',
+    activityMeasured: true,
     velocity: { windowDays: 30, current: 6, previous: 2, changePct: 200, state: 'ACCELERATING' },
     cadence: { state: 'MEASURED', releases: 8, lookbackDays: 365, medianIntervalDays: 6, currentIntervalDays: 3.5, previousIntervalDays: 18, direction: 'FASTER', daysSinceLastRelease: 1 },
     consistency: { activeWeeks: 9, windowWeeks: 12, currentStreakWeeks: 4, longestStreakWeeks: 6, daysSinceMeaningfulShip: 1, longestSilenceDays: 40, resumptions: 0 },
@@ -593,28 +616,30 @@ describe('renderAskAnswer and renderContractChanges (2026-09-24)', () => {
     const page: HeyContractChanges = {
       days: 30,
       items: [
-        { kind: 'CONTRACT_DEPLOY_FOLLOWUP', project: { slug: 'equifold', name: 'Equifold' }, count: 208, latest: { title: 'Deployed a new contract: 0x0407…efa4', publishedAt: '2026-09-23T00:00:00.000Z' } },
-        { kind: 'INTERFACE_CHANGED', project: { slug: 'vault', name: 'Vault' }, address: '0xabc', functionsAdded: ['withdraw(uint256)'], functionsRemoved: [], eventsAdded: [], eventsRemoved: [], detectedAt: '2026-09-22T00:00:00.000Z', source: 'https://explorer/address/0xabc' },
+        { id: 'ship:1', kind: 'CONTRACT_DEPLOY_FOLLOWUP', project: { slug: 'equifold', name: 'Equifold' }, count: 208, latest: { title: 'Deployed a new contract: 0x0407…efa4', publishedAt: '2026-09-23T00:00:00.000Z' } },
+        { id: 'abi:2', kind: 'INTERFACE_CHANGED', project: { slug: 'vault', name: 'Vault' }, address: '0xabc', functionsAdded: ['withdraw(uint256)'], functionsRemoved: [], eventsAdded: [], eventsRemoved: [], detectedAt: '2026-09-22T00:00:00.000Z', source: 'https://explorer/address/0xabc' },
       ],
+      total: 2,
+      truncated: false,
       disclaimer: 'd',
     };
     const text = renderContractChanges(page);
     expect(text).toContain('Equifold (equifold): 208 new contracts');
     expect(text).toContain('functions added: withdraw(uint256)');
-    expect(renderContractChanges({ days: 7, items: [], disclaimer: 'd' })).toMatch(/No evidence-backed contract change in the last 7 days/);
+    expect(renderContractChanges({ days: 7, items: [], total: 0, truncated: false, disclaimer: 'd' })).toMatch(/No evidence-backed contract change in the last 7 days/);
   });
 });
 
 describe('command centre renderers (2026-09-24)', () => {
   it('names quiet builders without a price view, and says so', () => {
-    const page: HeySilentBuilders = { items: [{ slug: 'a', name: 'A', activityStatus: 'SHIPPING', url: 'https://h/project/a', meaningfulShips30d: 2, marketAttention: 'VERY_LOW' }], method: 'm', disclaimer: 'd' };
+    const page: HeySilentBuilders = { items: [{ slug: 'a', name: 'A', activityStatus: 'SHIPPING', url: 'https://h/project/a', meaningfulShips30d: 2, marketAttention: 'VERY_LOW' }], total: 1, truncated: false, method: 'm', disclaimer: 'd' };
     const text = renderSilentBuilders(page);
     expect(text).toContain('A — 2 verified ships in 30 days, market attention very low');
     expect(text).toContain('not a buy signal');
   });
 
   it('marks unlocks SCHEDULED with their proof', () => {
-    const page: HeyUnlocks = { days: 30, items: [{ project: { slug: 'a', name: 'A', activityStatus: 'ACTIVE', url: 'u' }, lockId: 7, unlockAt: '2026-10-01T00:00:00.000Z', assetKind: 'TOKEN', lockedTokens: 1000, shareOfSupplyPct: 10, proof: 'https://hoodlock.tech/proof/lock/7', precision: 'SCHEDULED' }], disclaimer: 'd' };
+    const page: HeyUnlocks = { days: 30, items: [{ project: { slug: 'a', name: 'A', activityStatus: 'ACTIVE', url: 'u' }, lockId: 7, unlockAt: '2026-10-01T00:00:00.000Z', assetKind: 'TOKEN', lockedTokens: 1000, shareOfSupplyPct: 10, proof: 'https://hoodlock.tech/proof/lock/7', precision: 'SCHEDULED', id: 'lock:4663:7' }], total: 1, truncated: false, scope: 'hoodlock', disclaimer: 'd' };
     expect(renderUnlocks(page)).toContain('SCHEDULED 2026-10-01 00:00 UTC · A · lock #7 · 1,000 tokens (10% of recorded supply) — proof https://hoodlock.tech/proof/lock/7');
   });
 
@@ -625,6 +650,7 @@ describe('command centre renderers (2026-09-24)', () => {
         { slug: 'b', name: 'B', url: 'u', activityStatus: 'QUIET', buildMomentum: 12, verifiedBuilder: false, sources: { verified: 0, total: 1 }, marketCapUsd: 5000 },
       ],
       missing: ['c'],
+      ignoredSlugs: [],
       method: 'No winner.',
       disclaimer: 'd',
     };
@@ -765,5 +791,115 @@ describe('renderTokenMarket: pools, the deployer and the supply (2026-09-25)', (
     expect(none).toContain(`Distribution (2026-09-25): ${note}`);
     // A run that produced the map says nothing extra.
     expect(renderTokenMarket({ ...market, distributionRead: { outcome: 'mapped', checkedAt: '2026-09-25T03:00:00Z' } }, NOW)).not.toContain('Latest distribution read');
+  });
+});
+
+describe('every listing says what it showed of the whole, and how to read on (2026-09-26, M2 G3)', () => {
+  const signal = (id: string) => ({ id, kind: 'development_spike', group: 'development', label: 'Development spike', meaning: 'm', severity: 'notable', confidence: 0.9, importance: 70, observedAt: '2026-09-05T00:00:00.000Z', detectedAt: '2026-09-05T00:10:00.000Z', title: 't', summary: 's', evidence: [], source: 'ship_events', project: { slug: 'a', name: 'A', activityStatus: 'SHIPPING', url: 'u' }, url: 'u' });
+
+  it('list_signals: shown of total, and the offset that reads the rest', () => {
+    const text = renderSignals({ query: { offset: 0, limit: 2 }, total: 6011, nextOffset: 2, items: [signal('1'), signal('2')], disclaimer: 'd' }, NOW);
+    expect(text).toContain('Showing 2 of 6011. For the rest, call list_signals again with offset=2.');
+    const all = renderSignals({ query: {}, total: 1, items: [signal('1')], disclaimer: 'd' }, NOW);
+    expect(all).toContain('Showing all 1.');
+  });
+
+  it('list_builders: shown of total, and the offset that reads the rest', () => {
+    const builder = { slug: 'a', name: 'A', rank: 1, scores: { overall: 80, development: 70, onchain: 60, research: 90 }, activityStatus: 'SHIPPING', url: 'u' };
+    const text = renderBuilders({ day: '2026-09-05', ranked: 715, total: 715, query: { offset: 25 }, method: 'm', items: [builder] as never, disclaimer: 'd' }, NOW);
+    expect(text).toContain('Showing 1 of 715. For the rest, call list_builders again with offset=26.');
+  });
+
+  it('project_timeline: shown of the total, and the before cursor for older entries', () => {
+    const entry = (i: number) => ({ id: `ship:${i}`, kind: 'release', at: '2026-09-01T10:00:00.000Z', precision: 'EXACT' as const, title: `v${i}`, countsAsBuilding: true });
+    const timeline = {
+      project: { slug: 'equifold', name: 'Equifold', url: 'https://heyresearch.xyz/project/equifold' },
+      lens: 'everything',
+      items: [entry(1), entry(2)],
+      totals: { ships: 408, contractSource: 0, locks: 0, resumed: 0, marketIntegrity: 0, verification: 0 },
+      total: 408,
+      truncated: true,
+      nextCursor: 'CURSOR',
+      disclaimer: 'd',
+    };
+    const text = renderTimeline(timeline);
+    expect(text).toContain('- EXACT 2026-09-01 · release · v1');
+    expect(text).toContain('Showing 2 of 408. For older entries, call project_timeline again with before=CURSOR.');
+    // Cut by the renderer too: said, with how to page instead.
+    expect(renderTimeline(timeline, 1)).toContain('Showing 1 of 408. Call project_timeline again with limit=1 and follow the before= cursor it gives to read on.');
+    expect(renderTimeline({ ...timeline, items: [], totals: { ...timeline.totals, ships: 0 }, total: 0, truncated: false, nextCursor: null })).toContain('Nothing HEY holds falls under this lens.');
+  });
+
+  it('contract_changes: says how many it showed, and that the route caps each kind', () => {
+    const one: HeyContractChanges = { days: 30, items: [{ kind: 'VERIFIED', address: '0xabc', functionsAdded: [], functionsRemoved: [], eventsAdded: [], eventsRemoved: [], detectedAt: '2026-09-04T00:00:00.000Z', source: 'https://explorer/x', project: { slug: 'a', name: 'A' } }] as never, total: 1, truncated: false, disclaimer: 'd' };
+    expect(renderContractChanges(one)).toContain('Showing 1.');
+    const many: HeyContractChanges = { ...one, items: Array.from({ length: 100 }, () => one.items[0]!), total: 100 };
+    expect(renderContractChanges(many)).toContain('at most 100 changes of each kind');
+  });
+});
+
+describe('renderers without a test until 2026-09-26 (M2 G10)', () => {
+  it('renderChain prints each day’s aggregates and names nobody', () => {
+    const chain: HeyChain = { chainId: 4663, days: [{ day: '2026-09-04', dexTrades: 1200, projectsPublished: 3, ships: 12, buildersShipping: 7 }], volumeNote: 'Volume is decoded DEX trades.', disclaimer: 'd' };
+    const text = renderChain(chain);
+    expect(text).toContain('2026-09-04');
+    expect(text).toContain('3 projects published');
+    expect(text).toContain('12 verified ships from 7 builders');
+    expect(text).toContain('nobody is named');
+  });
+
+  it('renderComebacks lists the resuming projects with their method, or says there are none', () => {
+    const page: HeyComebacks = { items: [{ slug: 'a', name: 'A', activityStatus: 'RESUMED', url: 'https://h/project/a', lastShipAt: '2026-09-03T00:00:00.000Z' }] as never, method: 'Status RESUMED.', total: 1, truncated: false, disclaimer: 'd' };
+    expect(renderComebacks(page)).toContain('- A, last ship 2026-09-03 — https://h/project/a');
+    expect(renderComebacks(page)).toContain('Method: Status RESUMED.');
+    expect(renderComebacks({ ...page, items: [] })).toContain('No project is resuming right now.');
+  });
+
+  it('renderBounties says claiming happens on the site, and when bounties are closed', () => {
+    const rules = { claim: 'Sign in with a wallet on the site.', review: 'A moderator reviews it.' };
+    expect(renderBounties({ open: false, items: [], rules, disclaimer: 'd' } as never)).toContain('closed right now');
+    const bounty = { id: 'b1', url: 'https://h/bounties/b1', title: 'Map sources', description: '', kind: 'k', scope: 's', evidence: 'e', status: 'OPEN', taskStatus: 'OPEN', reward: { hey: '1000', heyBaseUnits: '1', targetUsd: '5' }, claim: { claimed: false, openToAll: true } };
+    const text = renderBounties({ open: true, query: { status: 'open', limit: 50 }, summary: { openBounties: 1, committedHey: '1000', paidHey: '0' }, items: [bounty], rules, disclaimer: 'd' } as never, NOW);
+    expect(text).toContain('Map sources [OPEN] · reward 1,000 HEY (≈ $5 at quote) · unclaimed, open to any wallet sign-in');
+    expect(text).toContain('How claiming works: Sign in with a wallet on the site.');
+  });
+});
+
+describe('renderChanges (2026-09-26)', () => {
+  const upsert = {
+    id: 'state:p:activity_status:9',
+    revision: 1,
+    op: 'upsert' as const,
+    type: 'build.dormant' as const,
+    domain: 'build' as const,
+    origin: 'live' as const,
+    project: { slug: 'arrow', name: 'Arrow', url: 'https://h/project/arrow' },
+    occurredAt: null,
+    precision: 'OBSERVED' as const,
+    detectedAt: '2026-09-04T01:00:00.000Z',
+    recordedAt: '2026-09-04T01:05:00.000Z',
+    summary: 'Activity status moved from Shipping to Dormant',
+    before: 'SHIPPING',
+    after: 'DORMANT',
+    evidence: [{ id: 'state:p:activity_status:9', label: 'HEY state record' }],
+    source: 'hey_state',
+    links: { project: 'p', evidence: 'e', timeline: 't' },
+  };
+  const ledger = { collectionStart: '2026-09-26T00:00:00.000Z', transitionsFrom: '2026-09-26T00:00:00.000Z', newestRecordedAt: null, projectorRanAt: '2026-09-26T10:00:00.000Z' };
+
+  it('never gives an event a source time it does not have, and says how to read on', () => {
+    const page: HeyChangesPage = { query: { mode: 'browse', limit: 1 }, items: [upsert], nextCursor: 'NEXT', hasMore: true, ledger, disclaimer: 'd' };
+    const text = renderChanges(page);
+    expect(text).toContain('OBSERVED (no source time; HEY saw it 2026-09-04) · build.dormant · Arrow (arrow): Activity status moved from Shipping to Dormant (SHIPPING → DORMANT)');
+    expect(text).toContain('Showing 1; more exist. Call get_changes again with before=NEXT.');
+    expect(text).toContain('status and market moves recorded from 2026-09-26 (none earlier exist)');
+    expect(text.toLowerCase()).not.toMatch(/because|caused|buy/);
+  });
+
+  it('says a retraction is gone and names nothing else; a sync keeps its cursor', () => {
+    const page: HeyChangesPage = { query: { mode: 'sync', after: 'c1.0', limit: 50 }, items: [{ id: 'ship:x', revision: 2, op: 'retract', recordedAt: '2026-09-05T00:00:00.000Z' }], nextCursor: 'KEEP', hasMore: false, ledger, disclaimer: 'd' };
+    const text = renderChanges(page);
+    expect(text).toContain('- RETRACTED ship:x (revision 2, 2026-09-05 00:00 UTC): HEY no longer makes this claim; drop it.');
+    expect(text).toContain('Showing 1; that is the end of this sync (keep the cursor to read what comes next). Cursor: KEEP.');
   });
 });
