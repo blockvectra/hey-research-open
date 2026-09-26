@@ -107,7 +107,52 @@ export const TOKEN_MARKET = {
   implausibleDepthShare: 0.00001,
   /** The depth reading's age limit: the index HEY's market-status sweep reads reaches back a week. */
   implausibleDepthMaxAgeDays: 7,
+  /**
+   * A removal is measured, never inferred from one reading (2026-09-27,
+   * founder decision F5): one series of readings — a pool by its address, the
+   * aggregators' figure for the token when they name no pool, or HEY's chain
+   * pool index across every pool — must have held the market on two readings,
+   * and its readings since it last stood above the removal level must fall on
+   * at least this many UTC days, with nothing HEY read of any pool since then
+   * above that level. Of nineteen tokens publicly "liquidity removed" on
+   * 2026-09-26, thirteen failed this: a new pool's first reading, a dead
+   * pool beside the one that held the market, a peak one launch-hour reading
+   * set, or an aggregator's zero the chain's own reading contradicted.
+   */
+  removalConfirmDays: 2,
 } as const;
+
+/**
+ * The version of the token market status rules (the one classifier below and
+ * the evidence the sweep reads for it). The explain engine prints it beside
+ * every status; bump it with a note whenever a threshold or rule changes.
+ *
+ * token-market-2026-09-27: a removal needs a measured drain (`DrainEvidence`)
+ * and a market held on two readings (`heldLiquidityUsd`); an unconfirmed fall
+ * to dust reads `removal_unconfirmed`, one to a small pool `LOW_LIQUIDITY`.
+ */
+export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-09-27' as const;
+
+/**
+ * A drain HEY measured in one series of readings (2026-09-27). The sweep's SQL
+ * (`tokens/market-status.ts` in `@hey/domain`) finds it; the classifier only
+ * checks it against the current reading. `series` is `pool:<address>`,
+ * `unpaired` (an aggregator's figure that names no pool) or `chain` (HEY's
+ * chain pool index, every pool with state).
+ */
+export type DrainEvidence = {
+  series: string;
+  /** The level the series held on two readings. */
+  heldUsd: number;
+  /** A tenth of that, capped at `removedMaxAbsoluteUsd` and never under dust: at or below it, the market is gone. */
+  levelUsd: number;
+  /** The series' first reading at or below the level after its last reading above it. */
+  since: Date;
+  /** Its newest reading. */
+  lastAt: Date;
+  /** Distinct UTC days its readings since `since` fall on, every one at or below the level. */
+  days: number;
+};
 
 export type TokenMarketEvidence = {
   /** The newest reading that carries liquidity, if any. */
@@ -161,6 +206,16 @@ export type TokenMarketEvidence = {
   chainIndex?: ChainIndexReading;
   /** HEY's decoded trade close in the last two days: the preferred reference price. */
   chainPriceUsd?: number;
+  /**
+   * The highest level one series of readings held on two readings
+   * (2026-09-27): a believable pool reading, never the token's own supply
+   * valued at its price with nothing traded. Whether a market existed to be
+   * removed is judged on this, not on `peakLiquidityUsd`, which one
+   * launch-hour reading can set. Absent: no series held a level twice.
+   */
+  heldLiquidityUsd?: number;
+  /** A drain HEY measured (`DrainEvidence`); absent when none is confirmed. */
+  drain?: DrainEvidence;
 };
 
 /**
@@ -339,21 +394,31 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
   ) {
     return { status: 'INSUFFICIENT_DATA', reason: 'pool_readings_disagree' };
   }
+  /*
+   * A removal is measured, never read off one figure (2026-09-27, F5): a
+   * series that held the market on two readings, drained on two UTC days,
+   * nothing of any pool read above the level since — and today's figure,
+   * across every pool read in the last day, at or below that level too.
+   * Anything short of that is a small pool (`LOW_LIQUIDITY`), no market ever
+   * held (`NO_LIQUIDITY`), or — dust after a market HEY did see held — a fall
+   * HEY cannot yet confirm (`removal_unconfirmed`), which claims neither.
+   */
+  const heldMarket = (evidence.heldLiquidityUsd ?? 0) >= TOKEN_MARKET.removedMinPeakUsd;
+  const drain = evidence.drain;
+  const drained =
+    drain !== undefined &&
+    drain.heldUsd >= TOKEN_MARKET.removedMinPeakUsd &&
+    drain.days >= TOKEN_MARKET.removalConfirmDays &&
+    liquidity <= drain.levelUsd;
   if (liquidity <= TOKEN_MARKET.dustLiquidityUsd) {
-    return hadMarket ? { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_gone_after_market' } : { status: 'NO_LIQUIDITY', reason: 'no_liquidity' };
+    if (drained) return { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_gone_after_market' };
+    return heldMarket ? { status: 'INSUFFICIENT_DATA', reason: 'removal_unconfirmed' } : { status: 'NO_LIQUIDITY', reason: 'no_liquidity' };
+  }
+  if (drained && liquidity <= TOKEN_MARKET.removedMaxAbsoluteUsd) {
+    return { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' };
   }
   if (liquidity < TOKEN_MARKET.lowLiquidityUsd) {
-    if (hadMarket && liquidity <= peakLiquidityUsd * TOKEN_MARKET.removedShareOfPeak) {
-      return { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' };
-    }
     return { status: 'LOW_LIQUIDITY', reason: 'liquidity_below_threshold' };
-  }
-  if (
-    hadMarket &&
-    liquidity <= TOKEN_MARKET.removedMaxAbsoluteUsd &&
-    liquidity <= peakLiquidityUsd * TOKEN_MARKET.removedShareOfPeak
-  ) {
-    return { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' };
   }
   if (volume !== undefined && volume <= TOKEN_MARKET.inactiveVolumeUsd) {
     return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
@@ -391,9 +456,11 @@ export const DEAD_MARKET_STATUSES = ['NO_LIQUIDITY', 'LIQUIDITY_REMOVED', 'MARKE
  * - `pool_readings_disagree` — HEY claims neither a live market nor a drain,
  *   so no badge may rest on it either (2026-09-25);
  * - `readings_implausible` — the reading is one HEY does not believe
- *   (`liquidityImplausible`, 2026-09-25).
+ *   (`liquidityImplausible`, 2026-09-25);
+ * - `removal_unconfirmed` — dust where HEY saw a market held, and no drain
+ *   measured yet: neither live nor removed (2026-09-27).
  */
-export const DEAD_MARKET_REASONS = ['launch_pool_no_trades', 'launch_pool_volume_unknown', 'pool_readings_disagree', 'readings_implausible'] as const;
+export const DEAD_MARKET_REASONS = ['launch_pool_no_trades', 'launch_pool_volume_unknown', 'pool_readings_disagree', 'readings_implausible', 'removal_unconfirmed'] as const;
 
 /**
  * Every reason the classifier can write, for vocabularies and parity tests.
@@ -415,6 +482,7 @@ export const TOKEN_MARKET_REASONS = [
   'liquidity_in_another_pool',
   'no_volume_24h',
   'pool_readings_disagree',
+  'removal_unconfirmed',
   'liquidity_gone_after_market',
   'no_liquidity',
   'liquidity_far_below_peak',

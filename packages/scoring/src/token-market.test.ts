@@ -1,9 +1,20 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyTokenMarket, marketIsLive, TOKEN_MARKET } from './token-market';
+import { classifyTokenMarket, marketIsLive, TOKEN_MARKET, type DrainEvidence } from './token-market';
 
 const now = new Date('2026-09-11T00:00:00Z');
 const at = (daysAgo: number) => new Date(now.getTime() - daysAgo * 86_400_000);
+/** A drain the sweep measured: a series that held `heldUsd` on two readings, low on `days` UTC days since. */
+const drainOf = (heldUsd: number, days = 2): DrainEvidence => ({
+  series: 'pool:0x0000000000000000000000000000000000000001',
+  heldUsd,
+  levelUsd: Math.max(TOKEN_MARKET.dustLiquidityUsd, Math.min(TOKEN_MARKET.removedMaxAbsoluteUsd, heldUsd * TOKEN_MARKET.removedShareOfPeak)),
+  since: at(days),
+  lastAt: at(0),
+  days,
+});
+/** A market held and measured drained: what every removal now needs. */
+const removed = (heldUsd: number) => ({ peakLiquidityUsd: heldUsd, heldLiquidityUsd: heldUsd, drain: drainOf(heldUsd) });
 
 describe('token market status', () => {
   it('reports nothing when nothing was read', () => {
@@ -27,21 +38,21 @@ describe('token market status', () => {
   });
 
   it('says liquidity is no longer detected only when a real market existed before', () => {
-    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, peakLiquidityUsd: 48_000 })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_gone_after_market' });
-    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 2_000, volume24hUsd: 3 }, peakLiquidityUsd: 48_000 })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, ...removed(48_000) })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_gone_after_market' });
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 2_000, volume24hUsd: 3 }, ...removed(48_000) })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
     // The same figures with no meaningful peak are just a small pool.
     expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 2_000, volume24hUsd: 3 }, peakLiquidityUsd: 2_500 })).toMatchObject({ status: 'LOW_LIQUIDITY' });
   });
 
   it('does not call a smaller market a removed one (2026-09-18)', () => {
     // $500K of depth with $2M traded that day is a market, whatever it once held.
-    const smaller = classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 500_000, volume24hUsd: 2_000_000, fdvUsd: 50_000_000 }, peakLiquidityUsd: 6_000_000 });
+    const smaller = classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 500_000, volume24hUsd: 2_000_000, fdvUsd: 50_000_000 }, ...removed(6_000_000) });
     expect(smaller).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' });
     expect(marketIsLive(smaller.status, smaller.reason)).toBe(true);
     // Dust left of a real market is still a removal.
-    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 400, volume24hUsd: 0 }, peakLiquidityUsd: 50_000 })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 400, volume24hUsd: 0 }, ...removed(50_000) })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
     // $20K left of $500K sits under the ceiling: what a removal looks like.
-    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 20_000, volume24hUsd: 100 }, peakLiquidityUsd: 500_000 })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 20_000, volume24hUsd: 100 }, ...removed(500_000) })).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
     expect(TOKEN_MARKET.removedMaxAbsoluteUsd).toBe(TOKEN_MARKET.lowLiquidityUsd * 5);
   });
 
@@ -89,7 +100,7 @@ describe('token market status', () => {
     expect(priviet).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
     // A day-old other pool no longer speaks for today.
     expect(
-      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(2), liquidityUsd: 14_000 } }),
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, ...removed(48_000), otherPools: { observedAt: at(2), liquidityUsd: 14_000 } }),
     ).toMatchObject({ status: 'LIQUIDITY_REMOVED' });
     // A live pool read three days ago and nothing since: the readings disagree, and HEY says so.
     expect(
@@ -97,7 +108,7 @@ describe('token market status', () => {
     ).toMatchObject({ status: 'INSUFFICIENT_DATA', reason: 'pool_readings_disagree' });
     // A week and more: the drain stands.
     expect(
-      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 1 }, peakLiquidityUsd: 48_000, recentOtherPools: { observedAt: at(8), liquidityUsd: 14_000 } }),
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 1 }, ...removed(48_000), recentOtherPools: { observedAt: at(8), liquidityUsd: 14_000 } }),
     ).toMatchObject({ status: 'LIQUIDITY_REMOVED' });
     // A small pool that trades is a market even when its liquidity is most of the FDV (Priviet: $14K beside a $19K valuation).
     expect(
@@ -105,12 +116,45 @@ describe('token market status', () => {
     ).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
     // A launch pool's own supply beside the dead pool is not a market.
     expect(
-      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 3, fdvUsd: 40_000 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(0), liquidityUsd: 39_000 } }).status,
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 3, fdvUsd: 40_000 }, ...removed(48_000), otherPools: { observedAt: at(0), liquidityUsd: 39_000 } }).status,
     ).toBe('LIQUIDITY_REMOVED');
     // Every pool drained: still a drain.
     expect(
-      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, peakLiquidityUsd: 48_000, otherPools: { observedAt: at(0), liquidityUsd: 40 } }),
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, ...removed(48_000), otherPools: { observedAt: at(0), liquidityUsd: 40 } }),
     ).toMatchObject({ status: 'LIQUIDITY_REMOVED' });
+  });
+
+  /*
+   * The removals production published on 2026-09-26, read back (2026-09-27,
+   * founder decision F5). Thirteen of nineteen were not measured drains.
+   */
+  it('calls liquidity removed only on a measured drain, never on one reading (2026-09-27)', () => {
+    const chain = (heldUsd: number, days: number): DrainEvidence => ({ ...drainOf(heldUsd, days), series: 'chain' });
+    // aibuddy: GeckoTerminal followed a $15 pool while the pool that held $101K was last read (by the chain, $107.8K) holding it.
+    const aibuddy = classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 15, volume24hUsd: 0 }, peakLiquidityUsd: 101_472, heldLiquidityUsd: 107_838 });
+    expect(aibuddy).toMatchObject({ status: 'INSUFFICIENT_DATA', reason: 'removal_unconfirmed' });
+    expect(marketIsLive(aibuddy.status, aibuddy.reason)).toBe(false);
+    // atlassian: a new pool's first reading ($212) beside $2.4K across every pool; the $42K "peak" was one untraded pool the chain never saw.
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 212, volume24hUsd: 213 }, peakLiquidityUsd: 42_044, heldLiquidityUsd: 5_643, otherPools: { observedAt: at(0.5), liquidityUsd: 2_434 } }),
+    ).toMatchObject({ status: 'LOW_LIQUIDITY', reason: 'liquidity_below_threshold' });
+    // ponie: one launch-hour reading of $6.7K, never held twice; a $467 pool that trades daily is a small market, not a removed one.
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 467, volume24hUsd: 823 }, peakLiquidityUsd: 6_700, heldLiquidityUsd: 4_713 })).toMatchObject({ status: 'LOW_LIQUIDITY' });
+    // pledge-finance: the only "peak" was an untraded pool holding the token's own supply; no market was held, so none was removed.
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 1, volume24hUsd: 0 }, peakLiquidityUsd: 25_482 })).toMatchObject({ status: 'NO_LIQUIDITY', reason: 'no_liquidity' });
+    // One day of low readings is one reading: unconfirmed until a second day agrees.
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, peakLiquidityUsd: 48_000, heldLiquidityUsd: 48_000, drain: drainOf(48_000, 1) })).toMatchObject({ reason: 'removal_unconfirmed' });
+    // A drain whose level today's figure is above is not today's market: the pool read in the last day holds more.
+    expect(
+      classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 30 }, ...removed(20_000), otherPools: { observedAt: at(0.2), liquidityUsd: 3_000 } }).status,
+    ).toBe('LOW_LIQUIDITY');
+    // cash-shaq: the chain's own index held $5.07K for three days, then $1 on four; the aggregator's other pool reads $101. Removed.
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 101, volume24hUsd: 0 }, peakLiquidityUsd: 5_292, heldLiquidityUsd: 5_073, drain: chain(5_073, 4) })).toMatchObject({
+      status: 'LIQUIDITY_REMOVED',
+      reason: 'liquidity_far_below_peak',
+    });
+    // flybody: $40.1K across its pools on two days, then $2 and $0 on four; a $515 pool elsewhere does not bring it back.
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 515, volume24hUsd: 0 }, peakLiquidityUsd: 38_305, heldLiquidityUsd: 40_135, drain: chain(40_135, 4) }).status).toBe('LIQUIDITY_REMOVED');
   });
 
   it('reads a launch pool with no volume figure as unknown, and counts the chain\'s trades (2026-09-25)', () => {

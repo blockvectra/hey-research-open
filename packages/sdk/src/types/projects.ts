@@ -434,6 +434,8 @@ export type HeyTokenLookupProject = {
   deployedAt?: string;
   /** Whether the project itself names this contract (2026-09-25). On `MISMATCH` its own site names a different one. */
   tokenVerification: { status: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH'; reason?: string };
+  /** False exactly on `MISMATCH` (2026-09-27, additive): print the activity as the project's, never as this token's. */
+  activityAppliesToToken: boolean;
   badgeUrl: string;
 };
 
@@ -454,8 +456,8 @@ export type HeyScanCard =
       found: false;
       chainId: number;
       contractAddress?: string;
-      /** `chain` when the caller asked about a chain HEY does not index. */
-      reason?: 'chain';
+      /** `chain` for a chain HEY does not index; `not_a_token` for the zero address (2026-09-27), not metered. */
+      reason?: 'chain' | 'not_a_token';
       message?: string;
       scan_url?: string;
       disclaimer: string;
@@ -470,6 +472,8 @@ export type HeyScanCard =
       verified_builder: boolean;
       /** Whether the project itself names this contract (2026-09-25). On `MISMATCH`, do not print the activity as this token's. */
       token_verification: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';
+      /** False exactly on `MISMATCH` (2026-09-27, additive): do not print the activity as this token's; the card then has no `cta`. */
+      activity_applies_to_token: boolean;
       /** `INDEXED`, `RESEARCHED` or `VERIFIED_BUILDER` (2026-09-26). */
       research_level: string;
       /** Whether the counts below are measurements (2026-09-26, additive): false means `ships_30d: 0` is not a finding. */
@@ -496,7 +500,8 @@ export type HeyScanCard =
       project_url: string;
       logo_url?: string;
       badge_url: string;
-      cta: { label: string; url: string };
+      /** The link back to the project page; absent when `activity_applies_to_token` is false (2026-09-27). */
+      cta?: { label: string; url: string };
       disclaimer: string;
     };
 

@@ -82,7 +82,7 @@ aliased: nothing was published and the MCP had been called once.
 | Tool | The question it answers | Replaces |
 |---|---|---|
 | `find_projects` | "What is *AgentOS*?" · "What is still being built?" · "Who is building quietly?" · "Who is shipping faster?" · "Top builders on Pons?" — a name, ticker or contract, or one of HEY's surfaces with the catalogue's filters. A pasted `0x…` address is answered as `lookup_token` would. | `search_projects`, `list_projects`, `shipping_in_silence`, `builder_comebacks`, `accelerating_builders`, `list_builders` |
-| `lookup_token` | "Is anyone building this token?" — activity status in HEY's words, ship records and meaningful ships in 30 days, the last ship with its source, whether the project names the contract. | — |
+| `lookup_token` | "Is anyone building this token?" — activity status in HEY's words, ship records and meaningful ships in 30 days, the last ship with its source, whether the project names the contract. On `MISMATCH` (the project's own site names another contract) it says the activity does not apply to this token and gives no link to the project (2026-09-27). | — |
 | `get_project_snapshot` | "Tell me about X." — identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. | `get_project`, `project_intelligence` |
 | `get_changes` | "What changed?" · "Anything new on X since Monday?" — the change ledger, one event per change, with its own time, precision, when HEY knew and its evidence; browse or sync with a cursor. | `list_ships`, `list_signals`, `contract_changes` |
 | `get_project_timeline` | "Show me X's history." — every kind of evidence on one axis, paged with a cursor. | `project_timeline` |
@@ -90,13 +90,16 @@ aliased: nothing was published and the MCP had been called once.
 | `explain_fact` | "Why does HEY show this valuation / status / momentum?" — the rule, the source, the inputs, the lineage and the evidence ids. | — |
 | `get_evidence` | "What backs this?" — one typed evidence id as a receipt. | — |
 | `get_token_market` | "Does this token still trade? What did HEY check on the contract?" — HEY's daily index, lifecycle, pools, a supply-concentration summary (shares only), contract checks; `include: ["moves"]` adds each valuation move with what shipped before it. | `events_before_market_change` |
-| `get_contract` | "What is this contract?" — creation, deployer, verified source, proxy kind and implementation history, interface counts and changes, activity; by address, or every contract of a project. | — |
+| `get_contract` | "What is this contract?" — creation, deployer, verified source, proxy kind and implementation history, interface counts and changes, activity and calls per method (counts by bucket, names withheld); by address, or every contract of a project. | — |
 | `project_diff` | "What changed for X between two dates?" — then and now from persisted points, the changes recorded between. | — |
 | `compare_projects` | "Compare A and B." — two to four projects, tagged lines, no winner. | — |
 | `ask_hey` | A free-text question about one project (English or Malay), answered only from HEY's record. | — |
 | `chain_overview` | "How active is Robinhood Chain?" — day by day, this week's rollup, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention. | `chain_activity`, `this_week`, `weekly_report`, `upcoming_unlocks` |
 
-`market_integrity` is a fifteenth, offered only where the site publishes Market Integrity.
+`market_integrity` is a fifteenth, offered only where the site publishes Market Integrity. It
+lists every event HEY stands behind with its id, its time as precisely as HEY knows it, and its
+words with the reading dates and sources; there, `get_changes` also accepts the
+`market_integrity` domain and the `market_integrity.event` type (2026-09-27).
 `list_bounties` was dropped: bounties are not research, and they stay in the API and the SDK.
 
 ### `find_projects` surfaces, one definition each

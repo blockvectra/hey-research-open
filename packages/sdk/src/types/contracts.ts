@@ -26,6 +26,27 @@ export type HeyApiErrorBody = {
 /** Whether HEY measured a section: an unread proxy is never "not a proxy". */
 export type HeyMeasureState = 'MEASURED' | 'NOT_READ' | 'ERROR' | 'NO_SOURCE';
 
+/**
+ * Calls per method over the last seven complete UTC days HEY read (2026-09-27).
+ * Counts only: `top` ranks the most-called methods by bucket (the ERC-20
+ * standard surface is one entry), and `names: 'WITHHELD'` says the function
+ * names are not published here. `NOT_READ` carries no counts — unknown, never
+ * zero — and `collectedFrom`/`collectedThrough` bound the days HEY holds.
+ */
+export type HeyContractMethods = {
+  state: 'MEASURED' | 'NOT_READ';
+  source: 'decoded_calls';
+  collectedFrom?: string;
+  collectedThrough?: string;
+  window?: { from: string; to: string; days: number };
+  calls?: number;
+  buckets?: { erc20Standard: number; named: number; undecoded: number };
+  /** The contract's own functions called in the window: named ones and undecoded selectors, never the ERC-20 surface. */
+  distinctFunctions?: number;
+  top?: { rank: number; bucket: 'erc20_standard' | 'named' | 'undecoded'; calls: number }[];
+  names: 'WITHHELD';
+};
+
 /** `GET /api/contracts/{chainId}/{address}`: one contract as a research entity. Counts, never function lists; no account but the token deployer. */
 export type HeyContract = {
   chainId: number;
@@ -70,7 +91,7 @@ export type HeyContract = {
     baselineSince?: string;
     changes: { id: string; kind: 'VERIFIED' | 'UNVERIFIED' | 'INTERFACE_CHANGED'; functionsAdded: number; functionsRemoved: number; eventsAdded: number; eventsRemoved: number; detectedAt: string; source: string }[];
   };
-  activity: { state: HeyMeasureState; daysMeasured: number; calls7d: number | null; events7d: number | null; newestDay?: string };
+  activity: { state: HeyMeasureState; daysMeasured: number; calls7d: number | null; events7d: number | null; newestDay?: string; methods: HeyContractMethods };
   freshness: { proxyCheckedAt?: string; sourceCheckedAt?: string; activityObservedAt?: string };
   evidence: string[];
   url: string;

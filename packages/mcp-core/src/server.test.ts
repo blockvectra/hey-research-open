@@ -186,6 +186,20 @@ describe('the HEY MCP server', () => {
     const result = await client.callTool({ name: 'market_integrity', arguments: { slug: 'drained' } });
     expect(requested[0]!.pathname).toBe('/api/projects/drained/market-integrity');
     expect(textOf(result)).toMatch(/DERIVED builder activity/);
+    // Every event with its id, its time as precisely as HEY knows it, and its reading dates and sources (2026-09-27).
+    expect(textOf(result)).toContain('integrity:00000000-0000-4000-8000-000000000001:collapse:2026-09-21');
+    expect(textOf(result)).toMatch(/observed, first seen 2026-09-24/);
+    expect(textOf(result)).toMatch(/Readings: level from dexscreener, now from onchain/);
+    expect(textOf(result)).not.toMatch(/\b(rug|scam)\b/i);
+  });
+
+  it('offers market_integrity.event in get_changes only where Market Integrity is published', async () => {
+    const schema = async (marketIntegrity: boolean) => {
+      const tools = (await (await connect(fixtures, marketIntegrity ? { marketIntegrity: true } : {})).listTools()).tools;
+      return JSON.stringify(tools.find((tool) => tool.name === 'get_changes')!.inputSchema);
+    };
+    expect(await schema(false)).not.toContain('market_integrity');
+    expect(await schema(true)).toContain('market_integrity.event');
   });
 
   it('passes find_projects filters to /api/projects in the API’s own spelling', async () => {

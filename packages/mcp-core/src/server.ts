@@ -32,6 +32,10 @@ import {
 } from './render';
 import { renderBuildMarket, renderContract, renderCoverage, renderDiff, renderEvidence, renderExplainIndex, renderExplained, renderProjectContracts, renderSnapshot } from './render-machine';
 import { HEY_MCP_GATED_TOOLS, HEY_MCP_TOOLS, PUBLIC_CHANGE_TYPES, type HeyMcpToolName } from './tools';
+
+const CHANGE_DOMAINS_PUBLIC = ['build', 'contract', 'market', 'token', 'research', 'lock'] as const;
+const CHANGE_DOMAINS_WITH_INTEGRITY = [...CHANGE_DOMAINS_PUBLIC, 'market_integrity'] as const;
+const CHANGE_TYPES_WITH_INTEGRITY = [...PUBLIC_CHANGE_TYPES, 'market_integrity.event'] as const;
 import { MCP_VERSION } from './version';
 
 /**
@@ -363,8 +367,9 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       inputSchema: {
         project: z.string().max(120).optional().describe('A project slug.'),
         contract: z.string().regex(/^\d{1,10}:0x[0-9a-fA-F]{40}$/).optional().describe('<chainId>:<address>.'),
-        domain: z.array(z.enum(['build', 'contract', 'market', 'token', 'research', 'lock'])).optional(),
-        type: z.array(z.enum(PUBLIC_CHANGE_TYPES)).optional(),
+        // Market Integrity is a domain and a type only where HEY publishes it (2026-09-27): the ledger holds it Terminal-only otherwise.
+        domain: z.array(z.enum(options.marketIntegrity ? CHANGE_DOMAINS_WITH_INTEGRITY : CHANGE_DOMAINS_PUBLIC)).optional(),
+        type: z.array(z.enum(options.marketIntegrity ? CHANGE_TYPES_WITH_INTEGRITY : PUBLIC_CHANGE_TYPES)).optional(),
         since: z.string().max(40).optional().describe('ISO date: events whose own time is at or after it (events with no source time are left out).'),
         until: z.string().max(40).optional(),
         detectedSince: z.string().max(40).optional().describe('ISO instant: start a sync at the first event HEY recorded at or after it.'),
@@ -484,7 +489,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     {
       ...describe('get_contract', [
         'A contract as a research entity: creation, deployer (the only account ever named, with a count of other tracked projects\' tokens it deployed), factory, verified source and compiler, proxy kind and implementation history,',
-        'interface size and changes (counts), and activity. Give chainId and address for one contract, or slug for every contract a project has. A proxy HEY did not read is "not read", never "not a proxy".',
+        'interface size and changes (counts), and activity, including calls per method over the last seven days read (counts by bucket; function names withheld). Give chainId and address for one contract, or slug for every contract a project has. A proxy HEY did not read is "not read", never "not a proxy".',
       ]),
       inputSchema: {
         address: z.string().regex(ADDRESS).optional(),

@@ -163,7 +163,7 @@ describe('market integrity: the market side', () => {
 
   it('a bonding-curve graduation explains the fall of the curve liquidity', () => {
     const result = evaluateMarketIntegrity(
-      input({ marketStatus: 'LIQUIDITY_REMOVED', launchStage: 'GRADUATED', launchStageAt: new Date(`${day(-1)}T08:00:00Z`), days: series([...HEALTHY, 30_000, 400, 350], [...HEALTHY.map(() => 90), 40, 0, 0]) }),
+      input({ marketStatus: 'LIQUIDITY_REMOVED', launchStage: 'GRADUATED', curveLastSeenAt: new Date(`${day(-1)}T08:00:00Z`), days: series([...HEALTHY, 30_000, 400, 350], [...HEALTHY.map(() => 90), 40, 0, 0]) }),
     );
     expect(result.migration?.kind).toBe('GRADUATION');
     expect(result.exitPattern.level).toBe('NONE');
@@ -263,7 +263,7 @@ describe('market integrity: builder × market', () => {
       input({
         marketStatus: 'LIQUIDITY_REMOVED',
         days: series(CRASH, CRASH_TRADES),
-        pools: [{ pairAddress: '0xnew', venue: null, firstSeenAt: new Date(`${day(CRASH_DAY)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 60_000, lastLiquidityUsd: 60_000 }],
+        pools: [{ pairAddress: '0xold', venue: null, firstSeenAt: new Date(`${day(-40)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 83_000, lastLiquidityUsd: 290 }, { pairAddress: '0xnew', venue: null, firstSeenAt: new Date(`${day(CRASH_DAY)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 60_000, lastLiquidityUsd: 60_000 }],
         builder: { activityStatus: 'SHIPPING', ships: [ship(-1)] },
       }),
     );
@@ -291,7 +291,7 @@ describe('market integrity: builder × market', () => {
       input({
         marketStatus: 'ACTIVE_MARKET',
         days: series([...HEALTHY, 30_000, 400, 350]),
-        pools: [{ pairAddress: '0xnew', venue: null, firstSeenAt: new Date(`${day(-2)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 76_000, lastLiquidityUsd: 76_000 }],
+        pools: [{ pairAddress: '0xold', venue: null, firstSeenAt: new Date(`${day(-40)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 83_000, lastLiquidityUsd: 290 }, { pairAddress: '0xnew', venue: null, firstSeenAt: new Date(`${day(-2)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 76_000, lastLiquidityUsd: 76_000 }],
         builder: { activityStatus: 'SHIPPING', ships: [ship(-1)] },
       }),
     );
@@ -309,6 +309,97 @@ describe('market integrity: builder × market', () => {
   it('an active builder never makes a dead market look alive', () => {
     const result = evaluateMarketIntegrity(input({ marketStatus: 'MARKET_ABANDONED', marketStatusReason: 'no_recent_reading_after_market', builder: { activityStatus: 'SHIPPING', ships: [ship(-1, true)] } }));
     expect(result.marketStatus).toBe('MARKET_ABANDONED');
+  });
+});
+
+/*
+ * Every current production finding, read back before publishing (mi-v4,
+ * 2026-09-27, founder decision F5). Figures are production's.
+ */
+describe('market integrity: the findings production published wrongly (mi-v4)', () => {
+  it('withdraws a collapse two current readings dispute, and the exit pattern built on it (farmmi-inc)', () => {
+    // A launch pool the aggregators valued at $1.5M–$2M, then $607, then another pool at $58K, then $90 —
+    // while the current reading is a pool priced 31× the market at $395K.
+    const closes = [1_976_858, 1_508_303, 1_974_790, 607, 136, 99, 58_100, 53_896, 59_832, 86, 86, 88, 84, 60, 62, 59, 90, 91, 93, 93, 81, 90];
+    const trades = [162, 111, 56, 95, 69, 35, 85, 24, 49, 21, 41, 31, 16, 42, 8, 12, 70, 55, 24, 20, 8, 1];
+    const result = evaluateMarketIntegrity(
+      input({
+        marketStatus: 'INSUFFICIENT_DATA',
+        marketStatusReason: 'readings_implausible',
+        currentLiquidityUsd: 395_000,
+        currentLiquidityAt: NOW,
+        days: series(closes, trades.map((n) => n * 1_000)),
+        builder: { activityStatus: 'ACTIVE', ships: [{ at: new Date(NOW.getTime() - 86_400_000), release: false }] },
+      }),
+    );
+    expect(result.dataConflict?.kind).toBe('READINGS_DISAGREE');
+    expect(result.collapse).toBe('NONE');
+    expect(result.history.collapseDay).toBeNull();
+    expect(result.exitPattern.level).toBe('NONE');
+    expect(result.events.map((event) => event.kind)).not.toContain('LIQUIDITY_COLLAPSE');
+    expect(result.events.map((event) => event.kind)).not.toContain('EXIT_PATTERN');
+  });
+
+  it('finds no pool migration when every pool is HEY\'s first sight of the market (aerovironment)', () => {
+    // HEY began reading the token's pools on the day the fall's window opened: the pool it "migrated" into is the one it always used.
+    const result = evaluateMarketIntegrity(
+      input({
+        marketStatus: 'LIQUIDITY_REMOVED',
+        days: series([...HEALTHY, 30_000, 400, 350]),
+        pools: [
+          { pairAddress: '0x1247', venue: null, firstSeenAt: new Date(`${day(-7)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 14_896, lastLiquidityUsd: 13_218 },
+          { pairAddress: '0x9510', venue: null, firstSeenAt: new Date(`${day(-2)}T00:00:00Z`), lastSeenAt: NOW, maxLiquidityUsd: 259, lastLiquidityUsd: 259 },
+        ],
+      }),
+    );
+    expect(result.migration).toBeNull();
+    expect(result.events.map((event) => event.kind)).not.toContain('MIGRATION_DETECTED');
+  });
+
+  it('finds no graduation from the day HEY recorded a stage, only from a curve reading near the fall (gopro-inc)', () => {
+    const days = series([...HEALTHY, 30_000, 400, 350], [...HEALTHY.map(() => 90), 40, 0, 0]);
+    // The launch stage was stamped when HEY first read the DEX pool, three days after the fall began; no curve reading exists.
+    const stamped = evaluateMarketIntegrity(input({ marketStatus: 'LIQUIDITY_REMOVED', launchStage: 'DEX', launchStageAt: new Date(`${day(-1)}T08:00:00Z`), days }));
+    expect(stamped.migration).toBeNull();
+    // A curve HEY still reads on the index's newest day is a token still on its curve (piacentini-by-virtuals).
+    expect(evaluateMarketIntegrity(input({ marketStatus: 'LIQUIDITY_REMOVED', launchStage: 'DEX', curveLastSeenAt: new Date(`${day(0)}T08:00:00Z`), days })).migration).toBeNull();
+    // A curve reading HEY stored a week before the fall is not near it either.
+    expect(evaluateMarketIntegrity(input({ marketStatus: 'LIQUIDITY_REMOVED', launchStage: 'DEX', curveLastSeenAt: new Date(`${day(-12)}T08:00:00Z`), days })).migration).toBeNull();
+  });
+
+  it('keeps one key while a state lasts: a data conflict, a trading collapse, a conflict about a live market', () => {
+    const disputed = (now: Date) =>
+      evaluateMarketIntegrity(input({ now, currentLiquidityUsd: 900_000, currentLiquidityAt: now, days: series(HEALTHY) }))
+        .events.filter((event) => event.kind === 'MARKET_DATA_CONFLICT')
+        .map((event) => event.key);
+    expect(disputed(NOW)).toEqual(['conflict:READINGS_DISAGREE']);
+    // Busy trading, then a quiet week: the collapse is keyed by its busiest week, not by the month it was seen in.
+    const busy = [...HEALTHY, ...HEALTHY];
+    const quiet = [...busy.map(() => 500), 5, 4, 6, 5, 4, 3, 5];
+    const collapseKeys = evaluateMarketIntegrity(input({ days: series([...busy, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000], quiet) }))
+      .events.filter((event) => event.kind === 'MARKET_ACTIVITY_COLLAPSE')
+      .map((event) => event.key);
+    expect(collapseKeys).toHaveLength(1);
+    expect(collapseKeys[0]).toMatch(/^activity:\d{4}-\d{2}-\d{2}$/);
+    const low = evaluateMarketIntegrity(input({ marketStatus: 'LOW_LIQUIDITY', marketStatusReason: 'liquidity_below_threshold', days: series([3_000, 2_900, 3_100]), builder: { activityStatus: 'ACTIVE', ships: [] } }));
+    expect(low.events.map((event) => event.key)).toEqual(['building_with_low_liquidity']);
+  });
+
+  it('says trading stopped only when HEY read the market after the last trade', () => {
+    // Trades end, and HEY has no reading since: unknown, not stopped.
+    const unread = [...HEALTHY, null, null, null, null, null, null, null, null];
+    const trades = [...HEALTHY.map(() => 120), null, null, null, null, null, null, null, null];
+    expect(evaluateMarketIntegrity(input({ days: series(unread, trades) })).tradingStopped).toBe(false);
+    // Read every day since, with no trade: stopped.
+    const read = [...HEALTHY, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000];
+    expect(evaluateMarketIntegrity(input({ days: series(read, trades).map((d, i) => (i >= HEALTHY.length ? { ...d, volumeUsd: 0 } : d)) })).tradingStopped).toBe(true);
+  });
+
+  it('names the source of the level it held and of the current reading', () => {
+    const days = series(HEALTHY).map((d, i) => ({ ...d, source: i < 5 ? 'geckoterminal' : 'dexscreener' }));
+    const result = evaluateMarketIntegrity(input({ days }));
+    expect(result.history.currentSource).toBe('dexscreener');
+    expect(['geckoterminal', 'dexscreener']).toContain(result.history.peakSource);
   });
 });
 

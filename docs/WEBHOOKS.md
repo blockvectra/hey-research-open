@@ -73,10 +73,10 @@ ship an hour later. Keep the highest `revision` per `event.id`.
 
 | Not delivered | Why |
 |---|---|
-| `market_integrity.*` | Market Integrity is not published (founder decision). |
+| `market_integrity.event` where HEY does not publish Market Integrity | not published there (founder decision F5); where it is published (`HEY_MARKET_INTEGRITY=public`) it is subscribable, `GET /api/webhooks` lists it in `eventTypes`, and an exit-pattern classification is delivered only where HEY names one. Publishing is never pushed as news: events already recorded enter the ledger as `backfill`. |
 | `market.distribution_changed` | derived from holder data (founder decision). |
 | `market.liquidity_moved`, `market.volume_spike` | market movement is context, not a change a project made; HEY sends no trading alerts. |
-| `build.code_activity`, `build.slowing`, `contract.source_unverified`, `contract.usage_changed`, `research.owner_verified`, `research.narrative_assigned` | on `/api/changes`; not pushed. |
+| `build.code_activity`, `build.slowing`, `contract.source_unverified`, `contract.usage_changed`, `contract.method_first_observed`, `contract.method_resumed`, `research.owner_verified`, `research.narrative_assigned` | on `/api/changes`; not pushed. |
 | anything Terminal-only | never, on any public surface. |
 | project-linked address events, holder lists | never. |
 

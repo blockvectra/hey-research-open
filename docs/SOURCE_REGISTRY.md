@@ -539,6 +539,15 @@ tokens no aggregator indexes. HEY spends roughly 9,500 of its ~33,000 daily poin
 to list Bitquery under "deliberately not used" and this section used to say $0; both were written
 before the integration shipped on 2026-09-12 and were simply stale.
 
+**Measured, 2026-09-27 (founder decision F9):** 16,205 Bitquery requests from 09-12 to 09-26 cost
+309,063 points on the provider's dashboard — about 19 points a request, ≈20,000 a day, ≈620,000 a
+cycle against the plan's 1,000,000 (cycle 12th → 12th). The function-level collection
+(`bitquery-methods.ts`, the `Calls` cube, calls per method per contract per day) was approved on
+the condition that its forward set stays under 5 % of the plan: its own budget key,
+`bitquery-methods`, is capped at 87 requests a day and it needs about 11; the one-off archive
+backfill runs under `bitquery-methods-archive` (400 a day) and prints its request count in a dry
+run first.
+
 **What the $179 is** (2026-09-21): $79 for the Pro plan, billed yearly, plus a $100 historical
 trading pack for this chain. The pack lifts the plan's allowance to
 `archive:robinhood:{DEXTradeByTokens,DEXTrades,Calls,Events}` — the provider names them in its own

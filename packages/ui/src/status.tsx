@@ -311,6 +311,8 @@ const TOKEN_MARKET_REASON_HELP: Readonly<Record<string, string>> = {
     'A launch pool still holding the token’s own supply, and no reading reports its volume. Whether it trades is unknown, not zero.',
   readings_implausible:
     'The latest reading reports a large pool, but almost nothing traded in it and HEY’s own chain index does not find that liquidity. HEY does not show a figure it cannot believe, and claims neither a live market nor a drain.',
+  removal_unconfirmed:
+    'The latest reading finds almost no liquidity, but HEY has not measured a drain: the pool that held the market has not been read empty on two days, or a later reading still found it. HEY claims neither a live market nor a removal until it has.',
 };
 
 export function tokenMarketHelp(status: TokenMarketStatusValue, reason?: string | null): string {

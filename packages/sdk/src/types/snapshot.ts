@@ -126,7 +126,7 @@ export type HeyEvidenceReceipt =
       id: string;
       withdrawn: false;
       project: { slug: string; name: string; url: string };
-      domain: 'build' | 'contract' | 'market' | 'token' | 'research' | 'lock';
+      domain: 'build' | 'contract' | 'market' | 'token' | 'research' | 'lock' | 'market_integrity';
       claimType: string;
       summary: string;
       sourceType: string;
@@ -149,6 +149,12 @@ export type HeyEvidenceReceipt =
       withdrawn: true;
       /** `retracted`, `disputed`, `context_only`, `review_false_positive`, `announced_ship_withdrawn`, `superseded`, or `not_public`. */
       withdrawalReason: string;
+      /**
+       * With `context_only`: which rule holds a follow-up deployment as context (2026-09-27) —
+       * `held_by_another_project`, `shared_deployer`, `serial_launcher_deployer` (the account
+       * launches contracts for many projects), `token_mismatch` or `deployer_not_tied`.
+       */
+      contextReason?: string;
       /** Present only when the project is public. */
       project?: { slug: string; name: string; url: string };
       disclaimer: string;

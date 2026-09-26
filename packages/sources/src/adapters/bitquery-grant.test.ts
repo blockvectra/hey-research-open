@@ -40,6 +40,22 @@ describe('the Bitquery archive grant', () => {
     expect(source).toMatch(/dataset: combined/);
   });
 
+  it('checks the contract-creations document, which reads 90 days of Calls (2026-09-27)', () => {
+    expect(files).toContain('bitquery-creations.ts');
+    const source = readFileSync(join(DIR, 'bitquery-creations.ts'), 'utf8');
+    expect(source).toMatch(/dataset: combined/);
+  });
+
+  it('checks the method-days document, which the backfill sends to the archive (F9, 2026-09-27)', () => {
+    expect(files).toContain('bitquery-methods.ts');
+    const source = readFileSync(join(DIR, 'bitquery-methods.ts'), 'utf8');
+    // Parameterised, so the fence below holds it to granted cubes for every dataset a caller may pass.
+    expect(source).toMatch(/dataset: \$\{dataset\}/);
+    const documents = [...source.matchAll(/`query [\s\S]*?`;/g)].map((match) => match[0]);
+    expect(documents).toHaveLength(1);
+    expect([...new Set([...documents[0]!.matchAll(CUBE)].map((match) => match[1]))]).toEqual(['Calls']);
+  });
+
   for (const name of files) {
     const source = readFileSync(join(DIR, name), 'utf8');
     /*

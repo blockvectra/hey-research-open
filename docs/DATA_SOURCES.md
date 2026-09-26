@@ -170,6 +170,20 @@ three or four method names and two event names, so a contract well above that ha
 call. Still never asked: holders, balances, or any per-account figure — a unit test asserts the
 document never names `Transaction_From`, `Call_From`, `Holder` or `Balance`.
 
+Since 2026-09-27 (founder decision F9) Bitquery also answers "which functions", in the same
+batches. `REFRESH_CONTRACT_METHODS` (daily, a no-op without the key) asks the `Calls` cube alone,
+grouped by day, contract, decoded method name and 4-byte selector, for up to a hundred watched
+contracts over the last three complete days, and writes `contract_method_days`: calls per method
+per contract per UTC day, with the ERC-20 standard surface collapsed into one `erc20` bucket and an
+undecoded call kept under its selector. It selects no account and no count of accounts (the unit
+test forbids `From`, `Sender`, `Transaction`, `Holder` and `Balance` in the document). A
+`contract_method_coverage` window per contract says which days were read, so a missing day is
+"no call" only inside it. Its budget key is `bitquery-methods`, capped at 87 requests a day — under
+5 % of the plan's million points a month at the measured 19 points a request — and a one-off
+archive backfill (`data:contract-methods --backfill`, dry run first) reads the same document from
+the `combined` dataset under `bitquery-methods-archive`. The public name of this evidence is
+`decoded_calls`; function names stay on Terminal surfaces (founder decision F3).
+
 What was checked on `network: robinhood` on 2026-09-14 and was *not* available then: `dataset: archive`
 and `combined` are refused on this plan ("your plan only allows realtime"), and realtime's oldest
 block that day was five days old, so there is no long history from this source at any price we

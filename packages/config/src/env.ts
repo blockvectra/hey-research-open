@@ -141,6 +141,15 @@ export const serverEnvSchema = z
        * without it that job never runs. Worker only; a page never sees it.
        */
       bitqueryApiKey: optionalString,
+      /**
+       * Lowers the daily request ceiling of the function-level contract
+       * collection (founder decision F9, 2026-09-27). Absent means the cap,
+       * which keeps the collection under five per cent of the plan's points;
+       * zero turns it off. A higher figure is clamped to the cap by the worker.
+       */
+      bitqueryMethodDailyRequests: optionalString
+        .transform((value) => (value === undefined ? undefined : Number(value)))
+        .pipe(z.number().finite().nonnegative().optional()),
     }),
 
     /** Signs builder session cookies. Required only for write flows. */
@@ -567,6 +576,7 @@ function shapeEnv(raw: RawEnv) {
       dexscreenerBaseUrl: raw.DEXSCREENER_BASE_URL,
       coingeckoApiKey: raw.COINGECKO_API_KEY,
       bitqueryApiKey: raw.BITQUERY_API_KEY,
+      bitqueryMethodDailyRequests: raw.BITQUERY_METHOD_DAYS_DAILY_REQUESTS,
       geckoterminalBaseUrl: raw.GECKOTERMINAL_BASE_URL,
     },
     github: {
@@ -663,6 +673,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'market.dexscreenerBaseUrl': 'DEXSCREENER_BASE_URL',
   'market.coingeckoApiKey': 'COINGECKO_API_KEY',
   'market.bitqueryApiKey': 'BITQUERY_API_KEY',
+  'market.bitqueryMethodDailyRequests': 'BITQUERY_METHOD_DAYS_DAILY_REQUESTS',
   'market.geckoterminalBaseUrl': 'GECKOTERMINAL_BASE_URL',
   'github.clientId': 'GITHUB_CLIENT_ID',
   'github.clientSecret': 'GITHUB_CLIENT_SECRET',

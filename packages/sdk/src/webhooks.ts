@@ -32,7 +32,14 @@ export const WEBHOOK_PAYLOAD_VERSION_HEADER = 'hey-payload-version';
 export const WEBHOOK_PAYLOAD_VERSION = 1 as const;
 export const WEBHOOK_DEFAULT_TOLERANCE_SECONDS = 300;
 
-/** The event types a subscription may ask for (the runtime twin of `HeyWebhookEventType`). */
+/**
+ * Types a subscription may ask for only where HEY publishes them (2026-09-27):
+ * Market Integrity. `GET /api/webhooks` answers `eventTypes` with what the
+ * deployment offers now.
+ */
+export const WEBHOOK_PUBLISHED_ONLY_TYPES: readonly HeyWebhookEventType[] = ['market_integrity.event'];
+
+/** The event types a subscription may always ask for (with `WEBHOOK_PUBLISHED_ONLY_TYPES`, the runtime twin of `HeyWebhookEventType`). */
 export const WEBHOOK_EVENT_TYPES: readonly HeyWebhookEventType[] = [
   'build.release',
   'build.ship',
@@ -153,7 +160,7 @@ export async function verifyWebhookSignature(input: VerifyWebhookSignatureInput)
   return matched ? { ok: true, timestamp: parsed.timestamp } : { ok: false, reason: 'signature_mismatch' };
 }
 
-const TYPES: ReadonlySet<string> = new Set([...WEBHOOK_EVENT_TYPES, 'event.retracted', 'ping']);
+const TYPES: ReadonlySet<string> = new Set([...WEBHOOK_EVENT_TYPES, ...WEBHOOK_PUBLISHED_ONLY_TYPES, 'event.retracted', 'ping']);
 
 /**
  * Verifies, then parses. Throws `HeyWebhookError` for a bad signature, a

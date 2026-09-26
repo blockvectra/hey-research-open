@@ -178,6 +178,9 @@ Five things worth knowing before you render it:
 - **Check `token_verification` (2026-09-25).** The activity belongs to the project; the verification
   belongs to this address. On `MISMATCH` the project's own site names a different contract — do not
   print the activity as this token's.
+- **Or read `activity_applies_to_token` (2026-09-27, additive).** `false` exactly on `MISMATCH`.
+  Every other field keeps its value; on `false`, print the activity as the project's, never as this
+  token's, and do not link from the token to `hey_project_url`.
 - **Check `activity_measured` (2026-09-26).** `false` means HEY holds no repository, changelog or
   feed it can read for this project (or its status is unknown): `unknown` is then not a finding.
   `research_level` says how far HEY's research went; `as_of` when the project was last scored.
@@ -201,6 +204,7 @@ figures. Built for the Chit bot's line above its buy and sell buttons —
   "status_help": "Shipped something meaningful in the last 7 days.",
   "verified_builder": true,
   "token_verification": "VERIFIED",     // MISMATCH: the project's own site names another contract (2026-09-25)
+  "activity_applies_to_token": true,    // false exactly on MISMATCH; the card then has no cta (2026-09-27)
   "activity": { "commits_30d": 12, "releases_30d": 2, "ships_30d": 4, "last_ship": "2026-09-16", "last_ship_title": "v0.9.1" },
   "project": { "slug": "darkroute", "name": "DarkRoute", "symbol": "dark" },
   "project_url": "https://heyresearch.xyz/project/darkroute",
@@ -224,7 +228,10 @@ figures. Built for the Chit bot's line above its buy and sell buttons —
 - A database read only: answers in tens of milliseconds, `public, max-age=60` so your own cache can
   be short, 120 a minute without a key, your tier's bucket with one. Not `POST /api/scan`, which is
   the on-demand chain scan (ten an hour) — the name here is the partner's spelling.
-- The `cta` always points at the project page. There is no risk field, no score and no verdict;
+- The `cta` always points at the project page, and is **absent when `activity_applies_to_token` is
+  `false`** (2026-09-27): the project's own site names a different contract, so nothing on the card
+  invites a reader from this token to the project. Every other field is still sent, with its value.
+  There is no risk field, no score and no verdict;
   put a risk read from a tool that does that work beside this line.
 - **Is a zero a measurement? (2026-09-26, additive.)** `activity_measured: false` means HEY holds
   no repository, changelog or feed it can read for this project, or cannot decide its status:
@@ -234,8 +241,11 @@ figures. Built for the Chit bot's line above its buy and sell buttons —
   counts ships by the rule behind the status (a week of prereleases or code summaries counts once);
   `ships_30d` stays the ship-record count the project page shows. `activity.last_ship_url` is the
   last ship's public source.
-- The zero address (`0x000…000`), which bots send for a native coin, is a 400 like any non-token;
-  since 2026-09-26 it costs you nothing: no allowance, no rate bucket.
+- The zero address (`0x000…000`), which bots send for a native coin, answers **200**
+  `{"found": false, "reason": "not_a_token", …}` from 2026-09-27 (it was a 400): print nothing. It
+  costs you nothing — no allowance, no rate bucket — on the single call and, item by item, in the bulk
+  call (`tokens=`); a batch of nothing else is free. The burn address (`0x…dead`) and any malformed
+  token are still a 400.
 
 ## The partner contract: what never changes (2026-09-26)
 
@@ -246,7 +256,9 @@ migration note. `/api/v1/` is the partner namespace, not an API version.
 - **`/api/v1/scan`:** every key and type above; the lower-case six-state `status`; `found: false`
   as a 200 for an unpublished token and for another chain; 400 for a malformed token; `last_ship` as
   `YYYY-MM-DD`; `commits_30d` absent (not 0) without a readable repository; `ships_30d` and
-  `releases_30d` as numbers with their meaning; the CTA; the 60-second public cache; CORS `*`.
+  `releases_30d` as numbers with their meaning; the CTA (left out only when
+  `activity_applies_to_token` is `false`, 2026-09-27); `found: false, reason: "not_a_token"` for the
+  zero address (2026-09-27); the 60-second public cache; CORS `*`.
 - **`/api/v1/builder`:** the four-value `status` with no `abandoned`; `last_commit: null`; explicit
   `null` for a field HEY does not hold; 404 with `scan_url` for an unpublished contract; 400 for
   another chain.
@@ -257,7 +269,10 @@ migration note. `/api/v1/` is the partner namespace, not an API version.
 Additive fields so far: `token_verification` / `tokenVerification` (2026-09-25); `research_level`,
 `activity_measured`, `coverage`, `as_of`, `meaningful_ships_30d`, `last_ship_url`,
 `activityMeasured`, `meaningfulShipsLast30Days`, `asOf`, and the builder call's `commits_30d`,
-`commits_30d_partial`, `window_start` (2026-09-26).
+`commits_30d_partial`, `window_start` (2026-09-26); `activity_applies_to_token` /
+`activityAppliesToToken` and `reason: "not_a_token"` (2026-09-27). The one change that is not purely
+additive was agreed as a founder decision on 2026-09-27: on a `MISMATCH` token the card leaves out
+`cta`, and the zero address answers `200` instead of `400`.
 
 ## If you want more
 

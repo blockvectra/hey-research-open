@@ -29,6 +29,8 @@ export type HeyChangeType =
   | 'contract.source_unverified'
   | 'contract.interface_changed'
   | 'contract.usage_changed'
+  | 'contract.method_first_observed'
+  | 'contract.method_resumed'
   | 'market.status_changed'
   | 'market.liquidity_moved'
   | 'market.volume_spike'

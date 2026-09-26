@@ -254,7 +254,7 @@ function deployerWords(d: NonNullable<HeyContract['deployer']>): string {
 
 function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
   const lines: string[] = [];
-  lines.push(`${c.name ? `${c.name} — ` : ''}chain ${c.chainId}, ${c.address}${c.role ? ` (${c.role})` : ''}${c.watched ? '' : ' — listed, not watched: HEY does not re-read this contract'}`);
+  lines.push(`${c.name ? `${c.name} — ` : ''}chain ${c.chainId}, ${c.address}${c.role ? ` (${c.role})` : ''}${c.watched ? '' : ' — listed, not watched: HEY has not read this contract yet'}`);
   lines.push(c.associatedProject ? `- FACT project: ${c.associatedProject.name} — ${c.associatedProject.url}` : '- UNKNOWN project: no single published project claims this contract (none does, or more than one does equally).');
   if (c.creation) lines.push(`- FACT created ${c.creation.at ? atPrecision(c.creation.at, c.creation.precision) : 'at an unread time'}${c.creation.tx ? ` in ${c.creation.tx}` : ''}${c.creation.block ? `, block ${c.creation.block}` : ''}`);
   if (c.deployer) lines.push(`- FACT deployed by ${c.deployer.address}${deployerWords(c.deployer)}`);
@@ -272,8 +272,23 @@ function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
       ? `- FACT activity over ${a.daysMeasured} measured days: ${a.calls7d === null ? 'calls not read' : `${a.calls7d} calls in 7 days`}, ${a.events7d === null ? 'events not indexed (unknown, not zero)' : `${a.events7d} events in 7 days`}${a.newestDay ? ` (newest day ${a.newestDay})` : ''}`
       : `- UNKNOWN activity: ${pretty(a.state)}`,
   );
+  lines.push(methodWords(a.methods));
   if (c.evidence.length > 0) lines.push(`- Evidence ids: ${c.evidence.slice(0, 8).join(', ')}${c.evidence.length > 8 ? ` and ${c.evidence.length - 8} more` : ''}`);
   return lines;
+}
+
+/**
+ * Calls per method (2026-09-27) as one line: counts by bucket and how many of
+ * the contract's own functions were called, never which. A contract HEY has
+ * not read that way is UNKNOWN, never "no calls".
+ */
+function methodWords(m: HeyContract['activity']['methods']): string {
+  if (m.state !== 'MEASURED' || !m.window || m.calls === undefined || !m.buckets) {
+    return `- UNKNOWN calls per method: HEY has not read this contract's calls by method${m.collectedThrough ? ` in the last seven days (it holds ${m.collectedFrom} to ${m.collectedThrough})` : ''}.`;
+  }
+  const b = m.buckets;
+  const share = (n: number) => (m.calls ? `${Math.round((n / m.calls) * 100)}%` : '0%');
+  return `- FACT calls per method, ${m.window.from} to ${m.window.to} (${m.window.days} days, decoded calls): ${m.calls} calls — ERC-20 standard ${b.erc20Standard} (${share(b.erc20Standard)}), the contract's own named functions ${b.named} (${share(b.named)}), undecoded ${b.undecoded}; ${m.distinctFunctions ?? 0} of its own function${m.distinctFunctions === 1 ? '' : 's'} called. Function names are withheld on the public API. HEY holds these counts from ${m.collectedFrom}.`;
 }
 
 /** `GET /api/contracts/{chainId}/{address}` as text. Counts, never function lists; no account but the deployer. */

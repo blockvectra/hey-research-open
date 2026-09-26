@@ -184,6 +184,10 @@ export type HeyAccelerating = {
  * market, beside its builder activity, and where the two disagree. Published
  * only once HEY's exposure flag reaches the public API; until then the route
  * answers 404. `exitPattern` appears only where HEY names one.
+ *
+ * 2026-09-27: each event carries its public id (resolvable at
+ * `/api/evidence/{id}`), its words with the reading dates and sources, and its
+ * facts; a state HEY observed has `at: null` and `precision: "observed"`.
  */
 export type HeyMarketIntegrity = {
   slug: string;
@@ -199,8 +203,11 @@ export type HeyMarketIntegrity = {
     collapse: 'NONE' | 'DECLINE' | 'COLLAPSE' | 'SEVERE';
     liquidityPeakUsd: number | null;
     liquidityPeakDay: string | null;
+    /** The source behind that level (`dexscreener`, `geckoterminal`, `onchain`, …); null when unknown. */
+    liquidityPeakSource: string | null;
     liquidityNowUsd: number | null;
     liquidityNowDay: string | null;
+    liquidityNowSource: string | null;
     liquidityChangePct: number | null;
     deteriorationStartDay: string | null;
     collapseDay: string | null;
@@ -212,7 +219,24 @@ export type HeyMarketIntegrity = {
     exitPattern?: { level: string; reasons: string[] };
   } | null;
   conflicts: { type: string; text: string }[];
-  events: { kind: string; label: string; at: string; precision: 'exact' | 'day' | 'window'; until: string | null; detectedAt: string; confidence: string }[];
+  events: {
+    /** `integrity:<tokenUuid>:<key>`: the same id `/api/changes` and `/api/evidence` use. */
+    id: string;
+    kind: string;
+    label: string;
+    /** Plain words, with the reading dates and sources. An evidence classification, never a verdict. */
+    summary: string;
+    /** `hey_market_index` (HEY's daily index of pool readings and decoded trades) or `hoodlock`. */
+    source: string;
+    /** When it happened; null for a state HEY observed. */
+    at: string | null;
+    precision: 'exact' | 'day' | 'window' | 'observed';
+    until: string | null;
+    /** When HEY first saw it, under any rules version. */
+    detectedAt: string;
+    confidence: string;
+    facts: Record<string, string | number | boolean>;
+  }[];
 };
 
 export type HeyMarketMoves = {

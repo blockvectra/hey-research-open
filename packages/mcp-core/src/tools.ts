@@ -170,9 +170,11 @@ export const FIND_PROJECTS_API_PARAMS = {
 /**
  * The event types `get_changes` offers: every type the API accepts except
  * `market_integrity.event`, which the ledger holds as Terminal-only while the
- * founder's gate is closed and the public API therefore never returns. Held
- * to the API's own list by the web app's test, so a model can only ask for a
- * type that exists.
+ * founder's gate is closed and the public API therefore never returns. Where
+ * HEY publishes Market Integrity (`HEY_MARKET_INTEGRITY=public`, the same flag
+ * that offers the `market_integrity` tool) the server adds it (2026-09-27).
+ * Held to the API's own list by the web app's test, so a model can only ask
+ * for a type that exists.
  */
 export const PUBLIC_CHANGE_TYPES = [
   'build.release',
@@ -190,6 +192,8 @@ export const PUBLIC_CHANGE_TYPES = [
   'contract.source_unverified',
   'contract.interface_changed',
   'contract.usage_changed',
+  'contract.method_first_observed',
+  'contract.method_resumed',
   'market.status_changed',
   'market.liquidity_moved',
   'market.volume_spike',

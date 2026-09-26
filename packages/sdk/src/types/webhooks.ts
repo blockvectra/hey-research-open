@@ -34,7 +34,9 @@ export type HeyWebhookEventType =
   | 'token.verification_changed'
   | 'lock.unlock_due'
   | 'lock.observed'
-  | 'lock.withdrawn';
+  | 'lock.withdrawn'
+  /** Only where HEY publishes Market Integrity; `GET /api/webhooks` lists what the deployment offers (2026-09-27). */
+  | 'market_integrity.event';
 
 type HeyWebhookEnvelope = {
   payloadVersion: 1;

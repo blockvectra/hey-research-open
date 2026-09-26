@@ -512,7 +512,7 @@ const STAGE_WORDS: Record<NonNullable<ProjectCardData['launchStage']>, string> =
  * dash; no reading at all names the stage or says the market is unread.
  */
 /** Reasons under which HEY claims neither a live market nor a dead one (`@hey/scoring` DEAD_MARKET_REASONS). */
-const UNSETTLED_MARKET_REASONS: ReadonlySet<string> = new Set(['pool_readings_disagree', 'readings_implausible']);
+const UNSETTLED_MARKET_REASONS: ReadonlySet<string> = new Set(['pool_readings_disagree', 'readings_implausible', 'removal_unconfirmed']);
 
 export function marketLensLine(project: ProjectCardData): string {
   const parts: string[] = [];
@@ -526,6 +526,8 @@ export function marketLensLine(project: ProjectCardData): string {
     parts.push('Reported liquidity not confirmed');
   } else if (project.tokenMarketReason === 'pool_readings_disagree') {
     parts.push('Pool readings disagree');
+  } else if (project.tokenMarketReason === 'removal_unconfirmed') {
+    parts.push('Liquidity fall not confirmed');
   } else {
     if (liquidity) parts.push(`Liquidity ${liquidity}`);
     if (volume) parts.push(`24 h volume ${volume}`);

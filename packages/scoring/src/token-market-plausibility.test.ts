@@ -10,11 +10,26 @@ import {
   marketFiguresBelievable,
   marketIsLive,
   secondReadingBelievable,
+  TOKEN_MARKET,
   TOKEN_MARKET_REASONS,
   type TokenMarketStatusValue,
 } from './token-market';
 
 const now = new Date('2026-09-25T08:00:00Z');
+
+/** A market held and measured drained (2026-09-27): what every removal needs besides the current figure. */
+const removed = (heldUsd: number) => ({
+  peakLiquidityUsd: heldUsd,
+  heldLiquidityUsd: heldUsd,
+  drain: {
+    series: 'chain',
+    heldUsd,
+    levelUsd: Math.max(TOKEN_MARKET.dustLiquidityUsd, Math.min(TOKEN_MARKET.removedMaxAbsoluteUsd, heldUsd * TOKEN_MARKET.removedShareOfPeak)),
+    since: new Date(now.getTime() - 3 * 86_400_000),
+    lastAt: now,
+    days: 3,
+  },
+});
 const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000);
 
 /**
@@ -28,7 +43,7 @@ describe('token market: readings HEY will not believe', () => {
   const farmmiOther = { observedAt: hoursAgo(0.5), liquidityUsd: 394_284, volume24hUsd: 16.75, priceUsd: 0.0914 };
 
   it('does not let a pool priced 31× away rescue a drained market (A10-02)', () => {
-    const farmmi = classifyTokenMarket({ now, latest: farmmiLatest, peakLiquidityUsd: 1_980_555, otherPools: farmmiOther });
+    const farmmi = classifyTokenMarket({ now, latest: farmmiLatest, ...removed(1_980_555), otherPools: farmmiOther });
     expect(farmmi).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_gone_after_market' });
     expect(marketIsLive(farmmi.status, farmmi.reason)).toBe(false);
   });
@@ -36,10 +51,10 @@ describe('token market: readings HEY will not believe', () => {
   it('asks a second reading shaped like the token\'s own supply for volume in proportion to it, not $1', () => {
     // No price on the other reading: the valuation rules still refuse $16.75 of volume vouching for $394K.
     const { priceUsd: _price, ...noPrice } = farmmiOther;
-    expect(classifyTokenMarket({ now, latest: farmmiLatest, peakLiquidityUsd: 1_980_555, otherPools: noPrice }).status).toBe('LIQUIDITY_REMOVED');
+    expect(classifyTokenMarket({ now, latest: farmmiLatest, ...removed(1_980_555), otherPools: noPrice }).status).toBe('LIQUIDITY_REMOVED');
     // The same pool trading a real share of what it holds is a market.
     expect(
-      classifyTokenMarket({ now, latest: farmmiLatest, peakLiquidityUsd: 1_980_555, otherPools: { ...noPrice, volume24hUsd: 5_000 } }),
+      classifyTokenMarket({ now, latest: farmmiLatest, ...removed(1_980_555), otherPools: { ...noPrice, volume24hUsd: 5_000 } }),
     ).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
     expect(secondReadingBelievable({ liquidityUsd: 394_284, volume24hUsd: 394.28 }, { fdvUsd: 108_904 })).toBe(false);
     expect(secondReadingBelievable({ liquidityUsd: 394_284, volume24hUsd: 395 }, { fdvUsd: 108_904 })).toBe(true);
@@ -59,8 +74,8 @@ describe('token market: readings HEY will not believe', () => {
     // trade close agrees with the live pool, so the live pool rescues the market.
     const latest = { observedAt: hoursAgo(0.2), liquidityUsd: 1.04, volume24hUsd: 0.44, fdvUsd: 4_800, priceUsd: 0.0000048 };
     const live = { observedAt: hoursAgo(0.4), liquidityUsd: 14_344, volume24hUsd: 10_600, priceUsd: 0.0000192 };
-    expect(classifyTokenMarket({ now, latest, peakLiquidityUsd: 48_000, otherPools: live }).status).toBe('LIQUIDITY_REMOVED');
-    expect(classifyTokenMarket({ now, latest, peakLiquidityUsd: 48_000, otherPools: live, chainPriceUsd: 0.00002 })).toMatchObject({
+    expect(classifyTokenMarket({ now, latest, ...removed(48_000), otherPools: live }).status).toBe('LIQUIDITY_REMOVED');
+    expect(classifyTokenMarket({ now, latest, ...removed(48_000), otherPools: live, chainPriceUsd: 0.00002 })).toMatchObject({
       status: 'ACTIVE_MARKET',
       reason: 'liquidity_in_another_pool',
     });
@@ -70,10 +85,10 @@ describe('token market: readings HEY will not believe', () => {
     // A pool paired with another launch is valued at that launch's price, not this token's.
     const latest = { observedAt: hoursAgo(0.2), liquidityUsd: 3, volume24hUsd: 0, fdvUsd: 40_000 };
     const inflated = { observedAt: hoursAgo(3), liquidityUsd: 400_000, volume24hUsd: 9_000 };
-    expect(classifyTokenMarket({ now, latest, peakLiquidityUsd: 48_000, otherPools: inflated }).status).toBe('LIQUIDITY_REMOVED');
+    expect(classifyTokenMarket({ now, latest, ...removed(48_000), otherPools: inflated }).status).toBe('LIQUIDITY_REMOVED');
     // Within the bound, and trading, the index still rescues (clan-tech, $36K beside a live pool).
     expect(
-      classifyTokenMarket({ now, latest, peakLiquidityUsd: 48_000, otherPools: { ...inflated, liquidityUsd: 36_000 } }),
+      classifyTokenMarket({ now, latest, ...removed(48_000), otherPools: { ...inflated, liquidityUsd: 36_000 } }),
     ).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
   });
 
@@ -134,20 +149,20 @@ describe('token market: readings HEY will not believe', () => {
     // cash-shaq: GeckoTerminal $100.76 today, DEX Screener $5,292 on 09-19 before the drain, the index $0.99 on 09-23.
     const latest = { observedAt: hoursAgo(1), liquidityUsd: 100.76, volume24hUsd: 0 };
     const before = { observedAt: hoursAgo(6 * 24), liquidityUsd: 5_291.67, volume24hUsd: 400 };
-    const disagree = classifyTokenMarket({ now, latest, peakLiquidityUsd: 5_291.67, recentOtherPools: before });
+    const disagree = classifyTokenMarket({ now, latest, ...removed(5_291.67), recentOtherPools: before });
     expect(disagree).toMatchObject({ status: 'INSUFFICIENT_DATA', reason: 'pool_readings_disagree' });
     // "Claims neither", so no badge rests on it.
     expect(marketIsLive(disagree.status, disagree.reason)).toBe(false);
 
-    const settled = classifyTokenMarket({ now, latest, peakLiquidityUsd: 5_291.67, recentOtherPools: before, chainIndex: { observedAt: hoursAgo(2 * 24), liquidityUsd: 0.99 } });
+    const settled = classifyTokenMarket({ now, latest, ...removed(5_291.67), recentOtherPools: before, chainIndex: { observedAt: hoursAgo(2 * 24), liquidityUsd: 0.99 } });
     expect(settled).toMatchObject({ status: 'LIQUIDITY_REMOVED', reason: 'liquidity_far_below_peak' });
     // An index reading older than the pool reading settles nothing.
     expect(
-      classifyTokenMarket({ now, latest, peakLiquidityUsd: 5_291.67, recentOtherPools: before, chainIndex: { observedAt: hoursAgo(7 * 24), liquidityUsd: 0.99 } }).reason,
+      classifyTokenMarket({ now, latest, ...removed(5_291.67), recentOtherPools: before, chainIndex: { observedAt: hoursAgo(7 * 24), liquidityUsd: 0.99 } }).reason,
     ).toBe('pool_readings_disagree');
     // Nor does one that still sees a market.
     expect(
-      classifyTokenMarket({ now, latest, peakLiquidityUsd: 5_291.67, recentOtherPools: before, chainIndex: { observedAt: hoursAgo(2 * 24), liquidityUsd: 6_000 } }).reason,
+      classifyTokenMarket({ now, latest, ...removed(5_291.67), recentOtherPools: before, chainIndex: { observedAt: hoursAgo(2 * 24), liquidityUsd: 6_000 } }).reason,
     ).toBe('pool_readings_disagree');
   });
 });

@@ -292,6 +292,8 @@ export type HeyBuilderCard = {
   hey_status_help: string;
   hey_project_name: string;
   token_verification: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';
+  /** False exactly on `MISMATCH` (2026-09-27, additive): do not print the activity as this token's, or link from the token to the project. */
+  activity_applies_to_token: boolean;
   hey_project_url: string;
   /** Only a repository HEY counts as the project's own evidence. */
   repo_url: string | null;

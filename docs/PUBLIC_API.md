@@ -465,7 +465,8 @@ A number that contradicts the page it links to is worse than no number.
 
 **`tokenVerification` says whose contract this is (2026-09-25).** The activity is the project's;
 the verification is this address's. `MISMATCH` means the project's own site names a different
-contract — print the activity as the project's, never as this token's.
+contract — print the activity as the project's, never as this token's. `activityAppliesToToken`
+(2026-09-27, additive) is that rule as a boolean: `false` exactly on `MISMATCH`, `true` otherwise.
 
 **There is no risk field, no score and no verdict**, here or anywhere. HEY answers whether anyone
 is building; it says nothing about what a token might do next. An integration that wants a risk
@@ -475,7 +476,8 @@ beside those tools rather than replace them.
 `chainId` is in the path because identity here is `(chainId, contractAddress)` and never the
 address alone. An address from another chain answers `400` rather than being resolved against
 this one. So does a malformed address, and so do the burn and zero addresses — well-formed, and
-nobody's project.
+nobody's project. (`/api/v1/scan` answers the zero address `200` with `reason: "not_a_token"` since
+2026-09-27; this route keeps its 400.)
 
 This route is a database read and makes no provider call, which is why it sits on the ordinary
 120-a-minute allowance. **`POST /api/scan` is not the endpoint for an integration**: it reads the
@@ -489,9 +491,12 @@ states, lower-cased) with `status_label` and `status_help` in HEY's own words, `
 `activity` (`commits_30d` — absent when no repository is read, and a floor when `commits_30d_partial: true` says a commits page was cut inside the window; `releases_30d`, `ships_30d`,
 `last_ship`), `token_verification` (`VERIFIED`, `UNVERIFIED` or `MISMATCH`, 2026-09-25: on
 `MISMATCH` the project's own site names another contract, so do not print the activity as this
-token's), `project_url`, `logo_url`, `badge_url`, a `cta` that points at the project page, and
-the disclaimer. `found: false` is a 200 for an unpublished token and for a chain HEY does not index
-(`reason: "chain"`); a malformed `token` is a 400. `chain` defaults to 4663. Same limits and cache as
+token's), `activity_applies_to_token` (2026-09-27: `false` exactly on `MISMATCH`), `project_url`,
+`logo_url`, `badge_url`, a `cta` that points at the project page (absent when
+`activity_applies_to_token` is `false`: nothing invites a reader from a disowned token to the
+project), and the disclaimer. `found: false` is a 200 for an unpublished token, for a chain HEY does
+not index (`reason: "chain"`) and, since 2026-09-27, for the zero address (`reason: "not_a_token"`,
+not metered); a malformed `token`, and the burn address, are a 400. `chain` defaults to 4663. Same limits and cache as
 `/api/token`; a database read only. Documented for bots in [INTEGRATIONS.md](INTEGRATIONS.md).
 
 ## `GET /api/v1/builder?chain={chainId}&token={address}` (2026-09-20)
@@ -580,8 +585,20 @@ measurements.
 | `/api/v1/builder` | `research_level`, `activity_measured`, `as_of` | as above |
 | | `last_code_activity.commits_30d`, `commits_30d_partial`, `window_start` | commits in the thirty days before `as_of`, by the same count as the card's `commits_30d`; absent when unknown. `commits` stays the newest weekly summary's own figure |
 
-**The zero address on `/api/v1/scan`** (and the other well-formed non-identities) still answers
-`400`, and no longer spends anything: no monthly allowance, no rate bucket, no demand record.
+**The zero address on `/api/v1/scan`** answers `200 {"found": false, "reason": "not_a_token"}`
+since 2026-09-27 (it was a `400`; Chit sends it for the native coin), and spends nothing: no monthly
+allowance, no rate bucket, no demand record. In the bulk form each zero-address item is that same
+answer, not charged; a batch of nothing else is still keyed and costs nothing. The burn address and
+every malformed token keep their `400`, which also spends nothing.
+
+## Partner additive fields (2026-09-27)
+
+| Route | Added | Meaning |
+|---|---|---|
+| `/api/v1/scan` | `activity_applies_to_token` | `false` exactly when `token_verification` is `MISMATCH`; the card then carries no `cta`. Every other field keeps its value |
+| | `reason: "not_a_token"` | on `found: false`, for the zero address |
+| `/api/token/{chainId}/{address}` | `project.activityAppliesToToken` | as above; `project.url` is still sent |
+| `/api/v1/builder` | `activity_applies_to_token` | as above; `hey_project_url` is still sent — do not link from the token to it when `false` |
 
 ## Project snapshot, coverage, explain and evidence (2026-09-26)
 
@@ -597,7 +614,7 @@ with its evidence, Discovery Gap, velocity, cadence), `market` (the card's own f
 with `valuationWithheld` for a market that is not live; absent without a token), `onchain`,
 `contracts` (a link), `verification` (token verification, owner verified, source counts), `locks`
 (`tokenLock` and its coverage, HoodLock only), `integrity` (`WITHHELD` while Market Integrity is
-unpublished), `latestChanges`, `freshness`, `coverage`, `evidenceSummary`, `links` to every detailed
+unpublished, `MEASURED` with its route once HEY publishes it), `latestChanges`, `freshness`, `coverage`, `evidenceSummary`, `links` to every detailed
 endpoint, `asOf` and `scoringVersion`.
 
 `latestChanges` is `{ available: true, items }` from the change ledger, or `{ available: false,
@@ -638,7 +655,10 @@ Facts: `market.valuation` (which reading, which kind, competing readings, what w
 or withheld), `market.status` (the classifier's inputs, including HEY's chain-index depth),
 `activity.status`, `build.momentum`, `discovery_gap`, `still_building`, `research.level`,
 `token.verification`, `source.counted` (with `&source=source:<uuid>`: whether that source counts
-toward activity and why not), `market_integrity.state` (withheld while unpublished). Without
+toward activity and why not), `market_integrity.state` (withheld while unpublished; once
+published, the stored evaluation read back — the collapse level, the level the market held and
+now, each with its day and source, and the ids of the events it stands behind; an exit-pattern
+classification is never named here). Without
 `fact` the route lists them. An unknown fact is `400 unknown_fact`; `source.counted` without a
 source is `400 source_required`.
 
@@ -649,7 +669,10 @@ One published record by its typed id, the same ids the change feed and the timel
 `claim:<uuid>`, `state:<projectUuid>:<key>:<transitionId>`, `impl:<chainId>:<address>:<block>:<logIndex>`
 (an upgrade log), `impl:<chainId>:<address>:rpc:<uuid>` (an implementation change HEY saw between
 two reads of the proxy, with no block to name), `narrative:<projectUuid>:<slug>` (a narrative HEY
-assigned; `sourceType` says who set it: `project`, `hey_moderator` or `hey_rules`).
+assigned; `sourceType` says who set it: `project`, `hey_moderator` or `hey_rules`), `method:<uuid>`
+(a contract's functions first called, or called again after 30+ days without a call, on one UTC
+day: counts only, `sourceType: "decoded_calls"`; a fact later evidence contradicted is withdrawn as
+`superseded`).
 
 A receipt carries `project`, `domain`, `claimType`, `summary`, `sourceType`, `sourceUrl`,
 `publishedAt` (null when only HEY's observation dates it), `detectedAt`, `precision`,
@@ -659,12 +682,26 @@ with its `evidenceRowId`).
 
 A record HEY no longer stands behind answers `{ id, withdrawn: true, withdrawalReason }`
 (`retracted`, `disputed`, `context_only`, `review_false_positive`, `announced_ship_withdrawn`,
-`superseded`), with `project` when the project is public. For a project that is not public the
+`superseded`), with `project` when the project is public. A `context_only` follow-up deployment
+also carries `contextReason` (2026-09-27): `held_by_another_project`, `shared_deployer`,
+`serial_launcher_deployer` (the account that launched the token creates contracts for many
+projects: 100 or more in 90 days), `token_mismatch` or `deployer_not_tied`. For a project that is not public the
 reason is `not_public` and nothing else is said, not even the slug. A claim that was never
 verified, a reviewer's note, a reviewer and a claimant are never published. A malformed id is
-`400 invalid_evidence_id`; an unknown one `404`. `integrity:` ids are not public while Market
-Integrity is unpublished; `state:` and `impl:` ids resolve once the transition ledger and the
-implementation history exist.
+`400 invalid_evidence_id`; an unknown one `404`. `state:` and `impl:` ids resolve once the
+transition ledger and the implementation history exist.
+
+`integrity:<tokenUuid>:<key>` (2026-09-27) is one Market Integrity event, the same id the change
+ledger and `/api/projects/{slug}/market-integrity` use. It resolves only while HEY publishes
+Market Integrity (`404` otherwise), and an exit-pattern classification only where HEY names one.
+The receipt's `domain` is `market_integrity`, `claimType` the event kind in lower case
+(`liquidity_collapse`, `market_data_conflict`, …), `sourceType` `hey_market_index` (HEY's daily
+index of pool readings and decoded on-chain trades) or `hoodlock`, and `metadata` carries the
+reading days and the source of each figure (`levelSource`, `currentSource`) and the rules version.
+A state HEY observed — a trading collapse, two sources disagreeing, a builder × market conflict —
+has `publishedAt: null` and `precision: "OBSERVED"`. `verification` is `CONFIRMED` when a reviewer
+confirmed it, null otherwise; an event the current evaluation no longer finds is withdrawn as
+`superseded`, and one a reviewer marked a false positive as `review_false_positive`.
 
 ## `POST /api/scan` (2026-09-15)
 
@@ -785,8 +822,13 @@ Added 2026-09-25, all optional and absent when HEY holds nothing:
 - `marketStatusReason` — the reason code behind `marketStatus` (`launch_pool_no_trades`,
   `no_volume_24h`, …). The market is not live when the status is `NO_LIQUIDITY`,
   `LIQUIDITY_REMOVED` or `MARKET_ABANDONED`, or the reason is `launch_pool_no_trades`,
-  `launch_pool_volume_unknown`, `pool_readings_disagree` or `readings_implausible` whatever the
-  status beside it. For those HEY sends no valuation. `readings_implausible` (2026-09-25)
+  `launch_pool_volume_unknown`, `pool_readings_disagree`, `readings_implausible` or
+  `removal_unconfirmed` whatever the status beside it. For those HEY sends no valuation.
+  `LIQUIDITY_REMOVED` (since 2026-09-27) is a measured drain: one series of readings — a pool, or
+  HEY's chain index across every pool — held at least $5,000 on two readings, then read at or
+  below a tenth of that on two UTC days, with nothing read of any pool since above it.
+  `removal_unconfirmed` (`INSUFFICIENT_DATA`) is dust where HEY saw a market held but has not
+  measured the drain: it claims neither a live market nor a removal. `readings_implausible` (2026-09-25)
   means the reading claims a large pool that almost nothing traded in and that HEY's own chain
   index does not find; its liquidity and highest liquidity are withheld too, here, in the list and
   detail endpoints, and from `sort=liquidity`, `minLiquidity` and the market-cap filters.
@@ -849,6 +891,33 @@ to any score. No address is named here — but "no accounts, anywhere", which th
 say, stopped being true on 2026-09-15: HEY's daily index counts how many different addresses
 called a contract and traded a token, and `/api/signals` publishes those counts (2026-09-19).
 They are figures the provider returns; nothing selects, stores or exposes an address.
+
+## `GET /api/projects/{slug}/market-integrity` (2026-09-25; published 2026-09-27)
+
+What happened to the project's tracked token market, beside — never inside — its builder
+activity, and where the two stories disagree. `404` until HEY publishes Market Integrity
+(`HEY_MARKET_INTEGRITY=public`, fail closed). Read from HEY's stored evaluation (rules
+`mi-v4`); no provider is called and nothing is scored.
+
+- `builderActivity` — the activity status and last meaningful ship, as the project page says them.
+- `marketIntegrity` — `state` (the token market status), `established`, `collapse` (`NONE`,
+  `DECLINE`, `COLLAPSE`, `SEVERE`: liquidity under 25%, 10% or 5% of the level it held, on two
+  consecutive daily readings; withdrawn while two sources disagree), `liquidityPeakUsd` /
+  `liquidityPeakDay` / `liquidityPeakSource` (the highest level held on two consecutive days, and
+  the source that won that day), `liquidityNowUsd` / `liquidityNowDay` / `liquidityNowSource`,
+  `liquidityChangePct`, `deteriorationStartDay`, `collapseDay`, `lastTradeDay`, `migration`,
+  `lockState`, `sourcesDisagree`; `exitPattern` only where HEY names one
+  (`HEY_MARKET_INTEGRITY_EXIT_LABELS`), always an evidence classification, never a finding about
+  intent.
+- `conflicts[]` — builder × market conflicts, each with one plain sentence.
+- `events[]` — only what the current evaluation stands behind: `id` (`integrity:<tokenUuid>:<key>`,
+  resolvable at `/api/evidence/{id}`), `kind`, `label`, `summary` (the reading dates and sources),
+  `source`, `at` (null for a state HEY observed) with `precision` (`exact`, `day`, `window`,
+  `observed`), `until`, `detectedAt` (the first time any rules version saw it), `confidence`,
+  `facts`.
+
+Sources are named as the rest of the API names them (`dexscreener`, `geckoterminal`,
+`onchain` for decoded trades). The words never say "rug" or "scam".
 
 ## `GET /api/changes` — the change ledger (2026-09-26)
 
@@ -950,6 +1019,7 @@ status move — so each change is one event, not two.
 | `contract.deployed`, `contract.followup_deployed` | a deploy ship (the launch record; a later contract from the project's deployer) | the block time |
 | `contract.implementation_changed` | the implementation history: an upgrade log (id `impl:<chainId>:<address>:<block>:<logIndex>`), or a change HEY saw between two reads (`impl:<chainId>:<address>:rpc:<uuid>`, with the upgrade ship as evidence, never a second event). An old log indexed late is `origin: "backfill"` | the block time, EXACT (log); null, OBSERVED (two reads) |
 | `contract.source_verified`, `contract.source_unverified`, `contract.interface_changed` | an explorer ABI diff (counts only; the names stay in the Terminal) | null, OBSERVED |
+| `contract.method_first_observed`, `contract.method_resumed` | the contract's calls per method (2026-09-27): named functions called for the first time since deployment (only where HEY read the contract back to its deployment, never its first day of use), or called again after 30+ days HEY read without a call. Id `method:<uuid>`; `facts.functions` counts them (the names stay in the Terminal), `facts.longestSilenceDays` on a resumption. A contract fact, never `countsAsBuilding`. An old day indexed by the archive backfill is `origin: "backfill"` | the UTC day of the calls, DATE |
 | `build.status_changed`, `build.dormant`, `build.resumed` | an activity-status move | null, OBSERVED |
 | `build.accelerating`, `build.slowing` | the development-window signals | the window's end, WINDOW |
 | `market.status_changed` | a token-market-status move | null, OBSERVED |
@@ -962,12 +1032,25 @@ status move — so each change is one event, not two.
 | `research.narrative_assigned` | a narrative assigned | the assignment, EXACT |
 | `lock.unlock_due` | a HoodLock unlock entering its last seven days | the unlock, SCHEDULED |
 | `lock.observed`, `lock.withdrawn` | the first sweep that read a HoodLock lock, and the first that read it withdrawn (forward-only from migration 0138; locks already there when collection began say nothing) | null, OBSERVED (the locker gives no times; `detectedAt` is HEY's) |
+| `market_integrity.event` | a Market Integrity finding the current evaluation stands behind (only where HEY publishes Market Integrity; id `integrity:<tokenUuid>:<key>`) | a collapse, trading stop or lock event: its day or window, DATE/WINDOW/EXACT; a trading collapse, a source conflict or a builder × market conflict: null, OBSERVED |
 
 **What the ledger cannot tell you.** State moves (status, market status, launch stage,
 verification, publication) are recorded from the deploy of migration 0136 (`ledger.transitionsFrom`);
 before it only the moves a HEY Signal announced exist, as `signal:` events. A bookkeeping move —
 an `UNKNOWN` side, or a move in the same run as a scoring-version change — is recorded and never
-announced. Market Integrity events are Terminal-only and never appear here.
+announced.
+
+**Market Integrity (`market_integrity.event`, domain `market_integrity`).** Terminal-only unless
+HEY publishes Market Integrity; then one event per finding the current evaluation stands behind —
+a liquidity collapse, a trading collapse or stop, a migration, a lock that expired or was
+withdrawn, two sources disagreeing, a builder × market conflict — with its words, reading dates
+and sources in `summary` and `facts`. A dated finding keeps its day or window; a state HEY
+observed is `occurredAt: null`, `OBSERVED`. An exit-pattern classification is public only where
+HEY names one; elsewhere it stays Terminal-only. When the operator publishes Market Integrity,
+the events already recorded enter this feed as new upserts with new `seq`s, so any `after=`
+cursor reaches them, but with the `origin` of their first emission — `bootstrap` stays
+`bootstrap`, and one first seen on the Terminal as `live` enters as `backfill` — so publishing is
+never news and webhooks never push it. A finding the next evaluation no longer makes is retracted.
 
 `ledger` on every page: `collectionStart` (the first event recorded), `transitionsFrom`,
 `newestRecordedAt`, `projectorRanAt`. `/api/status` reports the projector stale after 15 minutes.
@@ -1132,7 +1215,7 @@ about that project.
 
 | Field | What it says |
 |---|---|
-| `associatedProject`, `role`, `token`, `watched` | the published project that knows this contract and how — `token`, `declared` (a contract the project names) or `followup` (deployed later by the account that launched the token; listed, **not yet watched**). `null` when no published project claims it, or when more than one shares the strongest link (a follow-up two projects' deployer put up): HEY then names none rather than pick one. In `/api/projects/{slug}/contracts` a follow-up names the listing project and cites its own ship |
+| `associatedProject`, `role`, `token`, `watched` | the published project that knows this contract and how — `token`, `declared` (a contract the project names) or `followup` (deployed later by the account that launched the token). `watched` is true for a token and a declared contract; a follow-up is watched from 2026-09-27 once its launcher has been measured as not creating contracts for many projects (fewer than 100 in 90 days) and HEY's proxy watch has read it, and is `false` until then. `null` when no published project claims it, or when more than one shares the strongest link (a follow-up two projects' deployer put up): HEY then names none rather than pick one. In `/api/projects/{slug}/contracts` a follow-up names the listing project and cites its own ship |
 | `creation` | `tx`, `at`, `block`, `precision: "EXACT"`, and an `evidenceId` for a follow-up |
 | `deployer` | the token's deployer — the only account this object ever names — with `sharedAcrossTrackedProjects` (HEY's stored shared-deployer flag, set once the account launched three tracked projects' tokens; the same flag `/market` publishes as `deployerShared`) and `otherProjectsCount` (a plain count, which may be above zero while the flag is false) |
 | `factory` | the factory that created the token, when one did |
@@ -1140,6 +1223,7 @@ about that project.
 | `proxy` | `state`, `status`, `kind` (`EIP1967`, `BEACON`, `EXPLORER_REPORTED`, `NONE_DETECTED`), `implementation`, `beacon`, `checkedAt`, `changedAt`, and `history[]` — each change with an `id` (`impl:<chainId>:<address>:<block>:<logIndex>` for a chain log), `occurredAt` and `precision: "EXACT"` for a log, or `occurredAt: null` and `precision: "OBSERVED"` for a change HEY saw between two reads (`source: "hey_reads"`) |
 | `interface` | `state`, `functionCount`, `eventCount`, `baselineSince` and `changes[]` (ids and counts) |
 | `activity` | over the last seven days: `daysMeasured`, `calls7d` (null when no reading counted calls), `events7d` (null when any day was the decoding source's blind spot) |
+| `activity.methods` (2026-09-27) | calls per method over the last seven complete UTC days HEY read (`source: "decoded_calls"`): `window` (`from`, `to`, `days`), `collectedFrom`/`collectedThrough` (the contiguous days HEY holds; a day outside them is unknown), `calls`, `buckets` (`erc20Standard` — the ERC-20 surface as one bucket, `named` — the contract's own named functions, `undecoded`), `distinctFunctions` (named functions and undecoded selectors called, never the ERC-20 bucket) and `top[]` (the five most-called methods by `rank`, `bucket` and `calls`). `names: "WITHHELD"`: function names stay in the Terminal. `state: "NOT_READ"` carries no counts at all — never zero. Counts only: no caller is read or stored |
 | `freshness`, `evidence` | when each part was read; the typed ids the object is built from |
 
 Every section carries `state`: `MEASURED`, `NOT_READ` (HEY knows the contract but has not read it
@@ -1151,8 +1235,13 @@ here: counts are. No partnership, no score, no verdict.
 Every contract HEY knows a published project by — the token, contracts the project names in its own
 sources, and follow-ups its deployer put up — each exactly as `/api/contracts/{chainId}/{address}`
 serves it. At most 100: the token and named contracts first, then follow-ups newest first; `total`
-and `truncated` say how many there are. Follow-ups are listed with `watched: false`: HEY does not
-read their proxy, source or activity yet.
+and `truncated` say how many there are. Since 2026-09-27 a follow-up is read like a token — proxy,
+verified source and interface, decoded activity — once the account that deployed it has been
+measured as not creating contracts for many projects; `watched` says whether HEY has read it. The
+explorer's share of those reads is paced at 100 a day, so the first reading of every follow-up takes
+about nine days. A follow-up from an account that creates contracts for many projects (100 or more in
+90 days) is not listed here: it is context, not the project's contract (its receipt says
+`contextReason: "serial_launcher_deployer"`).
 
 ## `GET /api/projects/{slug}/history?series=&from=&to=` (2026-09-26)
 
@@ -1172,8 +1261,8 @@ The points HEY persisted for a project, day by day. `series` is a comma list of 
 - `valuation` carries `kind` (`marketCap` or `fdv`) where HEY knows the supply, and follows the
   market page's withholding.
 - `contractChanges` and `locks` count ledger events by the day HEY recorded them; they are
-  `state: "UNAVAILABLE"` on a deployment whose change ledger is not live yet. Market Integrity is
-  never in this answer while it is flag-gated.
+  `state: "UNAVAILABLE"` on a deployment whose change ledger is not live yet. Market Integrity has
+  no history series; its events are on `/api/changes` and its route once published.
 - A series that cannot apply (a project with no token) is `state: "NOT_APPLICABLE"` with a reason.
 
 ## `GET /api/projects/{slug}/diff?from=YYYY-MM-DD&to=YYYY-MM-DD` (2026-09-26)
@@ -1199,7 +1288,7 @@ one request per item against the minute and the month, and never more than the m
 |---|---|---|
 | `GET /api/snapshots?slugs=a,b,…` | 10 | `{input, found, data?}` — `data` is the project dossier `/api/projects/{slug}` serves |
 | `GET /api/token/{chainId}?addresses=0x…,0x…` | 30 | `{input, found, data?, error?}` — `data` is exactly what `/api/token/{chainId}/{address}` answers |
-| `GET /api/v1/scan?chain=4663&tokens=0x…,0x…` | 30 | the partner card `token=` answers, with `input` added; an address that is not a token identity is `{input, found: false, error}` |
+| `GET /api/v1/scan?chain=4663&tokens=0x…,0x…` | 30 | the partner card `token=` answers, with `input` added; an address that is not a token identity is `{input, found: false, error}`, except the zero address, which is the card's own `found: false, reason: "not_a_token"` and is not charged (2026-09-27) |
 
 Input order is kept, duplicates included; an item that cannot be read fails on its own
 (`error.code`), never the batch. One more than the maximum is `400 batch_too_large`; an answer over

@@ -1,0 +1,20 @@
+{
+  "data": {
+    "EVM": {
+      "Calls": [
+        { "Block": { "Date": "2026-09-25" }, "Call": { "To": "0x5F0FF5A1B1B0E3C1D7C6C4B0E0F2A1D3C549C3AA", "Signature": { "Name": "balanceOf", "SignatureHash": "70A08231" } }, "calls": "3847006" },
+        { "Block": { "Date": "2026-09-25" }, "Call": { "To": "0x5f0ff5a1b1b0e3c1d7c6c4b0e0f2a1d3c549c3aa", "Signature": { "Name": "transfer", "SignatureHash": "A9059CBB" } }, "calls": "20112" },
+        { "Block": { "Date": "2026-09-25" }, "Call": { "To": "0x5f0ff5a1b1b0e3c1d7c6c4b0e0f2a1d3c549c3aa", "Signature": { "Name": "stake", "SignatureHash": "A694FC3A" } }, "calls": "1244" },
+        { "Block": { "Date": "2026-09-25" }, "Call": { "To": "0x5f0ff5a1b1b0e3c1d7c6c4b0e0f2a1d3c549c3aa", "Signature": { "Name": "loot", "SignatureHash": null } }, "calls": 17 },
+        { "Block": { "Date": "2026-09-25" }, "Call": { "To": "0x5f0ff5a1b1b0e3c1d7c6c4b0e0f2a1d3c549c3aa", "Signature": { "Name": "", "SignatureHash": "8071CDFA" } }, "calls": "1" },
+        { "Block": { "Date": "2026-09-25" }, "Call": { "To": "0x5f0ff5a1b1b0e3c1d7c6c4b0e0f2a1d3c549c3aa", "Signature": { "Name": "", "SignatureHash": "" } }, "calls": "3" },
+        { "Block": { "Date": "2026-09-25" }, "Call": { "To": "0x5f0ff5a1b1b0e3c1d7c6c4b0e0f2a1d3c549c3aa", "Signature": { "Name": "", "SignatureHash": "" } }, "calls": "2" },
+        { "Block": { "Date": "2026-09-24" }, "Call": { "To": "0x5f0ff5a1b1b0e3c1d7c6c4b0e0f2a1d3c549c3aa", "Signature": { "Name": "claim()<script>", "SignatureHash": "4E71D92DC6A1A6D8F2B0C3E4F5A6B7C8D9E0F1A2B3C4D5E6F7A8B9C0D1E2F3A4" } }, "calls": "9" },
+        { "Block": { "Date": "2026-09-24" }, "Call": { "To": "0x5f0ff5a1b1b0e3c1d7c6c4b0e0f2a1d3c549c3aa", "Signature": { "Name": "approve", "SignatureHash": "095ea7b3" } }, "calls": "0" },
+        { "Block": { "Date": "2026-09-24" }, "Call": { "To": "0x0fa51f0000000000000000000000000000000001", "Signature": { "Name": "getPrice", "SignatureHash": "98D5FDCA" } }, "calls": "14" },
+        { "Block": { "Date": "20260924" }, "Call": { "To": "0x0fa51f0000000000000000000000000000000001", "Signature": { "Name": "getPrice", "SignatureHash": "98D5FDCA" } }, "calls": "14" },
+        { "Block": { "Date": "2026-09-24" }, "Call": { "To": "0x9999999999999999999999999999999999999999", "Signature": { "Name": "mint", "SignatureHash": "40C10F19" } }, "calls": "5" }
+      ]
+    }
+  }
+}

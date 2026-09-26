@@ -6,11 +6,61 @@ record.
 
 ## 2026-09-27
 
+- **Serial launchers.** An account that created 100 or more contracts in the last 90 days launches
+  contracts for many projects, so the contracts it deploys after a token launch no longer count as
+  that project's building. They stay on record as context; the market page's deployer check says
+  so, and an evidence receipt for one carries `contextReason: "serial_launcher_deployer"`
+  (additive). The flag is re-read weekly and a lower count restores them.
+- **Follow-up contracts are watched.** Contracts a token's launcher deployed afterwards are now
+  read like tokens — proxy, verified source and interface, activity — once the launcher is measured
+  as not a serial launcher. `/api/projects/{slug}/contracts` and `/api/contracts/{chainId}/{address}`
+  report `watched: true` for a follow-up HEY has read; first readings take a few days.
+- **Market Integrity can be published** (it stays off until HEY switches it on). Then
+  `/api/projects/{slug}/market-integrity` lists each event with its id, its reading dates and
+  sources, and no event time for a state HEY only observed; `market_integrity.event` appears on
+  `/api/changes` (already-recorded events as `backfill`, never as news), can be subscribed to by
+  webhook, and resolves at `/api/evidence/integrity:…`; the MCP's `get_changes` accepts it; and the
+  token's market page shows it after the lifecycle. An exit-pattern classification is named only
+  where HEY separately allows it.
+- **Market Integrity `mi-v4`.** A collapse two current readings disagree about is withdrawn and
+  held for review; a pool migration needs a pool HEY read before the fall; a graduation needs a
+  launch-curve reading near it; a state (a source conflict, a trading collapse, a builder × market
+  conflict) keeps one event while it lasts instead of one a day or a month; and a finding the latest
+  evaluation no longer makes is no longer served anywhere.
+- **"Liquidity no longer detected" is a measured drain.** A token's market is called removed only
+  when a pool (or HEY's chain index across every pool) held at least $5,000 on two readings and was
+  then read at or below a tenth of that on two days, with nothing read since above it. A single low
+  reading, a new pool's first reading, or a one-hour launch peak no longer does it; dust HEY cannot
+  yet confirm reads `removal_unconfirmed` (`INSUFFICIENT_DATA`), which claims neither a live market
+  nor a removal.
+- **`/api/contracts/{chainId}/{address}` adds `activity.methods`:** calls per method over the last
+  seven complete days HEY read — total calls, calls to the ERC-20 standard surface, to the
+  contract's own named functions and to undecoded ones, how many of its own functions were called,
+  and the five most-called methods by rank and count. Function names are withheld on the public
+  API (`names: "WITHHELD"`); a contract HEY has not read this way says `NOT_READ` and carries no
+  counts. In the SDK as `HeyContractMethods`, and in the MCP's `get_contract`.
+- **Two new contract change types on `/api/changes`:** `contract.method_first_observed` (a
+  contract's own functions called for the first time since it was deployed) and
+  `contract.method_resumed` (called again after 30 or more days without a call). Dated to the UTC
+  day of the calls, with how many functions — never which — and, for a resumption, the longest
+  silence. Evidence id `method:<uuid>` resolves at `/api/evidence`. Contract facts only; they never
+  count toward a project's activity status. Not delivered by webhooks.
 - **`origin` on a revised change is the event's own.** A revision of history HEY indexed at the
   start (`bootstrap`) or later (`backfill`) keeps that origin; it was reported as `live`, so
   webhooks could have pushed old releases as news. 973 rows were corrected.
 - **Terminal: Filters no longer cover the project table**, and sortable column headers show that
   they sort.
+- **The partner card says when a project's activity is not this token's.** When the project's own
+  site names a different contract, `/api/v1/scan` adds `activity_applies_to_token: false` and
+  leaves out the `cta`; every other field is unchanged. `/api/token/{chainId}/{address}`
+  (`activityAppliesToToken`), `/api/v1/builder` and the MCP lookup say the same, and the MCP gives
+  no link to the project from that token.
+- **`/api/v1/scan` answers the zero address `found: false, reason: "not_a_token"` (a 200, it was a
+  400)**, and does not count it against your allowance, in the single and the bulk form. Partners
+  (Chit) see this from 2026-09-27. The burn address and malformed addresses are still a 400.
+- **A package published to a registry (npm, PyPI, NuGet, …) is never a ship on its own.** The
+  repository's release is the ship; a registry copy is kept as context. Five NuGet copies of one
+  project's GitHub releases stopped counting.
 
 ## 2026-09-26
 

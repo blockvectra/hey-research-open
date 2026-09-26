@@ -1,8 +1,22 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyTokenMarket, marketIsLive } from './token-market';
+import { classifyTokenMarket, marketIsLive, TOKEN_MARKET } from './token-market';
 
 const now = new Date('2026-09-12T12:00:00Z');
+
+/** A market held and measured drained (2026-09-27): what every removal needs besides the current figure. */
+const removed = (heldUsd: number) => ({
+  peakLiquidityUsd: heldUsd,
+  heldLiquidityUsd: heldUsd,
+  drain: {
+    series: 'chain',
+    heldUsd,
+    levelUsd: Math.max(TOKEN_MARKET.dustLiquidityUsd, Math.min(TOKEN_MARKET.removedMaxAbsoluteUsd, heldUsd * TOKEN_MARKET.removedShareOfPeak)),
+    since: new Date(now.getTime() - 3 * 86_400_000),
+    lastAt: now,
+    days: 3,
+  },
+});
 const hoursAgo = (hours: number) => new Date(now.getTime() - hours * 3_600_000);
 
 /**
@@ -35,7 +49,7 @@ describe('token market: trade readings', () => {
     expect(classified).toEqual({ status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' });
     // Depth still comes only from the depth reading: trades do not rescue a drained pool.
     expect(
-      classifyTokenMarket({ now, latest: { observedAt: hoursAgo(1), liquidityUsd: 0, volume24hUsd: 0 }, peakLiquidityUsd: 50_000, trades: { observedAt: hoursAgo(1), volume24hUsd: 9_999 } }).status,
+      classifyTokenMarket({ now, latest: { observedAt: hoursAgo(1), liquidityUsd: 0, volume24hUsd: 0 }, ...removed(50_000), trades: { observedAt: hoursAgo(1), volume24hUsd: 9_999 } }).status,
     ).toBe('LIQUIDITY_REMOVED');
   });
 });

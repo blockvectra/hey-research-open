@@ -183,6 +183,24 @@ describe('lookup_token', () => {
     const mismatch = renderTokenLookup({ ...fx.lookupPublished, project: { ...fx.lookupPublished.project!, tokenVerification: { status: 'MISMATCH', reason: 'site_names_another_contract' } } }, NOW);
     expect(mismatch).toContain('MISMATCH: the project’s own site names a different contract');
   });
+
+  // F7 (2026-09-27): a token the project's own site disowns keeps its facts and loses the invitation.
+  it('on a MISMATCH token says the activity does not apply and sends no link to the project', () => {
+    const verified = renderTokenLookup(fx.lookupPublished, NOW);
+    expect(verified).toContain(`- ${fx.lookupPublished.project!.url}`);
+    expect(verified).not.toContain('activity applies to this token: no');
+
+    const disowned = { ...fx.lookupPublished.project!, tokenVerification: { status: 'MISMATCH' as const, reason: 'site_names_another_contract' }, activityAppliesToToken: false };
+    const text = renderTokenLookup({ ...fx.lookupPublished, project: disowned }, NOW);
+    expect(text).toContain('FACT activity applies to this token: no');
+    expect(text).not.toContain(fx.lookupPublished.project!.url);
+    // The facts themselves stay.
+    expect(text).toContain('FACT 8 ship records in the last 30 days');
+
+    // A server that predates the field still gets no link from a MISMATCH.
+    const { activityAppliesToToken: _omitted, ...older } = disowned;
+    expect(renderTokenLookup({ ...fx.lookupPublished, project: older as typeof disowned }, NOW)).not.toContain(fx.lookupPublished.project!.url);
+  });
 });
 
 describe('get_project_snapshot', () => {
@@ -422,6 +440,14 @@ describe('get_contract', () => {
     expect(one).not.toMatch(/launch service|shared/);
     const none = renderContract({ ...fx.contract, deployer: { address: '0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b', sharedAcrossTrackedProjects: false, otherProjectsCount: 0 } });
     expect(none).toContain('- FACT deployed by 0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b\n');
+  });
+
+  it('prints calls per method as counts by bucket, never a function name, and an unread contract as UNKNOWN (F9, 2026-09-27)', () => {
+    const text = renderContract(fx.contract);
+    expect(text).toContain("- FACT calls per method, 2026-09-20 to 2026-09-26 (7 days, decoded calls): 8400 calls — ERC-20 standard 8000 (95%), the contract's own named functions 390 (5%), undecoded 10; 4 of its own functions called.");
+    expect(text).toContain('Function names are withheld on the public API.');
+    const unread = renderProjectContracts(fx.projectContracts);
+    expect(unread).toContain("- UNKNOWN calls per method: HEY has not read this contract's calls by method.");
   });
 
   it('says no single project, rather than none, when a contract has no associated project (audit §45 #20)', () => {

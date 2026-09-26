@@ -590,15 +590,24 @@ export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
   if (p.lastShip) lines.push(`- FACT last ship ${ago(p.lastShip.publishedAt, now)}: ${p.lastShip.title}${p.lastShip.sourceUrl ? ` — ${p.lastShip.sourceUrl}` : ''}`);
   if (p.deployedAt) lines.push(`- FACT contract deployed ${p.deployedAt.slice(0, 10)}, read from the block.`);
   // Whose contract this is, beside whose activity (2026-09-25).
-  if (p.tokenVerification?.status === 'MISMATCH') {
+  /*
+   * The API's own field (2026-09-27, F7), and the verification it comes from
+   * as well, so a server that predates the field cannot turn a disowned token
+   * back into an invitation.
+   */
+  const applies = p.activityAppliesToToken !== false && p.tokenVerification?.status !== 'MISMATCH';
+  if (!applies) {
     lines.push('- FACT MISMATCH: the project’s own site names a different contract. The activity above is the project’s; do not treat this address as its token.');
+    lines.push('- FACT activity applies to this token: no. HEY sends no link from this address to the project.');
   } else if (p.tokenVerification?.status === 'UNVERIFIED') {
     lines.push('- UNKNOWN whose token: HEY has not seen the project name this contract itself.');
   } else if (p.tokenVerification?.status === 'VERIFIED') {
     lines.push('- FACT verified: the project names this contract itself.');
   }
   if (p.asOf) lines.push(`- Scored ${p.asOf.slice(0, 16).replace('T', ' ')} UTC.`);
-  lines.push(`- ${p.url}`, '', TAG_LEGEND, lookup.disclaimer);
+  // No invitation from a token the project's own site disowns (F7): the project page is not this token's page.
+  if (applies) lines.push(`- ${p.url}`);
+  lines.push('', TAG_LEGEND, lookup.disclaimer);
   return lines.join('\n');
 }
 
@@ -658,7 +667,20 @@ export function renderMarketIntegrity(page: HeyMarketIntegrity): string {
     ...(m.exitPattern && m.exitPattern.level !== 'NONE' ? [`DERIVED potential exit pattern (an evidence classification, not a finding about intent): ${m.exitPattern.reasons.join(' ')}`] : []),
     ...page.conflicts.map((conflict) => `DERIVED signal conflict: ${conflict.text}`),
   ].filter(Boolean);
-  return `# ${page.slug} — market integrity (rules ${m.rulesVersion})\n${page.url}\n${builder}\n${lines.join('\n')}\n\n${page.note}\n${TAG_LEGEND}`;
+  /*
+   * The events, each with its id, its time as precisely as HEY knows it, and
+   * its words with the reading dates and sources (2026-09-27). Shown of the
+   * whole, and where to read each one.
+   */
+  const shown = page.events.slice(0, 12);
+  const events = shown.map(
+    (event) => `- DERIVED ${event.at === null ? `observed, first seen ${event.detectedAt.slice(0, 10)}` : `${event.precision} ${event.at}${event.until ? ` to ${event.until.slice(0, 10)}` : ''}`} · ${event.summary} (${event.confidence} confidence; ${event.id})`,
+  );
+  const eventBlock = page.events.length
+    ? `\n\nEvents HEY stands behind (${shown.length} of ${page.events.length}; open one with get_evidence and its id):\n${events.join('\n')}`
+    : '';
+  const readings = m.liquidityPeakSource || m.liquidityNowSource ? `\nReadings: level from ${m.liquidityPeakSource ?? 'unknown'}, now from ${m.liquidityNowSource ?? 'unknown'}.` : '';
+  return `# ${page.slug} — market integrity (rules ${m.rulesVersion})\n${page.url}\n${builder}\n${lines.join('\n')}${readings}${eventBlock}\n\n${page.note}\n${TAG_LEGEND}`;
 }
 
 export function renderMarketMoves(page: HeyMarketMoves): string {
