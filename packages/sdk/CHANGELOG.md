@@ -8,6 +8,19 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ### Added
 
+- The contract object's verification fields (2026-09-27), additive:
+  `HeyContract.verifiedSource.method`, `.match`, `.verifiedAt`, `.authorship`
+  (`TEMPLATE`, `EXPLORER_MATCHED`, `PROJECT_AUTHORED`, `UNCONFIRMED`) and
+  `.sourcify` (`HeySourcifyEvidence`; `NOT_READ` is never "unverified"),
+  `HeyContract.proxy.clonedFrom`, and on `HeyContractMethods` the counts
+  `namedFromAbi`, `creationCalls` and `undecodedWithCandidates` — never a name.
+- `HeyProjectSnapshot.developerFootprint` (`HeyDeveloperFootprint`, 2026-09-27):
+  official repositories, the newest production deployment, accepted and claimed
+  packages and current advisories, each with its coverage state and a count only
+  where measured.
+- `research.source_changed` in `HeyChangeType` (2026-09-27): a material change
+  to what a project's official site declares, with a `sourcechange:<uuid>`
+  receipt. Not a webhook type.
 - Protocol economics and promotion context on the snapshot (2026-09-27),
   additive: `HeyProjectSnapshot.protocolEconomics` (`HeyProtocolEconomics`,
   each metric a `HeyEconomicsMetric` — `MEASURED` with `valueUsd`, or

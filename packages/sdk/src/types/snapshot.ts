@@ -242,6 +242,25 @@ export type HeyMarketPromotion = {
   contextOnly: true;
 };
 
+/**
+ * The developer footprint in four lines (2026-09-27). Each carries its
+ * coverage state and reason code (`gitHost`, `package`, `securityContext`);
+ * a count is present only where the state says it was measured. Context: a
+ * deployment record dates an environment, a package publication is never a
+ * ship, and an advisory is about a published version — never a verdict.
+ */
+export type HeyDeveloperFootprint = {
+  repositories: { state: HeyCoverageState; reason: string; asOf?: string; official: number; metadataRead: number };
+  productionDeployment:
+    | { state: 'MEASURED'; at: string; environment: string; readAt?: string }
+    | { state: 'NONE_FOUND'; readAt?: string }
+    | { state: 'NOT_READ' | 'ERROR' | 'NOT_APPLICABLE' };
+  packages: { state: HeyCoverageState; reason: string; asOf?: string; accepted?: number; claimed?: number };
+  advisories: { state: HeyCoverageState; reason: string; asOf?: string; current?: number; subject: 'PUBLISHED_PACKAGE' };
+  contextOnly: true;
+  coverageUrl: string;
+};
+
 /** `GET /api/projects/{slug}/snapshot`: one project's important state in one read. */
 export type HeyProjectSnapshot = {
   identity: {
@@ -291,6 +310,8 @@ export type HeyProjectSnapshot = {
   };
   /** Absent when the project is matched to no DefiLlama protocol (`coverage.protocolEconomics` says why). */
   protocolEconomics?: HeyProtocolEconomics;
+  /** Absent only when HEY could not read the project's coverage. */
+  developerFootprint?: HeyDeveloperFootprint;
   onchain?: { events24h?: number; events7d?: number; calls24h?: number; daysCovered: number; daysMeasured: number; observedAt: string };
   contracts: { url: string };
   verification: {

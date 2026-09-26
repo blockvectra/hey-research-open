@@ -6,6 +6,19 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ## Unreleased
 
+### Added
+
+- **The free-data context on the tools that already existed** (2026-09-27):
+  `get_project_snapshot` prints paid-promotion sightings (presence and dates),
+  DefiLlama protocol economics (each metric measured, not tracked or unread) and
+  the developer footprint; `get_contract` says how the explorer verified the
+  source, whose code it is (a DERIVED line), Sourcify's answer, the contract a
+  minimal clone copies, and the ABI-named, candidate and creation counts;
+  `get_project_coverage` explains reason codes an agent could misread;
+  `get_changes` accepts `research.source_changed`; `get_evidence` opens
+  `sourcechange:` ids; `ask_hey` answers the free-data questions. Still fourteen
+  tools.
+
 ### Changed
 
 - **Fourteen tools replace twenty-two** (2026-09-26): `find_projects`,

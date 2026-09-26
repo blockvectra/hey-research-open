@@ -77,6 +77,7 @@ ship an hour later. Keep the highest `revision` per `event.id`.
 | `market.distribution_changed` | derived from holder data (founder decision). |
 | `market.liquidity_moved`, `market.volume_spike` | market movement is context, not a change a project made; HEY sends no trading alerts. |
 | `build.code_activity`, `build.slowing`, `contract.source_unverified`, `contract.usage_changed`, `contract.method_first_observed`, `contract.method_resumed`, `research.owner_verified`, `research.narrative_assigned` | on `/api/changes`; not pushed. |
+| `research.source_changed` (2026-09-27) | a changed official site — its declared links, sitemap, llms.txt, security.txt or API description — is research context, not news a subscriber asked for, and a busy site would flood an endpoint. On `/api/changes`; refused by name (`detail.refused` says so). Making it subscribable is a founder decision. |
 | anything Terminal-only | never, on any public surface. |
 | project-linked address events, holder lists | never. |
 

@@ -90,6 +90,18 @@ record.
   `gitHost`, `package` and `securityContext` (additive); a token project with no repository and no
   package is `NOT_APPLICABLE` there. A package version that matches a GitHub release is noted on
   that release, not counted twice.
+- **The Research Terminal shows the new evidence, where each question lives.** Build › Code gains a
+  developer footprint (official repositories' topics and licence, the newest production deployment,
+  the kinds of files the latest release ships, packages — claims labelled as claims — and a
+  published API description). On-chain gains calls per method (counts only; a signature database's
+  offer shown beside an unnamed selector as "signature candidate … — unverified", never as its
+  name), whose code a verified contract is, and its implementation history. Market gains protocol
+  economics behind the chart (not tracked is never zero) and promotion sightings as neutral
+  context. Research gains official-site changes and security context (context, never a verdict).
+  The Overview adds one line per area and a closed "What HEY still doesn't know" list of coverage
+  gaps. None of it is shown in preview, and none of it touches any status, score or ranking.
+- **The homepage and listing search boxes say what they are doing**: "Searching…" when a lookup is
+  slow, and "No match — press Enter to search" instead of a silent box.
 - **Serial launchers.** An account that created 100 or more contracts in the last 90 days launches
   contracts for many projects, so the contracts it deploys after a token launch no longer count as
   that project's building. They stay on record as context; the market page's deployer check says
@@ -145,6 +157,29 @@ record.
 - **A package published to a registry (npm, PyPI, NuGet, …) is never a ship on its own.** The
   repository's release is the ship; a registry copy is kept as context. Five NuGet copies of one
   project's GitHub releases stopped counting.
+- **The contract object says whose code a verified contract is** (additive, on
+  `/api/contracts/{chainId}/{address}` and `/api/projects/{slug}/contracts`): how the explorer came
+  to hold the source (`verifiedSource.method`, `.match`, `.verifiedAt`), `authorship` (a launchpad
+  template, a bytecode match to someone else's source, source published for this address, or not yet
+  known), Sourcify's independent answer (`sourcify`; not read is never "unverified"), the contract a
+  minimal clone copies (`proxy.clonedFrom`), and three more method counts: calls the contract's own
+  verified ABI names, calls to its creation code, and undecoded selectors a signature database has a
+  guess for — counts, never names. The SDK types carry them.
+- **The snapshot has a `developerFootprint`** (additive): official repositories, the newest
+  production deployment, accepted and claimed packages, and current advisories, each with its
+  coverage state and a count only where measured. Context, never a ship.
+- **A changed official site is in the change feed**: `research.source_changed`, one event per
+  material change to what the site declares (its links, sitemap, llms.txt, security.txt, a linked
+  API description), with a receipt at `/api/evidence/sourcechange:<id>`. Counts only, never building,
+  never a ship; the first read of a site is a baseline. It is not a webhook type.
+- **Ask HEY answers more questions**: what changed in a project's public API, whether it has a
+  GitLab repository (HEY says what it holds and that it reads GitHub only), which functions became
+  active, what DefiLlama tracks, which packages it publishes, known advisories, what its docs
+  changed and what HEY still does not know — each line tagged and citing its evidence.
+- **The MCP prints the new context** on the tools it already had (`get_project_snapshot`,
+  `get_contract`, `get_project_coverage`, `ask_hey`), and explains coverage reasons an agent could
+  misread — "none found in the package index" is a reading of that index, not "no package". Still
+  fourteen tools.
 
 ## 2026-09-26
 

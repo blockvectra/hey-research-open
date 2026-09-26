@@ -348,7 +348,9 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     {
       ...describe('get_project_snapshot', [
         'Everything important about one project in one read: identity and when HEY first recorded it, build status and Build Momentum, market context with its kind or why it is withheld,',
-        'on-chain use, verification and sources, HoodLock locks, the latest changes, freshness and what HEY does not know. Use this first for "tell me about X".',
+        'on-chain use, verification and sources, HoodLock locks, the latest changes, freshness and what HEY does not know. Context blocks, never building: paid promotion seen on the token (presence and dates),',
+        'DefiLlama protocol economics (each metric measured, not tracked or unread), and the developer footprint (official repositories, newest production deployment, packages, advisories — counts only where measured).',
+        'Use this first for "tell me about X".',
       ]),
       inputSchema: { slug },
     },
@@ -420,7 +422,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_project_coverage',
     {
       ...describe('get_project_coverage', [
-        'What HEY knows and does not about one project, per dimension — builder evidence, repositories, releases, current and historical market, contracts, distribution, locks, market integrity, timeline —',
+        'What HEY knows and does not about one project, per dimension — builder evidence, repositories, releases, current and historical market, contracts and their verified source and interface, distribution, locks,',
+        'market integrity, protocol economics, timeline, official docs, API description, official source changes, repository metadata, published packages and package advisories —',
         'as states (MEASURED, NO_SOURCE, NOT_ENOUGH_YET, STALE, SOURCE_UNAVAILABLE, NOT_APPLICABLE, NOT_RESEARCHED, ERROR, WITHHELD), never a score. Read it before concluding anything from an absence.',
       ]),
       inputSchema: { slug },
@@ -452,7 +455,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_evidence',
     {
       ...describe('get_evidence', [
-        'Open one published record by its typed id — ship:, signal:, abi:, impl:, lock:, source:, claim:, state: — as a receipt: what it claims, its source URL, when it happened',
+        'Open one published record by its typed id — ship:, signal:, abi:, impl:, lock:, source:, claim:, state:, method:, sourcechange: — as a receipt: what it claims, its source URL, when it happened',
         'at what precision, when HEY knew, how it is backed. Ids come from get_changes, get_project_timeline, explain_fact and the snapshot. A withdrawn record says so.',
       ]),
       inputSchema: { id: z.string().regex(/^[a-z_]+:[A-Za-z0-9:._-]{1,200}$/).describe('A typed evidence id, e.g. "ship:2ac87a66-…".') },
@@ -488,8 +491,10 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_contract',
     {
       ...describe('get_contract', [
-        'A contract as a research entity: creation, deployer (the only account ever named, with a count of other tracked projects\' tokens it deployed), factory, verified source and compiler, proxy kind and implementation history,',
-        'interface size and changes (counts), and activity, including calls per method over the last seven days read (counts by bucket; function names withheld). Give chainId and address for one contract, or slug for every contract a project has. A proxy HEY did not read is "not read", never "not a proxy".',
+        'A contract as a research entity: creation, deployer (the only account ever named, with a count of other tracked projects\' tokens it deployed), factory, verified source and compiler, how the explorer verified it and whose code it is',
+        '(a launchpad template, a bytecode match, or source published for the address), Sourcify\'s answer, proxy kind, implementation history or the contract it is a minimal clone of, interface size and changes (counts), and activity,',
+        'including calls per method over the last seven days read (counts by bucket; names withheld; calls the verified ABI names, undecoded selectors with a signature candidate — a guess, never a name — and creation calls counted apart).',
+        'Give chainId and address for one contract, or slug for every contract a project has. A proxy HEY did not read is "not read", never "not a proxy".',
       ]),
       inputSchema: {
         address: z.string().regex(ADDRESS).optional(),

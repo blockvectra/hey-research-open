@@ -313,3 +313,26 @@ describe('the output cap', () => {
     expect(text).toMatch(/\[Output cut at 24 KB: \d+ more lines not shown\. .*https:\/\/heyresearch\.xyz\/api\/chain\?days=400\.\]$/);
   });
 });
+
+describe('the free-data wave on existing tools, not new ones (2026-09-27)', () => {
+  const fixtures = vi.fn(async (input: string) => respond(routeFixture(new URL(input).pathname)));
+
+  it('extends get_project_snapshot, get_contract and get_project_coverage, and adds no tool per provider', async () => {
+    const { tools } = await (await connect(fixtures)).listTools();
+    expect(tools).toHaveLength(14);
+    expect(tools.map((tool) => tool.name).join(' ')).not.toMatch(/defillama|dexscreener|sourcify|osv|deps|package|footprint|promotion/i);
+    const described = (name: string) => tools.find((tool) => tool.name === name)!.description ?? '';
+    expect(described('get_project_snapshot')).toMatch(/Context blocks, never building: paid promotion .*DefiLlama protocol economics .*developer footprint/);
+    expect(described('get_contract')).toMatch(/whose code it is .*Sourcify.*signature candidate — a guess, never a name/);
+    expect(described('get_project_coverage')).toMatch(/protocol economics.*official docs.*published packages and package advisories/);
+    expect(described('get_evidence')).toContain('method:, sourcechange:');
+  });
+
+  it('prints the new snapshot blocks through the tool', async () => {
+    const client = await connect(fixtures);
+    const text = textOf(await client.callTool({ name: 'get_project_snapshot', arguments: { slug: 'agentos' } }));
+    expect(text).toContain('## Protocol economics (registry context, never building)');
+    expect(text).toContain('## Developer footprint (context, never a ship)');
+    expect(text).toContain('promotion or takeover seen 3 times');
+  });
+});

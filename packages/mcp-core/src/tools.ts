@@ -206,6 +206,7 @@ export const PUBLIC_CHANGE_TYPES = [
   'research.source_added',
   'research.source_unavailable',
   'research.source_restored',
+  'research.source_changed',
   'research.narrative_assigned',
   'lock.unlock_due',
   'lock.observed',

@@ -1,6 +1,10 @@
 import type {
   HeyBuildMarket,
   HeyContract,
+  HeyDeveloperFootprint,
+  HeyEconomicsMetric,
+  HeyMarketPromotion,
+  HeyProtocolEconomics,
   HeyCoverageDimension,
   HeyCoverageEntry,
   HeyCoverageState,
@@ -35,7 +39,7 @@ function coverageTag(state: HeyCoverageState): 'FACT' | 'UNKNOWN' {
   return state === 'MEASURED' || state === 'NOT_APPLICABLE' ? 'FACT' : 'UNKNOWN';
 }
 
-const DIMENSION_WORDS: Record<HeyCoverageDimension, string> = {
+export const DIMENSION_WORDS: Record<HeyCoverageDimension, string> = {
   identity: 'identity',
   builderEvidence: 'builder evidence',
   repositories: 'repositories',
@@ -59,8 +63,44 @@ const DIMENSION_WORDS: Record<HeyCoverageDimension, string> = {
   securityContext: 'package advisories',
 };
 
+/**
+ * Reason codes a bare token would let an agent misread (2026-09-27): each
+ * says how far the reading goes, so "none found" is never read as "none",
+ * "not applicable" never as deficient, and a registry's silence never as a
+ * zero. Codes not listed print as they are.
+ */
+export const REASON_WORDS: Readonly<Record<string, string>> = {
+  none_found_in_package_index: 'the package index lists none for its official repositories — a reading of that index only, not "no package"',
+  no_repository_no_package: 'no repository and no package: a package is not expected here',
+  claimed_package_links_only: "packages only claim an official repository; none is confirmed as the project's own",
+  package_lookup_not_run: 'the package index has not been asked yet',
+  accepted_package_links: 'packages an official source ties to the project',
+  no_accepted_package: "no package confirmed as the project's own, so no advisory applies",
+  ecosystem_not_covered_by_osv: 'the advisory database does not cover this package ecosystem',
+  no_advisory_for_published_version: 'the advisory database lists none for the published version',
+  advisories_about_published_package: 'advisories about the published version — never a verdict on the project',
+  scorecard_checks_only: 'only published Scorecard checks, never an aggregate score',
+  not_tracked_by_registry: 'the registry lists the protocol but does not track this metric',
+  no_protocol_listing: 'matched to no DefiLlama protocol',
+  registry_context_only: 'a registry figure, context only',
+  no_api_description_linked: 'the official site links no API description (HEY reads one only when linked)',
+  api_description_disallowed: 'the site asks crawlers not to read its API description',
+  no_baseline_yet: 'one reading so far: the first read is a baseline, never a change',
+  meme_no_docs_expected: 'a meme token: no docs expected',
+  site_disallows_reading: "the site's robots.txt asks HEY not to read it",
+  no_official_site: 'no corroborated official site',
+  site_not_corroborated: "the site is not corroborated as the project's own",
+  source_verified_template_token: 'verified source is a launchpad template, not project-authored code',
+  source_verified_explorer_matched: 'verified by a bytecode match to source published for another contract',
+  source_verified_project_authored: 'source published for this address',
+  source_verified_authorship_unconfirmed: 'verified; how the explorer came to hold the source is not read yet',
+  changes_since_first_read_template_interface: "a template's interface, counted from HEY's first read",
+};
+
+const reasonWords = (reason: string): string => (REASON_WORDS[reason] ? `${reason}: ${REASON_WORDS[reason]}` : reason);
+
 function coverageLine(dimension: HeyCoverageDimension, entry: HeyCoverageEntry): string {
-  const facts = [entry.since ? `since ${entry.since.slice(0, 10)}` : undefined, entry.asOf ? `as of ${entry.asOf.slice(0, 16).replace('T', ' ')} UTC` : undefined, entry.reason ? `reason ${entry.reason}` : undefined].filter(Boolean);
+  const facts = [entry.since ? `since ${entry.since.slice(0, 10)}` : undefined, entry.asOf ? `as of ${entry.asOf.slice(0, 16).replace('T', ' ')} UTC` : undefined, entry.reason ? `reason ${reasonWords(entry.reason)}` : undefined].filter(Boolean);
   return `- ${coverageTag(entry.state)} ${DIMENSION_WORDS[dimension]}: ${entry.state}${facts.length ? ` (${facts.join('; ')})` : ''}${entry.detailUrl ? ` — ${entry.detailUrl}` : ''}`;
 }
 
@@ -117,8 +157,15 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     lines.push(m.liquidity ? `- FACT ${liquidityWords(m.liquidity, now)}` : '- UNKNOWN liquidity: no reading.');
     if (m.volume24h) lines.push(`- FACT 24h volume ${money(m.volume24h.usd)}${m.volume24h.source ? ` (${m.volume24h.source})` : ''}`);
     if (m.launchStage) lines.push(`- FACT launch stage: ${pretty(m.launchStage)}`);
+    if (m.promotion) lines.push(promotionLine(m.promotion));
     lines.push(`- Market in depth: ${m.url}`);
   }
+
+  lines.push('', '## Protocol economics (registry context, never building)');
+  lines.push(...economicsLines(s.protocolEconomics, s.coverage?.protocolEconomics));
+
+  lines.push('', '## Developer footprint (context, never a ship)');
+  lines.push(...(s.developerFootprint ? footprintLines(s.developerFootprint) : ["- UNKNOWN developer footprint: HEY could not read this project's coverage."]));
 
   lines.push('', '## On-chain');
   const o = s.onchain;
@@ -181,6 +228,73 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   lines.push('', `Links: detail ${l.detail} · timeline ${l.timeline} · changes ${l.changes} · coverage ${l.coverage} · explain ${l.explain} · contracts ${l.contracts}${l.market ? ` · market ${l.market}` : ''}`);
   lines.push(TAG_LEGEND, s.disclaimer);
   return lines.join('\n');
+}
+
+const PROMOTION_WORDS: Record<HeyMarketPromotion['entries'][number]['kind'], string> = {
+  MARKET_PROMOTION_OBSERVED: 'paid promotion',
+  COMMUNITY_TAKEOVER_PROFILE_OBSERVED: 'community-takeover profile',
+};
+
+/** Paid promotion and takeover sightings (2026-09-27): presence and dates, never an amount, never a ranking input. */
+export function promotionLine(p: HeyMarketPromotion): string {
+  const newest = p.entries[0];
+  const when = newest ? (newest.providerAt ? `${newest.providerAt.slice(0, 10)} (the provider's date)` : `${newest.firstObservedAt.slice(0, 10)} (first seen by HEY)`) : undefined;
+  return `- FACT promotion or takeover seen ${p.total} time${p.total === 1 ? '' : 's'}${newest ? `; newest: ${PROMOTION_WORDS[newest.kind]} on ${newest.channel}, ${when}` : ''}. Context only: paid promotion never reaches a ranking, a score or a signal of building.`;
+}
+
+const METRIC_LABEL = { fees24h: 'fees 24h', revenue24h: 'revenue 24h', dexVolume24h: 'DEX volume 24h' } as const;
+
+function metricWords(label: string, metric: HeyEconomicsMetric): string {
+  if (metric.state === 'MEASURED') return `FACT ${label} ${metric.valueUsd === 0 ? 'zero, as measured' : money(metric.valueUsd)}`;
+  if (metric.state === 'NOT_TRACKED') return `FACT ${label}: not tracked by the registry`;
+  return `UNKNOWN ${label}: ${metric.state === 'SOURCE_UNAVAILABLE' ? 'the registry did not answer' : 'not read yet'}`;
+}
+
+/** What DefiLlama measures of a matched protocol (2026-09-27), each metric in its own state; absent says why, from coverage. */
+export function economicsLines(e: HeyProtocolEconomics | undefined, coverage: HeyCoverageEntry | undefined): string[] {
+  if (!e || e.protocols.length === 0) {
+    if (!coverage) return ["- UNKNOWN protocol economics: HEY could not read this project's coverage."];
+    return [`- ${coverageTag(coverage.state)} protocol economics: ${coverage.state}${coverage.reason ? ` (${reasonWords(coverage.reason)})` : ''}`];
+  }
+  const lines: string[] = [];
+  for (const p of e.protocols) {
+    lines.push(`- FACT DefiLlama lists ${p.protocolName}${p.category ? ` (${p.category})` : ''}, matched by ${pretty(p.matchedBy)}: TVL ${money(p.tvlUsd)} on ${p.tvlDay}`);
+    const metrics = (Object.keys(METRIC_LABEL) as (keyof typeof METRIC_LABEL)[]).map((key) => metricWords(METRIC_LABEL[key], p[key]));
+    lines.push(`  ${metrics.join('; ')}${p.economicsDay ? ` (for ${p.economicsDay})` : ''}`);
+    if (p.auditLinks.length > 0 || p.methodologyUrl) lines.push(`  FACT the registry links ${p.auditLinks.length} audit report${p.auditLinks.length === 1 ? '' : 's'}${p.methodologyUrl ? ' and a methodology' : ''} — links, never verdicts`);
+  }
+  lines.push('  A registry figure is context beside the market: it never reaches activity status, Build Momentum, the Discovery Gap or the Radar.');
+  return lines;
+}
+
+/** The developer footprint in four lines (2026-09-27): each in its coverage state; a count only where measured. */
+export function footprintLines(f: HeyDeveloperFootprint): string[] {
+  const read = (at: string | undefined) => (at ? `, read ${at.slice(0, 10)}` : '');
+  const r = f.repositories;
+  const repos =
+    r.state === 'NOT_APPLICABLE'
+      ? '- FACT official repositories: none held (not applicable)'
+      : `- ${coverageTag(r.state)} official repositories: ${r.official}; metadata read for ${r.metadataRead} (${r.state}, ${reasonWords(r.reason)})`;
+  const d = f.productionDeployment;
+  const deployment =
+    d.state === 'MEASURED'
+      ? `- FACT newest production deployment ${d.at.slice(0, 10)} (environment "${d.environment}"${read(d.readAt)}) — a dated record of an environment, not building`
+      : d.state === 'NONE_FOUND'
+        ? `- FACT no production deployment recorded on GitHub${read(d.readAt)} (other hosts are not read)`
+        : d.state === 'NOT_APPLICABLE'
+          ? '- FACT production deployments: not applicable (no official repository)'
+          : `- UNKNOWN production deployments: ${d.state === 'ERROR' ? 'the last read failed' : 'not read yet'}`;
+  const k = f.packages;
+  const packages =
+    k.accepted !== undefined && k.claimed !== undefined && (k.accepted > 0 || k.claimed > 0)
+      ? `- ${coverageTag(k.state)} packages: ${k.accepted} accepted as the project's own, ${k.claimed} claimed (a claim only names an official repository). A package publication is never a ship.`
+      : `- ${coverageTag(k.state)} packages: ${k.state} (${reasonWords(k.reason)})`;
+  const a = f.advisories;
+  const advisories =
+    a.current !== undefined
+      ? `- ${a.state === 'STALE' ? 'FACT (stale)' : 'FACT'} ${a.current} current advisor${a.current === 1 ? 'y' : 'ies'} about accepted packages' published versions${a.asOf ? ` (read ${a.asOf.slice(0, 10)})` : ''} — about a published version, never a verdict on the project`
+      : `- ${coverageTag(a.state)} package advisories: ${a.state} (${reasonWords(a.reason)})`;
+  return [repos, deployment, packages, advisories, `  Per dimension: ${f.coverageUrl}`];
 }
 
 /** `GET /api/projects/{slug}/coverage` as text: states, never a score. */
@@ -267,8 +381,15 @@ function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
   if (c.deployer) lines.push(`- FACT deployed by ${c.deployer.address}${deployerWords(c.deployer)}`);
   if (c.factory) lines.push(`- FACT created through factory ${c.factory}`);
   const src = c.verifiedSource;
-  lines.push(src.state === 'MEASURED' ? `- FACT verified source: ${src.verified ? 'yes' : 'no'}${src.compiler ? `; compiler ${src.compiler}` : ''}${src.contractName ? `; name ${src.contractName}` : ''}${src.checkedAt ? ` (checked ${src.checkedAt.slice(0, 10)})` : ''}` : `- UNKNOWN verified source: ${pretty(src.state)}`);
+  lines.push(
+    src.state === 'MEASURED'
+      ? `- FACT verified source: ${src.verified ? 'yes' : 'no'}${src.compiler ? `; compiler ${src.compiler}` : ''}${src.contractName ? `; name ${src.contractName}` : ''}${src.checkedAt ? ` (checked ${src.checkedAt.slice(0, 10)})` : ''}${src.method ? `; ${VERIFICATION_METHOD_WORDS[src.method]}${src.match ? ` (${src.match.toLowerCase()} match)` : ''}` : ''}`
+      : `- UNKNOWN verified source: ${pretty(src.state)}`,
+  );
+  if (src.authorship) lines.push(`- DERIVED whose code: ${AUTHORSHIP_WORDS[src.authorship.kind]} (${pretty(src.authorship.reason)})`);
+  lines.push(sourcifyWords(src.sourcify));
   lines.push(`- ${proxyWords(c.proxy)}`);
+  if (c.proxy.clonedFrom) lines.push(`- FACT an immutable minimal clone (EIP-1167) of ${c.proxy.clonedFrom}, as the explorer reports it: its code is that contract's and cannot change`);
   for (const h of c.proxy.history.slice(0, 5)) lines.push(`  ${h.precision} ${atPrecision(h.occurredAt, h.precision, h.detectedAt)} · ${h.event ?? 'implementation changed'} → ${h.implementation ?? 'unknown'} (${h.source === 'onchain_logs' ? 'read from the chain\'s logs' : 'seen by HEY between two reads'}; id ${h.id})`);
   const itf = c.interface;
   lines.push(itf.state === 'MEASURED' ? `- FACT interface: ${itf.functionCount ?? '?'} functions, ${itf.eventCount ?? '?'} events${itf.baselineSince ? `, baseline since ${itf.baselineSince.slice(0, 10)}` : ''}; ${itf.changes.length} recorded change${itf.changes.length === 1 ? '' : 's'}` : `- UNKNOWN interface: ${pretty(itf.state)}`);
@@ -284,6 +405,28 @@ function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
   return lines;
 }
 
+const VERIFICATION_METHOD_WORDS: Record<NonNullable<HeyContract['verifiedSource']['method']>, string> = {
+  SOURCE_PUBLISHED: 'source published for this address',
+  BYTECODE_MATCH: 'matched by the explorer to source published for identical bytecode, not published for this address',
+  SOURCIFY: 'source published through Sourcify',
+  VERIFIER_ALLIANCE: 'source published through the Verifier Alliance',
+};
+
+const AUTHORSHIP_WORDS: Record<NonNullable<HeyContract['verifiedSource']['authorship']>['kind'], string> = {
+  TEMPLATE: 'a launchpad template, not project-authored code',
+  EXPLORER_MATCHED: "a bytecode match to someone else's source",
+  PROJECT_AUTHORED: 'source published for this address',
+  UNCONFIRMED: "not yet known (the explorer's record has not been read)",
+};
+
+/** Sourcify's answer: NOT_READ is never "not verified". */
+function sourcifyWords(v: HeyContract['verifiedSource']['sourcify']): string {
+  if (v.state === 'NOT_READ') return '- UNKNOWN Sourcify: not read (HEY asks only for watched contracts the explorer calls unverified, and proxies) — not "unverified"';
+  if (v.state === 'ERROR') return '- UNKNOWN Sourcify: the last read failed';
+  const when = v.checkedAt ? ` (checked ${v.checkedAt.slice(0, 10)})` : '';
+  return v.status === 'MATCH' ? `- FACT Sourcify holds verified source for it${v.match ? ` (${pretty(v.match)})` : ''}${when}` : `- FACT Sourcify holds no source for it${when}`;
+}
+
 /**
  * Calls per method (2026-09-27) as one line: counts by bucket and how many of
  * the contract's own functions were called, never which. A contract HEY has
@@ -295,7 +438,14 @@ function methodWords(m: HeyContract['activity']['methods']): string {
   }
   const b = m.buckets;
   const share = (n: number) => (m.calls ? `${Math.round((n / m.calls) * 100)}%` : '0%');
-  return `- FACT calls per method, ${m.window.from} to ${m.window.to} (${m.window.days} days, decoded calls): ${m.calls} calls — ERC-20 standard ${b.erc20Standard} (${share(b.erc20Standard)}), the contract's own named functions ${b.named} (${share(b.named)}), undecoded ${b.undecoded}; ${m.distinctFunctions ?? 0} of its own function${m.distinctFunctions === 1 ? '' : 's'} called. Function names are withheld on the public API. HEY holds these counts from ${m.collectedFrom}.`;
+  const extras = [
+    m.namedFromAbi ? `${m.namedFromAbi} of the named calls were named by the contract's own verified ABI.` : undefined,
+    m.undecodedWithCandidates
+      ? `${m.undecodedWithCandidates} undecoded selector${m.undecodedWithCandidates === 1 ? ' has' : 's have'} a signature candidate — a database's guess, never a name, and not counted as named.`
+      : undefined,
+    m.creationCalls ? `${m.creationCalls} call${m.creationCalls === 1 ? '' : 's'} to its creation code (the deployment, not a method) counted apart.` : undefined,
+  ].filter(Boolean);
+  return `- FACT calls per method, ${m.window.from} to ${m.window.to} (${m.window.days} days, decoded calls): ${m.calls} calls — ERC-20 standard ${b.erc20Standard} (${share(b.erc20Standard)}), the contract's own named functions ${b.named} (${share(b.named)}), undecoded ${b.undecoded}; ${m.distinctFunctions ?? 0} of its own function${m.distinctFunctions === 1 ? '' : 's'} called.${extras.length ? ` ${extras.join(' ')}` : ''} Function names are withheld on the public API. HEY holds these counts from ${m.collectedFrom}.`;
 }
 
 /** `GET /api/contracts/{chainId}/{address}` as text. Counts, never function lists; no account but the deployer. */

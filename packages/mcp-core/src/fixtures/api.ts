@@ -153,7 +153,20 @@ export const snapshot: HeyProjectSnapshot = {
   market: {
     valuationWithheld: 'liquidity_removed',
     tokenMarket: { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_below_floor' },
+    promotion: {
+      entries: [{ kind: 'MARKET_PROMOTION_OBSERVED', channel: 'boost', firstObservedAt: '2026-09-26T08:00:00.000Z', lastObservedAt: '2026-09-26T09:00:00.000Z', source: 'dexscreener' }],
+      total: 3,
+      contextOnly: true,
+    },
     url: `${BASE}/api/projects/agentos/market`,
+  },
+  developerFootprint: {
+    repositories: { state: 'MEASURED', reason: 'repository_metadata_read', asOf: '2026-09-26T00:00:00.000Z', official: 2, metadataRead: 2 },
+    productionDeployment: { state: 'MEASURED', at: '2026-09-20T14:00:00.000Z', environment: 'Production', readAt: '2026-09-26T00:00:00.000Z' },
+    packages: { state: 'MEASURED', reason: 'none_found_in_package_index', asOf: '2026-09-26T00:00:00.000Z', accepted: 0, claimed: 0 },
+    advisories: { state: 'NOT_APPLICABLE', reason: 'no_accepted_package', subject: 'PUBLISHED_PACKAGE' },
+    contextOnly: true,
+    coverageUrl: `${BASE}/api/projects/agentos/coverage`,
   },
   onchain: { calls24h: 1_204, daysCovered: 7, daysMeasured: 0, observedAt: '2026-09-25T18:00:00.000Z' },
   contracts: { url: `${BASE}/api/projects/agentos/contracts` },
@@ -370,7 +383,17 @@ export const contract: HeyContract = {
   watched: true,
   creation: { tx: '0xtx', at: '2026-08-01T12:00:00.000Z', block: 1_200_000, precision: 'EXACT' },
   deployer: { address: '0xdep0000000000000000000000000000000000001', sharedAcrossTrackedProjects: true, otherProjectsCount: 12 },
-  verifiedSource: { state: 'MEASURED', verified: true, compiler: 'v0.8.24', contractName: 'ClonableBeaconProxy', checkedAt: '2026-09-24T00:00:00.000Z' },
+  verifiedSource: {
+    state: 'MEASURED',
+    verified: true,
+    compiler: 'v0.8.24',
+    contractName: 'ClonableBeaconProxy',
+    checkedAt: '2026-09-24T00:00:00.000Z',
+    method: 'BYTECODE_MATCH',
+    match: 'FULL',
+    authorship: { kind: 'EXPLORER_MATCHED', reason: 'bytecode_matched_to_other_source' },
+    sourcify: { state: 'MEASURED', status: 'NOT_FOUND', checkedAt: '2026-09-27T00:00:00.000Z' },
+  },
   proxy: {
     state: 'MEASURED',
     status: 'PROXY',
@@ -395,6 +418,9 @@ export const contract: HeyContract = {
       window: { from: '2026-09-20', to: '2026-09-26', days: 7 },
       calls: 8_400,
       buckets: { erc20Standard: 8_000, named: 390, undecoded: 10 },
+      namedFromAbi: 90,
+      creationCalls: 1,
+      undecodedWithCandidates: 1,
       distinctFunctions: 4,
       top: [
         { rank: 1, bucket: 'erc20_standard', calls: 8_000 },
@@ -416,7 +442,7 @@ export const projectContracts: HeyProjectContracts = {
   chainId: 4663,
   items: [
     { ...contract, role: 'token' },
-    { ...contract, address: '0x3333000000000000000000000000000000000003', name: undefined, role: 'followup', watched: false, proxy: { state: 'NOT_READ', history: [] }, verifiedSource: { state: 'NOT_READ' }, interface: { state: 'NOT_READ', changes: [] }, activity: { state: 'NOT_READ', daysMeasured: 0, calls7d: null, events7d: null, methods: { state: 'NOT_READ', source: 'decoded_calls', names: 'WITHHELD' } }, evidence: [] },
+    { ...contract, address: '0x3333000000000000000000000000000000000003', name: undefined, role: 'followup', watched: false, proxy: { state: 'NOT_READ', history: [] }, verifiedSource: { state: 'NOT_READ', sourcify: { state: 'NOT_READ' } }, interface: { state: 'NOT_READ', changes: [] }, activity: { state: 'NOT_READ', daysMeasured: 0, calls7d: null, events7d: null, methods: { state: 'NOT_READ', source: 'decoded_calls', names: 'WITHHELD' } }, evidence: [] },
   ],
   total: 2,
   truncated: false,

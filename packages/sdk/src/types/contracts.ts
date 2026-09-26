@@ -41,10 +41,26 @@ export type HeyContractMethods = {
   window?: { from: string; to: string; days: number };
   calls?: number;
   buckets?: { erc20Standard: number; named: number; undecoded: number };
+  /** Of `buckets.named`, calls the contract's own verified ABI names rather than the decoder (2026-09-27). */
+  namedFromAbi?: number;
+  /** Calls to the contract's creation code in the window — its deployment, not a method call: in no bucket and not in `calls`. */
+  creationCalls?: number;
+  /** Undecoded selectors a signature database offers a candidate for: a count of guesses, never a name. */
+  undecodedWithCandidates?: number;
   /** The contract's own functions called in the window: named ones and undecoded selectors, never the ERC-20 surface. */
   distinctFunctions?: number;
   top?: { rank: number; bucket: 'erc20_standard' | 'named' | 'undecoded'; calls: number }[];
   names: 'WITHHELD';
+};
+
+/** Sourcify's stored answer for one address (2026-09-27). */
+export type HeySourcifyEvidence = {
+  state: 'MEASURED' | 'NOT_READ' | 'ERROR';
+  status?: 'MATCH' | 'NOT_FOUND';
+  match?: 'exact_match' | 'match';
+  creationMatch?: 'exact_match' | 'match';
+  runtimeMatch?: 'exact_match' | 'match';
+  checkedAt?: string;
 };
 
 /** `GET /api/contracts/{chainId}/{address}`: one contract as a research entity. Counts, never function lists; no account but the token deployer. */
@@ -61,7 +77,22 @@ export type HeyContract = {
   /** `sharedAcrossTrackedProjects` is HEY's one shared-deployer rule (the same flag `/market` publishes); `otherProjectsCount` counts other published projects' tokens from this account. */
   deployer?: { address: string; sharedAcrossTrackedProjects: boolean; otherProjectsCount: number };
   factory?: string;
-  verifiedSource: { state: HeyMeasureState; verified?: boolean; compiler?: string; contractName?: string; readFrom?: string; checkedAt?: string };
+  verifiedSource: {
+    state: HeyMeasureState;
+    verified?: boolean;
+    compiler?: string;
+    contractName?: string;
+    readFrom?: string;
+    checkedAt?: string;
+    /** How the explorer came to hold the source (2026-09-27). Absent until HEY has read the explorer's record: unknown, never "published". */
+    method?: 'SOURCE_PUBLISHED' | 'BYTECODE_MATCH' | 'SOURCIFY' | 'VERIFIER_ALLIANCE';
+    match?: 'FULL' | 'PARTIAL';
+    verifiedAt?: string;
+    /** Whose code it is: a launchpad template, a bytecode match to other source, source published for this address, or not yet known. Present only when some verifier holds source. */
+    authorship?: { kind: 'TEMPLATE' | 'EXPLORER_MATCHED' | 'PROJECT_AUTHORED' | 'UNCONFIRMED'; reason: string };
+    /** Sourcify's independent answer; `NOT_READ` is never "not verified". */
+    sourcify: HeySourcifyEvidence;
+  };
   proxy: {
     state: HeyMeasureState;
     status?: 'PROXY' | 'NOT_PROXY' | 'ERROR';
@@ -70,6 +101,8 @@ export type HeyContract = {
     beacon?: string;
     checkedAt?: string;
     changedAt?: string;
+    /** An immutable minimal clone (EIP-1167) of this contract, as the explorer reports it (2026-09-27). */
+    clonedFrom?: string;
     history: {
       id: string;
       implementation: string | null;

@@ -641,6 +641,29 @@ Neither block is an input to activity status, Build Momentum, the Discovery Gap,
 ordering, neither is a change event (they never appear in `latestChanges`, `/api/changes` or a
 webhook), and neither names a wallet.
 
+`developerFootprint` (2026-09-27; absent only when HEY could not read the project's coverage): the
+developer footprint in four lines, each carrying the state and reason code of its coverage
+dimension, and a count only where that state says it was measured:
+
+- `repositories` — `{ state, reason, asOf?, official, metadataRead }` (`gitHost`): the official
+  repositories HEY holds and how many it has read the declared metadata of.
+- `productionDeployment` — `{ state: "MEASURED", at, environment, readAt? }` for the newest
+  deployment an official repository records to an environment GitHub names production;
+  `{ state: "NONE_FOUND", readAt? }` when GitHub answered and records none (other hosts are not
+  read); `NOT_READ`, `ERROR` or `NOT_APPLICABLE` (no official repository). A dated record of an
+  environment, never activity: never who deployed, never a commit here.
+- `packages` — `{ state, reason, asOf?, accepted?, claimed? }` (`package`): packages an official
+  source, attestation, module path or the official domain ties to the project (`accepted`) and
+  packages that only name an official repository (`claimed`). No counts while the package index has
+  not been asked. A package publication is never a ship.
+- `advisories` — `{ state, reason, asOf?, current?, subject: "PUBLISHED_PACKAGE" }`
+  (`securityContext`): current OSV advisories about accepted packages' published versions; `current`
+  only once OSV was read. An advisory is about a published version, never a verdict on the project.
+
+Plus `contextOnly: true` and `coverageUrl`. Package names, advisory ids and deployment commits are
+not on the snapshot. Nothing here is a ship, a change event or an input to activity status, Build
+Momentum, the Discovery Gap, the Radar or any ordering.
+
 ### `GET /api/projects/{slug}/coverage`
 
 What HEY knows about a project, dimension by dimension, as states and never a score:
@@ -737,7 +760,11 @@ two reads of the proxy, with no block to name), `narrative:<projectUuid>:<slug>`
 assigned; `sourceType` says who set it: `project`, `hey_moderator` or `hey_rules`), `method:<uuid>`
 (a contract's functions first called, or called again after 30+ days without a call, on one UTC
 day: counts only, `sourceType: "decoded_calls"`; a fact later evidence contradicted is withdrawn as
-`superseded`).
+`superseded`), `sourcechange:<uuid>` (2026-09-27: a material change to what the project's official
+site declares, against HEY's earlier reading — `claimType: "SOURCE_CHANGE_OBSERVED"`,
+`sourceType: "official_site"`, `publishedAt: null`, precision OBSERVED, `metadata` with the kind and
+the added/removed counts, never the site's text; a change against a source HEY no longer holds as
+the project's own is withdrawn as `context_only`).
 
 A receipt carries `project`, `domain`, `claimType`, `summary`, `sourceType`, `sourceUrl`,
 `publishedAt` (null when only HEY's observation dates it), `detectedAt`, `precision`,
@@ -1094,6 +1121,7 @@ status move — so each change is one event, not two.
 | `research.owner_verified` | a verified ownership claim (how, never who) | the verification, EXACT |
 | `research.source_added` | an official source registered after the project's first day | null, OBSERVED |
 | `research.source_unavailable`, `research.source_restored` | a source that stopped answering, and came back (restores recorded from 2026-09-26) | null, OBSERVED |
+| `research.source_changed` | a material change to what the official site declares (2026-09-27), against HEY's earlier reading: its declared links, sitemap sections, llms.txt links, security.txt, the linked API description's operations, or one of those files appearing or going away. Id `sourcechange:<uuid>`; `facts.kind` and `facts.added`/`facts.removed` are counts — the entries themselves, a security contact and the site's prose are never in the event. The first read of a file is a baseline, never an event. Never a ship and never `countsAsBuilding`; retracted when the source is no longer the project's own. Not a webhook type | null, OBSERVED |
 | `research.narrative_assigned` | a narrative assigned | the assignment, EXACT |
 | `lock.unlock_due` | a HoodLock unlock entering its last seven days | the unlock, SCHEDULED |
 | `lock.observed`, `lock.withdrawn` | the first sweep that read a HoodLock lock, and the first that read it withdrawn (forward-only from migration 0138; locks already there when collection began say nothing) | null, OBSERVED (the locker gives no times; `detectedAt` is HEY's) |
@@ -1224,6 +1252,17 @@ says HEY gives neither. `fallback: true` means HEY could not place the
 question and answered with what changed and what it does not know. No model
 is involved. `400` without `q`, `404` for an unpublished slug.
 
+Since 2026-09-27 it also answers the free-data questions, each from its own section: "What changed
+in its public API?", "Which code hosts does HEY hold for it?" (a GitLab question is answered with
+what HEY holds, that it holds no GitLab link, and that it reads repositories on GitHub only), "What
+functions became active recently?" (counts only), "What does DefiLlama track for this protocol?",
+"What public packages does it publish?", "What security advisories are known for its official
+packages?", "What did the official site and docs change?" and "Which of HEY's records are gaps?".
+A line that restates a change-ledger event has `source` set to its evidence receipt
+(`…/api/evidence/sourcechange:<uuid>`, `…/api/evidence/method:<uuid>`); a coverage state decides a
+line's tag (measured or not applicable is `FACT`, anything else `UNKNOWN`), and "none found" is said
+as a reading of the one index HEY asked. No section is stronger than the object the API publishes.
+
 ## `GET /api/chain/contract-changes?days=30` (2026-09-24)
 
 Evidence-backed contract changes on published projects, newest first, `days`
@@ -1284,11 +1323,11 @@ about that project.
 | `creation` | `tx`, `at`, `block`, `precision: "EXACT"`, and an `evidenceId` for a follow-up |
 | `deployer` | the token's deployer — the only account this object ever names — with `sharedAcrossTrackedProjects` (HEY's stored shared-deployer flag, set once the account launched three tracked projects' tokens; the same flag `/market` publishes as `deployerShared`) and `otherProjectsCount` (a plain count, which may be above zero while the flag is false) |
 | `factory` | the factory that created the token, when one did |
-| `verifiedSource` | `state`, `verified`, `compiler`, `contractName`, `readFrom` (a proxy's implementation), `checkedAt` |
-| `proxy` | `state`, `status`, `kind` (`EIP1967`, `BEACON`, `EXPLORER_REPORTED`, `NONE_DETECTED`), `implementation`, `beacon`, `checkedAt`, `changedAt`, and `history[]` — each change with an `id` (`impl:<chainId>:<address>:<block>:<logIndex>` for a chain log), `occurredAt` and `precision: "EXACT"` for a log, or `occurredAt: null` and `precision: "OBSERVED"` for a change HEY saw between two reads (`source: "hey_reads"`) |
+| `verifiedSource` | `state`, `verified`, `compiler`, `contractName`, `readFrom` (a proxy's implementation), `checkedAt`. Since 2026-09-27: `method` — how the explorer came to hold the source (`SOURCE_PUBLISHED` for this address, `BYTECODE_MATCH` to source published for another contract's identical bytecode, `SOURCIFY`, `VERIFIER_ALLIANCE`; absent until HEY has read the explorer's contract record, which is unknown and never "published"), `match` (`FULL` or `PARTIAL`), `verifiedAt`; `authorship` — `{ kind, reason }` by one rule: `TEMPLATE` (a launchpad template name, a name verified on five or more projects, or an immutable clone), `EXPLORER_MATCHED`, `PROJECT_AUTHORED` or `UNCONFIRMED` (present only when some verifier holds source; a fact about the code, never a score); and `sourcify` — `{ state, status?, match?, creationMatch?, runtimeMatch?, checkedAt? }`, Sourcify's independent answer (`MATCH` or `NOT_FOUND`), read only for watched contracts the explorer calls unverified and proxies: `NOT_READ` is never "not verified" |
+| `proxy` | `state`, `status`, `kind` (`EIP1967`, `BEACON`, `EXPLORER_REPORTED`, `NONE_DETECTED`), `implementation`, `beacon`, `checkedAt`, `changedAt`, `clonedFrom` (2026-09-27: the contract an immutable minimal clone, EIP-1167, copies, as the explorer reports it — its code is that contract's and cannot change), and `history[]` — each change with an `id` (`impl:<chainId>:<address>:<block>:<logIndex>` for a chain log), `occurredAt` and `precision: "EXACT"` for a log, or `occurredAt: null` and `precision: "OBSERVED"` for a change HEY saw between two reads (`source: "hey_reads"`) |
 | `interface` | `state`, `functionCount`, `eventCount`, `baselineSince` and `changes[]` (ids and counts) |
 | `activity` | over the last seven days: `daysMeasured`, `calls7d` (null when no reading counted calls), `events7d` (null when any day was the decoding source's blind spot) |
-| `activity.methods` (2026-09-27) | calls per method over the last seven complete UTC days HEY read (`source: "decoded_calls"`): `window` (`from`, `to`, `days`), `collectedFrom`/`collectedThrough` (the contiguous days HEY holds; a day outside them is unknown), `calls`, `buckets` (`erc20Standard` — the ERC-20 surface as one bucket, `named` — the contract's own named functions, named by the call decoder or, since 2026-09-27, by the contract's own verified ABI, `undecoded` — calls nothing names; a call to the contract's creation code is its deployment and is in no bucket and not in `calls`), `distinctFunctions` (named functions and undecoded selectors called, never the ERC-20 bucket) and `top[]` (the five most-called methods by `rank`, `bucket` and `calls`). `names: "WITHHELD"`: function names stay in the Terminal. `state: "NOT_READ"` carries no counts at all — never zero. Counts only: no caller is read or stored |
+| `activity.methods` (2026-09-27) | calls per method over the last seven complete UTC days HEY read (`source: "decoded_calls"`): `window` (`from`, `to`, `days`), `collectedFrom`/`collectedThrough` (the contiguous days HEY holds; a day outside them is unknown), `calls`, `buckets` (`erc20Standard` — the ERC-20 surface as one bucket, `named` — the contract's own named functions, named by the call decoder or, since 2026-09-27, by the contract's own verified ABI, `undecoded` — calls nothing names; a call to the contract's creation code is its deployment and is in no bucket and not in `calls`), `distinctFunctions` (named functions and undecoded selectors called, never the ERC-20 bucket) and `top[]` (the five most-called methods by `rank`, `bucket` and `calls`). Since 2026-09-27 also `namedFromAbi` (of `buckets.named`, calls the contract's own verified ABI names), `creationCalls` (calls to its creation code: the deployment, counted apart) and `undecodedWithCandidates` (undecoded selectors a signature database offers a candidate for — a count of guesses, never a name; the candidates stay in the Terminal, labelled as candidates). Each is absent rather than zero when there is none. `names: "WITHHELD"`: function names stay in the Terminal. `state: "NOT_READ"` carries no counts at all — never zero. Counts only: no caller is read or stored |
 | `freshness`, `evidence` | when each part was read; the typed ids the object is built from |
 
 Every section carries `state`: `MEASURED`, `NOT_READ` (HEY knows the contract but has not read it

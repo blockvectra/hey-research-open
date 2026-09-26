@@ -43,6 +43,8 @@ export type HeyChangeType =
   | 'research.source_added'
   | 'research.source_unavailable'
   | 'research.source_restored'
+  /** A material change to what the official site declares (2026-09-27): counts only, never a ship. */
+  | 'research.source_changed'
   | 'research.narrative_assigned'
   | 'lock.unlock_due'
   | 'lock.observed'
