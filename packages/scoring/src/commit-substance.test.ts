@@ -24,7 +24,7 @@ const file = (filename: string, patch?: string, extra: Partial<CommitFileInput> 
   ...extra,
 });
 
-describe('classifyPath (commit-substance-v1)', () => {
+describe('classifyPath (commit-substance-v2)', () => {
   const cases: [string, FileClass][] = [
     // README and documentation.
     ['README.md', 'readme'],
@@ -100,9 +100,18 @@ describe('classifyPath (commit-substance-v1)', () => {
     ['.github/dependabot.yml', 'config'],
     ['settings.ini', 'config'],
     ['infra/main.tf', 'config'],
-    // Structured data outside configuration: HEY cannot place it.
-    ['src/data/tokens.json', 'unknown'],
-    ['public/manifest.json', 'unknown'],
+    // Data files outside configuration (commit-substance-v2): data, never code.
+    ['src/data/tokens.json', 'data'],
+    ['conversations/AgentsPodium-Hosting.json', 'data'],
+    ['exports/prices.csv', 'data'],
+    ['logs/events.jsonl', 'data'],
+    ['prices.csv', 'data'],
+    // JSON configuration by name stays configuration wherever it sits.
+    ['public/manifest.json', 'config'],
+    ['apps/web/turbo.json', 'config'],
+    // YAML and XML outside configuration: as often deployment config as data, so unknown.
+    ['content/posts.yaml', 'unknown'],
+    ['assets/feed.xml', 'unknown'],
     // Generated output.
     ['dist/index.js', 'generated'],
     ['packages/sdk/dist/index.d.ts', 'generated'],
@@ -247,6 +256,15 @@ describe('classifyFile', () => {
 });
 
 describe('classifyCommit', () => {
+  it('data files only → LOW_INFORMATION, data_only (commit-substance-v2)', () => {
+    const result = classifyCommit({ files: [file('conversations/AgentsPodium-Hosting.json', '@@ -1 +1 @@\n-{"n":1}\n+{"n":2}')], filesTruncated: false });
+    expect(result.substance).toBe('LOW_INFORMATION');
+    expect(result.reasons).toEqual(['data_only']);
+    expect(result.classes.data).toBe(1);
+    // Data beside source code is still development.
+    expect(classifyCommit({ files: [file('src/data/tokens.json'), file('src/index.ts', '@@ -1 +1 @@\n-a\n+b')], filesTruncated: false }).substance).toBe('SUBSTANTIVE');
+  });
+
   it('README only → LOW_INFORMATION, readme_only', () => {
     const result = classifyCommit({ files: [file('README.md', '@@ -1 +1 @@\n-a\n+b')], filesTruncated: false });
     expect(result).toMatchObject({ substance: 'LOW_INFORMATION', reasons: ['readme_only'], filesChanged: 1, classifierVersion: COMMIT_SUBSTANCE_VERSION });

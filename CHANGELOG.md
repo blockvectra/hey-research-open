@@ -6,6 +6,10 @@ record.
 
 ## 2026-09-27
 
+- **A commit that only rewrites data files is not building (`hbm-v17`, classifier `commit-substance-v2`).**
+  JSON, CSV and similar data files outside configuration are their own class, `data`; a week whose
+  commits only changed data (with or without documentation) is "documentation or maintenance only".
+  Before, such files were unclassified and the week counted. Code-substance `files` gain a `data` count.
 - **Launch factory windows are no longer lost when the RPC fails.** The hourly factory scan used to
   step over a block window the RPC would not answer and never read it again; on 2026-09-25 that lost
   every launch between 17:05 and 18:07 UTC. A failing RPC now stops the scan where it last read, a

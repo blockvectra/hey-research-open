@@ -150,7 +150,15 @@
  * Radar has since hbm-v6. (3) Merge commits (more than one parent) are no
  * longer counted in commit summaries, beside the message rule.
  */
-export const SCORING_VERSION = 'hbm-v16' as const;
+/*
+ * hbm-v17 (2026-09-27, founder ruling "data tak kira"): no weight or
+ * threshold change. The commit classifier moves to commit-substance-v2, in
+ * which a commit that changes only data files (JSON, CSV and the like outside
+ * configuration) is documentation or maintenance only, so such a week is no
+ * longer meaningful. The classifier version is part of the rules digest from
+ * this version on: a classifier change forces a scoring version.
+ */
+export const SCORING_VERSION = 'hbm-v17' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

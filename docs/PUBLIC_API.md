@@ -368,7 +368,7 @@ changed meaning.
   "commitsListed": 14, "commitsRead": 3, "changedCode": 1,
   "documentationOrMaintenance": 2, "substanceUnknown": 0, "notRead": 11,
   "files": { "source": 2, "test": 1, "docs": 0, "readme": 2, "dependency": 0, "config": 0, "ci": 0,
-             "generated": 0, "asset": 0, "whitespace": 0, "rename": 0, "unknown": 0 },
+             "generated": 0, "asset": 0, "whitespace": 0, "rename": 0, "data": 0, "unknown": 0 },
   "weekFullyListed": true,
   "summary": "3 commits read: 1 changed code, 2 documentation or maintenance only. 11 other commits were not needed to decide the week."
 }
@@ -378,7 +378,8 @@ changed meaning.
   changed files by class over the commits read). `verdict` is **DERIVED** by `classifierVersion`.
 - `SUBSTANTIVE`: at least one commit changed source code, tests, configuration or CI beyond
   whitespace. `LOW_INFORMATION`: HEY listed and read every commit of the week and each only changed
-  documentation or the README, dependency lockfiles, generated files, assets, whitespace or pure
+  documentation or the README, dependency lockfiles, generated files, assets, data files (JSON, CSV
+  and the like outside configuration, since `commit-substance-v2` / `hbm-v17`), whitespace or pure
   renames — shown as "documentation or maintenance only", `countsAsBuilding: false`, and left out
   of activity status, Build Momentum, Still Building, Under the Radar and every count of ships
   (scoring version `hbm-v16`, founder ruling G1). `UNKNOWN`: not read in full yet; it counts

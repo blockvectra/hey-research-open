@@ -132,7 +132,8 @@ export type HeyProject = {
  * counts are FACTs about the commits HEY read; `verdict` is DERIVED by
  * `classifierVersion`. Absent on every other ship and on a week HEY never
  * evaluated — never a zero. `LOW_INFORMATION` (documentation or maintenance
- * only: README, docs, lockfiles, generated output, assets, whitespace) is kept
+ * only: README, docs, lockfiles, generated output, assets, whitespace, data
+ * files) is kept
  * on the record and does not count as building; `UNKNOWN` (not read in full
  * yet) counts as before.
  */
@@ -150,7 +151,7 @@ export type HeyCodeSubstance = {
   /** Not read: waiting, or not needed once one commit had changed code. */
   notRead: number;
   /** Changed files by class, over the commits read. */
-  files: { source: number; test: number; docs: number; readme: number; dependency: number; config: number; ci: number; generated: number; asset: number; whitespace: number; rename: number; unknown: number };
+  files: { source: number; test: number; docs: number; readme: number; dependency: number; config: number; ci: number; generated: number; asset: number; whitespace: number; rename: number; data: number; unknown: number };
   /** Every commit of the week was on a page HEY read. */
   weekFullyListed: boolean;
   /** One plain sentence, as the page says it. */

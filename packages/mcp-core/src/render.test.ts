@@ -326,7 +326,7 @@ describe('get_project_timeline', () => {
   });
 
   it('restates what a code week changed as DERIVED, and says when it does not count (2026-09-27, G1)', () => {
-    const files = { source: 0, test: 0, docs: 0, readme: 3, dependency: 1, config: 0, ci: 0, generated: 0, asset: 0, whitespace: 0, rename: 0, unknown: 0 };
+    const files = { source: 0, test: 0, docs: 0, readme: 3, dependency: 1, config: 0, ci: 0, generated: 0, asset: 0, whitespace: 0, rename: 0, data: 0, unknown: 0 };
     const text = renderTimeline({
       ...fx.timeline,
       items: [

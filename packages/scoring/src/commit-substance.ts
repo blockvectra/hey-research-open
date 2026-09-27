@@ -25,7 +25,19 @@
  * beyond whitespace; LOW_INFORMATION when every file is README, docs,
  * dependency lockfile, generated, asset, whitespace-only or a pure rename.
  */
-export const COMMIT_SUBSTANCE_VERSION = 'commit-substance-v1' as const;
+export const COMMIT_SUBSTANCE_VERSION = 'commit-substance-v2' as const;
+
+/*
+ * commit-substance-v2 (2026-09-27, founder ruling: "data tak kira"): a data
+ * file — JSON, JSON Lines, CSV, TSV, Parquet and the like outside the
+ * repository root and configuration directories — is its own class, `data`,
+ * and a commit that changes only data (with or without documentation or
+ * maintenance files) is LOW_INFORMATION. v1 left such files `unknown`, and an
+ * UNKNOWN week counts, so a file rewritten by a script dozens of times a week
+ * (one production repository: 58 one-line commits to one JSON file) read as
+ * building. YAML and XML outside configuration directories stay `unknown`:
+ * they are as often deployment configuration as data.
+ */
 
 export const FILE_CLASSES = [
   'source',
@@ -39,6 +51,7 @@ export const FILE_CLASSES = [
   'asset',
   'whitespace',
   'rename',
+  'data',
   'unknown',
 ] as const;
 export type FileClass = (typeof FILE_CLASSES)[number];
@@ -58,6 +71,7 @@ const LOW_INFORMATION_CLASSES: ReadonlySet<FileClass> = new Set([
   'asset',
   'whitespace',
   'rename',
+  'data',
 ]);
 
 export const emptyFileClassCounts = (): FileClassCounts =>
@@ -176,8 +190,12 @@ const ASSET_EXTENSIONS = new Set([
 const CONFIG_EXTENSIONS = new Set(['toml', 'ini', 'cfg', 'conf', 'properties', 'env', 'tf', 'tfvars', 'hcl', 'gradle', 'cmake', 'bzl', 'nix']);
 /** Structured data: configuration at the root or in a configuration directory, otherwise data HEY cannot place. */
 const DATA_EXTENSIONS = new Set(['json', 'jsonc', 'json5', 'yaml', 'yml', 'xml']);
+/** Data files (commit-substance-v2): outside configuration they are `data`, never code. */
+const DATA_FILE_EXTENSIONS = new Set(['json', 'jsonl', 'ndjson', 'geojson', 'csv', 'tsv', 'parquet', 'avro', 'arrow']);
+/** Of those, the ones a repository root or config directory holds as configuration (tsconfig.json is caught earlier by name). */
+const CONFIG_LIKE_DATA = new Set(['json']);
 const CONFIG_DIRS = new Set(['config', 'configs', '.config', 'conf', 'settings', 'deploy', 'deployment', 'deployments', 'k8s', 'helm', 'charts', '.github', '.devcontainer', '.vscode', '.husky', '.changeset']);
-const CONFIG_BASENAMES = /^(dockerfile.*|containerfile|makefile|gnumakefile|justfile|rakefile|procfile|gemfile|pipfile|brewfile|vagrantfile|cmakelists\.txt|requirements.*\.txt|constraints\.txt|remappings\.txt|package\.json|tsconfig.*\.json|jsconfig.*\.json|deno\.jsonc?|composer\.json|cargo\.toml|go\.mod|go\.work|pyproject\.toml|setup\.py|setup\.cfg|pom\.xml|build\.gradle(\.kts)?|settings\.gradle(\.kts)?|foundry\.toml|hardhat\.config\.[a-z]+|truffle-config\.js|vercel\.json|netlify\.toml|wrangler\.toml|docker-compose.*\.ya?ml|compose\.ya?ml|anchor\.toml|move\.toml|scarb\.toml|codeowners)$/;
+const CONFIG_BASENAMES = /^(dockerfile.*|containerfile|makefile|gnumakefile|justfile|rakefile|procfile|gemfile|pipfile|brewfile|vagrantfile|cmakelists\.txt|requirements.*\.txt|constraints\.txt|remappings\.txt|package\.json|tsconfig.*\.json|jsconfig.*\.json|deno\.jsonc?|composer\.json|cargo\.toml|go\.mod|go\.work|pyproject\.toml|setup\.py|setup\.cfg|pom\.xml|build\.gradle(\.kts)?|settings\.gradle(\.kts)?|foundry\.toml|hardhat\.config\.[a-z]+|truffle-config\.js|vercel\.json|manifest\.json|app\.json|firebase\.json|renovate\.json|turbo\.json|nx\.json|lerna\.json|angular\.json|project\.json|components\.json|biome\.jsonc?|netlify\.toml|wrangler\.toml|docker-compose.*\.ya?ml|compose\.ya?ml|anchor\.toml|move\.toml|scarb\.toml|codeowners)$/;
 const CONFIG_FILE = [/\.config\.(js|cjs|mjs|ts|cts|mts|json)$/, /^\.[^/]+rc(\.[a-z]+)?$/];
 
 const SOURCE_EXTENSIONS = new Set([
@@ -212,7 +230,7 @@ const namedDocument = (stem: RegExp, basename: string): boolean => {
   if (!stem.test(head)) return false;
   if (dot === -1) return true;
   const extension = extensionOf(basename);
-  return !SOURCE_EXTENSIONS.has(extension) && !DATA_EXTENSIONS.has(extension) && !CONFIG_EXTENSIONS.has(extension);
+  return !SOURCE_EXTENSIONS.has(extension) && !DATA_EXTENSIONS.has(extension) && !DATA_FILE_EXTENSIONS.has(extension) && !CONFIG_EXTENSIONS.has(extension);
 };
 
 export function classifyPath(path: string): FileClass {
@@ -235,8 +253,9 @@ export function classifyPath(path: string): FileClass {
   if (DOC_EXTENSIONS.has(extension)) return 'docs';
   if (ASSET_EXTENSIONS.has(extension)) return 'asset';
   if (CONFIG_EXTENSIONS.has(extension) || CONFIG_FILE.some((pattern) => pattern.test(basename))) return 'config';
-  if (DATA_EXTENSIONS.has(extension)) {
-    return dirs.length === 0 || dirs.some((dir) => CONFIG_DIRS.has(dir)) ? 'config' : 'unknown';
+  if (DATA_EXTENSIONS.has(extension) || DATA_FILE_EXTENSIONS.has(extension)) {
+    if (dirs.length === 0 || dirs.some((dir) => CONFIG_DIRS.has(dir))) return DATA_FILE_EXTENSIONS.has(extension) && !CONFIG_LIKE_DATA.has(extension) ? 'data' : 'config';
+    return DATA_FILE_EXTENSIONS.has(extension) ? 'data' : 'unknown';
   }
   // A dotfile at any depth (.gitignore, .editorconfig, .env.example, .nvmrc).
   if (basename.startsWith('.') && basename.length > 1) return 'config';
@@ -385,6 +404,7 @@ const ONLY_REASON: Partial<Record<FileClass, string>> = {
   asset: 'assets_only',
   whitespace: 'whitespace_only',
   rename: 'rename_only',
+  data: 'data_only',
 };
 const CHANGED_REASON: Partial<Record<FileClass, string>> = {
   source: 'source_changed',

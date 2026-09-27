@@ -15,6 +15,7 @@ import {
   UNDER_THE_RADAR,
   VERIFICATION_WEIGHTS,
 } from './config';
+import { COMMIT_SUBSTANCE_VERSION } from './commit-substance';
 import { SCORING_VERSION, SCORING_VERSIONS } from './version';
 
 /**
@@ -38,6 +39,7 @@ const RULES_DIGEST = createHash('sha256')
       STILL_BUILDING,
       UNDER_THE_RADAR,
       VERIFICATION_WEIGHTS,
+      COMMIT_SUBSTANCE_VERSION,
     }),
   )
   .digest('hex')
@@ -62,8 +64,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v16',
-      rules: 'd691e3a6145580cc',
+      version: 'hbm-v17',
+      rules: '89e70465410ba035',
     });
   });
 });
