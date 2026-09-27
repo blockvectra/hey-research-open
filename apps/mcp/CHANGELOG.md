@@ -6,7 +6,25 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ## Unreleased
 
-### Fixed
+## 0.1.0 — 2026-09-27
+
+The first release of `@hey-research/mcp` on npm. A 0.1.0 was prepared on 2026-09-19 and never published; this release is that draft plus everything added since, both listed below.
+
+### Added
+
+- First published release. Twelve read-only tools over the HEY Research public
+  API: `search_projects`, `list_projects`, `lookup_token`, `get_project`,
+  `get_token_market`, `chain_activity`, `list_signals`, `list_builders`,
+  `weekly_report`, `list_bounties`, `list_ships`, `this_week`.
+- `HEY_API_URL` to point the server at another HEY, `HEY_API_KEY` to lift the
+  anonymous rate limit.
+- Built on `@hey-research/sdk`, bundled in; the server names itself
+  `hey-research-mcp/<version>` so HEY's traffic console counts it as itself.
+- A refused key says to check `HEY_API_KEY`; a rate limit says how long to wait.
+
+### Added and changed after the 2026-09-19 draft
+
+#### Fixed
 
 - **`get_project_snapshot` no longer states "no repository held" as a FACT**
   (2026-09-27): the line follows its coverage state, so `NO_SOURCE` reads
@@ -14,7 +32,7 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
   resting only on what its publisher typed. `get_project_coverage` explains the
   new `source_verified_project_authored_other_contract` reason.
 
-### Added
+#### Added
 
 - **The free-data context on the tools that already existed** (2026-09-27):
   `get_project_snapshot` prints paid-promotion sightings (presence and dates),
@@ -27,7 +45,7 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
   `sourcechange:` ids; `ask_hey` answers the free-data questions. Still fourteen
   tools.
 
-### Changed
+#### Changed
 
 - **Fourteen tools replace twenty-two** (2026-09-26): `find_projects`,
   `lookup_token`, `get_project_snapshot`, `get_changes`,
@@ -59,7 +77,7 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
   this package bundles them behind stdio. The same tools are hosted at
   `https://heyresearch.xyz/mcp`.
 
-### Added
+#### Added
 
 - Resources `hey://project/{slug}`, `…/timeline`, `…/coverage`,
   `hey://contract/{chainId}/{address}`, `hey://changes/latest`, and prompts
@@ -75,7 +93,7 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
   `lookup_token` says when the address is `MISMATCH` or unverified; "no
   builder signal yet" is not printed beside a recorded ship (2026-09-25).
 
-### Added
+#### Added
 
 - API parity (2026-09-25): project lines say the token's market state in the
   site's words (`market: trading inactive`); `get_token_market` prints the
@@ -93,7 +111,7 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
   context, and 30-day changes. Every line says whether it is a FACT, a DERIVED
   figure or UNKNOWN.
 
-### Changed
+#### Changed
 
 - `HEY_API_URL` must be https, unless the host is localhost. The API key rides
   on every request, and a plaintext or foreign base URL sent it there in clear
@@ -102,17 +120,3 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 - `engines.node` is `>=20`: `@modelcontextprotocol/sdk` pulls
   `@hono/node-server`, which requires Node 20. Installing under Node 18 warned
   `EBADENGINE`, so the declared floor now matches the tree.
-
-## 0.1.0 — 2026-09-19
-
-### Added
-
-- First published release. Twelve read-only tools over the HEY Research public
-  API: `search_projects`, `list_projects`, `lookup_token`, `get_project`,
-  `get_token_market`, `chain_activity`, `list_signals`, `list_builders`,
-  `weekly_report`, `list_bounties`, `list_ships`, `this_week`.
-- `HEY_API_URL` to point the server at another HEY, `HEY_API_KEY` to lift the
-  anonymous rate limit.
-- Built on `@hey-research/sdk`, bundled in; the server names itself
-  `hey-research-mcp/<version>` so HEY's traffic console counts it as itself.
-- A refused key says to check `HEY_API_KEY`; a rate limit says how long to wait.

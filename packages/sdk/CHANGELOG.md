@@ -6,7 +6,27 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ## Unreleased
 
+## 0.1.0 — 2026-09-27
+
+The first release of `@hey-research/sdk` on npm. A 0.1.0 was prepared on 2026-09-19 and never published; this release is that draft plus everything added since, both listed below.
+
 ### Added
+
+- `HeyClient` with typed method groups for every public route: `projects`,
+  `ships`, `signals`, `builders`, `token`, `bounties`, `reports.weekly`,
+  `scanCard`, `chain`, `thisWeek`, `status`, and `get<T>` for anything else.
+- `Hey*` response types held identical to the API's serialisers by a contract
+  test in the HEY repository.
+- Paging helpers: `nextOffsetPages` (projects, ships) and `totalPages` (signals,
+  builders), plus `itemsOf`; exposed as `pages()` / `items()` on the client.
+- `HeyApiError` with a `code` (`not_found`, `unauthorized`, `forbidden`, `quota`,
+  `rate_limited`, `bad_request`, `unavailable`, `timeout`, `network`, `http`),
+  `status`, `reason`, `retryAfterSeconds` and the parsed `body`. No retries.
+- User-agent `hey-research-sdk/<version>`, prefixed by the caller's own name.
+
+### Added and changed after the 2026-09-19 draft
+
+#### Added
 
 - The contract object's verification fields (2026-09-27), additive:
   `HeyContract.verifiedSource.method`, `.match`, `.verifiedAt`, `.authorship`
@@ -66,25 +86,9 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
   consistency, discovery lag, market attention and 30-day changes. Optional;
   every unmeasured figure is a stated `state` or `null`, never a zero.
 
-### Changed
+#### Changed
 
 - The client no longer follows redirects. `fetch` replays request headers across
   hops, so a base URL that forwarded handed the API key to whatever host the
   `Location` named; a 3xx is now a `HeyApiError` with code `http`, naming that
   host. Point `baseUrl` at the origin that answers directly.
-
-## 0.1.0 — 2026-09-19
-
-### Added
-
-- `HeyClient` with typed method groups for every public route: `projects`,
-  `ships`, `signals`, `builders`, `token`, `bounties`, `reports.weekly`,
-  `scanCard`, `chain`, `thisWeek`, `status`, and `get<T>` for anything else.
-- `Hey*` response types held identical to the API's serialisers by a contract
-  test in the HEY repository.
-- Paging helpers: `nextOffsetPages` (projects, ships) and `totalPages` (signals,
-  builders), plus `itemsOf`; exposed as `pages()` / `items()` on the client.
-- `HeyApiError` with a `code` (`not_found`, `unauthorized`, `forbidden`, `quota`,
-  `rate_limited`, `bad_request`, `unavailable`, `timeout`, `network`, `http`),
-  `status`, `reason`, `retryAfterSeconds` and the parsed `body`. No retries.
-- User-agent `hey-research-sdk/<version>`, prefixed by the caller's own name.
