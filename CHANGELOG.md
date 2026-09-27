@@ -6,6 +6,10 @@ record.
 
 ## 2026-09-27
 
+- **The roadmap says what shipped this week.** Webhooks, commit significance, the change ledger, the
+  SDK and MCP on npm, and AI-assisted research are marked live; discovery's recovered windows are
+  described; pull requests and release significance are a research item. `/docs/webhooks` and
+  `/docs/ai-research` are published.
 - **Ask HEY's interpretations answer the reader's language and stay off price.** A question in Malay is
   answered in Malay; a question about price or trading gets one fixed line, "HEY gives no view on price
   or trading."; the guard refuses intent and trading words in Malay too; unknowns and follow-ups read
