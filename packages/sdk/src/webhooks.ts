@@ -52,6 +52,7 @@ export const WEBHOOK_EVENT_TYPES: readonly HeyWebhookEventType[] = [
   'research.source_added',
   'research.source_unavailable',
   'research.source_restored',
+  'research.source_changed',
   'contract.deployed',
   'contract.followup_deployed',
   'contract.implementation_changed',

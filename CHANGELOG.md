@@ -6,6 +6,15 @@ record.
 
 ## 2026-09-27
 
+- **A launchpad template's verified source is not the project's.** A verified-contract timeline item
+  for a copy of a launchpad template (such as `PonsV2LauncherToken` or `HoodToken`), or for a bytecode
+  match to source published for another contract, stays on the page as context. It no longer counts
+  as a checked contract or as a ship, so pages with nothing else are no longer listed.
+- **An old ship is not news.** A release or other dated ship that HEY first reads more than seven days
+  after it was published is recorded as `backfill` in `/api/changes`, and webhooks no longer push it as
+  live. A newly listed project's history used to arrive as fresh releases.
+- **`research.source_changed` is a webhook event type.** A subscription that names it is sent material
+  changes to what a project's official site declares. The event carries counts, never the site's entries.
 - **The SDK and the MCP server are on npm.** `npm i @hey-research-lab/sdk` and
   `npx -y @hey-research-lab/mcp` (0.1.0, tags `sdk-v0.1.0` and `mcp-v0.1.0`). The scope is
   `@hey-research-lab`; the bin `hey-research-mcp` and the SDK's user agent are unchanged.

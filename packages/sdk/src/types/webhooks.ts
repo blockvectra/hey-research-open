@@ -24,6 +24,8 @@ export type HeyWebhookEventType =
   | 'research.source_added'
   | 'research.source_unavailable'
   | 'research.source_restored'
+  /** A material change to what an official site declares; subscribable since 2026-09-27. */
+  | 'research.source_changed'
   | 'contract.deployed'
   | 'contract.followup_deployed'
   | 'contract.implementation_changed'

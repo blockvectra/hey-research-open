@@ -41,6 +41,7 @@ hold resumes it.
 | `research.published` | a project page was published | null, OBSERVED |
 | `research.builder_verified` | a builder was verified | null, OBSERVED |
 | `research.source_added`, `research.source_unavailable`, `research.source_restored` | an official source appeared, stopped answering, came back | null, OBSERVED |
+| `research.source_changed` (subscribable since 2026-09-27, founder) | a material change to what an official site declares — its declared links, sitemap sections, llms.txt, security.txt or API description — against HEY's earlier reading. Counts only (`facts.added`/`facts.removed`), never the entries. A site HEY reads more often can send more; subscribe to it only if you want site changes | null, OBSERVED |
 | `contract.deployed`, `contract.followup_deployed` | the launch deploy; a later contract from the project's deployer | the block time |
 | `contract.implementation_changed` | a proxy's implementation changed (an upgrade log, or HEY saw it between two reads) | the block (log), or null, OBSERVED |
 | `contract.interface_changed`, `contract.source_verified` | the verified interface changed; the source was verified | null, OBSERVED |
@@ -56,7 +57,9 @@ lock times are HEY's knowledge times: the locker hands out none.
 
 Only events seen as they happened are pushed (`origin: "live"`). History HEY
 indexed later (`bootstrap`, `backfill` — an old upgrade log read from the
-chain's archive, for example) is on `/api/changes` and never pushed. A
+chain's archive, or, since 2026-09-27, a release or other dated ship HEY first
+read more than seven days after it was published, such as a newly listed
+project's history) is on `/api/changes` and never pushed. A
 subscription starts at the ledger's position when it is made: earlier events
 are for `/api/changes`.
 
@@ -77,7 +80,6 @@ ship an hour later. Keep the highest `revision` per `event.id`.
 | `market.distribution_changed` | derived from holder data (founder decision). |
 | `market.liquidity_moved`, `market.volume_spike` | market movement is context, not a change a project made; HEY sends no trading alerts. |
 | `build.code_activity`, `build.slowing`, `contract.source_unverified`, `contract.usage_changed`, `contract.method_first_observed`, `contract.method_resumed`, `research.owner_verified`, `research.narrative_assigned` | on `/api/changes`; not pushed. |
-| `research.source_changed` (2026-09-27) | a changed official site — its declared links, sitemap, llms.txt, security.txt or API description — is research context, not news a subscriber asked for, and a busy site would flood an endpoint. On `/api/changes`; refused by name (`detail.refused` says so). Making it subscribable is a founder decision. |
 | anything Terminal-only | never, on any public surface. |
 | project-linked address events, holder lists | never. |
 
