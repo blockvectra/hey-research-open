@@ -6,6 +6,10 @@ record.
 
 ## 2026-09-27
 
+- **Ask HEY's interpretations answer the reader's language and stay off price.** A question in Malay is
+  answered in Malay; a question about price or trading gets one fixed line, "HEY gives no view on price
+  or trading."; the guard refuses intent and trading words in Malay too; unknowns and follow-ups read
+  as plain sentences, with any stray reference shown as its label.
 - **Ask HEY answers in one step and shows its progress.** With the research interpretation on, pressing
   Enter asks for it too; while it is written the page shows how long it has been working and fills in
   the answer by itself. A failed attempt offers "Try again". The model call now has 90 seconds, where it
