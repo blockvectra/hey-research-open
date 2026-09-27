@@ -6,6 +6,12 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.1.1 — 2026-09-27
+
+### Changed
+
+- The README on npm no longer says the package is unpublished; it opens with the `npm install` line. No code change from 0.1.0.
+
 ## 0.1.0 — 2026-09-27
 
 The first release of `@hey-research-lab/sdk` on npm. A 0.1.0 was prepared on 2026-09-19 and never published; this release is that draft plus everything added since, both listed below.

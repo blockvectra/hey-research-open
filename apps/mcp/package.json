@@ -1,6 +1,6 @@
 {
   "name": "@hey-research-lab/mcp",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "MCP server for HEY Research: which projects on Robinhood Chain are still building, what they shipped, and which of them nobody is looking at — as tools an assistant can call.",
   "license": "MIT",
   "type": "module",
