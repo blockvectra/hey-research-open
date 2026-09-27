@@ -1,4 +1,4 @@
-import type { HeyChangeType } from '@hey-research/sdk';
+import type { HeyChangeType } from '@hey-research-lab/sdk';
 
 /**
  * The tool set, as data (2026-09-26): fourteen tools, and one more only where

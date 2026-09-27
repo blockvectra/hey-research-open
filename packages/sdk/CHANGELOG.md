@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@hey-research/sdk` are recorded here. The format follows
+All notable changes to `@hey-research-lab/sdk` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows
 [Semantic Versioning](https://semver.org/).
 
@@ -8,7 +8,7 @@ All notable changes to `@hey-research/sdk` are recorded here. The format follows
 
 ## 0.1.0 — 2026-09-27
 
-The first release of `@hey-research/sdk` on npm. A 0.1.0 was prepared on 2026-09-19 and never published; this release is that draft plus everything added since, both listed below.
+The first release of `@hey-research-lab/sdk` on npm. A 0.1.0 was prepared on 2026-09-19 and never published; this release is that draft plus everything added since, both listed below.
 
 ### Added
 

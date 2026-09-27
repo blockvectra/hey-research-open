@@ -24,7 +24,7 @@ import type {
   HeyTokenMarket,
   HeyUnlocks,
   HeyWeeklyReport,
-} from '@hey-research/sdk';
+} from '@hey-research-lab/sdk';
 
 /**
  * One API-shaped answer per route the MCP tools read (2026-09-26).

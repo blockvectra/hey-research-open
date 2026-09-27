@@ -4,7 +4,7 @@ import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { InMemoryTransport } from '@modelcontextprotocol/sdk/inMemory.js';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { HeyClient } from '@hey-research/sdk';
+import { HeyClient } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
 import { MAX_OUTPUT_BYTES, UNDER_THE_RADAR_RULE, capOutput, createHeyMcpServer, marketIntegrityFromEnv, type HeyMcpCallEvent, type HeyMcpOptions } from './server';

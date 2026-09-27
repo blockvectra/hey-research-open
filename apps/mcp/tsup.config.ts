@@ -5,9 +5,9 @@ import { defineConfig } from 'tsup';
 /**
  * One file anyone can run with `npx` (2026-09-05; publishable 2026-09-19).
  *
- * The server talks to HEY over HTTP through `@hey-research/sdk`, which is
+ * The server talks to HEY over HTTP through `@hey-research-lab/sdk`, which is
  * bundled in from source rather than depended on: a user running `npx -y
- * @hey-research/mcp` gets one file and two runtime dependencies (the MCP
+ * @hey-research-lab/mcp` gets one file and two runtime dependencies (the MCP
  * SDK and zod), and the SDK version inside is stamped here because bundling
  * from source bypasses the SDK's own build and its define.
  */
@@ -21,7 +21,7 @@ export default defineConfig({
   platform: 'node',
   clean: true,
   sourcemap: true,
-  noExternal: [/^@hey\//, '@hey-research/sdk'],
+  noExternal: [/^@hey\//, '@hey-research-lab/sdk'],
   define: {
     __MCP_VERSION__: JSON.stringify(version('./package.json')),
     __SDK_VERSION__: JSON.stringify(version('../../packages/sdk/package.json')),

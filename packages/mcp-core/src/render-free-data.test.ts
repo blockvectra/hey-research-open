@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { HeyDeveloperFootprint, HeyProtocolEconomics } from '@hey-research/sdk';
+import type { HeyDeveloperFootprint, HeyProtocolEconomics } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
 import { economicsLines, footprintLines, promotionLine, REASON_WORDS, renderContract, renderCoverage, renderProjectContracts, renderSnapshot } from './render-machine';

@@ -6,7 +6,7 @@ import type { HeyWebhookEvent, HeyWebhookEventType } from './types/webhooks';
  * Crypto only, so it runs in Node 18+, Deno, Bun, Workers and browsers.
  *
  * ```ts
- * import { parseWebhookEvent, isReplay } from '@hey-research/sdk';
+ * import { parseWebhookEvent, isReplay } from '@hey-research-lab/sdk';
  *
  * const seen = new Set<string>(); // use a durable store in production
  * export async function POST(request: Request) {
@@ -179,7 +179,7 @@ export async function parseWebhookEvent(input: VerifyWebhookSignatureInput): Pro
   }
   if (typeof body !== 'object' || body === null) throw new HeyWebhookError('invalid_payload', 'The webhook body is not an object.');
   const record = body as Record<string, unknown>;
-  if (record.payloadVersion !== WEBHOOK_PAYLOAD_VERSION) throw new HeyWebhookError('unsupported_version', `Payload version ${String(record.payloadVersion)} is not one this SDK reads; upgrade @hey-research/sdk.`);
+  if (record.payloadVersion !== WEBHOOK_PAYLOAD_VERSION) throw new HeyWebhookError('unsupported_version', `Payload version ${String(record.payloadVersion)} is not one this SDK reads; upgrade @hey-research-lab/sdk.`);
   if (typeof record.type !== 'string' || !TYPES.has(record.type) || typeof record.deliveryId !== 'string' || typeof record.sentAt !== 'string') {
     throw new HeyWebhookError('invalid_payload', 'The webhook body is not a HEY delivery.');
   }

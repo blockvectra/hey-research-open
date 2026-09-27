@@ -500,10 +500,10 @@ record.
   string still names itself there, so one that sends a plain `Chrome/130.0` is no longer filed as a
   suspected scraper. Only mailboxes matching a known crawler are read, because `From` may carry a
   person's own address, and neither the header nor the user agent is ever stored.
-- **Two npm packages prepared.** `@hey-research/sdk` (`packages/sdk`) is the whole read API as one
+- **Two npm packages prepared.** `@hey-research-lab/sdk` (`packages/sdk`) is the whole read API as one
   typed client: `new HeyClient().scanCard(4663, address)`, `projects.items({ tab: 'still-building' })`
   walks a listing, a `429` surfaces as `HeyApiError` with `retryAfterSeconds` and is never retried
-  for you. `@hey-research/mcp` (`apps/mcp`) is the MCP server, unchanged in behaviour. Neither is
+  for you. `@hey-research-lab/mcp` (`apps/mcp`) is the MCP server, unchanged in behaviour. Neither is
   published yet; build both from this tree.
 - **A type-level contract test** in the private repository fails the gate when the API and the SDK
   disagree on a single field, in either direction.

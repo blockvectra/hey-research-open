@@ -1,8 +1,8 @@
-# @hey-research/mcp
+# @hey-research-lab/mcp
 
 > **Not yet published to npm; build from source.** Until the first release the
 > `npx` lines below do not resolve. Clone the repository, run
-> `pnpm install && pnpm --filter @hey-research/mcp build`, and point your
+> `pnpm install && pnpm --filter @hey-research-lab/mcp build`, and point your
 > assistant at `node /absolute/path/to/apps/mcp/dist/index.js` — or use the
 > hosted endpoint, which needs nothing installed.
 
@@ -29,7 +29,7 @@ and does not do.
 ## Local (stdio)
 
 ```sh
-npx -y @hey-research/mcp
+npx -y @hey-research-lab/mcp
 ```
 
 Node 20 or newer — the floor `@modelcontextprotocol/sdk` brings with it.
@@ -37,7 +37,7 @@ Node 20 or newer — the floor `@modelcontextprotocol/sdk` brings with it.
 **Claude Code**
 
 ```sh
-claude mcp add hey-research -- npx -y @hey-research/mcp
+claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 ```
 
 **Claude Desktop** — in `claude_desktop_config.json`:
@@ -47,7 +47,7 @@ claude mcp add hey-research -- npx -y @hey-research/mcp
   "mcpServers": {
     "hey-research": {
       "command": "npx",
-      "args": ["-y", "@hey-research/mcp"]
+      "args": ["-y", "@hey-research-lab/mcp"]
     }
   }
 }
@@ -108,10 +108,10 @@ its meaning.
 The tools live in `packages/mcp-core` of the
 [HEY Research repository](https://github.com/hey-research-lab/hey-research);
 this package is their stdio entry point and bundles them, with
-[`@hey-research/sdk`](https://www.npmjs.com/package/@hey-research/sdk), into one file.
+[`@hey-research-lab/sdk`](https://www.npmjs.com/package/@hey-research-lab/sdk), into one file.
 
 ```sh
-pnpm --filter @hey-research/mcp build && node apps/mcp/dist/index.js
+pnpm --filter @hey-research-lab/mcp build && node apps/mcp/dist/index.js
 ```
 
 ## Licence

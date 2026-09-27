@@ -42,7 +42,7 @@ importers:
         specifier: ^3.24.1
         version: 3.25.76
     devDependencies:
-      '@hey-research/sdk':
+      '@hey-research-lab/sdk':
         specifier: workspace:*
         version: link:../../packages/sdk
       '@hey/mcp-core':
@@ -79,7 +79,7 @@ importers:
 
   packages/mcp-core:
     dependencies:
-      '@hey-research/sdk':
+      '@hey-research-lab/sdk':
         specifier: workspace:*
         version: link:../sdk
       '@modelcontextprotocol/sdk':

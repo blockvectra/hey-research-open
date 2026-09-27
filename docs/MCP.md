@@ -47,12 +47,12 @@ loopback host is refused at start-up). `market_integrity` follows the site's own
 
 ### Local
 
-**The npm package is not published yet** (the `@hey-research` scope has not been created),
-so `npx -y @hey-research/mcp` does not resolve. Build it from source (Node 20 or newer):
+**The npm package is not published yet** (the `@hey-research-lab` scope has not been created),
+so `npx -y @hey-research-lab/mcp` does not resolve. Build it from source (Node 20 or newer):
 
 ```bash
 # in a clone of HEY's public repository
-pnpm install && pnpm --filter @hey-research/mcp build
+pnpm install && pnpm --filter @hey-research-lab/mcp build
 claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist/index.js
 ```
 
@@ -194,7 +194,7 @@ And never:
 | The tool list as data | `packages/mcp-core/src/tools.ts` — read by the server, `/developers`, and the tests |
 | stdio entry point (bundles the core) | `apps/mcp/src/index.ts` |
 | Hosted route | the web app's `POST /mcp` (Web-standard Streamable HTTP, stateless JSON) |
-| HTTP client for the public API | `packages/sdk` (`@hey-research/sdk`) |
+| HTTP client for the public API | `packages/sdk` (`@hey-research-lab/sdk`) |
 | Renderer tests, one per tool, on API-typed fixtures | `packages/mcp-core/src/render.test.ts`, `src/fixtures/api.ts` |
 | Server tests over a real MCP client | `packages/mcp-core/src/server.test.ts` |
 

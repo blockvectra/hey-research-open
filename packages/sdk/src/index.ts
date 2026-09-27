@@ -1,5 +1,5 @@
 /**
- * `@hey-research/sdk` (2026-09-19): HEY Research's public API as typed calls.
+ * `@hey-research-lab/sdk` (2026-09-19): HEY Research's public API as typed calls.
  *
  * Everything exported here is either a call the API answers, a shape it
  * answers with, or the error it throws. There is nothing that ranks by

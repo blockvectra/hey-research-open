@@ -1,4 +1,4 @@
-import { DEFAULT_BASE_URL } from '@hey-research/sdk';
+import { DEFAULT_BASE_URL } from '@hey-research-lab/sdk';
 
 /**
  * Where this server is allowed to send the key (round-9 security, 2026-09-19).

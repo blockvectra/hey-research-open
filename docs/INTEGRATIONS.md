@@ -282,11 +282,11 @@ minute. See [the public read API](/docs/public-api) for every endpoint, field an
 
 If you write TypeScript or JavaScript, the card call above is one typed method in HEY's SDK
 (2026-09-19). The package is built and tested in the repository but **not on npm yet** — the
-`@hey-research` scope does not exist, so `npm i @hey-research/sdk` does not resolve; build it
-with `pnpm --filter @hey-research/sdk build` until it is published. The shapes come with it:
+`@hey-research-lab` scope does not exist, so `npm i @hey-research-lab/sdk` does not resolve; build it
+with `pnpm --filter @hey-research-lab/sdk build` until it is published. The shapes come with it:
 
 ```ts
-import { HeyClient } from '@hey-research/sdk';
+import { HeyClient } from '@hey-research-lab/sdk';
 const hey = new HeyClient();
 const card = await hey.scanCard(4663, address);
 if (!card.found) return null;                       // unpublished token or another chain: print nothing

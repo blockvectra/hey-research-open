@@ -1,8 +1,8 @@
-# @hey-research/sdk
+# @hey-research-lab/sdk
 
 > **Not yet published to npm; build from source.** Until the first release the
 > `npm install` line below does not resolve. Clone the repository and run
-> `pnpm install && pnpm --filter @hey-research/sdk build`.
+> `pnpm install && pnpm --filter @hey-research-lab/sdk build`.
 
 Typed client for the [HEY Research](https://heyresearch.xyz) public API — the
 builder-discovery layer for Robinhood Chain. It answers one question: **which
@@ -14,7 +14,7 @@ ranks by price, values a token, or knows anything about a wallet, because HEY
 does not.
 
 ```sh
-npm install @hey-research/sdk
+npm install @hey-research-lab/sdk
 ```
 
 Node 18 or newer, or any runtime with `fetch`. ESM and CommonJS, types included,
@@ -23,7 +23,7 @@ no dependencies.
 ## Usage
 
 ```ts
-import { HeyClient } from '@hey-research/sdk';
+import { HeyClient } from '@hey-research-lab/sdk';
 
 const hey = new HeyClient();
 
@@ -206,7 +206,7 @@ HEY can POST its public changes to an endpoint you register at
 raw body before you trust it:
 
 ```ts
-import { isReplay, parseWebhookEvent } from '@hey-research/sdk';
+import { isReplay, parseWebhookEvent } from '@hey-research-lab/sdk';
 
 const rawBody = await request.text();
 const event = await parseWebhookEvent({ rawBody, header: request.headers.get('hey-signature'), secret: process.env.HEY_WEBHOOK_SECRET! });

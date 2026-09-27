@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import type { HeyDiff, HeyPage, HeyProject, HeyThisWeek, HeyTokenMarket } from '@hey-research/sdk';
+import type { HeyDiff, HeyPage, HeyProject, HeyThisWeek, HeyTokenMarket } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
 import {

@@ -1,6 +1,6 @@
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 
-import { HeyClient } from '@hey-research/sdk';
+import { HeyClient } from '@hey-research-lab/sdk';
 import { createHeyMcpServer, marketIntegrityFromEnv, MCP_VERSION } from '@hey/mcp-core';
 
 import { resolveBaseUrl } from './base-url';

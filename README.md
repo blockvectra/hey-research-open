@@ -68,9 +68,9 @@ This is the published half of HEY: the parts that stand on their own and are saf
 | --- | --- |
 | [`packages/sources`](packages/sources) | Every public-data adapter HEY reads — GitHub, Blockscout, Sourcify (verification and its signature database), DEX Screener, GeckoTerminal, CoinGecko, launchpads, feeds, npm, deps.dev, OSV — each with saved fixtures and contract tests. The tests fail on a real network call. All of them go through one fetch guard (private-address and DNS-rebinding checks, redirect and credential rules, size, time and content-type limits) and bounded HTML and XML parsers, tested against hostile pages and feeds. |
 | [`packages/scoring`](packages/scoring) | Activity status, Build Momentum, Still Building and Under the Radar, deterministic and versioned. They read no price and no balance, and that is tested. |
-| [`packages/sdk`](packages/sdk) | `@hey-research/sdk`, the typed client over the public API. No dependencies, ESM and CJS, Node 18 or a browser. |
+| [`packages/sdk`](packages/sdk) | `@hey-research-lab/sdk`, the typed client over the public API. No dependencies, ESM and CJS, Node 18 or a browser. |
 | [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: fourteen read-only tools, each answer tagged FACT, DERIVED or UNKNOWN. |
-| [`apps/mcp`](apps/mcp) | `@hey-research/mcp`, the stdio entry point that bundles them. Node 20. The same tools are hosted at `https://heyresearch.xyz/mcp`. |
+| [`apps/mcp`](apps/mcp) | `@hey-research-lab/mcp`, the stdio entry point that bundles them. Node 20. The same tools are hosted at `https://heyresearch.xyz/mcp`. |
 | [`packages/config`](packages/config) | Environment schema and chain constants. |
 | [`packages/ui`](packages/ui) | The presentation components — cards, chips, status, formatting. |
 | [`docs/`](docs) | The public API, the MCP server, the source registry, and every data source with what it refuses and why. |
@@ -83,12 +83,12 @@ tooling stay in the private repository.
 ```bash
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test     # 686 tests, no network
-pnpm --filter @hey-research/sdk build        # packages/sdk/dist
-pnpm --filter @hey-research/mcp build        # apps/mcp/dist/index.js
+pnpm --filter @hey-research-lab/sdk build        # packages/sdk/dist
+pnpm --filter @hey-research-lab/mcp build        # apps/mcp/dist/index.js
 ```
 
-> **Not on npm yet** (checked 19 September 2026). The `@hey-research` scope has not been created,
-> so `npm i @hey-research/sdk` and `npx -y @hey-research/mcp` do not resolve. Build from this tree
+> **Not on npm yet** (checked 19 September 2026). The `@hey-research-lab` scope has not been created,
+> so `npm i @hey-research-lab/sdk` and `npx -y @hey-research-lab/mcp` do not resolve. Build from this tree
 > until they do; the package names and the commands above will not change.
 
 ## Use the API
@@ -119,7 +119,7 @@ rather than guessing.
 **The same thing, typed:**
 
 ```ts
-import { HeyClient, HeyApiError } from '@hey-research/sdk';
+import { HeyClient, HeyApiError } from '@hey-research-lab/sdk';
 
 const hey = new HeyClient();
 const card = await hey.scanCard(4663, address);
@@ -144,7 +144,7 @@ and is never retried for you, and an absent field means HEY does not know — ne
 claude mcp add --transport http hey-research https://heyresearch.xyz/mcp
 
 # or locally
-pnpm --filter @hey-research/mcp build
+pnpm --filter @hey-research-lab/mcp build
 claude mcp add hey-research -- node "$PWD/apps/mcp/dist/index.js"
 ```
 

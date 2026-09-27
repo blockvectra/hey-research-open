@@ -123,10 +123,10 @@ subscription — so it cannot be shown again: rotate to get a new one.
 Verify against the **raw body bytes**, before parsing. Reject a timestamp more
 than five minutes from your clock, either way.
 
-### TypeScript (`@hey-research/sdk`)
+### TypeScript (`@hey-research-lab/sdk`)
 
 ```ts
-import { isReplay, parseWebhookEvent } from '@hey-research/sdk';
+import { isReplay, parseWebhookEvent } from '@hey-research-lab/sdk';
 
 const seen = new Set<string>(); // a durable store (a table, Redis) in production
 

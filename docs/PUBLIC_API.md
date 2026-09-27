@@ -94,24 +94,24 @@ meaning would ship under a new path with at least 90 days of overlap and a migra
 `/api/v1/*` is the partner namespace (snake_case cards built for one integration each), not an API
 version; its field meanings are frozen the same way.
 
-## SDK (`@hey-research/sdk`)
+## SDK (`@hey-research-lab/sdk`)
 
 Since 2026-09-19 the same API is also a typed client, so nobody has to retype the shapes on
 this page. It is a thin fetch wrapper with no dependencies, ESM and CJS, Node 18 or a browser;
 it holds no data and no credential beyond the key you hand it.
 
-**It is not on npm yet** (checked 2026-09-19): the `@hey-research` scope does not exist, so
-`npm i @hey-research/sdk` does not resolve. Until the lab creates the organisation and the
+**It is not on npm yet** (checked 2026-09-19): the `@hey-research-lab` scope does not exist, so
+`npm i @hey-research-lab/sdk` does not resolve. Until the lab creates the organisation and the
 publish token, build it from the repository:
 
 ```bash
-pnpm install && pnpm --filter @hey-research/sdk build   # packages/sdk/dist
+pnpm install && pnpm --filter @hey-research-lab/sdk build   # packages/sdk/dist
 ```
 
-Once published, the install is `npm i @hey-research/sdk` and nothing else on this page changes.
+Once published, the install is `npm i @hey-research-lab/sdk` and nothing else on this page changes.
 
 ```ts
-import { HeyClient, HeyApiError } from '@hey-research/sdk';
+import { HeyClient, HeyApiError } from '@hey-research-lab/sdk';
 
 const hey = new HeyClient(); // https://heyresearch.xyz; { baseUrl, apiKey, timeoutMs } are optional
 
@@ -156,7 +156,7 @@ try {
   `snapshots.bulk`, `token.bulk` and `scanCards`; the partner `builderCard`; and
   `search.suggest`. The full table is in `packages/sdk/README.md`.
 
-The MCP server (`@hey-research/mcp`, hosted at `/mcp` since 2026-09-26) is this client with tool
+The MCP server (`@hey-research-lab/mcp`, hosted at `/mcp` since 2026-09-26) is this client with tool
 definitions around it; see `docs/MCP.md`. Releases of both come from the private repository,
 tagged `sdk-v*` / `mcp-v*`.
 
@@ -1447,7 +1447,7 @@ named here so a reader of that repository can find them; they are not part of th
 - Contracts, history, diff and bulk (2026-09-26): `apps/web/src/lib/public-api-{contracts,history,bulk,market-extras}.ts`;
   the reads in `packages/domain/src/{contracts/read.ts, contracts/registry.ts, history/, diff/, tokens/lifecycle.ts}`
 - Contract tests: `apps/web/e2e/public-api.spec.ts`
-- The SDK: `packages/sdk` (published as `@hey-research/sdk` once the npm organisation exists);
+- The SDK: `packages/sdk` (published as `@hey-research-lab/sdk` once the npm organisation exists);
   the type-level contract between its response types and the serialisers:
   `apps/web/src/lib/public-api-contract.{projects,feeds,misc,changes,snapshot,contracts}.test.ts`
   (2026-09-19; split by family 2026-09-26)

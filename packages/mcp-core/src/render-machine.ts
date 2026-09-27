@@ -17,7 +17,7 @@ import type {
   HeyProjectCoverage,
   HeyProjectSnapshot,
   HeySourceFreshness,
-} from '@hey-research/sdk';
+} from '@hey-research-lab/sdk';
 
 import { STILL_BUILDING_MEANING, TAG_LEGEND, activityTag, atPrecision, liquidityWords, money, recordTag, shownOf, stillBuildingEvidence, tokenMarketWords, valuationWord } from './render';
 

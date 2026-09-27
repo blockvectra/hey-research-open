@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to `@hey-research/mcp` are recorded here. The format follows
+All notable changes to `@hey-research-lab/mcp` are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the package follows
 [Semantic Versioning](https://semver.org/).
 
@@ -8,7 +8,7 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ## 0.1.0 — 2026-09-27
 
-The first release of `@hey-research/mcp` on npm. A 0.1.0 was prepared on 2026-09-19 and never published; this release is that draft plus everything added since, both listed below.
+The first release of `@hey-research-lab/mcp` on npm. A 0.1.0 was prepared on 2026-09-19 and never published; this release is that draft plus everything added since, both listed below.
 
 ### Added
 
@@ -18,7 +18,7 @@ The first release of `@hey-research/mcp` on npm. A 0.1.0 was prepared on 2026-09
   `weekly_report`, `list_bounties`, `list_ships`, `this_week`.
 - `HEY_API_URL` to point the server at another HEY, `HEY_API_KEY` to lift the
   anonymous rate limit.
-- Built on `@hey-research/sdk`, bundled in; the server names itself
+- Built on `@hey-research-lab/sdk`, bundled in; the server names itself
   `hey-research-mcp/<version>` so HEY's traffic console counts it as itself.
 - A refused key says to check `HEY_API_KEY`; a rate limit says how long to wait.
 

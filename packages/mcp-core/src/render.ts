@@ -17,7 +17,7 @@ import type {
   HeyTokenMarket,
   HeyUnlocks,
   HeyWeeklyReport,
-} from '@hey-research/sdk';
+} from '@hey-research-lab/sdk';
 
 /**
  * HEY's answers, as text a model reads (2026-09-05; reworked 2026-09-26).

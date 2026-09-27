@@ -10,7 +10,7 @@ import {
   type HeyExplainFact,
   type HeyProjectSurface,
   type HeyProjectsQuery,
-} from '@hey-research/sdk';
+} from '@hey-research-lab/sdk';
 
 import {
   renderAccelerating,

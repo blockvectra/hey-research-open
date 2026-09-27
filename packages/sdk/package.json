@@ -1,5 +1,5 @@
 {
-  "name": "@hey-research/sdk",
+  "name": "@hey-research-lab/sdk",
   "version": "0.1.0",
   "description": "Typed client for the HEY Research public API: which projects on Robinhood Chain are still building, what they shipped, and which of them nobody is looking at.",
   "license": "MIT",

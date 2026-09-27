@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { DEFAULT_BASE_URL } from '@hey-research/sdk';
+import { DEFAULT_BASE_URL } from '@hey-research-lab/sdk';
 
 import { resolveBaseUrl } from './base-url';
 
