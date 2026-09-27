@@ -42,6 +42,10 @@ const numberWithDefault = (fallback: number) =>
     .transform((value) => (value === undefined ? fallback : Number(value)))
     .pipe(z.number().finite());
 
+/** The model providers HEY can call (2026-09-27): `disabled`, or the one wired adapter. */
+export const AI_PROVIDERS = ['disabled', 'anthropic'] as const;
+export type AiProvider = (typeof AI_PROVIDERS)[number];
+
 /** Resend issues API keys prefixed `re_`; anything else is a paste of the wrong secret. */
 const RESEND_KEY_PATTERN = /^re_[A-Za-z0-9_-]{8,}$/;
 
@@ -169,13 +173,43 @@ export const serverEnvSchema = z
     }),
 
     ai: z.object({
+      /*
+       * One wired provider (2026-09-27). `openai` used to be accepted here and
+       * then did nothing: only the Anthropic adapter exists, so a deployment
+       * that set it believed it had a model layer and had none. A provider HEY
+       * cannot call is now a configuration error, said at boot.
+       */
       provider: optionalString.pipe(
-        z.enum(['disabled', 'anthropic', 'openai']).default('disabled'),
+        z
+          .enum(AI_PROVIDERS, {
+            errorMap: () => ({ message: `AI_PROVIDER must be one of ${AI_PROVIDERS.join(', ')}. Only the Anthropic adapter is wired; any other provider would silently do nothing (docs/AI_RESEARCH.md).` }),
+          })
+          .default('disabled'),
       ),
       apiKey: optionalString,
       dailyBudgetUsd: numberWithDefault(0).pipe(z.number().nonnegative()),
       /** The model Ask HEY composes with when AI is on (2026-09-24). */
       model: optionalString.pipe(z.string().default('claude-sonnet-5')),
+      /**
+       * Per-model prices in USD per million tokens, overriding or extending the
+       * built-in table (`ai-research/pricing.ts`), as JSON:
+       * `{"claude-sonnet-5":{"inputPerMTok":2,"outputPerMTok":10}}`.
+       */
+      modelPrices: optionalString
+        .transform((value, ctx) => {
+          if (value === undefined) return undefined;
+          try {
+            return JSON.parse(value) as unknown;
+          } catch {
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'AI_MODEL_PRICES must be JSON: {"model":{"inputPerMTok":n,"outputPerMTok":n}}.' });
+            return z.NEVER;
+          }
+        })
+        .pipe(
+          z
+            .record(z.string().min(1).max(80), z.object({ inputPerMTok: z.number().nonnegative().max(1000), outputPerMTok: z.number().nonnegative().max(1000) }).strict())
+            .optional(),
+        ),
     }),
 
     /**
@@ -595,6 +629,7 @@ function shapeEnv(raw: RawEnv) {
       apiKey: raw.AI_API_KEY,
       dailyBudgetUsd: raw.AI_DAILY_BUDGET_USD,
       model: raw.AI_MODEL,
+      modelPrices: raw.AI_MODEL_PRICES,
     },
     hey: {
       chainId: raw.HEY_CHAIN_ID,
@@ -686,6 +721,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'ai.apiKey': 'AI_API_KEY',
   'ai.dailyBudgetUsd': 'AI_DAILY_BUDGET_USD',
   'ai.model': 'AI_MODEL',
+  'ai.modelPrices': 'AI_MODEL_PRICES',
   'hey.chainId': 'HEY_CHAIN_ID',
   'hey.status': 'HEY_TOKEN_STATUS',
   'hey.tokenAddress': 'HEY_TOKEN_ADDRESS',

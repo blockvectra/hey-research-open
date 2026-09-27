@@ -709,11 +709,22 @@ export function renderUnlocks(page: HeyUnlocks): string {
   return `Scheduled HoodLock unlocks, next ${page.days} days (FACT from the locker's own records; an unlock date is when supply may move, not that it will):\n${lines.join('\n')}\n${shownOf(page.items.length, page.total, 'The API lists at most 100; ask for fewer days.')}\nHoodLock only: locks at other lockers are not read.\n\n${page.disclaimer}`;
 }
 
+/**
+ * A code week's substance (2026-09-27): the verdict is DERIVED by its
+ * classifier version, the sentence restates the API's own. Never stronger
+ * than the API: an unread week says it is unread.
+ */
+export function codeSubstanceLine(substance: { verdict: string; classifierVersion: string; summary: string } | undefined): string {
+  if (!substance) return '';
+  const verdict = substance.verdict === 'LOW_INFORMATION' ? 'documentation or maintenance only' : substance.verdict === 'SUBSTANTIVE' ? 'changed code' : 'substance not fully read';
+  return `\n  DERIVED what changed (${substance.classifierVersion}): ${verdict}. ${substance.summary}`;
+}
+
 export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
   const shown = timeline.items.slice(0, limit);
   const lines = shown.map(
     (item) =>
-      `- ${recordTag(item.id)} ${item.precision} ${atPrecision(item.at, item.precision)} · ${item.kind.replace(/_/g, ' ')} · ${item.title}${item.countsAsBuilding ? ' · counts as building' : ''}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}`,
+      `- ${recordTag(item.id)} ${item.precision} ${atPrecision(item.at, item.precision)} · ${item.kind.replace(/_/g, ' ')} · ${item.title}${item.countsAsBuilding ? ' · counts as building' : ''}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}${codeSubstanceLine(item.codeSubstance)}`,
   );
   /*
    * Shown of the whole, and the parameter that reads on (2026-09-26, M2 G3).
@@ -746,6 +757,12 @@ export function renderChanges(page: HeyChangesPage): string {
     const move = item.before !== undefined || item.after !== undefined ? ` (${String(item.before ?? '—')} → ${String(item.after ?? '—')})` : '';
     lines.push(`- ${recordTag(item.id)} ${when} · ${item.type} · ${item.project.name} (${item.project.slug}): ${item.summary}${move}`);
     lines.push(`  id ${item.id} · revision ${item.revision}${item.origin === 'live' ? '' : ` · ${item.origin}`} · detected ${item.detectedAt.slice(0, 10)}${item.countsAsBuilding ? ' · counts as building' : ''}`);
+    const substance = item.facts?.['codeSubstance'];
+    if (typeof substance === 'string') {
+      const verdict = substance === 'LOW_INFORMATION' ? 'documentation or maintenance only — not counted as building' : substance === 'SUBSTANTIVE' ? 'changed code' : 'substance not fully read';
+      const version = item.facts?.['codeSubstanceVersion'];
+      lines.push(`  DERIVED what changed${typeof version === 'string' ? ` (${version})` : ''}: ${verdict}${typeof item.facts?.['commitsRead'] === 'number' ? `; FACT ${String(item.facts['commitsRead'])} commits read` : ''}`);
+    }
     for (const evidence of item.evidence) if (evidence.url) lines.push(`  evidence: ${evidence.label} — ${evidence.url}`);
   }
   lines.push('');

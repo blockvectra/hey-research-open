@@ -1,5 +1,7 @@
 import type { ShipEventType, VerificationStatus } from '@hey/db';
 
+import { isLowInformationCodeWeek } from './commit-substance';
+
 /**
  * Meaningful vs non-meaningful activity (PRD V4 sections 10.2, 26).
  *
@@ -85,6 +87,12 @@ export type MeaningfulInput = {
   eventType: ShipEventType;
   verificationStatus: VerificationStatus;
   moderationStatus?: string;
+  /**
+   * A code-activity week's substance (hbm-v16, founder ruling G1): null or
+   * UNKNOWN until HEY has read the week's commits, which counts as it always
+   * has; LOW_INFORMATION — documentation or maintenance only — does not count.
+   */
+  codeSubstance?: string | null | undefined;
 };
 
 /**
@@ -97,6 +105,14 @@ export type MeaningfulInput = {
 export function isMeaningful(input: MeaningfulInput): boolean {
   if (input.moderationStatus && input.moderationStatus !== 'APPROVED') return false;
   if (significanceOf(input.eventType) === 'NOT_MEANINGFUL') return false;
+  /*
+   * A week of commits that only changed documentation, the README, lockfiles,
+   * generated output, assets or whitespace is activity, not building
+   * (hbm-v16, founder ruling G1). It stays on the record as context; it moves
+   * no status, momentum, badge or count. A week HEY has not read yet is not
+   * this: unread is never demoted.
+   */
+  if (isLowInformationCodeWeek(input)) return false;
   return isCorroborated(input.verificationStatus);
 }
 

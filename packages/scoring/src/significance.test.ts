@@ -116,4 +116,14 @@ describe('isMeaningful', () => {
       true,
     );
   });
+
+  it('leaves a documentation-or-maintenance-only code week out, and only that (hbm-v16, G1)', () => {
+    const week = { eventType: 'CODE_ACTIVITY', verificationStatus: 'SOURCE_LINKED' } as const;
+    expect(isMeaningful({ ...week, codeSubstance: 'LOW_INFORMATION' })).toBe(false);
+    expect(isMeaningful({ ...week, codeSubstance: 'SUBSTANTIVE' })).toBe(true);
+    expect(isMeaningful({ ...week, codeSubstance: 'UNKNOWN' })).toBe(true);
+    expect(isMeaningful({ ...week, codeSubstance: null })).toBe(true);
+    // The substance of a code week never reaches another kind of ship.
+    expect(isMeaningful({ eventType: 'GITHUB_RELEASE', verificationStatus: 'PUBLICLY_VERIFIED', codeSubstance: 'LOW_INFORMATION' })).toBe(true);
+  });
 });

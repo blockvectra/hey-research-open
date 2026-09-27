@@ -193,4 +193,45 @@ describe('a date the clock has not reached', () => {
 
     expect(result.meaningfulEventCount).toBe(1);
   });
+
+  describe('a week of documentation or maintenance only is not building (hbm-v16, founder ruling G1)', () => {
+    const code = (days: number, codeSubstance?: string | null): ScoredEvent => ({
+      eventType: 'CODE_ACTIVITY',
+      verificationStatus: 'SOURCE_LINKED',
+      publishedAt: daysAgo(days),
+      sourceKind: 'GITHUB',
+      ...(codeSubstance === undefined ? {} : { codeSubstance }),
+    });
+
+    it('a README-only week no longer makes a project SHIPPING', () => {
+      // RED before hbm-v16: one human commit, even a README edit, read as "Shipped 1 day ago".
+      const result = derive([code(1, 'LOW_INFORMATION'), ship(40)]);
+      expect(result.status).toBe('QUIET');
+      expect(result.lastMeaningfulShipAt).toEqual(daysAgo(40));
+      expect(result.meaningfulEventCount).toBe(1);
+    });
+
+    it('with nothing else, a documentation-only week leaves the project DORMANT on coverage, UNKNOWN without', () => {
+      expect(derive([code(1, 'LOW_INFORMATION')]).status).toBe('DORMANT');
+      expect(derive([code(1, 'LOW_INFORMATION')], false).status).toBe('UNKNOWN');
+    });
+
+    it('a week HEY has not read yet counts as it always has', () => {
+      expect(derive([code(1, 'UNKNOWN')]).status).toBe('SHIPPING');
+      expect(derive([code(1, null)]).status).toBe('SHIPPING');
+      expect(derive([code(1)]).status).toBe('SHIPPING');
+    });
+
+    it('a substantive week counts', () => {
+      expect(derive([code(1, 'SUBSTANTIVE')]).status).toBe('SHIPPING');
+    });
+
+    it('a documentation-only week does not hide a substantive one in the same week from another repository', () => {
+      const substantive = { ...code(3, 'SUBSTANTIVE') };
+      const docsOnly = { ...code(2, 'LOW_INFORMATION') };
+      const result = derive([docsOnly, substantive]);
+      expect(result.status).toBe('SHIPPING');
+      expect(result.lastMeaningfulShipAt).toEqual(daysAgo(3));
+    });
+  });
 });

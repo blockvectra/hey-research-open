@@ -15,6 +15,12 @@ export type TimelineItem = {
   publishedAt: Date;
   verificationStatus: string;
   sourceUrl?: string;
+  /**
+   * One plain sentence about what a week of code activity changed
+   * (2026-09-27): "Documentation or maintenance only — not counted as
+   * building", or what HEY read. Worded by the domain, shown as text.
+   */
+  substanceNote?: string;
 };
 
 export function BuildTimeline({
@@ -67,6 +73,10 @@ export function BuildTimeline({
 
           {plainText(item.summary) ? (
             <p className="mt-2 text-sm leading-relaxed text-hey-ink/80 [overflow-wrap:anywhere]">{plainText(item.summary)}</p>
+          ) : null}
+
+          {item.substanceNote ? (
+            <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{item.substanceNote}</p>
           ) : null}
 
           {item.sourceUrl ? (

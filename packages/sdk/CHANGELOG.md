@@ -8,6 +8,7 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ### Added
 
+- `HeyCodeSubstance`, and `codeSubstance?` on `HeyShip` and `HeyTimelineEntry` (2026-09-27): what a week of code activity changed — the verdict (`SUBSTANTIVE`, `LOW_INFORMATION`, `UNKNOWN`, derived by `classifierVersion`), whether it counts as building, the commit counts, changed files by class and one plain sentence. Absent on every other ship and on a week HEY never evaluated.
 - `research.source_changed` is a webhook event type (`HeyWebhookEventType`, `WEBHOOK_EVENT_TYPES`): HEY delivers it since 2026-09-27.
 
 ## 0.1.1 — 2026-09-27

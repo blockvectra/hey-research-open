@@ -6,6 +6,7 @@
  * means HEY does not know.
  */
 import type { HeyListingTotals } from './contracts';
+import type { HeyCodeSubstance } from './projects';
 
 /* ------------------------------------------------------------------- chain */
 
@@ -296,6 +297,8 @@ export type HeyTimelineEntry = {
   eventType?: string;
   verification?: string;
   countsAsBuilding: boolean;
+  /** A code-activity week's substance (2026-09-27); see `HeyCodeSubstance`. */
+  codeSubstance?: HeyCodeSubstance;
   source?: string;
   /** `marketCapKind` is `fdv` when the valuation is price × total supply (2026-09-25); no valuation for a market HEY records as gone. */
   marketAround?: {

@@ -91,8 +91,17 @@ export type ScanResult = {
   unresolvedWindows: { from: number; to: number }[];
   /** Last provider error, so a degraded scan can explain itself. */
   lastError?: string;
-  /** True when the request budget ran out before reaching `toBlock`. */
+  /** True when the scan stopped before reaching `toBlock`, for whatever reason. */
   truncated: boolean;
+  /**
+   * Why it stopped short, when it did (2026-09-27): the request budget ran
+   * out (`request_cap`), the provider kept refusing (`rate_limited`), or it
+   * kept failing (`provider_error`). In every case `lastIndexedBlock` is the
+   * last block actually read, so the next run resumes there.
+   */
+  stopReason?: 'request_cap' | 'rate_limited' | 'provider_error';
+  /** Failed requests that were not rate limits (gateway errors, resets, malformed answers). */
+  errors: number;
 };
 
 const logSchema = z.object({
@@ -129,6 +138,25 @@ const rpcSchema = z.object({
   error: z.object({ code: z.number().optional(), message: z.string() }).optional(),
 });
 
+/**
+ * What a failed `eth_getLogs` means (2026-09-27).
+ *
+ * Only an answer that says the range was too much — a timeout, a result or
+ * response ceiling, a range limit — is a reason to ask for a smaller window.
+ * Everything else (a 502 page, a reset connection, a body that is not
+ * JSON-RPC, an answer with no result at all) is the provider failing, which
+ * says nothing about the blocks. Reading those as "too dense" is what lost
+ * 2026-09-25 17:05–18:07 UTC: a brief outage halved every factory's window
+ * to the floor in a dozen back-to-back requests and stepped over it.
+ */
+export function classifyLogsError(message: string): 'rate_limited' | 'dense' | 'transient' {
+  if (/too many requests|429|503|rate limit|rate limited/i.test(message)) return 'rate_limited';
+  if (/timeout|timed out|aborted|more than \d+ results|too many results|results? (set )?(limit|size)|response (is )?too (large|big)|response size|exceed|block range|range (is )?too (large|wide)|query returned/i.test(message)) {
+    return 'dense';
+  }
+  return 'transient';
+}
+
 /** One 32-byte data word as a `0x…` hex string, when the data has it; an address sits left-padded. */
 const dataWord = (data: string | undefined, word: number | undefined): string | undefined => {
   if (!data || word === undefined) return undefined;
@@ -154,6 +182,14 @@ export const RATE_LIMIT_BACKOFF_MS = 3_000;
 export const RATE_LIMIT_BACKOFF_MAX_MS = 30_000;
 /** Refusals tolerated in one scan before it stops and leaves the rest to the next run. */
 export const MAX_RATE_LIMIT_HITS = 12;
+/**
+ * A provider failure that is not a rate limit waits before the same window is
+ * asked again, and after this many in one scan the scan stops where it last
+ * read (2026-09-27). Four attempts over about seven seconds ride out a blip;
+ * a longer outage costs one run's progress, never a window.
+ */
+export const TRANSIENT_ERROR_BACKOFF_MS = 1_000;
+export const MAX_TRANSIENT_ERRORS = 4;
 const ADDRESS_FROM_TOPIC = (topic: string): string => `0x${topic.slice(-40)}`.toLowerCase();
 
 export type ScanOptions = {
@@ -186,9 +222,15 @@ export async function scanFactory(
   let lastIndexedBlock = options.fromBlock > 0 ? options.fromBlock - 1 : 0;
   let lastError: string | undefined;
   let backoff = RATE_LIMIT_BACKOFF_MS;
+  let errors = 0;
+  let stopReason: ScanResult['stopReason'];
   const maxRequests = options.maxRequests ?? 400;
 
-  while (from <= options.toBlock && requests < maxRequests) {
+  while (from <= options.toBlock) {
+    if (requests >= maxRequests) {
+      stopReason = 'request_cap';
+      break;
+    }
     const to = Math.min(from + chunk, options.toBlock);
 
     const body = JSON.stringify({
@@ -219,8 +261,13 @@ export async function scanFactory(
       // backing off — turning throttling into permanent coverage gaps.
       if (response.status === 429 || response.status === 503) {
         parsed = { error: { message: `http ${response.status} rate limited` } };
+      } else if (!response.ok) {
+        // A gateway page is not JSON-RPC; its status is the whole answer.
+        parsed = { error: { message: `http ${response.status}` } };
       } else {
         parsed = rpcSchema.parse(await response.json());
+        // An envelope with neither is not "no logs here" (2026-09-27).
+        if (!parsed.result && !parsed.error) parsed = { error: { message: 'answer carried neither a result nor an error' } };
       }
     } catch (cause) {
       parsed = {
@@ -231,16 +278,28 @@ export async function scanFactory(
     const error = parsed.error?.message;
     if (error) {
       lastError = error;
-      // Timeouts and aborts mean "too much data", so they shrink the window.
-      // Everything else that is not clearly a dense range is backed off first.
-      const rateLimited = /too many|429|503|rate limit|rate limited/i.test(error);
-      if (rateLimited) {
+      const kind = classifyLogsError(error);
+      if (kind === 'rate_limited') {
         rateLimitHits += 1;
         // Too many refusals in one run is the provider's answer: stop here
         // (resumable from `lastIndexedBlock`) rather than wait out the hour.
-        if (rateLimitHits > MAX_RATE_LIMIT_HITS) break;
+        if (rateLimitHits > MAX_RATE_LIMIT_HITS) {
+          stopReason = 'rate_limited';
+          break;
+        }
         await sleep(backoff);
         backoff = Math.min(backoff * 2, RATE_LIMIT_BACKOFF_MAX_MS);
+        continue;
+      }
+      if (kind === 'transient') {
+        // The provider failed; the window is as it was. Wait, ask again, and
+        // after a few failures stop where the last read ended.
+        errors += 1;
+        if (errors >= MAX_TRANSIENT_ERRORS) {
+          stopReason = 'provider_error';
+          break;
+        }
+        await sleep(TRANSIENT_ERROR_BACKOFF_MS * 2 ** (errors - 1));
         continue;
       }
       // A timeout means the window was too dense, not that it was empty.
@@ -295,6 +354,8 @@ export async function scanFactory(
     rateLimitHits,
     unresolvedWindows,
     truncated: from <= options.toBlock,
+    ...(from <= options.toBlock && stopReason ? { stopReason } : {}),
+    errors,
     ...(lastError ? { lastError } : {}),
   };
 }

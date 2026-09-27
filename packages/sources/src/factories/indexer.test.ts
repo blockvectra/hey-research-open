@@ -4,9 +4,11 @@ import { readFixture, stubFetch, testContext } from '../testing';
 import {
   decodeEventString,
   MAX_RATE_LIMIT_HITS,
+  MAX_TRANSIENT_ERRORS,
   RATE_LIMIT_BACKOFF_MAX_MS,
   RATE_LIMIT_BACKOFF_MS,
   scanFactory,
+  TRANSIENT_ERROR_BACKOFF_MS,
 } from './indexer';
 import { factoryById } from './registry';
 
@@ -190,6 +192,74 @@ describe('scanFactory', () => {
     expect(result.truncated).toBe(true);
     // The resume point is the last block actually covered, never the target.
     expect(result.lastIndexedBlock).toBe(4_000_001);
+  });
+
+  /*
+   * The 2026-09-25 17:05–18:07 UTC loss, reproduced (2026-09-27). The public
+   * RPC failed briefly while the hourly run was scanning: every failure was
+   * read as "the window is too dense", the window was halved to the floor in
+   * a dozen back-to-back requests, stepped over, and the resume block moved
+   * past it. Twenty-four factories reported "2 windows could not be scanned"
+   * and the next healthy run erased the message. A gateway error is not
+   * evidence of density: the scan backs off and stops where it last read.
+   */
+  it('stops at the last block it read when the provider fails, instead of stepping over the window', async () => {
+    const slept: number[] = [];
+    const stub = stubFetch({ status: 502, body: '<html><body>502 Bad Gateway</body></html>' });
+
+    const result = await scanFactory(
+      factory,
+      { rpcUrl: 'https://rpc.example', fromBlock: 1_000, toBlock: 37_000, sleep: async (ms) => { slept.push(ms); } },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+
+    expect(result.unresolvedWindows).toEqual([]);
+    expect(result.lastIndexedBlock).toBe(999);
+    expect(result.truncated).toBe(true);
+    expect(result.stopReason).toBe('provider_error');
+    expect(result.lastError).toMatch(/502/);
+    // It paused between attempts rather than burning the window in milliseconds.
+    expect(slept.every((ms) => ms >= TRANSIENT_ERROR_BACKOFF_MS)).toBe(true);
+    expect(stub.callCount()).toBe(MAX_TRANSIENT_ERRORS);
+  });
+
+  it('reads an answer with neither a result nor an error as a failure, not as an empty window', async () => {
+    const stub = stubFetch({ status: 200, body: JSON.stringify({ jsonrpc: '2.0', id: 1 }) });
+
+    const result = await scanFactory(
+      factory,
+      { rpcUrl: 'https://rpc.example', fromBlock: 500, toBlock: 600, sleep: noSleep },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+
+    expect(result.lastIndexedBlock).toBe(499);
+    expect(result.truncated).toBe(true);
+    expect(result.stopReason).toBe('provider_error');
+  });
+
+  it('rides out a short outage and loses nothing', async () => {
+    const stub = stubFetch([{ status: 502, body: 'bad gateway' }, { throws: new TypeError('fetch failed') }, logs([{ address: token, block: 550, tx: '0xt3' }])]);
+
+    const result = await scanFactory(
+      factory,
+      { rpcUrl: 'https://rpc.example', fromBlock: 500, toBlock: 600, sleep: noSleep },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+
+    expect(result.launches.map((launch) => launch.contractAddress)).toEqual([token]);
+    expect(result.lastIndexedBlock).toBe(600);
+    expect(result.truncated).toBe(false);
+    expect(result.errors).toBe(2);
+  });
+
+  it('says why it stopped when the request budget runs out', async () => {
+    const stub = stubFetch(logs([]));
+    const result = await scanFactory(
+      factory,
+      { rpcUrl: 'https://rpc.example', fromBlock: 0, toBlock: 10_000_000, maxRequests: 2, sleep: noSleep },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+    expect(result.stopReason).toBe('request_cap');
   });
 
   it('records a window it could not resolve rather than silently skipping it', async () => {

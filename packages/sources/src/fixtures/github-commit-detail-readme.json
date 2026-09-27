@@ -1,0 +1,31 @@
+{
+  "sha": "bbb2222000000000000000000000000000000000",
+  "parents": [
+    {
+      "sha": "pbbb2222"
+    }
+  ],
+  "stats": {
+    "additions": 2,
+    "deletions": 2,
+    "total": 4
+  },
+  "files": [
+    {
+      "filename": "README.md",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "patch": "@@ -3 +3 @@\n-Fast.\n+Very fast."
+    },
+    {
+      "filename": "pnpm-lock.yaml",
+      "status": "modified",
+      "additions": 1,
+      "deletions": 1,
+      "changes": 2,
+      "patch": "@@ -10 +10 @@\n-  version: 1.0.0\n+  version: 1.0.1"
+    }
+  ]
+}

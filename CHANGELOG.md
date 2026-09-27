@@ -6,6 +6,35 @@ record.
 
 ## 2026-09-27
 
+- **Launch factory windows are no longer lost when the RPC fails.** The hourly factory scan used to
+  step over a block window the RPC would not answer and never read it again; on 2026-09-25 that lost
+  every launch between 17:05 and 18:07 UTC. A failing RPC now stops the scan where it last read, a
+  window that cannot be read is recorded and re-read by later runs, and each run re-reads a small
+  overlap. The missed windows are recovered with `data:rescan-launchpads`.
+- **Launches are named far faster.** Names and tickers are read through Multicall3, a hundred tokens a
+  request, so a launch from this hour gets a name within the hour.
+- **New tokens that trade are found within the hour.** Bitquery discovery also reads the last three
+  hours, hourly, beside the daily thirty-day sweep.
+- **A new project is judged by the quality gate within the quarter hour,** not at the next daily sweep.
+  The gate itself is unchanged.
+- **Where a token was first seen is kept** (`first_seen_source`), separately from the source HEY
+  trusts it by.
+
+- **`AI_PROVIDER` accepts `disabled` or `anthropic` only.** `openai` used to be accepted and then did
+  nothing; it is now a configuration error at boot. `AI_MODEL_PRICES` (JSON, USD per million tokens)
+  overrides the price table the optional research interpretation is costed from.
+- **A week of commits that only changed documentation is not building (scoring version `hbm-v16`).**
+  HEY now reads what each commit changed, once per commit: a week in which every commit only touched
+  documentation or the README, dependency lockfiles, generated files, assets or whitespace is shown as
+  "documentation or maintenance only" and no longer counts toward activity status, Build Momentum,
+  badges or ship counts. A week HEY has not read yet counts as before. Commit messages, authors and
+  patches are not stored. Merge commits are no longer counted in a commit summary.
+- **Still Building needs a ship beyond commits.** Like Under the Radar, at least one of the updates in
+  its 30-day window must be something other than a weekly commit summary.
+- **`codeSubstance` on ships and timeline entries.** A week of code activity carries its verdict (derived,
+  with the classifier version) and the counts behind it; `/api/changes` restates it as facts on
+  `build.code_activity`. The Terminal's Code tab says what each week changed and lists the commits HEY read.
+
 - **A launchpad template's verified source is not the project's.** A verified-contract timeline item
   for a copy of a launchpad template (such as `PonsV2LauncherToken` or `HoodToken`), or for a bytecode
   match to source published for another contract, stays on the page as context. It no longer counts

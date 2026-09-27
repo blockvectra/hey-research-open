@@ -182,6 +182,10 @@ evidence behind it.
   token's market page. An address there is a point on a chart of one supply — never a person, never
   scored, never ranked across tokens, never an input to any status or score.
 - **Absent means unknown.** A figure HEY has not measured is omitted, never published as zero.
+- **A model is never the source of truth.** AI-assisted interpretation is optional and off by
+  default; when on, it reads only HEY's own evidence, cites it by id, is labelled as an
+  interpretation, and never moves a status, a score or a rank. `AI_PROVIDER` accepts `disabled` or
+  `anthropic` only.
 - **Every claim carries its source.** And none of them is a buy signal.
 
 The full rules, with the thresholds they use, are on [the methodology page](https://heyresearch.xyz/methodology).

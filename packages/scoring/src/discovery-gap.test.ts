@@ -211,4 +211,41 @@ describe('still building', () => {
   it('excludes hidden projects', () => {
     expect(evaluateStillBuilding({ ...base, isHidden: true }).eligible).toBe(false);
   });
+
+  describe('commit summaries alone are not a ship (hbm-v16, founder ruling G2)', () => {
+    const code = (days: number, codeSubstance?: string | null): ScoredEvent => ({
+      eventType: 'CODE_ACTIVITY',
+      verificationStatus: 'SOURCE_LINKED',
+      publishedAt: daysAgo(days),
+      sourceKind: 'GITHUB',
+      ...(codeSubstance === undefined ? {} : { codeSubstance }),
+    });
+
+    it('refuses a drawdown whose only updates are weeks of commits', () => {
+      const result = evaluateStillBuilding({ ...base, events: [code(2), code(9), code(16)] });
+      expect(result.eligible).toBe(false);
+      expect(result.reason).toBe('No verified update beyond commit activity in the last 30 days.');
+    });
+
+    it('keeps the badge when one of the updates is a release', () => {
+      expect(evaluateStillBuilding({ ...base, events: [code(2), code(9), ship(20)] }).eligible).toBe(true);
+    });
+
+    it('does not count a documentation-only week toward the two updates', () => {
+      // A release and a README-only week: one update, not two.
+      const result = evaluateStillBuilding({ ...base, events: [code(2, 'LOW_INFORMATION'), ship(20)] });
+      expect(result.eligible).toBe(false);
+      expect(result.reason).toContain('Fewer than 2');
+      // The same week before HEY read its substance counts, as it always has.
+      expect(evaluateStillBuilding({ ...base, events: [code(2, 'UNKNOWN'), ship(20)] }).eligible).toBe(true);
+      expect(evaluateStillBuilding({ ...base, events: [code(2, null), ship(20)] }).eligible).toBe(true);
+    });
+
+    it('holds Under the Radar to the same rule it has kept since hbm-v6', () => {
+      const radar = { activityStatus: 'SHIPPING' as const, hbm: 60, now, marketDataFresh: true };
+      expect(isUnderTheRadarEligible({ ...radar, events: [code(2), code(9)] })).toBe(false);
+      expect(isUnderTheRadarEligible({ ...radar, events: [code(2), ship(9)] })).toBe(true);
+      expect(isUnderTheRadarEligible({ ...radar, events: [code(2, 'LOW_INFORMATION'), ship(9)] })).toBe(false);
+    });
+  });
 });

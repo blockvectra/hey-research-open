@@ -134,6 +134,13 @@ export const STILL_BUILDING = {
    * the top of everything HEY itself had ever observed.
    */
   minDrawdownAgeDays: 7,
+  /**
+   * At least one meaningful event in the window must be more than a commit
+   * summary (hbm-v16, founder ruling G2, 2026-09-27), the rule Under the
+   * Radar has kept since hbm-v6. Seven of thirteen badges on the day of the
+   * ruling rested on commit summaries alone: work, not yet a ship.
+   */
+  requireShipBeyondCommits: true,
 } as const;
 
 /** PRD V4 section 12.1. Thresholds are configuration, never hardcoded in UI. */

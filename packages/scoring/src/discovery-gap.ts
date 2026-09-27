@@ -124,9 +124,13 @@ export function isUnderTheRadarEligible(input: EligibilityInput): boolean {
   const recent = meaningfulIn30Days(input.events, input.now);
   if (recent.length < UNDER_THE_RADAR.minMeaningfulEvents30d) return false;
   // A commit summary is evidence of work, not of a ship (hbm-v6).
-  if (UNDER_THE_RADAR.requireShipBeyondCommits && !recent.some((event) => event.eventType !== 'CODE_ACTIVITY')) return false;
+  if (UNDER_THE_RADAR.requireShipBeyondCommits && !hasShipBeyondCommits(recent)) return false;
   return true;
 }
+
+/** A meaningful event that is not a code-activity summary: a release, a deploy follow-up, a feature, a docs update. */
+export const hasShipBeyondCommits = (events: readonly ScoredEvent[]): boolean =>
+  events.some((event) => event.eventType !== 'CODE_ACTIVITY');
 
 export type StillBuildingInput = EligibilityInput & {
   /** Current market cap or FDV, whichever the provider reported. */
@@ -134,6 +138,12 @@ export type StillBuildingInput = EligibilityInput & {
   /** Highest value HEY itself observed in the tracked window — not a canonical ATH. */
   trackedHighUsd?: number;
   trackedHighAt?: Date;
+  /**
+   * Overrides `STILL_BUILDING.requireShipBeyondCommits` for one call. Only the
+   * substance impact report sets it, to replay the rules before hbm-v16; the
+   * scorer never does.
+   */
+  requireShipBeyondCommits?: boolean;
 };
 
 export type StillBuildingResult = {
@@ -165,6 +175,15 @@ export function evaluateStillBuilding(input: StillBuildingInput): StillBuildingR
       eligible: false,
       shipsSinceDecline: 0,
       reason: `Fewer than ${STILL_BUILDING.minMeaningfulEvents30d} verified updates in the last 30 days.`,
+    };
+  }
+
+  // Commits are work, not yet a ship (hbm-v16, founder ruling G2): the same rule as Under the Radar.
+  if ((input.requireShipBeyondCommits ?? STILL_BUILDING.requireShipBeyondCommits) && !hasShipBeyondCommits(recent)) {
+    return {
+      eligible: false,
+      shipsSinceDecline: 0,
+      reason: 'No verified update beyond commit activity in the last 30 days.',
     };
   }
 

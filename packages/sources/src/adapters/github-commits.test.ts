@@ -45,6 +45,16 @@ describe('GitHub commits adapter', () => {
     expect(result.data?.commits.filter((commit) => commit.isBot).map((commit) => commit.sha)).toEqual(['bot0001']);
   });
 
+  it('marks a commit with two parents as a merge, whatever its message (2026-09-27)', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('github-commits.json') });
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.data?.commits.filter((commit) => commit.isMerge).map((commit) => commit.sha)).toEqual(['eee5555', 'ggg7777']);
+    // A plain message does not hide a merge from the structure.
+    expect(result.data?.commits.find((commit) => commit.sha === 'ggg7777')).toMatchObject({ isBot: false, isMerge: true });
+    expect(result.data?.commits.find((commit) => commit.sha === 'aaa1111')?.isMerge).toBe(false);
+  });
+
   it('drops commits with no usable date', async () => {
     const stub = stubFetch({ status: 200, body: readFixture('github-commits.json') });
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));

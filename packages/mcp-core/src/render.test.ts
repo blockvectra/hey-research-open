@@ -324,6 +324,40 @@ describe('get_project_timeline', () => {
     expect(text).toContain('- FACT OBSERVED HEY saw it 2026-09-18 · verification');
     expect(text).not.toContain('Each entry is a FACT');
   });
+
+  it('restates what a code week changed as DERIVED, and says when it does not count (2026-09-27, G1)', () => {
+    const files = { source: 0, test: 0, docs: 0, readme: 3, dependency: 1, config: 0, ci: 0, generated: 0, asset: 0, whitespace: 0, rename: 0, unknown: 0 };
+    const text = renderTimeline({
+      ...fx.timeline,
+      items: [
+        {
+          id: 'ship:0c0c0000-0000-0000-0000-000000000001',
+          kind: 'code',
+          at: '2026-09-14T00:00:00.000Z',
+          precision: 'WEEK',
+          title: 'Active development: 4 commits in the last 90 days across 1 contributor',
+          countsAsBuilding: false,
+          codeSubstance: {
+            verdict: 'LOW_INFORMATION',
+            classifierVersion: 'commit-substance-v1',
+            countsAsBuilding: false,
+            commitsListed: 4,
+            commitsRead: 4,
+            changedCode: 0,
+            documentationOrMaintenance: 4,
+            substanceUnknown: 0,
+            notRead: 0,
+            files,
+            weekFullyListed: true,
+            summary: 'Documentation or maintenance only — not counted as building. 4 commits read: 4 documentation or maintenance only.',
+          },
+        },
+      ],
+    });
+    expect(text).toContain('DERIVED what changed (commit-substance-v1): documentation or maintenance only. Documentation or maintenance only — not counted as building.');
+    expect(text).not.toContain('counts as building —');
+    expect(text).not.toMatch(/fake|gaming|padding/i);
+  });
 });
 
 describe('get_project_coverage', () => {

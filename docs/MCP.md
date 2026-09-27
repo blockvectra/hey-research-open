@@ -163,6 +163,13 @@ rules the answer must keep. A prompt fetches nothing.
   send is a "valuation", never a "market cap". A withheld valuation says it is withheld. In
   `project_diff` each end carries its own kind, and two ends of different kinds are said to be
   two measures, not one figure moving.
+- **Says what a week of commits changed, at the API's strength** (2026-09-27): in
+  `get_project_timeline` a code week carries `DERIVED what changed (commit-substance-v1):
+  changed code | documentation or maintenance only | substance not fully read` and the API's own
+  sentence; in `get_changes` a `build.code_activity` event carries the same verdict and the
+  FACT count of commits read. A documentation-only week says it is not counted as building; an
+  unread week says it is unread, never that it is documentation. No commit message or author is
+  ever in an answer.
 - **Counts only what HEY could read.** An on-chain event sum over a window with unreadable days
   says "over the N days HEY could read", and the rest are unknown, never zero.
 - **Carries the source**, and ends with a `resource_link` to the JSON it was rendered from.

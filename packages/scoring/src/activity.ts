@@ -21,6 +21,11 @@ export type ScoredEvent = {
   moderationStatus?: string;
   /** A GitHub prerelease (hbm-v11): collapsed to one per UTC ISO week, like code activity. */
   prerelease?: boolean;
+  /**
+   * A code-activity week's substance (hbm-v16, G1): `LOW_INFORMATION` is not
+   * meaningful; null, absent or `UNKNOWN` — not read yet — counts as before.
+   */
+  codeSubstance?: string | null;
 };
 
 export type ActivityInput = {

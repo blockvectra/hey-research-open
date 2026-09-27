@@ -3,45 +3,139 @@
     "sha": "aaa1111",
     "commit": {
       "message": "feat: autonomous execution\n\nbody",
-      "author": { "name": "Ada", "date": "2026-08-30T10:00:00Z" }
+      "author": {
+        "name": "Ada",
+        "date": "2026-08-30T10:00:00Z"
+      }
     },
-    "author": { "login": "ada", "type": "User" }
+    "author": {
+      "login": "ada",
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "paaa1111"
+      }
+    ]
   },
   {
     "sha": "bbb2222",
     "commit": {
       "message": "fix: retry handling",
-      "author": { "name": "Ada", "date": "2026-08-30T12:00:00Z" }
+      "author": {
+        "name": "Ada",
+        "date": "2026-08-30T12:00:00Z"
+      }
     },
-    "author": { "login": "ada", "type": "User" }
+    "author": {
+      "login": "ada",
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "pbbb2222"
+      }
+    ]
   },
   {
     "sha": "ccc3333",
     "commit": {
       "message": "refactor: split runtime",
-      "author": { "name": "Lin", "date": "2026-08-29T09:00:00Z" }
+      "author": {
+        "name": "Lin",
+        "date": "2026-08-29T09:00:00Z"
+      }
     },
-    "author": { "login": "lin", "type": "User" }
+    "author": {
+      "login": "lin",
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "pccc3333"
+      }
+    ]
   },
   {
     "sha": "ddd4444",
     "commit": {
       "message": "chore(deps): bump lodash from 1 to 2",
-      "author": { "name": "dependabot", "date": "2026-08-29T09:30:00Z" }
+      "author": {
+        "name": "dependabot",
+        "date": "2026-08-29T09:30:00Z"
+      }
     },
-    "author": { "login": "dependabot[bot]", "type": "Bot" }
+    "author": {
+      "login": "dependabot[bot]",
+      "type": "Bot"
+    },
+    "parents": [
+      {
+        "sha": "pddd4444"
+      }
+    ]
   },
   {
     "sha": "eee5555",
     "commit": {
       "message": "Merge pull request #12 from agentos/x",
-      "author": { "name": "Ada", "date": "2026-08-28T08:00:00Z" }
+      "author": {
+        "name": "Ada",
+        "date": "2026-08-28T08:00:00Z"
+      }
     },
-    "author": { "login": "ada", "type": "User" }
+    "author": {
+      "login": "ada",
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "p1"
+      },
+      {
+        "sha": "p2"
+      }
+    ]
+  },
+  {
+    "sha": "ggg7777",
+    "commit": {
+      "message": "Sync with upstream",
+      "author": {
+        "name": "Lin",
+        "date": "2026-08-28T09:00:00Z"
+      }
+    },
+    "author": {
+      "login": "lin",
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "p3"
+      },
+      {
+        "sha": "p4"
+      }
+    ]
   },
   {
     "sha": "fff6666",
-    "commit": { "message": "docs: quickstart", "author": { "name": "Lin", "date": null } },
-    "author": { "login": "lin", "type": "User" }
+    "commit": {
+      "message": "docs: quickstart",
+      "author": {
+        "name": "Lin",
+        "date": null
+      }
+    },
+    "author": {
+      "login": "lin",
+      "type": "User"
+    },
+    "parents": [
+      {
+        "sha": "pfff6666"
+      }
+    ]
   }
 ]

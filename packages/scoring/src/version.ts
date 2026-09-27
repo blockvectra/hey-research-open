@@ -137,7 +137,20 @@
  * strictly older than the seven-day floor; a same-day release no longer
  * counts as building "since the decline".
  */
-export const SCORING_VERSION = 'hbm-v15' as const;
+/*
+ * hbm-v16 (2026-09-27, founder rulings G1 and G2): no weight or threshold
+ * change. (1) A week of code activity HEY read in full and found to be
+ * documentation or maintenance only — README, docs, dependency lockfiles,
+ * generated output, assets, whitespace or pure renames
+ * (`commit-substance-v1`) — is not meaningful: it moves no activity status,
+ * Build Momentum, badge, signal count or qualification count. A week HEY has
+ * not read yet (null or UNKNOWN) counts exactly as before; the absence of
+ * HEY's reading never demotes a project. (2) Still Building requires a
+ * meaningful event beyond commit summaries in its 30-day window, as Under the
+ * Radar has since hbm-v6. (3) Merge commits (more than one parent) are no
+ * longer counted in commit summaries, beside the message rule.
+ */
+export const SCORING_VERSION = 'hbm-v16' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

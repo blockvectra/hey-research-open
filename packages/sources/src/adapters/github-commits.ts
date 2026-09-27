@@ -20,6 +20,8 @@ export const githubCommitsSchema = z.array(
       author: z.object({ name: z.string().nullish(), date: z.string().nullish() }).nullish(),
     }),
     author: z.object({ login: z.string().nullish(), type: z.string().nullish() }).nullish(),
+    /** More than one parent is a merge (2026-09-27): counted by structure, not only by its message. */
+    parents: z.array(z.object({ sha: z.string() })).nullish(),
   }),
 );
 
@@ -30,6 +32,12 @@ export type GithubCommit = {
   committedAt: Date;
   /** Bot and automated commits are excluded from activity summaries. */
   isBot: boolean;
+  /**
+   * A merge commit: more than one parent (2026-09-27). It integrates work
+   * already listed as its own commits, so it is not counted as another one —
+   * whatever its message says. False when GitHub did not list the parents.
+   */
+  isMerge: boolean;
 };
 
 /**
@@ -130,6 +138,7 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
                     (login !== undefined && BOT_LOGIN.test(login)) ||
                     (authorName !== undefined && BOT_LOGIN.test(authorName)) ||
                     BOT_MESSAGE.test(message),
+                  isMerge: (entry.parents?.length ?? 0) > 1,
                   ...opt('authorLogin', login),
                 } satisfies GithubCommit;
               })

@@ -110,6 +110,25 @@ describe('isAiEnabled', () => {
   });
 });
 
+describe('AI provider configuration (2026-09-27)', () => {
+  it('refuses a provider HEY cannot call, with a message that says why', () => {
+    const result = safeParseServerEnv({ ...minimalEnv, AI_PROVIDER: 'openai', AI_API_KEY: 'test-key', AI_DAILY_BUDGET_USD: '5' });
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.variables).toContain('AI_PROVIDER');
+      expect(result.issues.join('\n')).toMatch(/Only the Anthropic adapter is wired/);
+    }
+  });
+
+  it('reads per-model prices as JSON and refuses a malformed table', () => {
+    const env = parseServerEnv({ ...minimalEnv, AI_MODEL_PRICES: '{"claude-sonnet-5":{"inputPerMTok":2,"outputPerMTok":10}}' });
+    expect(env.ai.modelPrices).toEqual({ 'claude-sonnet-5': { inputPerMTok: 2, outputPerMTok: 10 } });
+    expect(parseServerEnv(minimalEnv).ai.modelPrices).toBeUndefined();
+    expect(safeParseServerEnv({ ...minimalEnv, AI_MODEL_PRICES: 'not json' }).ok).toBe(false);
+    expect(safeParseServerEnv({ ...minimalEnv, AI_MODEL_PRICES: '{"m":{"inputPerMTok":-1,"outputPerMTok":1}}' }).ok).toBe(false);
+  });
+});
+
 describe('chain provider slugs', () => {
   it('defaults both market providers to the live Robinhood Chain slug', () => {
     const env = parseServerEnv(minimalEnv);

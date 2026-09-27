@@ -11,3 +11,4 @@ export * from './intelligence';
 export * from './momentum';
 export * from './market-integrity';
 export * from './valuation-kind';
+export * from './commit-substance';

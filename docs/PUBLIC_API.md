@@ -353,6 +353,44 @@ identical to a slug that never existed, which is what the pages do too.
   status; `changes.buildMomentum.current` is then `null`, and a zero velocity, streak or comeback
   count is `null` (velocity `state: NOT_MEASURED`). A positive count is a record and stays.
 
+### What a week of commits changed: `codeSubstance` (2026-09-27)
+
+A week of code activity (`eventType: "CODE_ACTIVITY"`) carries `codeSubstance` on `ships[]`,
+`/api/ships` and `/api/projects/{slug}/timeline` entries, once HEY has evaluated the week. It is
+absent on every other ship and on a week never evaluated — never a zero. Additive; no field
+changed meaning.
+
+```json
+"codeSubstance": {
+  "verdict": "SUBSTANTIVE",
+  "classifierVersion": "commit-substance-v1",
+  "countsAsBuilding": true,
+  "commitsListed": 14, "commitsRead": 3, "changedCode": 1,
+  "documentationOrMaintenance": 2, "substanceUnknown": 0, "notRead": 11,
+  "files": { "source": 2, "test": 1, "docs": 0, "readme": 2, "dependency": 0, "config": 0, "ci": 0,
+             "generated": 0, "asset": 0, "whitespace": 0, "rename": 0, "unknown": 0 },
+  "weekFullyListed": true,
+  "summary": "3 commits read: 1 changed code, 2 documentation or maintenance only. 11 other commits were not needed to decide the week."
+}
+```
+
+- The counts are **FACT**s about the human, non-merge commits HEY listed and read (`files` counts
+  changed files by class over the commits read). `verdict` is **DERIVED** by `classifierVersion`.
+- `SUBSTANTIVE`: at least one commit changed source code, tests, configuration or CI beyond
+  whitespace. `LOW_INFORMATION`: HEY listed and read every commit of the week and each only changed
+  documentation or the README, dependency lockfiles, generated files, assets, whitespace or pure
+  renames — shown as "documentation or maintenance only", `countsAsBuilding: false`, and left out
+  of activity status, Build Momentum, Still Building, Under the Radar and every count of ships
+  (scoring version `hbm-v16`, founder ruling G1). `UNKNOWN`: not read in full yet; it counts
+  exactly as before — the absence of HEY's reading never demotes a project.
+- A `LOW_INFORMATION` week is not listed by `/api/ships` or a project's `ships[]` (they list
+  building); the project's `/timeline` keeps it, with `countsAsBuilding: false`.
+- `/api/changes` restates it on `build.code_activity` as flat facts: `codeSubstance`,
+  `codeSubstanceVersion`, `commitsListed`, `commitsRead`, `commitsChangedCode`,
+  `commitsDocumentationOrMaintenance`, `commitsSubstanceUnknown`, `commitsNotRead`.
+- HEY does not store or return commit messages, authors or patches. Merge commits (more than one
+  parent) and automated commits are not counted; a merged pull request alone is not a ship.
+
 ### What the dossier adds (2026-09-17)
 
 - `ships` — the project's newest five ships, each as `GET /api/ships?project=` would list it. A bare
@@ -1108,7 +1146,7 @@ status move — so each change is one event, not two.
 
 | Type | From | `occurredAt` |
 |---|---|---|
-| `build.release`, `build.ship`, `build.code_activity` | a ship (releases; other building types; a weekly code summary) | the publication, EXACT/DATE/WEEK |
+| `build.release`, `build.ship`, `build.code_activity` | a ship (releases; other building types; a weekly code summary). A code summary carries its week's substance as facts since 2026-09-27 (`codeSubstance` and counts, see `/api/projects/{slug}`); a documentation-only week has no `countsAsBuilding` | the publication, EXACT/DATE/WEEK |
 | `contract.deployed`, `contract.followup_deployed` | a deploy ship (the launch record; a later contract from the project's deployer) | the block time |
 | `contract.implementation_changed` | the implementation history: an upgrade log (id `impl:<chainId>:<address>:<block>:<logIndex>`), or a change HEY saw between two reads (`impl:<chainId>:<address>:rpc:<uuid>`, with the upgrade ship as evidence, never a second event). An old log indexed late is `origin: "backfill"` | the block time, EXACT (log); null, OBSERVED (two reads) |
 | `contract.source_verified`, `contract.source_unverified`, `contract.interface_changed` | an explorer ABI diff (counts only; the names stay in the Terminal) | null, OBSERVED |
