@@ -6,6 +6,10 @@ record.
 
 ## 2026-09-27
 
+- **Ask HEY answers in one step and shows its progress.** With the research interpretation on, pressing
+  Enter asks for it too; while it is written the page shows how long it has been working and fills in
+  the answer by itself. A failed attempt offers "Try again". The model call now has 90 seconds, where it
+  had the few seconds every other source gets and the first answer timed out.
 - **A commit that only rewrites data files is not building (`hbm-v17`, classifier `commit-substance-v2`).**
   JSON, CSV and similar data files outside configuration are their own class, `data`; a week whose
   commits only changed data (with or without documentation) is "documentation or maintenance only".
