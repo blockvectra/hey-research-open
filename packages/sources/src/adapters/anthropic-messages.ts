@@ -43,7 +43,7 @@ export function createAnthropicMessagesAdapter(): SourceAdapter<MessagesInput, M
   return {
     name: 'anthropic',
     canHandle(input) {
-      return Boolean(input.apiKey) && Boolean(input.model) && input.maxTokens > 0 && input.maxTokens <= 4096;
+      return Boolean(input.apiKey) && Boolean(input.model) && input.maxTokens > 0 && input.maxTokens <= 8192;
     },
     async fetch(input, ctx: SourceContext): Promise<SourceResult<MessagesOutput>> {
       return performSourceFetch(
