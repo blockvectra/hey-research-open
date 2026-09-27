@@ -6,6 +6,9 @@ record.
 
 ## 2026-09-27
 
+- **The SDK and the MCP server are on npm.** `npm i @hey-research-lab/sdk` and
+  `npx -y @hey-research-lab/mcp` (0.1.0, tags `sdk-v0.1.0` and `mcp-v0.1.0`). The scope is
+  `@hey-research-lab`; the bin `hey-research-mcp` and the SDK's user agent are unchanged.
 - **A package is the project's own only on evidence its publisher cannot type.** A package whose
   homepage points at the project's website is now shown as a claim, like one that only names the
   project's repository: an official link, a verified build attestation or a Go module path is

@@ -281,9 +281,8 @@ minute. See [the public read API](/docs/public-api) for every endpoint, field an
 [the MCP server](/docs/mcp) to give an assistant the same index, read-only.
 
 If you write TypeScript or JavaScript, the card call above is one typed method in HEY's SDK
-(2026-09-19). The package is built and tested in the repository but **not on npm yet** — the
-`@hey-research-lab` scope does not exist, so `npm i @hey-research-lab/sdk` does not resolve; build it
-with `pnpm --filter @hey-research-lab/sdk build` until it is published. The shapes come with it:
+(2026-09-19), on npm since 2026-09-27 as `@hey-research-lab/sdk` — `npm i @hey-research-lab/sdk`.
+The shapes come with it:
 
 ```ts
 import { HeyClient } from '@hey-research-lab/sdk';

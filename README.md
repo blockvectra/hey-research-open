@@ -80,16 +80,21 @@ tooling stay in the private repository.
 
 ## Quickstart
 
+Use the packages from npm (published 27 September 2026):
+
+```bash
+npm i @hey-research-lab/sdk                                   # the typed client
+claude mcp add hey-research -- npx -y @hey-research-lab/mcp   # the MCP server
+```
+
+Or build this tree:
+
 ```bash
 pnpm install
 pnpm lint && pnpm typecheck && pnpm test     # 686 tests, no network
 pnpm --filter @hey-research-lab/sdk build        # packages/sdk/dist
 pnpm --filter @hey-research-lab/mcp build        # apps/mcp/dist/index.js
 ```
-
-> **Not on npm yet** (checked 19 September 2026). The `@hey-research-lab` scope has not been created,
-> so `npm i @hey-research-lab/sdk` and `npx -y @hey-research-lab/mcp` do not resolve. Build from this tree
-> until they do; the package names and the commands above will not change.
 
 ## Use the API
 

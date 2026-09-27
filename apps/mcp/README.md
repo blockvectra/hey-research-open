@@ -1,10 +1,11 @@
 # @hey-research-lab/mcp
 
-> **Not yet published to npm; build from source.** Until the first release the
-> `npx` lines below do not resolve. Clone the repository, run
-> `pnpm install && pnpm --filter @hey-research-lab/mcp build`, and point your
-> assistant at `node /absolute/path/to/apps/mcp/dist/index.js` — or use the
-> hosted endpoint, which needs nothing installed.
+```sh
+npx -y @hey-research-lab/mcp          # Node 20 or newer
+```
+
+Or use the hosted endpoint, which needs nothing installed:
+`claude mcp add --transport http hey-research https://heyresearch.xyz/mcp`.
 
 [HEY Research](https://heyresearch.xyz) as tools an assistant can call, over the
 [Model Context Protocol](https://modelcontextprotocol.io). HEY is the

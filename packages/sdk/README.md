@@ -1,8 +1,8 @@
 # @hey-research-lab/sdk
 
-> **Not yet published to npm; build from source.** Until the first release the
-> `npm install` line below does not resolve. Clone the repository and run
-> `pnpm install && pnpm --filter @hey-research-lab/sdk build`.
+```sh
+npm install @hey-research-lab/sdk
+```
 
 Typed client for the [HEY Research](https://heyresearch.xyz) public API — the
 builder-discovery layer for Robinhood Chain. It answers one question: **which

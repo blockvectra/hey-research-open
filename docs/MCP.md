@@ -47,14 +47,15 @@ loopback host is refused at start-up). `market_integrity` follows the site's own
 
 ### Local
 
-**The npm package is not published yet** (the `@hey-research-lab` scope has not been created),
-so `npx -y @hey-research-lab/mcp` does not resolve. Build it from source (Node 20 or newer):
+On npm since 2026-09-27 as `@hey-research-lab/mcp` (Node 20 or newer):
 
 ```bash
-# in a clone of HEY's public repository
-pnpm install && pnpm --filter @hey-research-lab/mcp build
-claude mcp add hey-research -- node /absolute/path/to/hey-research/apps/mcp/dist/index.js
+claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 ```
+
+To run a change of your own, build it from a clone instead —
+`pnpm install && pnpm --filter @hey-research-lab/mcp build` — and point the assistant at
+`node /absolute/path/to/hey-research/apps/mcp/dist/index.js`.
 
 **Claude Desktop** — in `claude_desktop_config.json`:
 

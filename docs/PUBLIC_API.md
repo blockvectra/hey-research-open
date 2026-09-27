@@ -100,15 +100,11 @@ Since 2026-09-19 the same API is also a typed client, so nobody has to retype th
 this page. It is a thin fetch wrapper with no dependencies, ESM and CJS, Node 18 or a browser;
 it holds no data and no credential beyond the key you hand it.
 
-**It is not on npm yet** (checked 2026-09-19): the `@hey-research-lab` scope does not exist, so
-`npm i @hey-research-lab/sdk` does not resolve. Until the lab creates the organisation and the
-publish token, build it from the repository:
+It is on npm since 2026-09-27:
 
 ```bash
-pnpm install && pnpm --filter @hey-research-lab/sdk build   # packages/sdk/dist
+npm i @hey-research-lab/sdk
 ```
-
-Once published, the install is `npm i @hey-research-lab/sdk` and nothing else on this page changes.
 
 ```ts
 import { HeyClient, HeyApiError } from '@hey-research-lab/sdk';
