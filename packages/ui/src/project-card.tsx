@@ -10,6 +10,7 @@ import {
   formatVerification,
   plainText,
   isFullyDiluted,
+  tickerLabel,
 } from './format';
 import { ProjectLogo } from './project-logo';
 import { ActivityChip, type ActivityStatusValue, showsNoBuilderSignal, StillBuildingBadge } from './status';
@@ -254,7 +255,7 @@ export function ProjectCard({
            * line, secondary tone, so the identity still leads.
            */}
           <p className="hey-telemetry mt-1 truncate text-hey-secondary">
-            {project.symbol ? <span data-testid="ticker">${project.symbol}</span> : null}
+            {project.symbol ? <span data-testid="ticker">{tickerLabel(project.symbol)}</span> : null}
             {project.symbol && project.primaryNarrative ? <span aria-hidden="true"> · </span> : null}
             {project.primaryNarrative ? (
               <span data-testid="card-narrative" className="normal-case">{project.primaryNarrative.name}</span>

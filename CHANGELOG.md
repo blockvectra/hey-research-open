@@ -6,6 +6,22 @@ record.
 
 ## 2026-09-27
 
+- **A package is the project's own only on evidence its publisher cannot type.** A package whose
+  homepage points at the project's website is now shown as a claim, like one that only names the
+  project's repository: an official link, a verified build attestation or a Go module path is
+  needed. Packages accepted the old way were reclassified, and their matches to releases were taken
+  back. Claims are never checked for advisories.
+- **A token verified only by the explorer matching its bytecode is not the project's own verified
+  source.** No timeline item is recorded for it any more, and the two recorded before the fix stay
+  on the page as context.
+- **Coverage's `contractSource` reads every watched contract, not the token alone.** A project whose
+  token is a launchpad template but which published source for another contract of its own now says
+  `source_verified_project_authored_other_contract` and links its contracts.
+- **"No repository held" is unknown, not "not applicable"** in the snapshot's `developerFootprint`
+  and the MCP, matching coverage in the same payload.
+- **Ask HEY treats what a site or index typed as quoted data.** API paths, version strings and
+  advisory summaries are quoted and never stated as HEY's own fact.
+
 - **Search understands more, and everywhere the same way.** One matcher now serves the homepage and
   `/search` suggestions, `/search` itself, the `?q=` box on every listing and the Research Terminal. It
   finds a project by name, ticker, `$ticker`, token contract (or its first characters), a contract the
@@ -48,6 +64,16 @@ record.
 - **Source authority.** Every source HEY reads now has a written answer to "what may it prove":
   a DEX profile, a package registry and an MCP listing are context only; a model's reading is a
   candidate only.
+- **One docs page is one source.** A project page no longer lists the same docs page twice
+  (`/docs` and `/docs#quickstart`, a `www.` twin, a skip link such as `#content-area`), and an
+  `llms.txt` file is no longer listed as docs. Duplicates already on pages were merged.
+- **Docs of a site that is not the project's own are context.** When HEY holds a project's
+  declared website as not its own (a copied token carrying a famous project's site), docs and
+  feeds read from that site are shown as context, never as the project's official docs.
+- **Official-site changes are withdrawn with the site.** A `research.source_changed` event in
+  `/api/changes` is retracted, and its receipt answers withdrawn, once the site it describes stops
+  being the project's own — for every kind of change, including sitemap, llms.txt and API
+  description changes.
 - **More of a contract's calls have names.** A call the decoder could not name is named when the
   contract's own verified source declares the function, so `activity.methods.buckets.named` on
   `/api/contracts/{chainId}/{address}` now includes those calls and `undecoded` shrinks to the few
@@ -180,6 +206,20 @@ record.
   `get_contract`, `get_project_coverage`, `ask_hey`), and explains coverage reasons an agent could
   misread — "none found in the package index" is a reading of that index, not "no package". Still
   fourteen tools.
+
+- **Escape really closes the search list.** Pressing Escape while a search field said "Searching…"
+  hid the list, and the answer arriving a moment later opened it again. Escape now cancels the
+  lookup, on the homepage, `/search`, the listing boxes and in the Research Terminal.
+- **Tickers print one `$`.** A token whose symbol is stored with its own sigil read `$$LOCK` in
+  both search lists, on cards and on its page; it reads `$LOCK` everywhere now. What the API
+  returns is unchanged.
+- **The Research Terminal reads more plainly.** The Overview's evidence rows now restate the same
+  coverage states as "What HEY still doesn't know" (one could say "Releases · Not enough yet" while
+  the other, correctly, did not list releases); security context says "no open advisory" once for
+  a project's clean packages instead of once per package; promotion sightings say "Boost", "Ad" or
+  "Enhanced token profile" instead of a provider's channel code, and one boost seen twice on a day
+  is one line; "Whose code" gives its answer first and once; Build › Code names each repository
+  once, its declared facts under its activity row.
 
 ## 2026-09-26
 

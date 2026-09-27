@@ -653,9 +653,10 @@ dimension, and a count only where that state says it was measured:
   read); `NOT_READ`, `ERROR` or `NOT_APPLICABLE` (no official repository). A dated record of an
   environment, never activity: never who deployed, never a commit here.
 - `packages` — `{ state, reason, asOf?, accepted?, claimed? }` (`package`): packages an official
-  source, attestation, module path or the official domain ties to the project (`accepted`) and
-  packages that only name an official repository (`claimed`). No counts while the package index has
-  not been asked. A package publication is never a ship.
+  source, attestation or module path ties to the project (`accepted`) and packages that rest only
+  on what their publisher typed — naming an official repository, or a homepage on the official
+  site (`claimed`, since 2026-09-27). No counts while the package index has not been asked. A
+  package publication is never a ship.
 - `advisories` — `{ state, reason, asOf?, current?, subject: "PUBLISHED_PACKAGE" }`
   (`securityContext`): current OSV advisories about accepted packages' published versions; `current`
   only once OSV was read. An advisory is about a published version, never a verdict on the project.
@@ -721,7 +722,11 @@ advisories about an accepted package's published version, or deps.dev's Scorecar
 another contract), `source_verified_project_authored` (source published for this address, on the
 explorer or on Sourcify), `source_verified_authorship_unconfirmed` (verified; how is not read yet),
 or `source_not_verified`. Every verified reason starts `source_verified`, and a template is never
-counted as the project's own. `contractInterface` says
+counted as the project's own. The dimension reads every watched contract of the project, not the
+token alone (review repair, 2026-09-27): when the token is not project-authored but a declared or
+follow-up contract is, the reason is `source_verified_project_authored_other_contract` with a
+`detailUrl` to `/api/projects/{slug}/contracts`, and a tokenless project with such a contract is
+`MEASURED` rather than `NOT_APPLICABLE`. `contractInterface` says
 `changes_since_first_read_template_interface` for a template's interface.
 
 `locks` reads HoodLock only: `hoodlock_only_none_found` is a reading of HoodLock, not of every

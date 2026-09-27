@@ -530,7 +530,12 @@ class ProjectLinks {
     const site = this.baseHost === undefined ? undefined : registrableHost(this.baseHost);
     const sameDomain = site !== undefined && registrableHost(host) === site;
     const isDocs = sameDomain && (host.startsWith('docs.') || /^\/docs(\/|$)/i.test(parsed.pathname));
-    if (isDocs && this.docs.size < MAX_LINKS_PER_KIND) this.docs.add(resolved);
+    // One docs page is one link: a #fragment (a skip link, an in-page anchor) names the same page and
+    // must not use up this kind's slots (review repair, 2026-09-27).
+    if (isDocs && this.docs.size < MAX_LINKS_PER_KIND) {
+      parsed.hash = '';
+      this.docs.add(parsed.toString());
+    }
   }
 }
 

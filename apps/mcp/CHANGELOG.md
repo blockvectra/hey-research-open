@@ -6,6 +6,14 @@ All notable changes to `@hey-research/mcp` are recorded here. The format follows
 
 ## Unreleased
 
+### Fixed
+
+- **`get_project_snapshot` no longer states "no repository held" as a FACT**
+  (2026-09-27): the line follows its coverage state, so `NO_SOURCE` reads
+  `UNKNOWN official repositories: none held`. A claimed package is described as
+  resting only on what its publisher typed. `get_project_coverage` explains the
+  new `source_verified_project_authored_other_contract` reason.
+
 ### Added
 
 - **The free-data context on the tools that already existed** (2026-09-27):

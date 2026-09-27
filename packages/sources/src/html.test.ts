@@ -171,3 +171,15 @@ describe('hostile links (audit G S8, brief §47)', () => {
     expect(extractHtmlMetadata(page).forgeUrls).toHaveLength(10);
   });
 });
+
+describe('a docs page is one link whatever its anchor (review repair, 2026-09-27)', () => {
+  it('drops the #fragment, so skip links and in-page anchors do not use up the docs slots', () => {
+    const page = [
+      '<a href="/docs#main">skip</a>',
+      '<a href="/docs#install">install</a>',
+      '<a href="/docs">docs</a>',
+      '<a href="/docs/api#top">api</a>',
+    ].join('');
+    expect(extractHtmlMetadata(page, 'https://example.org/').docsUrls).toEqual(['https://example.org/docs', 'https://example.org/docs/api']);
+  });
+});

@@ -72,6 +72,7 @@ export const DIMENSION_WORDS: Record<HeyCoverageDimension, string> = {
 export const REASON_WORDS: Readonly<Record<string, string>> = {
   none_found_in_package_index: 'the package index lists none for its official repositories — a reading of that index only, not "no package"',
   no_repository_no_package: 'no repository and no package: a package is not expected here',
+  no_official_repository: 'HEY holds repositories for this project, none marked official, so it reads none of their metadata',
   claimed_package_links_only: "packages only claim an official repository; none is confirmed as the project's own",
   package_lookup_not_run: 'the package index has not been asked yet',
   accepted_package_links: 'packages an official source ties to the project',
@@ -93,6 +94,7 @@ export const REASON_WORDS: Readonly<Record<string, string>> = {
   source_verified_template_token: 'verified source is a launchpad template, not project-authored code',
   source_verified_explorer_matched: 'verified by a bytecode match to source published for another contract',
   source_verified_project_authored: 'source published for this address',
+  source_verified_project_authored_other_contract: 'the token is not project-authored, but another watched contract of the project has source published for its own address',
   source_verified_authorship_unconfirmed: 'verified; how the explorer came to hold the source is not read yet',
   changes_since_first_read_template_interface: "a template's interface, counted from HEY's first read",
 };
@@ -271,9 +273,10 @@ export function economicsLines(e: HeyProtocolEconomics | undefined, coverage: He
 export function footprintLines(f: HeyDeveloperFootprint): string[] {
   const read = (at: string | undefined) => (at ? `, read ${at.slice(0, 10)}` : '');
   const r = f.repositories;
+  // "None held" is a gap unless coverage says repositories do not apply (review repair, 2026-09-27): the tag follows the state.
   const repos =
-    r.state === 'NOT_APPLICABLE'
-      ? '- FACT official repositories: none held (not applicable)'
+    r.official === 0
+      ? `- ${coverageTag(r.state)} official repositories: none held (${r.state}, ${reasonWords(r.reason)})`
       : `- ${coverageTag(r.state)} official repositories: ${r.official}; metadata read for ${r.metadataRead} (${r.state}, ${reasonWords(r.reason)})`;
   const d = f.productionDeployment;
   const deployment =
@@ -287,7 +290,7 @@ export function footprintLines(f: HeyDeveloperFootprint): string[] {
   const k = f.packages;
   const packages =
     k.accepted !== undefined && k.claimed !== undefined && (k.accepted > 0 || k.claimed > 0)
-      ? `- ${coverageTag(k.state)} packages: ${k.accepted} accepted as the project's own, ${k.claimed} claimed (a claim only names an official repository). A package publication is never a ship.`
+      ? `- ${coverageTag(k.state)} packages: ${k.accepted} accepted as the project's own, ${k.claimed} claimed (a claim rests only on what its publisher typed, such as an official repository or homepage). A package publication is never a ship.`
       : `- ${coverageTag(k.state)} packages: ${k.state} (${reasonWords(k.reason)})`;
   const a = f.advisories;
   const advisories =

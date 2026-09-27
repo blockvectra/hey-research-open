@@ -105,8 +105,22 @@ describe('get_project_snapshot: developer footprint', () => {
     expect(text).not.toMatch(/\b0 (accepted|current)/);
     const held: HeyDeveloperFootprint = { ...unread, packages: { state: 'MEASURED', reason: 'accepted_package_links', accepted: 1, claimed: 2 }, advisories: { state: 'MEASURED', reason: 'advisories_about_published_package', current: 1, subject: 'PUBLISHED_PACKAGE' } };
     const withPackages = footprintLines(held).join('\n');
-    expect(withPackages).toContain("- FACT packages: 1 accepted as the project's own, 2 claimed (a claim only names an official repository). A package publication is never a ship.");
+    expect(withPackages).toContain("- FACT packages: 1 accepted as the project's own, 2 claimed (a claim rests only on what its publisher typed, such as an official repository or homepage). A package publication is never a ship.");
     expect(withPackages).toContain("- FACT 1 current advisory about accepted packages' published versions — about a published version, never a verdict on the project");
+  });
+
+  it('tags a project with no repository held UNKNOWN, never FACT (uniswap-v3, review repair 2026-09-27)', () => {
+    const none: HeyDeveloperFootprint = {
+      repositories: { state: 'NO_SOURCE', reason: 'no_repository', official: 0, metadataRead: 0 },
+      productionDeployment: { state: 'NOT_APPLICABLE' },
+      packages: { state: 'NO_SOURCE', reason: 'no_repository' },
+      advisories: { state: 'NOT_APPLICABLE', reason: 'no_accepted_package', subject: 'PUBLISHED_PACKAGE' },
+      contextOnly: true,
+      coverageUrl: 'https://heyresearch.xyz/api/projects/uniswap-v3/coverage',
+    };
+    const text = footprintLines(none).join('\n');
+    expect(text).toContain('- UNKNOWN official repositories: none held (NO_SOURCE, no_repository)');
+    expect(text).not.toContain('FACT official repositories');
   });
 
   it('is unknown, never absent-as-none, when the snapshot carries no footprint', () => {

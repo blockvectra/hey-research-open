@@ -636,7 +636,7 @@ by what the page says about itself.
 
 Adapter: `packages/sources/src/adapters/site-wellknown.ts`; authority: every provider HEY
 records is classified in `packages/domain/src/sources/authority.ts` (what it may prove, whether
-it can create a ship, its cadence), with an exhaustiveness test over every discovery value.
+it can create a ship), with an exhaustiveness test over every discovery value and a test pinning each flag to its writer.
 
 ---
 

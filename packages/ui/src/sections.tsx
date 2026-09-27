@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from './cn';
-import { formatRelativeTime, formatUsdCompact } from './format';
+import { formatRelativeTime, formatUsdCompact, tickerLabel } from './format';
 import { ActivityChip, type ActivityStatusValue } from './status';
 
 /**
@@ -76,7 +76,7 @@ export function FeaturedCard({ project, now }: { project: FeaturedProject; now?:
         </h3>
         {project.symbol ? (
           <span className="max-w-[40%] shrink-0 truncate text-sm text-hey-secondary">
-            ${project.symbol}
+            {tickerLabel(project.symbol)}
           </span>
         ) : null}
       </div>

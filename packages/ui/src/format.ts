@@ -329,3 +329,15 @@ export function formatSharePct(value: number): string {
   if (value > 0 && value < 0.01) return '<0.01';
   return String(Math.round(value * 100) / 100);
 }
+
+/**
+ * A ticker as printed: one `$`, however the token stored it (review 2,
+ * 2026-09-27). Some launchers store the symbol with its sigil ("$LOCK"), and
+ * every surface prefixed another, so Hoodlock read "$$LOCK" in both search
+ * lists, on cards and on its page. Matching already ignored the sigil; this is
+ * the one place a surface adds it. A sigil-only symbol stays as given.
+ */
+export function tickerLabel(symbol: string): string {
+  const bare = symbol.trim().replace(/^\$+/, '').trim();
+  return bare ? `$${bare}` : symbol.trim();
+}
