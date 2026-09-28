@@ -1,0 +1,363 @@
+-- A synthetic slice of the Open Dev Data DSL (HEY test fixture, 2026-09-28).
+-- Shapes follow github.com/electric-capital/open-dev-data; names are invented.
+
+ecoadd Ethereum
+ecoadd Base
+ecoadd Polygon
+ecoadd Optimism
+ecoadd 'BNB Chain'
+ecoadd "Wallet Co"
+ecoadd Catcoin
+ecoadd Robinhood
+ecoadd Arbitrum
+ecoadd Oraclenet
+ecoadd Doomed
+ecocon Ethereum "Wallet Co"
+ecocon Ethereum Oraclenet
+ecocon Ethereum Robinhood
+ecocon 'BNB Chain' Catcoin
+# a hash comment line
+repadd Ethereum https://github.com/owner1/app
+repadd Ethereum https://github.com/owner2/app
+repadd Ethereum https://github.com/owner3/app
+repadd Ethereum https://github.com/owner4/app
+repadd Ethereum https://github.com/owner5/app
+repadd Ethereum https://github.com/owner6/app
+repadd Ethereum https://github.com/owner7/app
+repadd Ethereum https://github.com/owner8/app
+repadd Ethereum https://github.com/owner9/app
+repadd Ethereum https://github.com/owner10/app
+repadd Ethereum https://github.com/owner11/app
+repadd Ethereum https://github.com/owner12/app
+repadd Ethereum https://github.com/owner13/app
+repadd Ethereum https://github.com/owner14/app
+repadd Ethereum https://github.com/owner15/app
+repadd Ethereum https://github.com/owner16/app
+repadd Ethereum https://github.com/owner17/app
+repadd Ethereum https://github.com/owner18/app
+repadd Ethereum https://github.com/owner19/app
+repadd Ethereum https://github.com/owner20/app
+repadd Ethereum https://github.com/owner21/app
+repadd Ethereum https://github.com/owner22/app
+repadd Ethereum https://github.com/owner23/app
+repadd Ethereum https://github.com/owner24/app
+repadd Ethereum https://github.com/owner25/app
+repadd Ethereum https://github.com/owner26/app
+repadd Ethereum https://github.com/owner27/app
+repadd Ethereum https://github.com/owner28/app
+repadd Ethereum https://github.com/owner29/app
+repadd Ethereum https://github.com/owner30/app
+repadd Ethereum https://github.com/owner31/app
+repadd Ethereum https://github.com/owner32/app
+repadd Ethereum https://github.com/owner33/app
+repadd Ethereum https://github.com/owner34/app
+repadd Ethereum https://github.com/owner35/app
+repadd Ethereum https://github.com/owner36/app
+repadd Ethereum https://github.com/owner37/app
+repadd Ethereum https://github.com/owner38/app
+repadd Ethereum https://github.com/owner39/app
+repadd Ethereum https://github.com/owner40/app
+repadd Ethereum https://github.com/owner41/app
+repadd Ethereum https://github.com/owner42/app
+repadd Ethereum https://github.com/owner43/app
+repadd Ethereum https://github.com/owner44/app
+repadd Ethereum https://github.com/owner45/app
+repadd Ethereum https://github.com/owner46/app
+repadd Ethereum https://github.com/owner47/app
+repadd Ethereum https://github.com/owner48/app
+repadd Ethereum https://github.com/owner49/app
+repadd Ethereum https://github.com/owner50/app
+repadd Ethereum https://github.com/owner51/app
+repadd Ethereum https://github.com/owner52/app
+repadd Ethereum https://github.com/owner53/app
+repadd Ethereum https://github.com/owner54/app
+repadd Ethereum https://github.com/owner55/app
+repadd Ethereum https://github.com/owner56/app
+repadd Ethereum https://github.com/owner57/app
+repadd Ethereum https://github.com/owner58/app
+repadd Ethereum https://github.com/owner59/app
+repadd Ethereum https://github.com/owner60/app
+repadd "Wallet Co" https://github.com/walletco/mobile #wallet
+repadd "Wallet Co" https://github.com/walletco/extension
+repadd "Wallet Co" https://github.com/walletco/core
+repadd "Wallet Co" https://github.com/walletco/snaps
+repadd "Wallet Co" https://github.com/walletco/docs
+repadd "Wallet Co" https://github.com/walletco/sdk
+repadd "Wallet Co" https://github.com/walletco/contracts
+repadd "Wallet Co" https://github.com/walletco/old-name
+repadd "Wallet Co" https://github.com/fan/walletco-theme
+repadd Ethereum https://github.com/walletco/mobile
+repadd Catcoin https://github.com/kr105/catcoin
+repadd Catcoin https://github.com/kr105/ironcat
+repadd Catcoin https://github.com/catcoin-official/token
+repadd Catcoin https://github.com/catcoin-official/audit
+repadd Catcoin https://github.com/catcoin-official/assets
+repadd Catcoin https://github.com/catcore/cataddress
+repadd Catcoin https://github.com/ahmed/catcoincore
+repadd Catcoin https://github.com/bytcoin/bytcoin
+repadd Catcoin https://github.com/ccp/copy
+repadd Catcoin https://github.com/misc/catwallet
+repadd Oraclenet https://github.com/oraclenet/node #protocol
+repadd Oraclenet https://github.com/oraclenet/contracts #protocol
+repadd Oraclenet https://github.com/oraclenet/docs #protocol
+repadd Oraclenet https://github.com/oraclenet/sdk #protocol
+repadd Oraclenet https://github.com/consumer1/feeds
+repadd Oraclenet https://github.com/consumer2/feeds
+repadd Oraclenet https://github.com/consumer3/feeds
+repadd Oraclenet https://github.com/consumer4/feeds
+repadd Oraclenet https://github.com/consumer5/feeds
+repadd Oraclenet https://github.com/consumer6/feeds
+repadd Oraclenet https://github.com/consumer7/feeds
+repadd Oraclenet https://github.com/consumer8/feeds
+repadd Oraclenet https://github.com/consumer9/feeds
+repadd Oraclenet https://github.com/consumer10/feeds
+repadd Ethereum https://github.com/acme/multichain-sdk
+repadd Base https://github.com/acme/multichain-sdk
+repadd Polygon https://github.com/acme/multichain-sdk
+repadd Optimism https://github.com/acme/multichain-sdk
+repadd 'BNB Chain' https://github.com/acme/multichain-sdk
+repadd Base https://github.com/owner1/app
+repadd Base https://github.com/owner2/app
+repadd Base https://github.com/owner3/app
+repadd Base https://github.com/owner4/app
+repadd Base https://github.com/owner5/app
+repadd Base https://github.com/owner6/app
+repadd Base https://github.com/owner7/app
+repadd Base https://github.com/owner8/app
+repadd Base https://github.com/owner9/app
+repadd Base https://github.com/owner10/app
+repadd Base https://github.com/owner11/app
+repadd Base https://github.com/owner12/app
+repadd Base https://github.com/owner13/app
+repadd Base https://github.com/owner14/app
+repadd Base https://github.com/owner15/app
+repadd Base https://github.com/owner16/app
+repadd Base https://github.com/owner17/app
+repadd Base https://github.com/owner18/app
+repadd Base https://github.com/owner19/app
+repadd Base https://github.com/owner20/app
+repadd Base https://github.com/owner21/app
+repadd Base https://github.com/owner22/app
+repadd Base https://github.com/owner23/app
+repadd Base https://github.com/owner24/app
+repadd Base https://github.com/owner25/app
+repadd Base https://github.com/owner26/app
+repadd Base https://github.com/owner27/app
+repadd Base https://github.com/owner28/app
+repadd Base https://github.com/owner29/app
+repadd Base https://github.com/owner30/app
+repadd Base https://github.com/owner31/app
+repadd Base https://github.com/owner32/app
+repadd Base https://github.com/owner33/app
+repadd Base https://github.com/owner34/app
+repadd Base https://github.com/owner35/app
+repadd Base https://github.com/owner36/app
+repadd Base https://github.com/owner37/app
+repadd Base https://github.com/owner38/app
+repadd Base https://github.com/owner39/app
+repadd Base https://github.com/owner40/app
+repadd Base https://github.com/owner41/app
+repadd Base https://github.com/owner42/app
+repadd Base https://github.com/owner43/app
+repadd Base https://github.com/owner44/app
+repadd Base https://github.com/owner45/app
+repadd Base https://github.com/owner46/app
+repadd Base https://github.com/owner47/app
+repadd Base https://github.com/owner48/app
+repadd Base https://github.com/owner49/app
+repadd Base https://github.com/owner50/app
+repadd Base https://github.com/owner51/app
+repadd Base https://github.com/owner52/app
+repadd Base https://github.com/owner53/app
+repadd Base https://github.com/owner54/app
+repadd Base https://github.com/owner55/app
+repadd Base https://github.com/owner56/app
+repadd Base https://github.com/owner57/app
+repadd Base https://github.com/owner58/app
+repadd Base https://github.com/owner59/app
+repadd Base https://github.com/owner60/app
+repadd Polygon https://github.com/owner1/app
+repadd Polygon https://github.com/owner2/app
+repadd Polygon https://github.com/owner3/app
+repadd Polygon https://github.com/owner4/app
+repadd Polygon https://github.com/owner5/app
+repadd Polygon https://github.com/owner6/app
+repadd Polygon https://github.com/owner7/app
+repadd Polygon https://github.com/owner8/app
+repadd Polygon https://github.com/owner9/app
+repadd Polygon https://github.com/owner10/app
+repadd Polygon https://github.com/owner11/app
+repadd Polygon https://github.com/owner12/app
+repadd Polygon https://github.com/owner13/app
+repadd Polygon https://github.com/owner14/app
+repadd Polygon https://github.com/owner15/app
+repadd Polygon https://github.com/owner16/app
+repadd Polygon https://github.com/owner17/app
+repadd Polygon https://github.com/owner18/app
+repadd Polygon https://github.com/owner19/app
+repadd Polygon https://github.com/owner20/app
+repadd Polygon https://github.com/owner21/app
+repadd Polygon https://github.com/owner22/app
+repadd Polygon https://github.com/owner23/app
+repadd Polygon https://github.com/owner24/app
+repadd Polygon https://github.com/owner25/app
+repadd Polygon https://github.com/owner26/app
+repadd Polygon https://github.com/owner27/app
+repadd Polygon https://github.com/owner28/app
+repadd Polygon https://github.com/owner29/app
+repadd Polygon https://github.com/owner30/app
+repadd Polygon https://github.com/owner31/app
+repadd Polygon https://github.com/owner32/app
+repadd Polygon https://github.com/owner33/app
+repadd Polygon https://github.com/owner34/app
+repadd Polygon https://github.com/owner35/app
+repadd Polygon https://github.com/owner36/app
+repadd Polygon https://github.com/owner37/app
+repadd Polygon https://github.com/owner38/app
+repadd Polygon https://github.com/owner39/app
+repadd Polygon https://github.com/owner40/app
+repadd Polygon https://github.com/owner41/app
+repadd Polygon https://github.com/owner42/app
+repadd Polygon https://github.com/owner43/app
+repadd Polygon https://github.com/owner44/app
+repadd Polygon https://github.com/owner45/app
+repadd Polygon https://github.com/owner46/app
+repadd Polygon https://github.com/owner47/app
+repadd Polygon https://github.com/owner48/app
+repadd Polygon https://github.com/owner49/app
+repadd Polygon https://github.com/owner50/app
+repadd Polygon https://github.com/owner51/app
+repadd Polygon https://github.com/owner52/app
+repadd Polygon https://github.com/owner53/app
+repadd Polygon https://github.com/owner54/app
+repadd Polygon https://github.com/owner55/app
+repadd Polygon https://github.com/owner56/app
+repadd Polygon https://github.com/owner57/app
+repadd Polygon https://github.com/owner58/app
+repadd Polygon https://github.com/owner59/app
+repadd Polygon https://github.com/owner60/app
+repadd Optimism https://github.com/owner1/app
+repadd Optimism https://github.com/owner2/app
+repadd Optimism https://github.com/owner3/app
+repadd Optimism https://github.com/owner4/app
+repadd Optimism https://github.com/owner5/app
+repadd Optimism https://github.com/owner6/app
+repadd Optimism https://github.com/owner7/app
+repadd Optimism https://github.com/owner8/app
+repadd Optimism https://github.com/owner9/app
+repadd Optimism https://github.com/owner10/app
+repadd Optimism https://github.com/owner11/app
+repadd Optimism https://github.com/owner12/app
+repadd Optimism https://github.com/owner13/app
+repadd Optimism https://github.com/owner14/app
+repadd Optimism https://github.com/owner15/app
+repadd Optimism https://github.com/owner16/app
+repadd Optimism https://github.com/owner17/app
+repadd Optimism https://github.com/owner18/app
+repadd Optimism https://github.com/owner19/app
+repadd Optimism https://github.com/owner20/app
+repadd Optimism https://github.com/owner21/app
+repadd Optimism https://github.com/owner22/app
+repadd Optimism https://github.com/owner23/app
+repadd Optimism https://github.com/owner24/app
+repadd Optimism https://github.com/owner25/app
+repadd Optimism https://github.com/owner26/app
+repadd Optimism https://github.com/owner27/app
+repadd Optimism https://github.com/owner28/app
+repadd Optimism https://github.com/owner29/app
+repadd Optimism https://github.com/owner30/app
+repadd Optimism https://github.com/owner31/app
+repadd Optimism https://github.com/owner32/app
+repadd Optimism https://github.com/owner33/app
+repadd Optimism https://github.com/owner34/app
+repadd Optimism https://github.com/owner35/app
+repadd Optimism https://github.com/owner36/app
+repadd Optimism https://github.com/owner37/app
+repadd Optimism https://github.com/owner38/app
+repadd Optimism https://github.com/owner39/app
+repadd Optimism https://github.com/owner40/app
+repadd Optimism https://github.com/owner41/app
+repadd Optimism https://github.com/owner42/app
+repadd Optimism https://github.com/owner43/app
+repadd Optimism https://github.com/owner44/app
+repadd Optimism https://github.com/owner45/app
+repadd Optimism https://github.com/owner46/app
+repadd Optimism https://github.com/owner47/app
+repadd Optimism https://github.com/owner48/app
+repadd Optimism https://github.com/owner49/app
+repadd Optimism https://github.com/owner50/app
+repadd Optimism https://github.com/owner51/app
+repadd Optimism https://github.com/owner52/app
+repadd Optimism https://github.com/owner53/app
+repadd Optimism https://github.com/owner54/app
+repadd Optimism https://github.com/owner55/app
+repadd Optimism https://github.com/owner56/app
+repadd Optimism https://github.com/owner57/app
+repadd Optimism https://github.com/owner58/app
+repadd Optimism https://github.com/owner59/app
+repadd Optimism https://github.com/owner60/app
+repadd 'BNB Chain' https://github.com/owner1/app
+repadd 'BNB Chain' https://github.com/owner2/app
+repadd 'BNB Chain' https://github.com/owner3/app
+repadd 'BNB Chain' https://github.com/owner4/app
+repadd 'BNB Chain' https://github.com/owner5/app
+repadd 'BNB Chain' https://github.com/owner6/app
+repadd 'BNB Chain' https://github.com/owner7/app
+repadd 'BNB Chain' https://github.com/owner8/app
+repadd 'BNB Chain' https://github.com/owner9/app
+repadd 'BNB Chain' https://github.com/owner10/app
+repadd 'BNB Chain' https://github.com/owner11/app
+repadd 'BNB Chain' https://github.com/owner12/app
+repadd 'BNB Chain' https://github.com/owner13/app
+repadd 'BNB Chain' https://github.com/owner14/app
+repadd 'BNB Chain' https://github.com/owner15/app
+repadd 'BNB Chain' https://github.com/owner16/app
+repadd 'BNB Chain' https://github.com/owner17/app
+repadd 'BNB Chain' https://github.com/owner18/app
+repadd 'BNB Chain' https://github.com/owner19/app
+repadd 'BNB Chain' https://github.com/owner20/app
+repadd 'BNB Chain' https://github.com/owner21/app
+repadd 'BNB Chain' https://github.com/owner22/app
+repadd 'BNB Chain' https://github.com/owner23/app
+repadd 'BNB Chain' https://github.com/owner24/app
+repadd 'BNB Chain' https://github.com/owner25/app
+repadd 'BNB Chain' https://github.com/owner26/app
+repadd 'BNB Chain' https://github.com/owner27/app
+repadd 'BNB Chain' https://github.com/owner28/app
+repadd 'BNB Chain' https://github.com/owner29/app
+repadd 'BNB Chain' https://github.com/owner30/app
+repadd 'BNB Chain' https://github.com/owner31/app
+repadd 'BNB Chain' https://github.com/owner32/app
+repadd 'BNB Chain' https://github.com/owner33/app
+repadd 'BNB Chain' https://github.com/owner34/app
+repadd 'BNB Chain' https://github.com/owner35/app
+repadd 'BNB Chain' https://github.com/owner36/app
+repadd 'BNB Chain' https://github.com/owner37/app
+repadd 'BNB Chain' https://github.com/owner38/app
+repadd 'BNB Chain' https://github.com/owner39/app
+repadd 'BNB Chain' https://github.com/owner40/app
+repadd 'BNB Chain' https://github.com/owner41/app
+repadd 'BNB Chain' https://github.com/owner42/app
+repadd 'BNB Chain' https://github.com/owner43/app
+repadd 'BNB Chain' https://github.com/owner44/app
+repadd 'BNB Chain' https://github.com/owner45/app
+repadd 'BNB Chain' https://github.com/owner46/app
+repadd 'BNB Chain' https://github.com/owner47/app
+repadd 'BNB Chain' https://github.com/owner48/app
+repadd 'BNB Chain' https://github.com/owner49/app
+repadd 'BNB Chain' https://github.com/owner50/app
+repadd 'BNB Chain' https://github.com/owner51/app
+repadd 'BNB Chain' https://github.com/owner52/app
+repadd 'BNB Chain' https://github.com/owner53/app
+repadd 'BNB Chain' https://github.com/owner54/app
+repadd 'BNB Chain' https://github.com/owner55/app
+repadd 'BNB Chain' https://github.com/owner56/app
+repadd 'BNB Chain' https://github.com/owner57/app
+repadd 'BNB Chain' https://github.com/owner58/app
+repadd 'BNB Chain' https://github.com/owner59/app
+repadd 'BNB Chain' https://github.com/owner60/app
+repadd Robinhood https://github.com/hoodbuilder/app
+repadd Arbitrum https://github.com/hoodbuilder/app
+repadd Ethereum https://github.com/plainbuilder/dapp
+repadd Doomed https://github.com/plainbuilder/dapp
+repadd Ethereum https://github.com/renamer/before

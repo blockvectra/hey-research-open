@@ -596,6 +596,19 @@ Discovery Gap or the Radar** (`packages/domain/src/footprint/neutrality.test.ts`
 | Verified | 2026-09-27: `@useboardwalk/sdk@2.1.1` → no advisory; control `axios@1.6.0` → advisories (e.g. `GHSA-35jp-ww65-95wh`, aliases, SEMVER range introduced 1.0.0, fixed 1.16.0) |
 | Reliability | Context about a published package version, never a verdict about a project; an advisory a later query no longer returns is marked cleared, not deleted |
 
+#### Open Dev Data — ecosystem ↔ repository taxonomy (Electric Capital)
+
+| | |
+| --- | --- |
+| Base URL | `https://codeload.github.com/electric-capital/open-dev-data/tar.gz/refs/heads/master` (the repository `github.com/electric-capital/open-dev-data`, formerly `crypto-ecosystems`) |
+| Licence | Data and documentation CC BY 4.0, code MIT. Attribution: "Open Dev Data by Electric Capital", https://github.com/electric-capital/open-dev-data, CC BY 4.0 |
+| Format | Dated migration files (`migrations/YYYY-MM-DDThhmmss_*`) in a small DSL — `ecoadd`, `repadd`, `ecocon`, `ecodis`, `ecorem`, `repmov`, `ecomov`, `reprem` — replayed in order; there is no released export file. HEY's replay (`packages/sources/src/adapters/open-dev-data-taxonomy.ts`) is a port of theirs and is pinned to their exporter's output on the fixture |
+| Purpose | For each GitHub repository HEY already attributes to a published project: which ecosystems list it directly, their repository and owner counts, and two candidate flags (`listed_under_other_ecosystems`, `shared_framework_candidate`) for the admin evidence inbox |
+| Not used | The parquet snapshots at `data.opendevdata.org` (commits, developer identities, locations, activity) — HEY reads no person-level data |
+| Budget | `open-dev-data` 4/day; one request a week, 304 when unchanged (~17 MB when changed) |
+| Verified | 2026-09-28, commit `7d8ef3ad`: 805 migrations replayed (24 undated files skipped, as theirs skips them), 7,670 ecosystems, 676,024 repositories, 0 replay errors; no Robinhood Chain ecosystem (`Robinhood` is the company, one repository) |
+| Reliability | A community taxonomy: a lead and a question, never identity, corroboration, a ship or building. "Not listed" is a reading of this one index |
+
 ### Official project websites and docs
 
 | | |

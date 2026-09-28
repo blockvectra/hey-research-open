@@ -46,6 +46,7 @@ depends on a live API.
 | `github-deployments` | Newest deployment to an environment named production (2026-09-27) | 30 min | ETag; name, time and commit only; context, never a ship; budget 1,000/day |
 | `depsdev-packageversions` / `-package` / `-version` / `-project` | Packages naming an official repository, their versions, the latest version's links and provenance, the repository's Scorecard checks (2026-09-27) | 1 h | Keyless deps.dev v3; no stars, forks or aggregate score; budget `depsdev` 2,000/day |
 | `osv-querybatch` / `osv-vuln` | Advisories about accepted packages' published versions (2026-09-27) | 1 h | Keyless; context, never a verdict or a score; budget `osv` 500/day |
+| `open-dev-data` | Which Open Dev Data (Electric Capital crypto-ecosystems taxonomy) ecosystems list a repository HEY already attributes (2026-09-28) | 7 d | One conditional archive request a week (ETag, 304 when unchanged); migrations replayed as their own tool does; data CC BY 4.0, "Open Dev Data by Electric Capital"; candidates for a person, never an attribution, ship or score; budget `open-dev-data` 4/day |
 
 ### On-chain activity (RPC, 2026-09-12)
 

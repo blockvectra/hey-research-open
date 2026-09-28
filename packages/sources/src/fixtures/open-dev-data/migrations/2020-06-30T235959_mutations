@@ -1,0 +1,11 @@
+-- Moves, renames and removals, replayed after the bootstrap.
+repmov https://github.com/walletco/old-name https://github.com/walletco/extension
+repmov https://github.com/renamer/before https://github.com/Renamer/After
+ecomov "Wallet Co" WalletCo
+reprem Ethereum https://github.com/owner60/app
+ecorem Doomed
+ecoadd 'Quote \'Eco'
+repadd 'Quote \'Eco' https://github.com/quoted/repo
+-- The next line names an ecosystem that does not exist: an error, and the replay continues.
+repadd Nowhere https://github.com/nowhere/repo
+ecodis Ethereum Robinhood

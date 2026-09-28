@@ -6,6 +6,12 @@ record.
 
 ## 2026-09-28
 
+- **Open Dev Data adapter.** `packages/sources` reads Electric Capital's crypto-ecosystems taxonomy
+  (Open Dev Data, data CC BY 4.0, github.com/electric-capital/open-dev-data) as one conditional
+  archive request and replays its migrations exactly as their own exporter does, with a bounded tar
+  reader and Zod-validated commands. HEY uses it only to ask which ecosystems list a repository it
+  already attributes — a question for its reviewers, never an attribution, a ship or a score. The
+  HTTP client can now return a binary body (`bodyEncoding: 'latin1'`).
 - **Security context: evidence, never a verdict.** Where a project's audit reports are published (on
   the auditor's own site, claimed by the project's official site, or listed by DefiLlama only), its
   bug-bounty program, a published security.txt contact, OSV advisories about its published packages

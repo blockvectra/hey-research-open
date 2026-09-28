@@ -36,6 +36,13 @@ export type HttpRequest = {
    */
   enforceUrlSafety?: boolean;
   maxBytes?: number;
+  /**
+   * How the body bytes become the string an adapter parses (2026-09-28).
+   * `utf8` (the default) for every text API; `latin1` maps each byte to one
+   * character, so a binary body (the Open Dev Data archive, a gzip) survives
+   * intact and `Buffer.from(body, 'latin1')` gives the bytes back.
+   */
+  bodyEncoding?: 'utf8' | 'latin1';
 };
 
 export type HttpResponse = {
@@ -94,7 +101,7 @@ const parseRetryAfterMs = (header: string | null): number | undefined => {
  * before it was refused. Now the stream is counted chunk by chunk and
  * cancelled the moment it passes the cap.
  */
-async function readBodyCapped(response: Response, maxBytes: number): Promise<string> {
+async function readBodyCapped(response: Response, maxBytes: number, encoding: 'utf8' | 'latin1' = 'utf8'): Promise<string> {
   const declared = Number(response.headers.get('content-length') ?? Number.NaN);
   if (Number.isFinite(declared) && declared > maxBytes) {
     await cancelBody(response);
@@ -104,6 +111,11 @@ async function readBodyCapped(response: Response, maxBytes: number): Promise<str
   const body = response.body;
   // A test stub may carry a string body; only a real stream is read chunk by chunk.
   if (!body || typeof (body as { getReader?: unknown }).getReader !== 'function') {
+    if (encoding === 'latin1') {
+      const bytes = Buffer.from(await response.arrayBuffer());
+      if (bytes.byteLength > maxBytes) throw new SourceError('TOO_LARGE', `response exceeded ${maxBytes} bytes`);
+      return bytes.toString('latin1');
+    }
     const text = await response.text();
     if (Buffer.byteLength(text, 'utf8') > maxBytes) throw new SourceError('TOO_LARGE', `response exceeded ${maxBytes} bytes`);
     return text;
@@ -127,7 +139,7 @@ async function readBodyCapped(response: Response, maxBytes: number): Promise<str
   } finally {
     reader.releaseLock();
   }
-  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength))).toString('utf8');
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength))).toString(encoding);
 }
 
 /** Headers that carry a secret. */
@@ -339,7 +351,7 @@ async function attemptOnce(
 
   let responseBody: string;
   try {
-    responseBody = await readBodyCapped(response, request.maxBytes ?? MAX_RESPONSE_BYTES);
+    responseBody = await readBodyCapped(response, request.maxBytes ?? MAX_RESPONSE_BYTES, request.bodyEncoding ?? 'utf8');
   } catch (error) {
     if (isAbort(error)) throw new SourceError('TIMEOUT', `reading ${currentUrl} timed out`);
     throw error;

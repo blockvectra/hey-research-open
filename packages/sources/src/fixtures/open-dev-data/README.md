@@ -1,0 +1,1 @@
+Fixture for packages/sources/src/adapters/open-dev-data.test.ts. `archive.tar.gz` is this directory packed as codeload packs the upstream repository: a pax global header carrying the commit id, then `open-dev-data-master/…`. Rebuild with `python3 build.py`.
