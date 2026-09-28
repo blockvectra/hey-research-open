@@ -310,6 +310,7 @@ export const snapshot: HeyProjectSnapshot = {
     explain: `${BASE}/api/projects/agentos/explain`,
     contracts: `${BASE}/api/projects/agentos/contracts`,
     usage: `${BASE}/api/projects/agentos/usage`,
+    relationships: `${BASE}/api/projects/agentos/relationships`,
   },
   asOf: '2026-09-25T20:00:00.000Z',
   scoringVersion: 'hbm-v15',

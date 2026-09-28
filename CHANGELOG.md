@@ -6,6 +6,35 @@ record.
 
 ## 2026-09-28
 
+- **Security context: evidence, never a verdict.** Where a project's audit reports are published (on
+  the auditor's own site, claimed by the project's official site, or listed by DefiLlama only), its
+  bug-bounty program, a published security.txt contact, OSV advisories about its published packages
+  and its repositories' Scorecard checks — each with where HEY found it and when, each in a state
+  (found, none found in the indexes named, not read, not applicable). An audit shows an audit took
+  place; it is not a guarantee of safety. No score and no "safe"; nothing here reaches a status, a
+  score or a ranking. On the Terminal (Research › Sources › Security), one line on the project page
+  when something was found, `snapshot.security` in the API, the SDK and the MCP snapshot; see
+  `docs/SECURITY_CONTEXT.md`.
+- **Ask HEY across the Terminal.** Ask a question from anywhere in the Research Terminal — press ⌘K
+  and type "what changed today", "show verified builders that shipped this week", "compare two
+  projects over 30 days", "what does HEY still not know about this project", in English or Malay —
+  and get an answer at `/terminal/centre/ask` built only from HEY's records: each line marked fact,
+  derived or unknown, citing its evidence and opening the exact record. Questions are read by a
+  fixed router, not a model, so it works with no AI budget. Following a project or creating an
+  alert is offered as a step you confirm; nothing happens on a link. HEY gives no view on price or
+  trading. Four MCP prompts ask the same questions through the existing tools.
+- **Relationships.** What is connected to a project, and why HEY thinks so: its token, contracts and
+  where a proxy points, official repositories, domain and docs, packages (official or only claimed),
+  where it launched, its DefiLlama listing, the readings that corroborate its identity, and verified
+  relationships with other projects — each with its standing, its evidence and when HEY observed
+  it. No account is ever shown and HEY draws no partnership. `GET /api/projects/{slug}/relationships`
+  and the Terminal's On-chain › Relationships view.
+- **Peer context.** Some of a project's figures placed among comparable projects of the same type —
+  a median and range from eight measured projects, a percentile from twenty, otherwise "not enough
+  comparable projects" — one figure at a time, never a combined score (`snapshot.peerContext`,
+  `/methodology#peers`).
+- **Research boards.** Save projects and the panels you read them by in the Terminal; private by
+  default, shareable by a link that shows public data only. `/api/boards` with an API key.
 - **Alerts.** Tell HEY what to watch — when a project ships a release, changes implementation, resumes
   building after a long quiet period, has an unlock due within seven days, or materially changes its
   official docs — for one project, your watchlist or any project, and see each match at
@@ -15,6 +44,27 @@ record.
   price or trading alerts. Managed at `/api/alerts` with an API key; see `docs/ALERTS.md`.
 ## Unreleased (2026-09-28)
 
+- **Review repairs: words that say what was measured.** The Builder Radar's on-chain score and its
+  "Most address-days of calls" sort are worded as **address-days of calls** — each day's distinct
+  caller addresses added across seven days and the project's contracts, so an address calling on
+  several days is counted again; never distinct addresses and never people. The two usage signals
+  are now "Contract calls broadened" and "Contract calls narrowed" in the same terms. The
+  relationship edge for an audit document is `PROJECT_AUDIT_REPORT_LINKED` (a linked report, never
+  a finding that the project was audited). Research boards give every project its own newest
+  changes instead of one shared read in which a busy project hid the rest. The receipt validator's
+  `heyEvidenceStands` is `null` when it checked nothing and `"partial"` when it checked only some; a
+  snapshot reference answers `project_exists` (its `asOf` is not verified) with its scoring version
+  compared, and a change event is checked against its cited revision. Peer context is dated and says
+  when it is stale, and Build Momentum is not compared across a scoring change. Alerts no longer tell
+  a reader again about a revised event after retention, alert email reaches every reader in turn
+  and never mails the same rows twice, and global Ask HEY takes twenty questions a minute per
+  address.
+- **Clearer doors, and cards that say what shipped.** The site header now leads to the Research
+  Terminal and your Watchlist as well as Explore, Builder Radar, Ships and Pulse; the phone menu and
+  the footer group every page under Discover, Research, Monitor, Developers and `$HEY`. Project
+  cards lead with the activity status and one line naming the latest meaningful ship and its age;
+  a project page's actions are Follow, Create alert and Open in Terminal, and its usage, market and
+  protocol-economics sections open with a one-line answer. Explore stays a card grid.
 - **Product usage, its own dimension.** Is what a project shipped being used? A daily rollup per
   project (`project_usage_days`) derived from HEY's own calls-per-method and decoded usage reads — no
   new provider call — gives active contracts, calls (the ERC-20 surface apart), functions called,

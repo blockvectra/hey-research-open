@@ -104,13 +104,23 @@ published, plus `contract.method_first_observed` and `contract.method_resumed`.
   message carries a one-click unsubscribe that turns off alert email and
   nothing else (mail kind `alerts`). With mail switched off, no confirmed
   address, or alert email switched off, the notification is marked skipped —
-  turning mail on later does not send a backlog.
+  turning mail on later does not send a backlog. Each run takes readers
+  oldest-waiting first and never one already mailed this hour (2026-09-28: the
+  first fifty by user id used to be re-picked and deferred every run, and
+  nobody past them was reached). The rows a message covers are marked
+  `sending` with its subject before the mailer is called, and `sending` is
+  final: a crash after the mail ledger recorded the message never mails them
+  again. Only rows left `sending` from an earlier hour with no ledger row for
+  that subject — they never reached the mailer — go back to pending.
 - **Webhook**, by naming one of **your own** webhook subscriptions. A rule never
   holds a URL: the subscription already passed the destination checks and a
   signed ping. The matcher queues a row in `webhook_deliveries` keyed
   `(subscription, seq)` — the fan-out's own key — so a subscription that also
   asks for the type is sent the event once, and the sender makes every check it
-  makes for any delivery (DNS pinning, no redirects, no credentials).
+  makes for any delivery (DNS pinning, no redirects, no credentials). When both
+  want the row, the earlier `next_attempt_at` wins while it is still PENDING
+  (2026-09-28), so an unlock rule's hold never delays the subscription's own
+  immediate delivery, whichever job ran first.
 - The two `contract.method_*` types are **shown in HEY only**: pushing them out
   of HEY (email, webhook) is a founder decision that has not been made.
 - **Telegram and Discord are not built** (see [Not built](#not-built)).
@@ -123,12 +133,16 @@ One matcher, `MATCH_ALERTS`, every minute, one run at a time
 1. It reads `change_events` past its cursor (`alert_matcher_state`) in `seq`
    order, under the projector's lock in shared mode — the webhook fan-out's
    discipline, so a projector batch is never read half written.
-2. Public, `live` upserts that are news can match: a first revision, a return
-   after a retraction, or a revision whose content changed. An annotation-only
-   revision is not news; `bootstrap` and `backfill` history is never news.
-3. `(rule_id, event_id)` is unique. A re-run, a crash between pages, two
-   workers at once or a later revision all land on the same row, and every
-   refused repeat is counted (`dedupe_total`).
+2. Public, `live` upserts that are an alert's news can match: the event's
+   first public appearance, or its return after a retraction. A later revision
+   — a content change or an annotation — is not news to an alert (2026-09-28:
+   it used to be, and was kept from notifying twice only by the
+   `(rule_id, event_id)` row, which retention deletes after 90 days, so a
+   revision after that told the reader again). `bootstrap` and `backfill`
+   history is never news. The webhook fan-out keeps its own predicate.
+3. `(rule_id, event_id)` is unique. A re-run, a crash between pages or two
+   workers at once land on the same row, and every refused repeat is counted
+   (`dedupe_total`).
 4. A retraction marks the event's notifications retracted, stops a pending
    email, cancels a webhook delivery not yet sent and queues `event.retracted`
    for one that was. The inbox then says the change was withdrawn and nothing

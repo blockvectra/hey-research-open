@@ -44,6 +44,7 @@ import type {
 import type { HeyTokenProfile } from './types/hey';
 import type { HeyEvidenceReceipt, HeyExplainedFact, HeyExplainFact, HeyExplainIndex, HeyProjectCoverage, HeyProjectSnapshot } from './types/snapshot';
 import type { HeyProjectUsage } from './types/usage';
+import type { HeyProjectRelationships } from './types/graph';
 import type {
   HeyPage,
   HeyProject,
@@ -298,6 +299,13 @@ export class HeyClient {
      */
     usage: (slug: string, options: { window?: 1 | 7 | 30 } = {}): Promise<HeyProjectUsage> =>
       this.get(`/api/projects/${encodeURIComponent(slug)}/usage`, { window: options.window }),
+    /**
+     * `GET /api/projects/{slug}/relationships` (2026-09-28): what is connected
+     * to one project and why HEY thinks so — first degree, every edge with its
+     * state, typed evidence and when HEY observed it. No account is a node and
+     * there is no partnership edge; what HEY does not hold is in `notHeld`.
+     */
+    relationships: (slug: string): Promise<HeyProjectRelationships> => this.get(`/api/projects/${encodeURIComponent(slug)}/relationships`),
     /** `GET /api/projects/{slug}/coverage`: what HEY knows and does not, per dimension, as states — never a score. */
     coverage: (slug: string): Promise<HeyProjectCoverage> => this.get(`/api/projects/${encodeURIComponent(slug)}/coverage`),
     /**

@@ -140,6 +140,11 @@ single-project route sends everything the listing does. `/api/projects/{slug}/ma
 contract's deployer, its pools and 1% depth, and a supply-concentration summary with no addresses
 (2026-09-25).
 
+`/api/projects/{slug}/relationships` lists what a project is connected to and why HEY thinks so —
+every edge with its standing and evidence, never an account and never a "partnership" — and the
+snapshot's `peerContext` places some of its figures among comparable projects, one figure at a time,
+never as a combined score (2026-09-28).
+
 Paging follows the API's own cursor, a `429` arrives as `HeyApiError` with `retryAfterSeconds`
 and is never retried for you, and an absent field means HEY does not know — never a zero.
 
@@ -199,6 +204,9 @@ evidence behind it.
   token's market page. An address there is a point on a chart of one supply — never a person, never
   scored, never ranked across tokens, never an input to any status or score.
 - **Absent means unknown.** A figure HEY has not measured is omitted, never published as zero.
+- **Security is evidence, never a verdict.** An audit shows an audit took place; it is not a
+  guarantee of safety. HEY says where a report is published and where it found the link — no
+  score, no "safe", and "no advisory found" is a reading of one index, never a clean bill.
 - **A model is never the source of truth.** AI-assisted interpretation is optional and off by
   default; when on, it reads only HEY's own evidence, cites it by id, is labelled as an
   interpretation, and never moves a status, a score or a rank. `AI_PROVIDER` accepts `disabled` or

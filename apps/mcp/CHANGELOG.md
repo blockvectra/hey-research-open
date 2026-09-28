@@ -8,8 +8,11 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ### Added
 
+- Four prompts: `what_changed_today`, `compare_project_usage`, `explain_project_evidence` and `monitor_project` — workflows over the existing tools, no new tool.
+- `get_project_snapshot` prints a **Peer context** section (2026-09-28, `peers-v1`): the cohort, then each measured figure's own line as the API words it — never one combined number; no new tool. A context the daily run has not replaced in 36 hours says STALE with its date, and a Build Momentum figure from before a scoring change is UNKNOWN ("recomputing after a scoring change").
 - `mcpName` (`io.github.hey-research-lab/hey-research`) in `package.json`, which the Official MCP Registry reads to verify the npm package; `server.json` is the registry entry.
 - The handshake's server info carries `title` ("HEY Research Lab") and `websiteUrl` (the agent guide), and the instructions say where `$HEY`'s research profile is.
+- The snapshot's **Security context (evidence, never a verdict)** section (2026-09-28): audit report links with where each is published and its `security:` evidence id, bug-bounty programs, a published security.txt, OSV advisories ("no open advisory" is a reading of OSV), Scorecard checks never summed, incidents UNKNOWN. `get_evidence` accepts `security:` ids. No new tool.
 
 ### Changed
 

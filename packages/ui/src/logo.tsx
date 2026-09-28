@@ -20,8 +20,11 @@ import { cn } from './cn';
 export function HeyLogo({
   className,
   markSize = 26,
+  wordmarkClassName = 'hidden sm:inline',
 }: {
   className?: string;
+  /** When the words show; the header drops them where the full navigation needs the room. */
+  wordmarkClassName?: string;
   /** Rendered height in px. Width follows the artwork's own proportions. */
   markSize?: number;
 }) {
@@ -43,7 +46,7 @@ export function HeyLogo({
         className="hey-mark-dark shrink-0"
         style={{ height: markSize, width: 'auto' }}
       />
-      <span className="hidden text-[15px] font-semibold leading-none tracking-[-0.02em] text-hey-ink sm:inline">
+      <span className={cn('whitespace-nowrap text-[15px] font-semibold leading-none tracking-[-0.02em] text-hey-ink', wordmarkClassName)}>
         HEY Research Lab
       </span>
     </span>

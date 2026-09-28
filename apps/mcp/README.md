@@ -84,8 +84,9 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 Plus `market_integrity` where the site publishes it. Resources
 (`hey://project/{slug}`, `hey://project/{slug}/timeline`,
 `hey://project/{slug}/coverage`, `hey://contract/{chainId}/{address}`,
-`hey://changes/latest`) and four prompts (`deep_research_project`,
-`what_changed_since`, `explain_metric`, `investigate_contract`) come with them.
+`hey://changes/latest`) and eight prompts (`deep_research_project`,
+`what_changed_since`, `explain_metric`, `investigate_contract`, `what_changed_today`,
+`compare_project_usage`, `explain_project_evidence`, `monitor_project`) come with them.
 
 Every answer tags its lines FACT, DERIVED or UNKNOWN, says how many it showed
 of how many and how to read on, names a valuation by its kind, carries the

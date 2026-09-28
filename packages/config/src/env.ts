@@ -310,6 +310,8 @@ export const serverEnvSchema = z
         watchlistEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
         /** Alerts (2026-09-28): rules over the change ledger, the inbox and alert mail. On unless "false"; off answers 404 and hides the entry points. */
         alertsEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
+        /** Research boards (2026-09-28): saved, private arrangements of projects and panels in the Terminal. On unless "false"; off answers 404. */
+        boardsEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
         /** Bonds behind claims (M13-C): Scout claim, owner update, project submission. */
         bondsEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
         /** Blocks a receipt must be buried under before a payment counts (M13-B). */
@@ -658,6 +660,7 @@ function shapeEnv(raw: RawEnv) {
       compareEnabled: raw.HEY_COMPARE_ENABLED,
       watchlistEnabled: raw.HEY_WATCHLIST_ENABLED,
       alertsEnabled: raw.HEY_ALERTS_ENABLED,
+      boardsEnabled: raw.HEY_BOARDS_ENABLED,
       holderVoteEnabled: raw.HEY_HOLDER_VOTE_ENABLED,
       scoutStakingEnabled: raw.HEY_SCOUT_STAKING_ENABLED,
       evidenceChallengesEnabled: raw.HEY_EVIDENCE_CHALLENGES_ENABLED,
@@ -749,6 +752,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'hey.compareEnabled': 'HEY_COMPARE_ENABLED',
   'hey.watchlistEnabled': 'HEY_WATCHLIST_ENABLED',
   'hey.alertsEnabled': 'HEY_ALERTS_ENABLED',
+  'hey.boardsEnabled': 'HEY_BOARDS_ENABLED',
   'hey.holderVoteEnabled': 'HEY_HOLDER_VOTE_ENABLED',
   'hey.scoutStakingEnabled': 'HEY_SCOUT_STAKING_ENABLED',
   'hey.evidenceChallengesEnabled': 'HEY_EVIDENCE_CHALLENGES_ENABLED',

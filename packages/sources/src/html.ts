@@ -1,4 +1,5 @@
 import { registrableHost } from './registrable';
+import { classifySecurityLink } from './security-links';
 
 /**
  * Minimal HTML metadata extraction.
@@ -274,6 +275,13 @@ export type HtmlMetadata = {
   docsUrls: string[];
   /** GitLab.com and Codeberg repository links the page publishes (see `ForgeRepoLink`). */
   forgeUrls: ForgeRepoLink[];
+  /**
+   * Audit-report and bug-bounty links the page publishes (2026-09-28): only
+   * the allow-listed shapes of `classifySecurityLink` — an auditor's or bounty
+   * platform's own host, or an audit or bounty page on the project's own site
+   * or GitHub. Security context, never identity and never a ship.
+   */
+  securityUrls: string[];
 };
 
 /** Cap on links harvested from one page, so a link farm cannot flood ingestion. */
@@ -385,7 +393,7 @@ export function parseForgeRepoUrl(url: URL): ForgeRepoLink | undefined {
 }
 
 export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadata {
-  const meta: HtmlMetadata = { feedUrls: [], githubUrls: [], docsUrls: [], forgeUrls: [] };
+  const meta: HtmlMetadata = { feedUrls: [], githubUrls: [], docsUrls: [], forgeUrls: [], securityUrls: [] };
   const page = html.length > MAX_EXTRACT_CHARS ? html.slice(0, MAX_EXTRACT_CHARS) : html;
 
   const seenFeeds = new Set<string>();
@@ -452,6 +460,7 @@ export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadat
   meta.githubUrls = [...links.github];
   meta.docsUrls = [...links.docs];
   meta.forgeUrls = [...links.forges.values()];
+  meta.securityUrls = [...links.security];
   return meta;
 }
 
@@ -465,6 +474,7 @@ class ProjectLinks {
   readonly github = new Set<string>();
   readonly docs = new Set<string>();
   readonly forges = new Map<string, ForgeRepoLink>();
+  readonly security = new Set<string>();
   private anchors = 0;
   private readonly baseHost: string | undefined;
 
@@ -497,6 +507,12 @@ class ProjectLinks {
 
     const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
     const segments = parsed.pathname.split('/').filter(Boolean);
+
+    // An audit report or bounty program, by the allow-list's shapes only (2026-09-28). It may also be a repository below.
+    if (this.security.size < MAX_LINKS_PER_KIND && classifySecurityLink(resolved, this.baseUrl)) {
+      parsed.hash = '';
+      this.security.add(parsed.toString());
+    }
 
     // Only `owner/repo` identifies a repository. A bare `github.com/org` link
     // names an organisation, not the project's code, and cannot be ingested.

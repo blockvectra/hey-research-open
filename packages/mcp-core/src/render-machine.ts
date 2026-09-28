@@ -17,7 +17,9 @@ import type {
   HeyProjectCoverage,
   HeyProjectSnapshot,
   HeyResearchSummary,
+  HeySecurityContext,
   HeySourceFreshness,
+  HeyPeerContext,
   HeyUsageSummary,
 } from '@hey-research-lab/sdk';
 
@@ -192,6 +194,9 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   lines.push('', '## Developer footprint (context, never a ship)');
   lines.push(...(s.developerFootprint ? footprintLines(s.developerFootprint) : ["- UNKNOWN developer footprint: HEY could not read this project's coverage."]));
 
+  lines.push('', '## Security context (evidence, never a verdict)');
+  lines.push(...(s.security ? securityLines(s.security) : ["- UNKNOWN security context: HEY could not read it just now."]));
+
   lines.push('', '## On-chain');
   const o = s.onchain;
   if (!o) lines.push('- UNKNOWN on-chain use: HEY holds no reading of the contract.');
@@ -214,6 +219,9 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
 
   lines.push('', '## Usage (its own dimension, never building or a ranking)');
   lines.push(...(s.usage ? usageLines(s.usage) : ["- UNKNOWN usage: HEY could not read this project's usage just now."]));
+
+  lines.push('', '## Peer context (one dimension at a time, never a score)');
+  lines.push(...peerContextLines(s.peerContext));
 
   lines.push('', '## Verification and sources');
   const v = s.verification;
@@ -292,6 +300,49 @@ export function economicsLines(e: HeyProtocolEconomics | undefined, coverage: He
     if (p.auditLinks.length > 0 || p.methodologyUrl) lines.push(`  FACT the registry links ${p.auditLinks.length} audit report${p.auditLinks.length === 1 ? '' : 's'}${p.methodologyUrl ? ' and a methodology' : ''} — links, never verdicts`);
   }
   lines.push('  A registry figure is context beside the market: it never reaches activity status, Build Momentum, the Discovery Gap or the Radar.');
+  return lines;
+}
+
+const AUDIT_AUTHORITY_WORDS = { AUDITOR_PUBLISHED: "on the auditor's own site", PROJECT_CLAIMED: "claimed by the project (linked from its official site)", REGISTRY_LISTED: 'listed by DefiLlama only' } as const;
+const INDEX_WORDS: Record<string, string> = { official_site: "the project's homepage", official_site_files: 'its sitemap and llms.txt', defillama: 'its DefiLlama listing' };
+const indexes = (readFrom: string[]): string => readFrom.map((index) => INDEX_WORDS[index] ?? pretty(index)).join(', ');
+
+/**
+ * Security context (2026-09-28): what HEY found, each item with where it was
+ * found; "none found" names the indexes read; unread is UNKNOWN. No score and
+ * no verdict, and no stronger than the API's own states.
+ */
+export function securityLines(c: HeySecurityContext): string[] {
+  const lines: string[] = [];
+  const a = c.audits;
+  if (a.state === 'MEASURED') {
+    lines.push(`- FACT ${a.items.length} audit report link${a.items.length === 1 ? '' : 's'} found (read from ${indexes(a.readFrom)}):`);
+    for (const item of a.items.slice(0, 5)) {
+      lines.push(`  - ${item.auditor ? `${item.auditor.name}${item.auditor.basis === 'URL_PATH' ? ' (named in the link only)' : ''}, ` : ''}${AUDIT_AUTHORITY_WORDS[item.authority]}: ${item.url} [${item.id}]`);
+    }
+    if (a.items.length > 5) lines.push(`  (showing 5 of ${a.items.length}; the full list is in the snapshot's security.audits)`);
+  } else if (a.state === 'NONE_FOUND') lines.push(`- FACT no audit link found on ${indexes(a.readFrom)} (read ${a.readAt.slice(0, 10)}) — a reading of those only`);
+  else lines.push(`- ${a.state === 'NOT_APPLICABLE' ? 'FACT' : 'UNKNOWN'} audits: ${pretty(a.state)} (${pretty(a.reason)})`);
+  const b = c.bugBounty;
+  if (b.state === 'MEASURED') for (const item of b.items.slice(0, 3)) lines.push(`- FACT bug bounty ${item.platform ? `on ${item.platform}` : "page on the project's site"}: ${item.url} [${item.id}]`);
+  else if (b.state === 'NONE_FOUND') lines.push(`- FACT no bug-bounty link found on ${indexes(b.readFrom)} — a reading of those only`);
+  else lines.push(`- UNKNOWN bug bounty: ${pretty(b.state)} (${pretty(b.reason)})`);
+  const t = c.securityTxt;
+  if (t.state === 'MEASURED') lines.push(`- FACT security.txt published${t.contacts ? ` with ${t.contacts.length} contact${t.contacts.length === 1 ? '' : 's'}` : ''}${t.expired ? ' (its Expires date has passed)' : ''}, read ${t.readAt.slice(0, 10)}: ${t.url}`);
+  else if (t.state === 'NONE_FOUND') lines.push(`- FACT no security.txt at ${t.url} (read ${t.readAt.slice(0, 10)})`);
+  else lines.push(`- ${t.state === 'NOT_APPLICABLE' ? 'FACT' : 'UNKNOWN'} security.txt: ${pretty(t.state)} (${pretty(t.reason)})`);
+  const v = c.advisories;
+  if (v.state === 'MEASURED') {
+    lines.push(`- FACT ${v.items.length} open OSV advisor${v.items.length === 1 ? 'y' : 'ies'} about the published versions of ${v.packagesRead} package${v.packagesRead === 1 ? '' : 's'} HEY reads${v.stale ? ' (reading stale)' : ''}:`);
+    for (const item of v.items.slice(0, 5)) lines.push(`  - ${item.advisoryId} on ${item.packageName}@${item.version}${item.fixedVersions.length > 0 ? `, fixed in ${item.fixedVersions.join(', ')}` : ''}: ${item.url}`);
+  } else if (v.state === 'NONE_FOUND') lines.push(`- FACT no open OSV advisory for the published versions of the ${v.packagesRead} package${v.packagesRead === 1 ? '' : 's'} HEY reads${v.readAt ? ` (read ${v.readAt.slice(0, 10)})` : ''} — a reading of OSV, not a statement about the code`);
+  else lines.push(`- ${v.state === 'NOT_APPLICABLE' ? 'FACT' : 'UNKNOWN'} advisories: ${pretty(v.state)} (${pretty(v.reason)})`);
+  const r = c.repositoryChecks;
+  if (r.state === 'MEASURED') for (const repo of r.repositories.slice(0, 3)) lines.push(`- FACT OpenSSF Scorecard for ${repo.repo}: ${repo.checks.length} checks as published${repo.date ? ` (${repo.date.slice(0, 10)})` : ''}, never summed`);
+  else if (r.state === 'NONE_FOUND') lines.push(`- FACT no Scorecard published for the ${r.repositoriesRead} official repositor${r.repositoriesRead === 1 ? 'y' : 'ies'} HEY asked about`);
+  else lines.push(`- ${r.state === 'NOT_APPLICABLE' ? 'FACT' : 'UNKNOWN'} repository checks: ${pretty(r.state)} (${pretty(r.reason)})`);
+  lines.push(`- UNKNOWN incidents: HEY reads no incident or postmortem source.`);
+  lines.push(`  ${c.meaning} Nothing here reaches activity status, Build Momentum, the Discovery Gap or the Radar.`);
   return lines;
 }
 
@@ -555,6 +606,31 @@ export function renderBuildMarket(page: HeyBuildMarket): string {
     TAG_LEGEND,
     page.disclaimer,
   ].join('\n');
+}
+
+/**
+ * Peer context in the snapshot (2026-09-28, peers-v1), no stronger than the
+ * API: each measured figure's own line, restated verbatim; a figure whose
+ * cohort is too small says so; nothing is combined into one number, and a
+ * position against a median is never a judgement.
+ */
+export function peerContextLines(p: HeyPeerContext | undefined): string[] {
+  if (!p) return ["- UNKNOWN peer context: HEY could not read it just now."];
+  if (p.state === 'NOT_COMPUTED') return [`- UNKNOWN peer context (${p.reason ?? 'not_computed_yet'}): the daily run has not placed this project yet.`];
+  if (p.state === 'NO_COHORT' || !p.cohort) return [`- NOT APPLICABLE peer context (${p.reason ?? 'no_cohort'}): no comparable group of the same type, so nothing is compared.`];
+  // A run the daily job has not replaced says so, with its date (2026-09-28): an older context never passes for today's.
+  const stale = p.freshness?.state === 'STALE' ? ` STALE: not recomputed in ${p.freshness.staleAfterHours} hours; as of ${p.freshness.asOf.slice(0, 10)}.` : '';
+  const lines = [`- DERIVED cohort: ${p.cohort.label} (${p.rulesVersion}; a median from ${p.minimums.median} measured projects, a percentile from ${p.minimums.percentile}; ${p.computedAt ? `computed ${p.computedAt.slice(0, 10)}` : 'not dated'}).${stale}`];
+  for (const d of p.dimensions) {
+    if (d.state !== 'MEASURED') continue;
+    lines.push(`- ${d.median === null ? 'UNKNOWN' : 'DERIVED'} ${d.line}`);
+  }
+  const recomputing = p.dimensions.filter((d) => d.state !== 'MEASURED' && d.reason === 'recomputing_after_scoring_change');
+  for (const d of recomputing) lines.push(`- UNKNOWN ${d.line}`);
+  const unmeasured = p.dimensions.filter((d) => d.state !== 'MEASURED' && !recomputing.includes(d)).map((d) => d.label);
+  if (unmeasured.length > 0) lines.push(`- UNKNOWN not measured for this project, so not compared: ${unmeasured.join(', ')}.`);
+  lines.push(`  Method: ${p.methodology}`);
+  return lines;
 }
 
 /**

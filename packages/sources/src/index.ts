@@ -53,6 +53,7 @@ export * from './adapters/defillama';
 export * from './adapters/defillama-overview';
 export * from './adapters/blockscout-verified';
 export * from './links';
+export * from './security-links';
 export * from './adapters/hooddev';
 export * from './adapters/dexscreener-profiles';
 export * from './adapters/dexscreener-promotions';

@@ -4,6 +4,7 @@
  * Absent means HEY does not know; a withheld figure says it is withheld.
  */
 import type { HeyProject } from './projects';
+import type { HeyPeerContext } from './graph';
 import type { HeyUsageSummary } from './usage';
 
 /* ------------------------------------------------------------- coverage */
@@ -292,6 +293,68 @@ export type HeySummaryLine = {
 export type HeyResearchSummary = { version: string; lines: HeySummaryLine[]; computedAt: string };
 
 /** `GET /api/projects/{slug}/snapshot`: one project's important state in one read. */
+/**
+ * Security context (2026-09-28): evidence, never a verdict. Each section is a
+ * state — `MEASURED`, `NONE_FOUND` (a reading of the indexes in `readFrom`
+ * only, never "none exists"), `NOT_READ`, `NOT_APPLICABLE` — and items exist
+ * only where something was found. There is no score and no "safe": an audit
+ * shows an audit took place; it is not a guarantee of safety. "No OSV
+ * advisory" is a reading of OSV for the packages HEY reads, not a clean bill.
+ */
+export type HeySecurityFinding = {
+  /** `official_site`, `official_site_sitemap`, `official_site_llms_txt` or `defillama`. */
+  foundVia: string;
+  foundOnUrl: string;
+  firstObservedAt: string;
+  lastObservedAt: string;
+};
+export type HeySecurityLinks<T> =
+  | { state: 'MEASURED'; readFrom: string[]; items: T[] }
+  | { state: 'NONE_FOUND'; readFrom: string[]; readAt: string }
+  | { state: 'NOT_READ' | 'NOT_APPLICABLE'; reason: string };
+export type HeySecurityAudit = {
+  /** `security:<projectUuid>:audit:<16 hex>`, resolvable at `/api/evidence/{id}`. */
+  id: string;
+  url: string;
+  /** `AUDITOR_PUBLISHED`: on the auditor's own host; `PROJECT_CLAIMED`: linked from the official site; `REGISTRY_LISTED`: DefiLlama's listing only. */
+  authority: 'AUDITOR_PUBLISHED' | 'PROJECT_CLAIMED' | 'REGISTRY_LISTED';
+  hostedOn: 'AUDITOR' | 'PROJECT_SITE' | 'GITHUB' | 'OTHER';
+  auditor: { name: string; basis: 'AUDITOR_HOST' | 'URL_PATH' } | null;
+  /** Always null: HEY links a report and never reads it. */
+  date: null;
+  isPdf: boolean;
+  foundBy: HeySecurityFinding[];
+  observedAt: string;
+};
+export type HeySecurityBounty = { id: string; url: string; authority: 'PLATFORM_LISTED' | 'PROJECT_CLAIMED'; platform: string | null; foundBy: HeySecurityFinding[]; observedAt: string };
+export type HeySecurityContext = {
+  audits: HeySecurityLinks<HeySecurityAudit>;
+  bugBounty: HeySecurityLinks<HeySecurityBounty>;
+  securityTxt:
+    | { state: 'MEASURED'; id: string; url: string; contacts: string[] | null; policyUrls: string[]; expiresAt: string | null; expired: boolean; firstObservedAt: string; readAt: string }
+    | { state: 'NONE_FOUND'; url: string; readAt: string; reason: string }
+    | { state: 'NOT_READ' | 'NOT_APPLICABLE'; reason: string };
+  advisories:
+    | {
+        state: 'MEASURED';
+        packagesRead: number;
+        readAt: string | null;
+        stale: boolean;
+        items: { advisoryId: string; aliases: string[]; ecosystem: string; packageName: string; version: string; fixedVersions: string[]; url: string; publishedAt: string | null; observedAt: string; subject: 'PUBLISHED_PACKAGE' }[];
+      }
+    | { state: 'NONE_FOUND'; packagesRead: number; readAt: string | null; stale: boolean }
+    | { state: 'NOT_READ' | 'NOT_APPLICABLE'; reason: string };
+  repositoryChecks:
+    | { state: 'MEASURED'; repositories: { repo: string; url: string; date: string | null; readAt: string | null; checks: { name: string; score: number | null; documentationUrl: string | null }[] }[] }
+    | { state: 'NONE_FOUND'; repositoriesRead: number; readAt: string | null }
+    | { state: 'NOT_READ' | 'NOT_APPLICABLE'; reason: string };
+  /** HEY reads no incident source yet: always NOT_READ, never "no incidents". */
+  incidents: { state: 'NOT_READ'; reason: string };
+  linksOmitted: number;
+  meaning: string;
+  contextOnly: true;
+};
+
 export type HeyProjectSnapshot = {
   /** The Project Research Summary (2026-09-28): the answer first; the sections below are its evidence. */
   summary: HeyResearchSummary;
@@ -351,6 +414,10 @@ export type HeyProjectSnapshot = {
    * field is absent only when the read failed.
    */
   usage?: HeyUsageSummary;
+  /** Security context (2026-09-28): evidence, never a verdict; absent only when the read failed. */
+  security?: HeySecurityContext;
+  /** Peer context (2026-09-28, `peers-v1`): each figure among comparable projects, one dimension at a time; never one score. Absent only when the read failed. */
+  peerContext?: HeyPeerContext;
   contracts: { url: string };
   verification: {
     token?: { status: string; reason?: string; verifiedAt?: string };
@@ -369,7 +436,7 @@ export type HeyProjectSnapshot = {
   freshness: HeySourceFreshness[];
   coverage?: Record<HeyCoverageDimension, HeyCoverageEntry>;
   evidenceSummary: { sources: { total: number; own: number; verified: number; contextOnly: number }; meaningfulEvents30d: number | null; explainUrl: string };
-  links: { page: string; detail: string; market?: string; timeline: string; intelligence: string; changes: string; coverage: string; explain: string; contracts: string; usage: string };
+  links: { page: string; detail: string; market?: string; timeline: string; intelligence: string; changes: string; coverage: string; explain: string; contracts: string; usage: string; relationships: string };
   asOf: string;
   scoringVersion?: string;
   disclaimer: string;

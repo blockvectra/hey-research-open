@@ -19,31 +19,34 @@ import { ContractAddress, ExternalRef } from './token-identity';
 import { TokenLockChip, type TokenLockFacts } from './token-lock';
 
 /**
- * Project card (Card V7, 2026-09-03; UI/UX V6 "Robinhood Pulse Minimal").
+ * Project card (Card V7, 2026-09-03; recomposed in the public IA pass,
+ * 2026-09-28). The public discovery primitive: card = discovery, project page
+ * = understanding, Terminal = deep research.
  *
- * One card, eight facts, nothing else. For a token-backed project:
+ *   [LOGO] NAME
+ *          $TICKER · Narrative
+ *   [● Shipping]  Agent SDK v0.4 · 2d ago          ← builder state + latest signal
+ *   One or two lines about what it is.
+ *   ─────────────────────────────────────────
+ *   Market cap                         $1.24M      ← market context
+ *   0x82ae…91bf  [copy] [explorer]                 ← reference
+ *   via Pons ↗                     @project ↗      ← origin
  *
- *   [LOGO] NAME                          [STATUS]
- *          $TICKER
- *   Market cap  $1.24M
- *   0x82ae…91bf  [copy] [explorer]
- *   Pons ↗                       @project ↗
- *
- * Name, ticker, logo, market cap, contract address, activity status, launch
- * origin and official X account. A tokenless project keeps the identity,
- * status and X account, says what kind of thing it is, and links its own
- * site; it has no ticker, market cap or contract address to show.
+ * The order is the reading order a first-time visitor needs: who it is, is it
+ * building, what did it ship, what is it, what is the market, how do I check
+ * it. The status leads the body at its own size (UI rule 4); the latest
+ * signal is one line from the canonical latest meaningful ship; the market
+ * row reads `valuationDisplay` and nothing else. A tokenless project says
+ * "No token" in the market slot and links its own site there.
  *
  * What is deliberately absent: momentum and gap scores, ship counts, commit
- * strips, holder / volume / liquidity figures, wallet analytics, descriptions
- * and second source links. The project page carries all of that behind the
- * card; the card is for recognising a project, not researching it.
+ * strips, holder / volume / liquidity figures, wallet analytics and second
+ * source links. The project page carries all of that behind the card; the
+ * card is for recognising a project, not researching it.
  *
- * Every fact is shown only when HEY holds it. Market cap without a stored
- * snapshot reads "Unavailable"; a launch origin without a launch record reads
- * "Unknown"; a missing official X account is simply absent. Nothing here is
- * inferred from a name or a ticker — the token's identity is its chain id and
- * contract address.
+ * Every fact is shown only when HEY holds it. Nothing here is inferred from a
+ * name or a ticker — the token's identity is its chain id and contract
+ * address — and nothing here is derived: every value is a canonical card fact.
  */
 export type ProjectCardData = {
   slug: string;
@@ -97,6 +100,12 @@ export type ProjectCardData = {
   primaryNarrative?: { slug: string; name: string };
   shortDescription?: string;
   lastMeaningfulShipAt?: Date;
+  /**
+   * The latest meaningful ship (public IA pass, 2026-09-28): the event the
+   * scorer counts as building, newest first — what the card's one evidence
+   * line names. Always corroborated, so it needs no verification word.
+   */
+  latestShip?: { id: string; title: string; eventType: string; publishedAt: Date };
   stillBuilding?: boolean;
   researchLevel?: 'INDEXED' | 'RESEARCHED' | 'VERIFIED_BUILDER';
 };
@@ -175,6 +184,7 @@ export function ProjectCard({
     marketStatus: project.tokenMarketStatus,
     marketReason: project.tokenMarketReason,
   });
+  const staleAge = valuation.shown ? staleReadingAge(project.marketCapObservedAt, now) : undefined;
   const hasToken = Boolean(project.token);
   // What HEY does know about a token it cannot read building from (2026-09-13): trades and on-chain events, as context under the cap.
   const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
@@ -182,6 +192,16 @@ export function ProjectCard({
   // Source text as words: launchpad descriptions arrive with Markdown in them (QA sweep 2026-09-04).
   const description = plainText(project.shortDescription);
   const shipTitle = ship ? plainText(ship.title) : '';
+  /*
+   * The one latest-evidence line (public IA pass, 2026-09-28): what shipped
+   * and when, from the canonical latest meaningful ship. A card used to say
+   * "Shipped 13h ago" and never what; the title now carries the "what" and
+   * the date the "when". Without a counted ship HEY still knows the date the
+   * scorer holds, and says only that.
+   */
+  const latest = ship ? undefined : project.latestShip;
+  const latestTitle = latest ? plainText(latest.title) : '';
+  const lastShipAt = latest?.publishedAt ?? project.lastMeaningfulShipAt;
   // "Infrastructure · Infrastructure" says it once: the kind is dropped when
   // the narrative already names it. "Uncategorised" (kind OTHER) is a data
   // state, not a fact about the project; it is shown only when the line
@@ -190,6 +210,56 @@ export function ProjectCard({
   const showKind =
     project.primaryNarrative?.name.toLowerCase() !== kindLabel.toLowerCase() &&
     (project.projectKind !== 'OTHER' || (!project.symbol && !project.primaryNarrative));
+  const identityParts: ReactNode[] = [];
+  if (project.symbol)
+    identityParts.push(
+      <span key="ticker" data-testid="ticker" className="font-medium text-hey-ink/80 [font-family:var(--font-mono)] text-[12px] tracking-[0.02em]">
+        {tickerLabel(project.symbol)}
+      </span>,
+    );
+  if (project.primaryNarrative)
+    identityParts.push(
+      <span key="narrative" data-testid="card-narrative">
+        {project.primaryNarrative.name}
+      </span>,
+    );
+  if (showKind)
+    identityParts.push(
+      <span key="kind" data-testid="project-kind">
+        {kindLabel}
+      </span>,
+    );
+
+  // REFERENCE: launch origin and official X, the card's last line on every variant.
+  const origin = (
+    <div className="flex items-center justify-between gap-3 text-[13px]">
+      <span className="flex min-w-0 items-center gap-1.5" data-testid="launched-via">
+        <span className="text-hey-muted">via</span>
+        {project.launchedVia?.url ? (
+          <ExternalRef href={project.launchedVia.url} label={`Open ${project.launchedVia.name} launch page`}>
+            {project.launchedVia.name}
+          </ExternalRef>
+        ) : (project.launchedVia?.name ?? 'Unknown') === 'Unknown' && project.marketVenue ? (
+          // No launch record, but a pool: say where the token trades, never where it launched.
+          <span className="truncate text-hey-secondary" title={`HEY did not observe the launch; the token trades on ${project.marketVenue}.`}>
+            DEX ({project.marketVenue})
+          </span>
+        ) : (
+          <span className="truncate text-hey-secondary">{project.launchedVia?.name ?? 'Unknown'}</span>
+        )}
+      </span>
+      {project.officialX ? (
+        <ExternalRef
+          href={project.officialX.url}
+          label={`Open ${project.name} on X`}
+          className="shrink-0"
+          data-testid="official-x"
+        >
+          @{project.officialX.handle}
+        </ExternalRef>
+      ) : null}
+    </div>
+  );
 
   return (
     <article
@@ -200,14 +270,15 @@ export function ProjectCard({
         // min-w-0 matters: a grid item defaults to its min-content width, and a
         // long name or a 32-character ticker would otherwise push the card wider
         // than its track and scroll the whole page sideways on mobile.
-        'group relative flex h-full min-w-0 flex-col gap-3.5 rounded-[12px] border border-hey-border bg-hey-surface p-4 sm:p-5',
-        'transition-[transform,border-color,box-shadow] duration-200 hover:-translate-y-0.5 hover:border-hey-border-strong',
-        'hover:shadow-[0_1px_2px_rgba(10,13,18,0.04),0_16px_36px_-18px_rgba(10,13,18,0.22)]',
-        'motion-reduce:transition-none motion-reduce:hover:translate-y-0',
+        'group relative flex h-full min-w-0 flex-col gap-3 rounded-[14px] border border-hey-border bg-hey-surface p-4 sm:p-5',
+        // Calm: the border and a soft shadow answer the pointer; nothing moves (UI rule 9).
+        'transition-[border-color,box-shadow] duration-150 hover:border-hey-border-strong',
+        'hover:shadow-[0_1px_2px_rgba(10,13,18,0.04),0_12px_28px_-18px_rgba(10,13,18,0.24)]',
+        'focus-within:border-hey-border-strong motion-reduce:transition-none',
         className,
       )}
     >
-      {/* 1–3 + 6: logo, name, ticker, status */}
+      {/* IDENTITY — logo, name, ticker · narrative · kind */}
       <div className="flex items-start gap-3">
         <ProjectLogo
           name={project.name}
@@ -216,65 +287,63 @@ export function ProjectCard({
           size={44}
           className="rounded-[10px] ring-1 ring-inset ring-hey-border"
         />
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <h3 className="min-w-0 text-[16px] font-semibold leading-tight tracking-tight">
-              {/*
-               * The whole card is the target; the link stays the accessible one.
-               * Two lines, not one: a name is the identity, and a single
-               * truncated line lost it (UI/UX audit U19).
-               */}
-              <a
-                href={`/project/${project.slug}`}
-                className="line-clamp-2 [overflow-wrap:anywhere] after:absolute after:inset-0 after:rounded-[12px] after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-hey-ink/30"
-              >
-                {project.name}
-              </a>
-            </h3>
+        <div className="min-w-0 flex-1 pt-0.5">
+          <h3 className="text-[16.5px] font-semibold leading-[1.25] tracking-[-0.01em] text-hey-ink">
             {/*
-             * The status, and when that status was last earned (2026-09-05).
-             * "Shipping" alone does not say whether that means yesterday or in
-             * March, which is the question someone scanning a grid is asking —
-             * so the two sit together, and the date says what it is in words.
-             * It was briefly an unlabelled `8H AGO` beside the ticker, in the
-             * telemetry face, and read as a code fragment rather than a fact.
-             *
-             * Suppressed when the card carries a ship block, which prints the
-             * same date in full, and on a tokenless card, whose "Last ship"
-             * row below already says it (UI/UX audit U19: the date was
-             * printed twice on those cards).
+             * The whole card is the target; the link stays the accessible one.
+             * Two lines, not one: a name is the identity, and a single
+             * truncated line lost it (UI/UX audit U19). The name now has the
+             * full width: the status moved to its own line below.
              */}
-            <span className="flex shrink-0 flex-col items-end gap-1">
-              <ActivityChip status={project.activityStatus} variant="surface" unknownReason={unknownActivityReason(project)} />
-              {!ship && hasToken && project.lastMeaningfulShipAt ? (
-                <time
-                  dateTime={project.lastMeaningfulShipAt.toISOString()}
-                  data-testid="card-last-ship"
-                  className="text-[12px] leading-none text-hey-muted"
-                >
-                  Shipped {formatRelativeTime(project.lastMeaningfulShipAt, now)}
-                </time>
-              ) : null}
-            </span>
-          </div>
-          {/*
-           * Ticker, narrative, kind (UI/UX audit U02, 2026-09-11). The card
-           * used to say "$AOS" and nothing about what the project is; the
-           * design contract puts the narrative or kind on every card. One
-           * line, secondary tone, so the identity still leads.
-           */}
-          <p className="hey-telemetry mt-1 truncate text-hey-secondary">
-            {project.symbol ? <span data-testid="ticker">{tickerLabel(project.symbol)}</span> : null}
-            {project.symbol && project.primaryNarrative ? <span aria-hidden="true"> · </span> : null}
-            {project.primaryNarrative ? (
-              <span data-testid="card-narrative" className="normal-case">{project.primaryNarrative.name}</span>
-            ) : null}
-            {showKind && (project.symbol || project.primaryNarrative) ? <span aria-hidden="true"> · </span> : null}
-            {showKind ? (
-              <span data-testid="project-kind" className="normal-case">{kindLabel}</span>
-            ) : null}
-          </p>
+            <a
+              href={`/project/${project.slug}`}
+              className="line-clamp-2 [overflow-wrap:anywhere] after:absolute after:inset-0 after:rounded-[14px] after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-hey-ink/30"
+            >
+              {project.name}
+            </a>
+          </h3>
+          {identityParts.length > 0 ? (
+            <p className="mt-1 truncate text-[13px] leading-5 text-hey-secondary">
+              {identityParts.map((part, index) => (index === 0 ? part : [<span key={`sep-${index}`} aria-hidden="true"> · </span>, part]))}
+            </p>
+          ) : null}
         </div>
+      </div>
+
+      {/*
+       * BUILDER STATE, then the LATEST SIGNAL, on one line (public IA pass,
+       * 2026-09-28). The status is the card's most important fact (UI rule 4),
+       * so it leads the body at its own size rather than sitting as a small
+       * pill beside the name; the evidence that earned it follows it. The
+       * line wraps under the chip on a narrow card instead of squeezing.
+       */}
+      <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5" data-testid="card-builder">
+        <ActivityChip status={project.activityStatus} variant="surface" unknownReason={unknownActivityReason(project)} className="shrink-0" />
+        {!ship && latest ? (
+          <p
+            className="flex min-w-0 grow basis-[9rem] items-baseline gap-1.5 text-[13px] leading-5"
+            data-testid="card-latest-signal"
+            data-ship-id={latest.id}
+            title={`${formatEventType(latest.eventType)}: ${latestTitle}`}
+          >
+            <span className="min-w-0 truncate font-medium text-hey-ink">{latestTitle}</span>
+            <time
+              dateTime={latest.publishedAt.toISOString()}
+              data-testid="card-last-ship"
+              className="shrink-0 tabular-nums text-hey-muted"
+            >
+              · {formatRelativeTime(latest.publishedAt, now)}
+            </time>
+          </p>
+        ) : !ship && lastShipAt ? (
+          <time
+            dateTime={lastShipAt.toISOString()}
+            data-testid="card-last-ship"
+            className="text-[13px] leading-5 tabular-nums text-hey-muted"
+          >
+            Shipped {formatRelativeTime(lastShipAt, now)}
+          </time>
+        ) : null}
       </div>
 
       {showStillBuilding && project.stillBuilding ? (
@@ -298,19 +367,14 @@ export function ProjectCard({
           data-verification={ship.verificationStatus}
           className="min-w-0 rounded-[8px] bg-hey-subtle px-3 py-2.5"
         >
-          <p className="flex items-baseline justify-between gap-3">
+          <p className="flex items-baseline justify-between gap-3 text-[12.5px] text-hey-muted">
             {/*
               * "Ship", not "Latest ship" (2026-09-06). This block renders
               * whichever event the surface handed it, and on Ships that is one
-              * row of a history: AUM0's card said "Latest ship" over a release
-              * from seven hours ago while the same card's status line read
-              * "Last ship 3h ago". Both times were right; the label was not.
+              * row of a history.
               */}
-            <span className="hey-eyebrow text-hey-muted">Ship</span>
-            <time
-              dateTime={ship.publishedAt.toISOString()}
-              className="hey-telemetry shrink-0 tabular-nums text-hey-muted"
-            >
+            <span>Ship</span>
+            <time dateTime={ship.publishedAt.toISOString()} className="shrink-0 tabular-nums">
               {formatRelativeTime(ship.publishedAt, now)}
             </time>
           </p>
@@ -339,150 +403,102 @@ export function ProjectCard({
             ) : null}
           </p>
         </div>
+      ) : description ? (
+        /* What the project is, in its own words: two lines, secondary, after the builder line. */
+        <p className="line-clamp-2 text-[13.5px] leading-[1.5] text-hey-secondary" data-testid="description">
+          {description}
+        </p>
       ) : null}
 
       {/*
-       * A ship card stops at the ship (UI/UX audit U11, 2026-09-11). On the
-       * feed the same project's market cap, contract and description were
-       * printed for every event, so 48 events read as 48 token cards. The
-       * facts live one click away on the project page; here the identity,
-       * the ship and the footer are the card.
+       * MARKET CONTEXT, REFERENCE, ORIGIN — one quiet block at the foot of
+       * the card, so the facts line up across a row of cards whatever the
+       * description's length. A ship card stops at the ship (UI/UX audit
+       * U11): on the feed the same project's market cap and contract were
+       * printed for every event.
        */}
-      {ship ? null : hasToken ? (
-        <>
-          {/* 4: market cap, from stored snapshots only */}
-          <p className="flex items-baseline justify-between gap-3 text-[14px]" data-testid="market-cap">
-            {/*
-              Named for what it is (parity audit, 2026-09-25): a figure equal to
-              the FDV is not called a market cap. The card itself stays inside
-              its information budget (PRD V4 16.0 D: no FDV on a card), so it
-              says "Valuation" and the tooltip names the measure.
-            */}
-            {valuation.shown && valuation.kind === 'fdv' ? (
-              <span className="text-hey-secondary" title="Fully diluted valuation: the provider reports no circulating supply, so this is price × total supply.">
+      {ship ? (
+        <div className="mt-auto border-t border-hey-border pt-3">{origin}</div>
+      ) : (
+        <div className="mt-auto space-y-2.5 border-t border-hey-border pt-3">
+        {hasToken ? (
+          <>
+            {/* Market context: valuation kind + value, from stored snapshots only */}
+            <p className="flex items-baseline justify-between gap-3 text-[13.5px]" data-testid="market-cap">
+              {/*
+                Named for what it is (parity audit, 2026-09-25): a figure equal to
+                the FDV is not called a market cap. The card stays inside its
+                information budget (PRD V4 16.0 D: no FDV on a card), so it says
+                "Valuation" and the tooltip names the measure.
+              */}
+              <span
+                className="text-hey-secondary"
+                {...(valuation.shown && valuation.kind === 'fdv'
+                  ? { title: 'Fully diluted valuation: the provider reports no circulating supply, so this is price × total supply.' }
+                  : {})}
+              >
                 {valuationDisplayLabel(valuation, 'card')}
               </span>
-            ) : (
-              <span className="text-hey-secondary">{valuationDisplayLabel(valuation, 'card')}</span>
-            )}
-            {valuation.shown ? (
-              <span
-                className="font-medium tabular-nums"
-                {...(marketSource ? { title: `via ${marketSource}` } : {})}
-              >
-                {formatUsdCompact(valuation.usd)}
-                {/* Stale is not current (2026-09-28): a reading older than a day says how old, as the Terminal does. */}
-                {staleReadingAge(project.marketCapObservedAt, now) ? (
-                  <span className="ml-1 font-normal text-hey-muted" data-testid="valuation-age">
-                    · {staleReadingAge(project.marketCapObservedAt, now)} old
-                  </span>
-                ) : null}
-              </span>
-            ) : (
-              <span className="text-hey-muted" data-valuation-state={valuation.state} title={VALUATION_HIDDEN_HELP[valuation.state]}>
-                {VALUATION_HIDDEN_WORDS[valuation.state]}
-              </span>
-            )}
-          </p>
-
-          {marketLens ? (
-            <p className="-mt-1 text-[12.5px] leading-[1.5] text-hey-muted" data-testid="market-lens-line">
-              {marketLensLine(project)}
+              {valuation.shown ? (
+                <span className="font-semibold tabular-nums text-hey-ink" {...(marketSource ? { title: `via ${marketSource}` } : {})}>
+                  {formatUsdCompact(valuation.usd)}
+                  {/* Stale is not current (2026-09-28): a reading older than a day says how old, as the Terminal does. */}
+                  {staleAge ? (
+                    <span className="ml-1 font-normal text-hey-muted" data-testid="valuation-age">
+                      · {staleAge} old
+                    </span>
+                  ) : null}
+                </span>
+              ) : (
+                <span className="text-hey-muted" data-valuation-state={valuation.state} title={VALUATION_HIDDEN_HELP[valuation.state]}>
+                  {VALUATION_HIDDEN_WORDS[valuation.state]}
+                </span>
+              )}
             </p>
-          ) : contextLine ? (
-            <p className="-mt-1 text-[12.5px] leading-[1.5] text-hey-muted" data-testid="card-context-line">
-              {contextLine}
-            </p>
-          ) : null}
 
-          {/* 5: contract address — identity, never a ticker */}
-          <div className="-ml-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-            <ContractAddress address={project.token!.contractAddress} chainId={project.token!.chainId} />
-            {/*
-             * The locker, beside the contract rather than on a line of its
-             * own: which supply is locked is part of the token's identity,
-             * and the card's design contract is eight facts, not nine.
-             * It wraps instead of squeezing the address at 375px.
-             */}
-            {project.tokenLock ? <TokenLockChip lock={project.tokenLock} /> : null}
-            {/*
-              Token is not project (data-correctness pass, 2026-09-28): where
-              the project's own site names a different contract, the page and
-              the API say "Contract mismatch" and the card printed the tracked
-              contract as the project's with no caveat. The page's own chip,
-              beside the contract it qualifies.
-            */}
-            {project.tokenVerification === 'MISMATCH' ? (
-              <TokenVerificationChip verification="MISMATCH" className="text-[12px]" />
+            {marketLens ? (
+              <p className="-mt-1 text-[12.5px] leading-[1.5] text-hey-muted" data-testid="market-lens-line">
+                {marketLensLine(project)}
+              </p>
+            ) : contextLine ? (
+              <p className="-mt-1 text-[12.5px] leading-[1.5] text-hey-muted" data-testid="card-context-line">
+                {contextLine}
+              </p>
             ) : null}
-          </div>
 
-          {/* One line about the token, under its identity (founder, 2026-09-03). */}
-          {description ? (
-            <p className="line-clamp-2 text-[13.5px] leading-[1.5] text-hey-secondary" data-testid="description">
-              {description}
-            </p>
-          ) : null}
-        </>
-      ) : (
-        <>
-          {/*
-           * A tokenless project has no market cap or contract to show, so its
-           * card carries the equivalent builder facts in the same slots: the
-           * last ship where the market cap would be, the site where the
-           * address would be, and one line about what it is.
-           */}
-          <p className="flex items-baseline justify-between gap-3 text-[14px]" data-testid="last-ship">
-            <span className="text-hey-secondary">Last ship</span>
-            {project.lastMeaningfulShipAt ? (
-              <span className="font-medium">{formatRelativeTime(project.lastMeaningfulShipAt, now)}</span>
-            ) : (
-              <span className="text-hey-muted">None recorded</span>
-            )}
-          </p>
-          {project.websiteUrl ? (
-            <p className="flex min-w-0 text-[14px]" data-testid="website">
-              <ExternalRef href={project.websiteUrl} label={`Open ${project.name} website`}>
+            {/* Reference: the contract — identity, never a ticker — with its lock and any contradiction beside it. */}
+            <div className="-ml-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+              <ContractAddress address={project.token!.contractAddress} chainId={project.token!.chainId} />
+              {project.tokenLock ? <TokenLockChip lock={project.tokenLock} /> : null}
+              {/*
+                Token is not project (data-correctness pass, 2026-09-28): where
+                the project's own site names a different contract, the page and
+                the API say "Contract mismatch"; the card carries the page's chip.
+              */}
+              {project.tokenVerification === 'MISMATCH' ? (
+                <TokenVerificationChip verification="MISMATCH" className="text-[12px]" />
+              ) : null}
+            </div>
+          </>
+        ) : (
+          /*
+           * No token: said once, in the slot a market would take, with the
+           * project's own site as its reference — a builder without a token
+           * is a complete card, not an empty one.
+           */
+          <p className="flex min-w-0 items-baseline justify-between gap-3 text-[13.5px]" data-testid="no-token">
+            <span className="shrink-0 text-hey-secondary">No token</span>
+            {project.websiteUrl ? (
+              <ExternalRef href={project.websiteUrl} label={`Open ${project.name} website`} data-testid="website">
                 {hostOf(project.websiteUrl)}
               </ExternalRef>
-            </p>
-          ) : null}
-          {description ? (
-            <p className="line-clamp-2 text-[13.5px] leading-[1.5] text-hey-secondary" data-testid="description">
-              {description}
-            </p>
-          ) : null}
-        </>
-      )}
+            ) : null}
+          </p>
+        )}
 
-      {/* 7 + 8: launch origin and official X */}
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-hey-border pt-3 text-[13px]">
-        <span className="flex min-w-0 items-center gap-1.5" data-testid="launched-via">
-          <span className="text-hey-muted">via</span>
-          {project.launchedVia?.url ? (
-            <ExternalRef href={project.launchedVia.url} label={`Open ${project.launchedVia.name} launch page`}>
-              {project.launchedVia.name}
-            </ExternalRef>
-          ) : (project.launchedVia?.name ?? 'Unknown') === 'Unknown' && project.marketVenue ? (
-            // No launch record, but a pool: say where the token trades, never where it launched.
-            <span className="truncate text-hey-secondary" title={`HEY did not observe the launch; the token trades on ${project.marketVenue}.`}>
-              DEX ({project.marketVenue})
-            </span>
-          ) : (
-            <span className="truncate text-hey-secondary">{project.launchedVia?.name ?? 'Unknown'}</span>
-          )}
-        </span>
-        {project.officialX ? (
-          <ExternalRef
-            href={project.officialX.url}
-            label={`Open ${project.name} on X`}
-            className="shrink-0"
-            data-testid="official-x"
-          >
-            @{project.officialX.handle}
-          </ExternalRef>
-        ) : null}
-      </div>
+        {origin}
+        </div>
+      )}
     </article>
   );
 }

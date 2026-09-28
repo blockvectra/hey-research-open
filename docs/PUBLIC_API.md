@@ -737,6 +737,37 @@ Momentum, the Discovery Gap, the Radar or any ordering.
 `usage` (2026-09-28, additive; absent only when the read failed) — product usage over seven days, as
 `GET /api/projects/{slug}/usage` summarises it below, and `links.usage` to that route.
 
+`security` (2026-09-28, additive; absent only when the read failed) — **security context: evidence,
+never a verdict** (`docs/SECURITY_CONTEXT.md`). An audit shows an audit took place; it is not a
+guarantee of safety. There is no score and no "safe". Each section carries a state — `MEASURED`,
+`NONE_FOUND` (a reading of the indexes in `readFrom` only), `NOT_READ` or `NOT_APPLICABLE` with a
+`reason` — and items only where something was found:
+
+- `audits` — `{ state, readFrom, items: [{ id, url, authority, hostedOn, auditor, date: null, isPdf,
+  foundBy: [{ foundVia, foundOnUrl, firstObservedAt, lastObservedAt }], observedAt }] }`. `authority`
+  is `AUDITOR_PUBLISHED` (on an auditor's own host or report repository), `PROJECT_CLAIMED` (linked
+  from the official site, not on an auditor's host) or `REGISTRY_LISTED` (DefiLlama's listing only;
+  a multichain protocol's audits cover its core contracts, not necessarily this deployment).
+  `auditor.basis` is `AUDITOR_HOST` or `URL_PATH` (a file name that names a firm). `date` is always
+  null: HEY never reads a report. `readFrom` ⊆ `official_site`, `official_site_files`, `defillama`.
+- `bugBounty` — the same shape; items `{ id, url, authority: PLATFORM_LISTED | PROJECT_CLAIMED,
+  platform, foundBy, observedAt }`. DefiLlama is not a bounty index.
+- `securityTxt` — `MEASURED` with `{ id, url, contacts (null until parsed), policyUrls, expiresAt,
+  expired, firstObservedAt, readAt }`; `NONE_FOUND` with `reason: absent | not_a_security_txt`; or a
+  reason why it was not read.
+- `advisories` — OSV about the published versions of accepted packages: `MEASURED` with items
+  (`advisoryId`, `aliases`, `packageName`, `version`, `fixedVersions`, `url` on osv.dev,
+  `subject: PUBLISHED_PACKAGE`), or `NONE_FOUND` with `packagesRead` — a reading of OSV, not a
+  statement about the code.
+- `repositoryChecks` — deps.dev's OpenSSF Scorecard, check by check (`score` or null), per official
+  repository; never summed.
+- `incidents` — always `{ state: "NOT_READ", reason: "no_incident_source_read" }`.
+- `linksOmitted` — links HEY holds but does not publish (not https, or failing the URL-safety
+  checks); `meaning` — the audit sentence; `contextOnly: true`.
+
+`coverage.securityContext` keeps its 2026-09-27 meaning (advisories and Scorecards); the new block
+does not change it.
+
 ### `GET /api/projects/{slug}/usage?window=1|7|30` (2026-09-28)
 
 Is what the project shipped being used? HEY's own daily rollup (`project_usage_days`) of the
@@ -779,6 +810,37 @@ calls-per-method read and the decoded usage read; no provider in the request pat
 
 Usage is its own dimension: it never feeds activity status, Build Momentum, the Discovery Gap, the
 Radar or any ordering. SDK: `client.projects.usage(slug, { window })` → `HeyProjectUsage`.
+
+### `snapshot.peerContext` (2026-09-28, additive)
+
+Peer context, rules `peers-v1` ([`docs/PEERS.md`](PEERS.md)): some of the project's published
+figures placed among comparable projects — same type (primary narrative × meme/product), same
+metric definition, same window, measured figures only. `state` is `COMPUTED`, `NO_COHORT` (with
+`reason`: `no_primary_narrative`, `narrative_not_a_type`, `kind_not_classified`) or
+`NOT_COMPUTED`. Each of `dimensions[]` stands alone: `metric`, `label`, `unit`, `windowDays`,
+`definition`, `state`/`reason`, `value`, `cohortSize`, `median` and `range: {p10, p90}` (null below
+8 measured members, `statsReason: "not_enough_comparable_projects"`), `percentile` (null below 20,
+`percentileReason`), `comparison` (`above_median` | `at_median` | `below_median` — a position, not
+a judgement) and `line`. `minimums`, `computedAt`, `methodology`, and (2026-09-28, additive)
+`freshness`: `{state: "CURRENT" | "STALE", asOf, staleAfterHours: 36}` — `STALE` when the daily
+run has not replaced the context in 36 hours — or null when nothing was computed. A
+`build_momentum` value read under a scoring version other than today's is `NOT_MEASURED` with
+`reason: "recomputing_after_scoring_change"` until the next run. There is no overall figure, and
+peer context is never an input to anything. Absent only when the read failed. SDK:
+`HeyPeerContext`.
+
+### `GET /api/projects/{slug}/relationships` (2026-09-28)
+
+What is connected to one published project, and why HEY thinks so
+([`docs/RELATIONSHIPS.md`](RELATIONSHIPS.md)): first-degree `nodes` (project, token, contract,
+implementation, repository, package, domain, docs, launchpad, protocol registry, corroborating
+page — never an account) and `edges`, each `{ type, filter, from, to, label, state, evidence:
+[{id, url}], links: [{label, url}], observedAt }`. `state` is `verified`, `official`, `claimed`,
+`context_only` or `observed`; `evidence` ids resolve on `/api/evidence/{id}`. `counts[]` gives
+records read of records held per family and `truncated` whether any was capped; `notHeld[]` names
+the families HEY does not hold (contract-to-contract interaction, audits) with the reason — never
+implied, never "none". There is no partnership edge. HEY's own tables only. SDK:
+`client.projects.relationships(slug)` → `HeyProjectRelationships`.
 
 ### `GET /api/projects/{slug}/coverage`
 
@@ -880,7 +942,11 @@ two reads of the proxy, with no block to name), `narrative:<projectUuid>:<slug>`
 assigned; `sourceType` says who set it: `project`, `hey_moderator` or `hey_rules`), `method:<uuid>`
 (a contract's functions first called, or called again after 30+ days without a call, on one UTC
 day: counts only, `sourceType: "decoded_calls"`; a fact later evidence contradicted is withdrawn as
-`superseded`), `sourcechange:<uuid>` (2026-09-27: a material change to what the project's official
+`superseded`), `security:<projectUuid>:<audit|bounty|contact>:<16 hex>` (2026-09-28: one item of the
+project's security context — `claimType` `AUDIT_REPORT_LINKED`, `BUG_BOUNTY_LINKED` or
+`SECURITY_CONTACT_PUBLISHED`, `sourceUrl` the report, program or security.txt, `publishedAt: null`,
+precision OBSERVED; an item HEY no longer holds resolves to 404, a hidden project's to `not_public`),
+`sourcechange:<uuid>` (2026-09-27: a material change to what the project's official
 site declares, against HEY's earlier reading — `claimType: "SOURCE_CHANGE_OBSERVED"`,
 `sourceType: "official_site"`, `publishedAt: null`, precision OBSERVED, `metadata` with the kind and
 the added/removed counts, never the site's text; a change against a source HEY no longer holds as
@@ -1289,6 +1355,23 @@ Webhooks and cursor polling of `/api/changes?after=` are the supported ways to f
 server-sent stream is not offered: the ledger is written every five minutes, so a stream could be
 no fresher than polling (see `docs/WEBHOOKS.md`).
 
+## Research boards: `/api/boards` (2026-09-28)
+
+A Terminal account's own saved boards ([`docs/BOARDS.md`](BOARDS.md)): published projects in order,
+panels from a fixed list, a window. An API key or the reader's own session (writes same-origin
+only); the account must be admitted to the Terminal (else `403`). Answers are `private, no-store`;
+another account's board is `404`.
+
+| Route | What it does |
+|---|---|
+| `GET /api/boards` | the account's boards (`HeyBoardSummary`), the limits (20 boards, 25 projects, name 80, note 2,000), the panel names and windows |
+| `POST /api/boards` | `{name, projects?, panels?, windowDays?, note?}` → `201 HeyBoard`, private |
+| `GET`, `PATCH`, `DELETE /api/boards/{id}` | read; change `name`, `note`, `panels`, `windowDays`, `projects` (the whole ordered list); remove |
+
+Errors: `invalid_parameter`, `unknown_projects` (unknown and unpublished alike), `project_limit`,
+`board_limit` (409), `not_found`. Sharing is managed in the Terminal, where the link is shown once;
+the API never returns a share token. No MCP tool.
+
 ## `GET /api/signals` and `GET /api/signals/{id}` (2026-09-13)
 
 HEY Signal: measured changes about published projects. `group` (`development`, `contract`,
@@ -1334,7 +1417,11 @@ The Builder Radar. `filter` (`all`, `pons`, `virtuals`, `other-launch`, `no-toke
 `development`, `onchain`, `research`), `liquidityHealth` (context, never in the rank) and the
 `inputs` the scores were read from. `method` states the formula: overall = 0.65 × development
 (HEY Build Momentum) + 0.20 × on-chain use + 0.15 × research standing; market cap, price and
-volume take no part. Ranks are recomputed daily and kept.
+volume take no part. Ranks are recomputed daily and kept. On-chain use is **address-days of
+calls** to the project's own contracts over 7 days: each UTC day's distinct caller count, added
+across days and contracts, so an address calling on several days is counted again — never
+distinct addresses and never people (the emitted-event count stands in where HEY has no caller
+count). The `onchain` filter sorts by that sub-score.
 
 ## `GET /api/reports/weekly` and `GET /api/reports/weekly/{week}` (2026-09-13)
 
@@ -1595,9 +1682,14 @@ never says staking, deflationary or buyback as something `$HEY` does.
 
 Stateless and read-only: the body is an AgentResearchReceipt (`docs/AGENT_RESEARCH_RECEIPTS.md`), at
 most 64 KB. The answer lists shape errors with their paths, the subject project's status, and each
-cited HEY id as `exists`, `withdrawn`, `moved`, `not_found`, `invalid_id` or `not_checked` (at most
-25 HEY ids are checked). Nothing is stored and nothing the receipt names is fetched; the answer
-carries `stored: false` and `endorsement: false`. 30 checks a minute per client.
+cited HEY reference as `exists`, `revised` (a change event HEY has revised since the cited
+revision), `project_exists` (a snapshot: the project is published; its `asOf` is not verified and
+its `scoringVersion` is `matches_current`, `differs_from_current` or `not_given`), `withdrawn`,
+`moved`, `not_found`, `invalid_id` or `not_checked` (at most 25 HEY ids are checked).
+`heyEvidenceStands` is `true` only when every HEY reference was checked and stands, `false` when a
+checked one does not, `"partial"` when some were not checked, and `null` (`nothing_checked`) when
+none was. Nothing is stored and nothing the receipt names is fetched; the answer carries
+`stored: false` and `endorsement: false`. 30 checks a minute per client.
 
 ## Feeds
 

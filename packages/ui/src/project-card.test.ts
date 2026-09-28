@@ -285,7 +285,11 @@ describe('ProjectCard — tokenless', () => {
 
   it('shows kind, site and X account, and no ticker, market cap or contract address', () => {
     expect(html).toContain('Infrastructure');
-    expect(html).toContain('Last ship');
+    // The last ship rides the builder line (public IA pass, 2026-09-28); the market slot says "No token" once.
+    expect(html).toContain('data-testid="card-last-ship"');
+    expect(html).toContain('Shipped');
+    expect(html).toContain('data-testid="no-token"');
+    expect(html).toContain('>No token<');
     expect(html).toContain('Open indexer tooling');
     expect(html).toContain('hoodlens.example');
     expect(html).toContain('@hoodlens');
@@ -366,5 +370,84 @@ describe('token lock', () => {
   it('never shows a lock chip on a project with no token', () => {
     const { token: _token, tokenLock: _lock, ...tokenless } = { ...tokenBacked, tokenLock: { supplyPct: 5, until: '2027-01-01', pairLocked: false } };
     expect(render(tokenless as ProjectCardData)).not.toContain('data-testid="token-lock"');
+  });
+});
+
+describe('ProjectCard — builder line and latest signal (public IA pass, 2026-09-28)', () => {
+  const now = new Date('2026-09-28T12:00:00Z');
+  const renderAt = (project: ProjectCardData) => renderToStaticMarkup(createElement(ProjectCard, { project, now }));
+  const latestShip = { id: 'a1b2', title: 'Agent **SDK** v0.4', eventType: 'SDK_RELEASE', publishedAt: new Date('2026-09-26T12:00:00Z') };
+
+  it('names what shipped and when, in one line after the status', () => {
+    const html = renderAt({ ...tokenBacked, latestShip, lastMeaningfulShipAt: latestShip.publishedAt });
+    expect(html).toContain('data-testid="card-latest-signal"');
+    expect(html).toContain('data-ship-id="a1b2"');
+    // Markdown from a source is words on a card.
+    expect(html).toContain('Agent SDK v0.4');
+    expect(html).toContain('· 2d ago');
+    expect(html).toContain('title="SDK release: Agent SDK v0.4"');
+    // The status comes before the evidence in reading order.
+    expect(html.indexOf('data-activity-status')).toBeLessThan(html.indexOf('card-latest-signal'));
+    // One date, not two.
+    expect(html.match(/data-testid="card-last-ship"/g)).toHaveLength(1);
+  });
+
+  it('falls back to the date alone when HEY holds a date but no counted ship', () => {
+    const html = renderAt({ ...tokenBacked, lastMeaningfulShipAt: new Date('2026-07-28T12:00:00Z') });
+    expect(html).not.toContain('card-latest-signal');
+    expect(html).toContain('Shipped 2mo ago');
+  });
+
+  it('says nothing about a ship that never happened', () => {
+    const html = renderAt({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false });
+    expect(html).not.toContain('card-last-ship');
+    expect(html).not.toContain('card-latest-signal');
+    expect(html).toContain('No builder signal yet');
+  });
+
+  it('a ship card carries its ship, not a second latest-signal line', () => {
+    const html = renderToStaticMarkup(
+      createElement(ProjectCard, {
+        project: { ...tokenBacked, latestShip },
+        ship: { id: 's1', eventType: 'GITHUB_RELEASE', title: 'v1.0', publishedAt: latestShip.publishedAt, verificationStatus: 'PUBLICLY_VERIFIED' },
+        now,
+      }),
+    );
+    expect(html).toContain('data-testid="latest-ship"');
+    expect(html).not.toContain('card-latest-signal');
+    expect(html).not.toContain('data-testid="market-cap"');
+  });
+
+  it('keeps a long name and a long ticker inside the card', () => {
+    const html = renderAt({ ...tokenBacked, name: 'A'.repeat(90), symbol: 'VERYLONGTICKERSYMBOLTHATGOESON' });
+    expect(html).toContain('line-clamp-2 [overflow-wrap:anywhere]');
+    // The identity line truncates rather than widening the grid track.
+    expect(html).toMatch(/<p class="mt-1 truncate[^"]*"><span data-testid="ticker"/);
+  });
+
+  it('draws a monogram when there is no logo, and never an empty image', () => {
+    const html = renderAt({ ...tokenBacked, logoUrl: null });
+    expect(html).not.toContain('<img');
+  });
+
+  it('keeps FDV and market cap apart: an FDV-only reading is "Valuation", with the measure named', () => {
+    const html = renderAt({ ...tokenBacked, marketCapUsd: 238_000, fdvUsd: 238_000 });
+    expect(html).toContain('>Valuation<');
+    expect(html).toContain('title="Fully diluted valuation');
+    expect(html).not.toContain('>Market cap<');
+    const known = renderAt({ ...tokenBacked, marketCapUsd: 22_085, fdvUsd: 29_616 });
+    expect(known).toContain('>Market cap<');
+  });
+
+  it('a verified builder with nothing to keep reading says so rather than "unknown"', () => {
+    const html = renderAt({
+      ...tokenBacked,
+      activityStatus: 'UNKNOWN',
+      hasBuilderSource: false,
+      researchLevel: 'VERIFIED_BUILDER',
+      lastMeaningfulShipAt: new Date('2026-07-28T12:00:00Z'),
+    });
+    expect(html).toContain('data-unknown-reason');
+    expect(html).not.toContain('>Activity unknown<');
   });
 });

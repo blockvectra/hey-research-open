@@ -461,7 +461,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_evidence',
     {
       ...describe('get_evidence', [
-        'Open one published record by its typed id — ship:, signal:, abi:, impl:, lock:, source:, claim:, state:, method:, sourcechange: — as a receipt: what it claims, its source URL, when it happened',
+        'Open one published record by its typed id — ship:, signal:, abi:, impl:, lock:, source:, claim:, state:, method:, sourcechange:, security: — as a receipt: what it claims, its source URL, when it happened',
         'at what precision, when HEY knew, how it is backed. Ids come from get_changes, get_project_timeline, explain_fact and the snapshot. A withdrawn record says so.',
       ]),
       inputSchema: { id: z.string().regex(/^[a-z_]+:[A-Za-z0-9:._-]{1,200}$/).describe('A typed evidence id, e.g. "ship:2ac87a66-…".') },
@@ -676,9 +676,10 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
 }
 
 /**
- * Four workflows as prompts (2026-09-26): each names the tools in the order
- * that answers the question and the rules the answer must keep. A prompt
- * fetches nothing; it is text the client offers its user.
+ * Workflows as prompts (four on 2026-09-26; four more with global Ask HEY on
+ * 2026-09-28): each names the tools in the order that answers the question
+ * and the rules the answer must keep. A prompt fetches nothing; it is text
+ * the client offers its user, and it claims nothing the tools it names do not.
  */
 function registerPrompts(server: McpServer): void {
   const RULES = 'Keep each line\'s FACT / DERIVED / UNKNOWN tag, cite evidence URLs, say what HEY does not know, and never state a cause or a recommendation.';
@@ -698,6 +699,27 @@ function registerPrompts(server: McpServer): void {
     'explain_metric',
     { title: 'Explain a figure', description: 'Why HEY shows a figure for a project.', argsSchema: { slug: z.string().min(1).max(120), fact: z.string().max(40) } },
     ({ slug, fact }) => message(`Why does HEY show ${fact} for "${slug}"? Call explain_fact with slug=${slug} and fact=${fact}; report the value, its state, the rule and version, the winning source and the unknown inputs. ${RULES}`),
+  );
+  /* Global Ask HEY's questions (2026-09-28), as workflows over the same tools. No new tool: these read what the tools already publish. */
+  server.registerPrompt(
+    'what_changed_today',
+    { title: 'What changed today', description: 'Today on Robinhood Chain, from the change ledger.', argsSchema: {} },
+    () => message(`What changed on Robinhood Chain today? Call get_changes with detectedSince set to today's date at 00:00 UTC, following the cursor until hasMore is false. Lead with releases, builders resuming and contract changes; market events are context and come last. Say how many events you read. ${RULES}`),
+  );
+  server.registerPrompt(
+    'compare_project_usage',
+    { title: 'Compare product usage', description: 'Two to four projects\' product usage beside their building record.', argsSchema: { slugs: z.string().min(3).max(500).describe('Two to four slugs, comma-separated.') } },
+    ({ slugs }) => message(`Compare the product usage of ${slugs} with HEY. Call compare_projects with those slugs, then get_project_snapshot for each and read its usage block. Usage is its own dimension: say "distinct caller addresses", never users, and never add days together into a window's distinct count. A ship beside a usage change is "observed after", never a cause. Name no winner. ${RULES}`),
+  );
+  server.registerPrompt(
+    'explain_project_evidence',
+    { title: 'The evidence behind a project', description: 'Each Research Summary line and the records it rests on.', argsSchema: { slug: z.string().min(1).max(120) } },
+    ({ slug }) => message(`What evidence supports what HEY says about "${slug}"? Call get_project_snapshot and read its Research Summary; for each line that cites evidence, open up to two ids with get_evidence, and for each figure call explain_fact. A line with no evidence id is HEY's derivation or an unknown — say which. ${RULES}`),
+  );
+  server.registerPrompt(
+    'monitor_project',
+    { title: 'Monitor a project', description: 'What to watch on one project, and how to follow its changes.', argsSchema: { slug: z.string().min(1).max(120) } },
+    ({ slug }) => message(`Help me monitor "${slug}" with HEY. Call get_project_coverage to see what HEY measures for it, then get_changes with project=${slug} for its recent events, and keep the cursor the answer gives to sync later. Say which kinds of change HEY can see for it and which it cannot (not measured is unknown, not quiet). Alerts and following are set on heyresearch.xyz by the reader; you cannot create them. ${RULES}`),
   );
   server.registerPrompt(
     'investigate_contract',

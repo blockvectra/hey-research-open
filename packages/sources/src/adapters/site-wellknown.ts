@@ -358,7 +358,47 @@ export function parseLlmsTxt(body: string, baseUrl: string): LlmsTxt | undefined
 
 /* ---------------------------------------------------------------- security */
 
-export type SecurityTxt = { contacts: number; expires?: Date; hasPolicy: boolean };
+export type SecurityTxt = {
+  contacts: number;
+  expires?: Date;
+  hasPolicy: boolean;
+  /**
+   * The Contact URIs as published (2026-09-28), at most five: `mailto:` with
+   * one address, `https:` with no credentials, or `tel:` digits. Anything
+   * else is counted in `contacts` and not kept. Data, never markup.
+   */
+  contactUris: string[];
+  /** The Policy URLs, `https:` only, at most three. */
+  policyUrls: string[];
+};
+
+const MAX_SECURITY_CONTACTS = 5;
+const MAX_SECURITY_POLICIES = 3;
+const MAX_SECURITY_URI = 256;
+const MAILTO = /^mailto:[A-Za-z0-9._%+-]{1,64}@[A-Za-z0-9.-]{1,190}\.[A-Za-z]{2,24}$/;
+const TEL = /^tel:\+?[0-9 ()-]{3,32}$/;
+
+/** A published https URL without credentials, or undefined. */
+function httpsUri(value: string): string | undefined {
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password) return undefined;
+    return parsed.toString();
+  } catch {
+    return undefined;
+  }
+}
+
+/** One Contact value as RFC 9116 allows it (a URI), or undefined when HEY does not keep it. */
+export function securityContactUri(raw: string): string | undefined {
+  const value = raw.trim();
+  const control = Array.from(value).some((char) => char.charCodeAt(0) < 0x20 || char.charCodeAt(0) === 0x7f);
+  if (value === '' || value.length > MAX_SECURITY_URI || control || /[<>"'`]/.test(value)) return undefined;
+  if (/^tel:/i.test(value)) return TEL.test(`tel:${value.slice(4)}`) ? `tel:${value.slice(4)}` : undefined;
+  if (/\s/.test(value)) return undefined;
+  if (/^mailto:/i.test(value)) return MAILTO.test(`mailto:${value.slice(7)}`) ? `mailto:${value.slice(7)}` : undefined;
+  return httpsUri(value);
+}
 
 /** RFC 9116: at least one `Contact:` line, or this is not a security.txt. */
 export function parseSecurityTxt(body: string): SecurityTxt | undefined {
@@ -366,20 +406,29 @@ export function parseSecurityTxt(body: string): SecurityTxt | undefined {
   let contacts = 0;
   let expires: Date | undefined;
   let hasPolicy = false;
+  const contactUris: string[] = [];
+  const policyUrls: string[] = [];
   for (const line of lines(body)) {
     const trimmed = line.trim();
     const colon = trimmed.indexOf(':');
     if (trimmed.startsWith('#') || colon <= 0) continue;
     const key = trimmed.slice(0, colon).toLowerCase();
     const value = trimmed.slice(colon + 1).trim();
-    if (key === 'contact' && value !== '') contacts += 1;
-    else if (key === 'expires') {
+    if (key === 'contact' && value !== '') {
+      contacts += 1;
+      const uri = securityContactUri(value);
+      if (uri && contactUris.length < MAX_SECURITY_CONTACTS && !contactUris.includes(uri)) contactUris.push(uri);
+    } else if (key === 'expires') {
       const date = new Date(value);
       if (!Number.isNaN(date.getTime())) expires = date;
-    } else if (key === 'policy') hasPolicy = true;
+    } else if (key === 'policy') {
+      hasPolicy = true;
+      const url = value.length <= MAX_SECURITY_URI ? httpsUri(value) : undefined;
+      if (url && policyUrls.length < MAX_SECURITY_POLICIES && !policyUrls.includes(url)) policyUrls.push(url);
+    }
   }
   if (contacts === 0) return undefined;
-  return { contacts, ...(expires ? { expires } : {}), hasPolicy };
+  return { contacts, ...(expires ? { expires } : {}), hasPolicy, contactUris, policyUrls };
 }
 
 /* ----------------------------------------------------------------- openapi */

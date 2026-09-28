@@ -8,6 +8,7 @@ import {
   parseLlmsTxt,
   parseRobotsTxt,
   parseSecurityTxt,
+  securityContactUri,
   parseSitemap,
   parseWellKnown,
   robotsAllows,
@@ -136,6 +137,31 @@ describe('security.txt (RFC 9116)', () => {
     expect(parseSecurityTxt(readFixture('wellknown-security.txt'))).toMatchObject({ contacts: 2, hasPolicy: true });
     expect(parseSecurityTxt('Policy: https://a.example')).toBeUndefined();
     expect(parseSecurityTxt(readFixture('wellknown-spa-fallback.html'))).toBeUndefined();
+  });
+
+  it('keeps the Contact, Policy and Expires values as published, validated (2026-09-28)', () => {
+    const parsed = parseSecurityTxt(readFixture('wellknown-security.txt'));
+    expect(parsed?.contactUris).toEqual(['mailto:security@example.org', 'https://example.org/security']);
+    expect(parsed?.policyUrls).toEqual(['https://example.org/security-policy']);
+    expect(parsed?.expires?.toISOString()).toBe('2027-01-01T00:00:00.000Z');
+  });
+
+  it('counts a contact it will not keep, and never keeps markup, script or credentials', () => {
+    const body = [
+      'Contact: javascript:alert(1)',
+      'Contact: https://user:pw@evil.example/',
+      'Contact: http://plain.example/report',
+      'Contact: mailto:<script>@x.example',
+      'Contact: tel:+1-201-555-0123',
+      'Policy: http://plain.example/policy',
+    ].join('\n');
+    const parsed = parseSecurityTxt(body);
+    expect(parsed?.contacts).toBe(5);
+    expect(parsed?.contactUris).toEqual(['tel:+1-201-555-0123']);
+    expect(parsed?.policyUrls).toEqual([]);
+    expect(parsed?.hasPolicy).toBe(true);
+    expect(securityContactUri('mailto:security@example.org')).toBe('mailto:security@example.org');
+    expect(securityContactUri('mailto:a b@example.org')).toBeUndefined();
   });
 });
 

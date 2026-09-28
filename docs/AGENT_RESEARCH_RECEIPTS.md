@@ -69,10 +69,33 @@ curl -s https://heyresearch.xyz/api/receipts/validate \
 ```
 
 The answer says whether the shape is valid (`errors` lists what is not, with paths), whether the
-subject project is published, and, for each cited HEY id, `exists`, `withdrawn` (with HEY's reason),
-`moved`, `not_found`, `invalid_id` or `not_checked` (another chain, a non-HEY reference, or past the
-limit of 25 HEY ids per receipt). `heyEvidenceStands` is true when every HEY id checked exists and
-stands. The answer always carries `stored: false` and `endorsement: false`.
+subject project is published, and, for each cited HEY reference, one of:
+
+- `exists` — a HEY evidence id or change event that stands. A change event cited **with** a
+  `revision` is compared with the revision that stands now; cited **without** one, the answer carries
+  `reason: "revision_not_verified"`.
+- `revised` — the change event stands, but HEY has revised it since the cited revision
+  (`reason: "current_revision:<n>"`). A revision HEY never issued is `not_found`
+  (`no_such_revision`).
+- `project_exists` — a `hey_snapshot`: the project is published. The `asOf` the agent read is **not
+  verified** (`reason: "as_of_not_verified"`; HEY does not rebuild the snapshot as it stood then), and
+  `scoringVersion` says how the cited scoring version compares with the one HEY runs now:
+  `matches_current`, `differs_from_current` or `not_given`.
+- `withdrawn` (with HEY's reason), `moved`, `not_found`, `invalid_id`, or `not_checked` (another
+  chain, a non-HEY reference, or past the limit of 25 HEY ids per receipt).
+
+`heyEvidenceStands` (2026-09-28 review repair; it used to be true for a receipt HEY checked nothing
+in) is:
+
+- `true` — every HEY reference was checked and stands (`exists` or `project_exists`);
+- `false` — at least one checked HEY reference does not (missing, withdrawn, revised, moved or
+  malformed);
+- `"partial"` — every checked one stands, but some HEY references were not checked
+  (`heyEvidenceStandsReason: "some_not_checked"`);
+- `null` — no HEY reference was checked at all: only external or market references, another chain,
+  or none cited (`heyEvidenceStandsReason: "nothing_checked"`).
+
+The answer always carries `stored: false` and `endorsement: false`.
 
 Limits: 64 KB of JSON per receipt, 30 checks a minute per client. Nothing the receipt names is
 fetched, whatever URL it contains.

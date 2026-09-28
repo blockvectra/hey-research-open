@@ -289,9 +289,33 @@ describe('the HEY MCP server', () => {
     expect((latest.contents[0] as { text: string }).text).toContain('What changed');
   });
 
-  it('offers four research workflows as prompts, each naming its tools and the rules', async () => {
+  it('offers eight research workflows as prompts, each naming its tools and the rules', async () => {
     const client = await connect(fixtures);
-    expect((await client.listPrompts()).prompts.map((prompt) => prompt.name).sort()).toEqual(['deep_research_project', 'explain_metric', 'investigate_contract', 'what_changed_since']);
+    expect((await client.listPrompts()).prompts.map((prompt) => prompt.name).sort()).toEqual([
+      'compare_project_usage',
+      'deep_research_project',
+      'explain_metric',
+      'explain_project_evidence',
+      'investigate_contract',
+      'monitor_project',
+      'what_changed_since',
+      'what_changed_today',
+    ]);
+    // Global Ask HEY's workflows (2026-09-28) name only tools that exist and keep usage's words and "observed after".
+    const names = new Set((await client.listTools()).tools.map((tool) => tool.name));
+    for (const [name, args] of [
+      ['what_changed_today', {}],
+      ['compare_project_usage', { slugs: 'agentos,stockfi' }],
+      ['explain_project_evidence', { slug: 'agentos' }],
+      ['monitor_project', { slug: 'agentos' }],
+    ] as const) {
+      const body = ((await client.getPrompt({ name, arguments: args })).messages[0]!.content as { text: string }).text;
+      for (const called of body.match(/\b[a-z]+(?:_[a-z]+)+\b/g)?.filter((word) => /^(get|find|explain|compare|lookup|ask|project|chain)_/.test(word)) ?? []) expect(names.has(called), `${name} names ${called}`).toBe(true);
+      expect(body).not.toMatch(/\b(buy|sell|pump|price target|recommend(?:ation)?s? to)\b/i);
+    }
+    const usage = ((await client.getPrompt({ name: 'compare_project_usage', arguments: { slugs: 'agentos,stockfi' } })).messages[0]!.content as { text: string }).text;
+    expect(usage).toContain('"observed after", never a cause');
+    expect(usage).toContain('distinct caller addresses');
     const prompt = await client.getPrompt({ name: 'investigate_contract', arguments: { address: '0xcab100000000000000000000000000000000cb07' } });
     const text = (prompt.messages[0]!.content as { text: string }).text;
     expect(text).toContain('get_contract');

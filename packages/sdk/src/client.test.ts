@@ -168,6 +168,7 @@ describe('HeyClient typed methods', () => {
     await client.accelerating();
     await client.projects.marketMoves('agentos', { days: 60, min: 30 });
     await client.projects.usage('agentos', { window: 30 });
+    await client.projects.relationships('agentos');
     await client.comebacks();
     await client.unlocks({ days: 90 });
     await client.buildMarket();
@@ -199,6 +200,7 @@ describe('HeyClient typed methods', () => {
       '/api/chain/accelerating',
       '/api/projects/agentos/market-moves?days=60&min=30',
       '/api/projects/agentos/usage?window=30',
+      '/api/projects/agentos/relationships',
       '/api/chain/comebacks',
       '/api/chain/unlocks?days=90',
       '/api/chain/build-market',

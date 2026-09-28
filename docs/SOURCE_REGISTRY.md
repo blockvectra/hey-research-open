@@ -466,7 +466,7 @@ they stay candidates and the gate must not publish them as projects.
 | Null semantics | a protocol absent from an overview, or listed with `total24h: null`, is `NOT_TRACKED`, never zero; an overview HEY could not read is `UNREAD` for that day; only a number is `MEASURED`, and a measured zero stays zero |
 | Verified | 2026-09-27: 8,385 protocols, **197** on Robinhood Chain; overviews 206 fee, 203 revenue, 102 volume rows. Of the **192 protocols matched to a published page**, fees are measured for 107 (37 of them zero), revenue for 104 (47 zero), DEX volume for 60 (15 zero) |
 | Reliability | **Medium** (curated registry of self-submitted adapters). Context only: nothing it says reaches activity status, Build Momentum, the Discovery Gap or the Radar |
-| Surface | `GET /api/projects/{slug}/snapshot` → `protocolEconomics`; coverage dimension `protocolEconomics` |
+| Surface | `GET /api/projects/{slug}/snapshot` → `protocolEconomics`; coverage dimension `protocolEconomics`; since 2026-09-28 the stored `audit_links` feed the security context (`snapshot.security.audits`) as `REGISTRY_LISTED` — or `AUDITOR_PUBLISHED` when the link is on an auditor's own host — read from `defi_protocols.listing`, no new request; `audits` (the registry's code) is kept verbatim and not shown |
 
 A declared `robinhood:0x…` token is an identity **candidate**: when HEY holds it on a record other
 than the protocol's page, the weekly `DEFI_IDENTITY_REVIEW` files one `DUPLICATE_PROJECT`
@@ -601,7 +601,7 @@ Discovery Gap or the Radar** (`packages/domain/src/footprint/neutrality.test.ts`
 | | |
 | --- | --- |
 | Purpose | The strongest promotion evidence: does a real project exist behind this token |
-| Fields used | `<title>`, description, canonical URL, outbound GitHub/docs links, RSS/Atom feed discovery; GitLab.com and Codeberg repository links counted as `forgeUrls` (2026-09-27, never ingested, never a self-hosted forge) |
+| Fields used | `<title>`, description, canonical URL, outbound GitHub/docs links, RSS/Atom feed discovery; GitLab.com and Codeberg repository links counted as `forgeUrls` (2026-09-27, never ingested, never a self-hosted forge); since 2026-09-28 (`page-v2`) audit-report and bounty-program links of an allow-listed shape (`securityUrls`, at most 10: an auditor's or platform's own host, or an audit/bounty path on the project's own site or GitHub — `packages/sources/src/security-links.ts`), kept as `AUDIT`/`BUG_BOUNTY` candidates, always context, never the anchor text (`docs/SECURITY_CONTEXT.md`) |
 | Auth | None |
 | Rate limit | Self-imposed: one fetch per project per run, conditional on ETag/Last-Modified |
 | Cache policy | 12–24h |
@@ -627,7 +627,7 @@ by what the page says about itself.
 | Files | `robots.txt` (read first), `sitemap.xml` (or the robots `Sitemap:` line), `llms.txt`, `/.well-known/security.txt`, an OpenAPI description only when `llms.txt` or the sitemap links it, and the conventional feed paths (`/rss.xml`, `/feed.xml`, `/atom.xml`, `/feed`, `/blog/rss.xml`, `/changelog.xml`) at most monthly while the site has no feed |
 | Purpose | Official docs, API descriptions, feeds and repository links the site declares about itself; material changes in what it declares (`source_content_changes`, a `SOURCE_CHANGE_OBSERVED` fact, never a ship) |
 | Sites | Published projects whose website is corroborated: an own `WEBSITE` source, or the homepage its official repository names |
-| Fields used | robots groups for `HEYResearchBot` or `*` (Allow/Disallow, `Sitemap:`); sitemap `<loc>`/`<lastmod>` (first 5,000, no index recursion); llms.txt heading and links; security.txt `Contact:`/`Expires:`/`Policy:`; OpenAPI `openapi`/`swagger`, `info.title`/`info.version`, path and operation counts, `servers[].url` as text. **Not used:** any prose, summaries, schemas or examples; no operation is ever called |
+| Fields used | robots groups for `HEYResearchBot` or `*` (Allow/Disallow, `Sitemap:`); sitemap `<loc>`/`<lastmod>` (first 5,000, no index recursion); llms.txt heading and links; security.txt `Contact:`/`Expires:`/`Policy:` (since 2026-09-28, `manifest-v2`, the values are kept: up to five Contact URIs — `mailto:`, `https:`, `tel:` — three https Policy URLs and Expires; a file present before that is read once unconditionally); audit-report and bounty-program links of an allow-listed shape in the sitemap and llms.txt (security context, `docs/SECURITY_CONTEXT.md`); OpenAPI `openapi`/`swagger`, `info.title`/`info.version`, path and operation counts, `servers[].url` as text. **Not used:** any prose, summaries, schemas or examples; no operation is ever called |
 | Auth | None |
 | Rate limit | Self-imposed: weekly per host, conditional (`If-None-Match`/`If-Modified-Since`), budget `site-wellknown` 2,000/day, cool-off per host (`site-wellknown:<host>`) |
 | Safety | Same client as page reads: DNS-checked and pinned on every hop, 5 redirects, redirect off the site's registrable domain = not the file; per-file caps (robots 512 KiB, sitemap 2 MiB, llms 256 KiB, security 64 KiB, OpenAPI 2 MiB); content-type allow-list **and** body shape, so an SPA's 200 `text/html` fallback is a soft 404, never a present file; a robots Disallow for HEY or `*` is honoured before every other read |
