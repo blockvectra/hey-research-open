@@ -86,6 +86,16 @@ describe('formatRelativeTime', () => {
     expect(formatRelativeTime(new Date('2026-09-17T11:59:30Z'), now)).toBe('just now');
     expect(formatRelativeTime(new Date('2026-09-15T12:00:00Z'), now)).toBe('2d ago');
   });
+
+  it('counts days as UTC calendar dates from a day on; under a day it stays elapsed time (final production review, 2026-09-28)', () => {
+    const morning = new Date('2026-09-28T08:50:00Z');
+    // 12h 54m and the previous date: an elapsed time, not a day word.
+    expect(formatRelativeTime(new Date('2026-09-27T19:56:00Z'), morning)).toBe('12h ago');
+    // 33 hours back and two dates back: the date difference, as the MCP and the summary say it.
+    expect(formatRelativeTime(new Date('2026-09-26T23:50:00Z'), morning)).toBe('2d ago');
+    expect(formatRelativeTime(new Date('2026-09-30T01:00:00Z'), morning)).toBe('in 2d');
+    expect(formatRelativeTime(new Date('2026-09-29T09:00:00Z'), morning)).toBe('in 1d');
+  });
 });
 
 describe('formatUsdCompact', () => {

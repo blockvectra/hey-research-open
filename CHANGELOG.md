@@ -6,6 +6,11 @@ record.
 
 ## 2026-09-28
 
+- **Machine identity and day words.** The Agent Card (a data-only extension), the OpenAPI document
+  (`info.x-hey`) and the site's JSON-LD now carry the `$HEY` contract and the hosted MCP endpoint
+  from the same identity as llms.txt, and no URL in their prose is followed by punctuation. Relative
+  days are UTC calendar days everywhere, the MCP renderer included: "today" only on the same UTC
+  date. llms.txt says which set each week-shipping count covers.
 - **Counts and cards.** Change counts are true totals for their window, never a read cap; card
   latest-ship phrases come from one formatter; market state is no longer coloured as a builder
   signal; the Radar says "not measured" instead of 0 when a project has no contract.

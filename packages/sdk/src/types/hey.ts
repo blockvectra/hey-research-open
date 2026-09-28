@@ -51,7 +51,17 @@ export type HeyTokenProfile = {
   /** HEY's own project, researched by the same rules as every other project. */
   project: { slug: string; name: string; url: string; snapshotUrl: string; sameRulesAsEveryProject: true } | { slug: null; reason: string };
   identity: {
-    product: { name: string; shortName: string; description: string; shortDescription: string; whenToUse: string };
+    product: {
+      /** The brand ("HEY Research Lab"). */
+      name: string;
+      shortName: string;
+      /** How HEY's own project record spells the name ("Hey Research Lab"); `nameNote` says which is which (added 2026-09-28). */
+      projectRecordName: string;
+      nameNote: string;
+      description: string;
+      shortDescription: string;
+      whenToUse: string;
+    };
     domain: string;
     baseUrl: string;
     repository: string;

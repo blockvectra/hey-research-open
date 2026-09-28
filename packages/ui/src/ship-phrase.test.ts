@@ -60,4 +60,13 @@ describe('cardShipPhrase (public UX review, 2026-09-28)', () => {
       expect(phrase!.what, title).not.toMatch(/\w…\w/);
     }
   });
+
+  it('dates a ship by UTC calendar day from a day on, and a code week by its UTC week (final production review, 2026-09-28)', () => {
+    const morning = new Date('2026-09-28T08:50:00Z'); // a Monday
+    // The reviewed ship: 19:56 on Sunday. A release under a day old is an elapsed time; a code week is last week.
+    expect(cardShipPhrase({ eventType: 'GITHUB_RELEASE', title: 'v1.2.0', publishedAt: new Date('2026-09-27T19:56:00Z') }, { now: morning })?.when).toBe('12h ago');
+    expect(cardShipPhrase({ eventType: 'CODE_ACTIVITY', title: 'Active development: 12 commits since 2026-09-21 across 2 contributors', publishedAt: new Date('2026-09-27T19:56:00Z') }, { now: morning })?.when).toBe('last week');
+    // 33 hours and two UTC dates back: "2d ago", as the MCP and the summary say "2 days ago".
+    expect(cardShipPhrase({ eventType: 'GITHUB_RELEASE', title: 'v1.1.0', publishedAt: new Date('2026-09-26T23:50:00Z') }, { now: morning })?.when).toBe('2d ago');
+  });
 });

@@ -8,7 +8,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./valuation-kind": "./src/valuation-kind.ts",
-    "./valuation-display": "./src/valuation-display.ts"
+    "./valuation-display": "./src/valuation-display.ts",
+    "./calendar": "./src/calendar.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

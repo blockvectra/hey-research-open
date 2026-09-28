@@ -5,6 +5,7 @@
  * belongs on the methodology page, not on a card.
  */
 
+import { utcDaysAgo } from '@hey/scoring/calendar';
 import { valuationKindOf } from '@hey/scoring/valuation-kind';
 
 export function formatRelativeTime(date: Date, now: Date = new Date()): string {
@@ -16,7 +17,7 @@ export function formatRelativeTime(date: Date, now: Date = new Date()): string {
    * site — and six admin surfaces — said "just now", which for a claim window
    * reads as already lapsed.
    */
-  if (delta < 0) return `in ${span(-delta)}`;
+  if (delta < 0) return -delta >= DAY_SECONDS && -delta < MONTH_SECONDS ? `in ${-utcDaysAgo(date, now)}d` : `in ${span(-delta)}`;
   /*
    * A date is a date (10-agent audit, 2026-09-25). A source that gives only a
    * day is stored at 00:00 UTC — the rule `precisionOf` reads — and printing
@@ -24,14 +25,25 @@ export function formatRelativeTime(date: Date, now: Date = new Date()): string {
    * UTC calendar day instead: today, yesterday, 3d ago.
    */
   if (isMidnightUtc(date)) {
-    const days = Math.floor((Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) - date.getTime()) / 86_400_000);
+    const days = utcDaysAgo(date, now);
     if (days <= 0) return 'today';
     if (days === 1) return 'yesterday';
     if (days < 30) return `${days}d ago`;
   }
   if (delta < 60) return 'just now';
+  /*
+   * Days are UTC calendar dates (final production review, 2026-09-28), the
+   * rule `@hey/scoring/calendar` gives every surface: under a day this is an
+   * elapsed time ("13h ago"), from a day on it is the date difference, so a
+   * card never says "1d ago" for a ship two dates back that the MCP and the
+   * summary call "2 days ago".
+   */
+  if (delta >= DAY_SECONDS && delta < MONTH_SECONDS) return `${utcDaysAgo(date, now)}d ago`;
   return `${span(delta)} ago`;
 }
+
+const DAY_SECONDS = 86_400;
+const MONTH_SECONDS = 30 * DAY_SECONDS;
 
 const isMidnightUtc = (date: Date): boolean =>
   date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;

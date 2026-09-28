@@ -92,7 +92,23 @@ export function recordTag(id: string): 'FACT' | 'DERIVED' {
   return 'FACT';
 }
 
-/** "in 2 days" for an instant ahead; "expired" once it has passed. */
+/**
+ * Whole UTC calendar days from `then`'s date to `now`'s date (final
+ * production review, 2026-09-28). A copy of `utcDaysAgo` in
+ * `@hey/scoring/calendar`, which this package cannot import: it is published
+ * on its own and depends on the SDK alone.
+ * `apps/web/src/lib/relative-day-parity.test.ts` holds the two equal.
+ */
+export function utcDaysAgo(then: Date, now: Date): number {
+  const date = (at: Date) => Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate());
+  return Math.round((date(now) - date(then)) / 86_400_000);
+}
+
+/**
+ * "in 2 days" for an instant ahead; "expired" once it has passed. Under a
+ * day it counts hours; from a day on it counts UTC calendar dates, so two
+ * instants on different dates never read as the same "in 1 day".
+ */
 export function until(iso: string, now: Date = new Date()): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return iso;
@@ -101,17 +117,22 @@ export function until(iso: string, now: Date = new Date()): string {
   const hours = Math.floor(ms / 3_600_000);
   if (hours < 1) return 'in under an hour';
   if (hours < 24) return `in ${hours} hour${hours === 1 ? '' : 's'}`;
-  const days = Math.floor(hours / 24);
+  const days = -utcDaysAgo(then, now);
   return `in ${days} day${days === 1 ? '' : 's'}`;
 }
 
-/** "3 days ago" against a stated now, so an agent is not left doing date arithmetic. */
+/**
+ * "3 days ago" against a stated now, so an agent is not left doing date
+ * arithmetic. By UTC calendar date (final production review, 2026-09-28):
+ * "today" only when the instant is on now's UTC date — a ship at 19:56 the
+ * evening before, read the next morning, is "yesterday".
+ */
 export function ago(iso: string, now: Date = new Date()): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return iso;
-  const days = Math.floor((now.getTime() - then.getTime()) / 86_400_000);
   // A future instant is a deadline, not "today" (2026-09-17).
   if (then.getTime() > now.getTime()) return until(iso, now);
+  const days = utcDaysAgo(then, now);
   if (days <= 0) return 'today';
   if (days === 1) return 'yesterday';
   if (days < 30) return `${days} days ago`;

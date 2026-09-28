@@ -28,6 +28,7 @@ import {
   renderWeeklyReport,
   stillBuildingEvidence,
   tokenMarketWords,
+  until,
   valuationWord,
 } from './render';
 import { renderBuildMarket, renderContract, renderCoverage, renderDiff, renderEvidence, renderExplainIndex, renderExplained, renderProjectContracts, renderSnapshot } from './render-machine';
@@ -85,6 +86,17 @@ describe('shared wording', () => {
     expect(ago('2026-09-25T09:00:00Z', NOW)).toBe('yesterday');
     expect(ago('2026-09-19T12:00:00Z', NOW)).toBe('7 days ago');
     expect(ago('2026-07-26T12:00:00Z', NOW)).toBe('2 months ago');
+  });
+
+  it('counts UTC calendar dates around midnight (final production review, 2026-09-28)', () => {
+    const morning = new Date('2026-09-28T08:50:00Z');
+    expect(ago('2026-09-27T19:56:00Z', morning)).toBe('yesterday');
+    expect(ago('2026-09-28T00:00:01Z', morning)).toBe('today');
+    expect(ago('2026-09-27T23:59:59Z', new Date('2026-09-28T00:00:01Z'))).toBe('yesterday');
+    expect(ago('2026-09-25T23:00:00Z', new Date('2026-09-28T00:30:00Z'))).toBe('3 days ago');
+    expect(until('2026-09-29T23:00:00Z', morning)).toBe('in 1 day');
+    expect(until('2026-09-30T01:00:00Z', morning)).toBe('in 2 days');
+    expect(until('2026-09-28T20:00:00Z', morning)).toBe('in 11 hours');
   });
 
   it('says the Still Building evidence as two facts and nothing that reads as a verdict', () => {
@@ -461,7 +473,8 @@ describe('get_token_market', () => {
   const text = renderTokenMarket(fx.tokenMarket, NOW);
 
   it('names the valuation by its kind, never by comparing figures, and tags each block', () => {
-    expect(text).toContain('FACT now (dexscreener, today): price $0.000208, FDV $208.6K');
+    // Read 20:00 the day before NOW: yesterday by UTC date (final production review, 2026-09-28).
+    expect(text).toContain('FACT now (dexscreener, yesterday): price $0.000208, FDV $208.6K');
     expect(renderTokenMarket({ ...fx.tokenMarket, current: { ...fx.tokenMarket.current!, valuationKind: undefined } }, NOW)).toContain('valuation $208.6K');
     expect(text).toContain('DERIVED market status: active market');
     expect(text).toMatch(/FACT token verification: verified/);
