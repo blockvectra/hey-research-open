@@ -145,15 +145,26 @@ every edge with its standing and evidence, never an account and never a "partner
 snapshot's `peerContext` places some of its figures among comparable projects, one figure at a time,
 never as a combined score (2026-09-28).
 
+The snapshot (`/api/projects/{slug}/snapshot`) opens on `summary` — one answer-first line per
+question (building, usage, market, contracts, security, the latest change, what HEY does not know),
+each tagged `FACT`, `DERIVED` or `UNKNOWN` with its evidence ids — and carries `usage` (calls and
+distinct caller addresses per day, never people, never summed into a window) and `security`
+(audits, bounties, security.txt, advisories; context, never a verdict). `/api/projects/{slug}/usage`
+adds the daily series (2026-09-28).
+
 Paging follows the API's own cursor, a `429` arrives as `HeyApiError` with `retryAfterSeconds`
 and is never retried for you, and an absent field means HEY does not know — never a zero.
 
-**For an assistant** — fourteen read-only tools over the same API, hosted or on your machine:
+**For an assistant** — fifteen read-only tools over the same API, hosted or on your machine, listed in the
+Official MCP Registry as `io.github.hey-research-lab/hey-research`:
 
 ```bash
 claude mcp add --transport http hey-research https://heyresearch.xyz/mcp
 
-# or locally
+# or from npm
+npx -y @hey-research-lab/mcp
+
+# or from this repository
 pnpm --filter @hey-research-lab/mcp build
 claude mcp add hey-research -- node "$PWD/apps/mcp/dist/index.js"
 ```
@@ -171,7 +182,7 @@ From the domain alone, with no JavaScript and no cookies:
 | `https://heyresearch.xyz/llms.txt` | What HEY is, what it will not do, every machine entry point (llms.txt v2) |
 | `https://heyresearch.xyz/.well-known/agent-card.json` | A2A 1.0 Agent Card; JSON-RPC at `/api/a2a`, six read-only skills |
 | `https://heyresearch.xyz/openapi.json` | OpenAPI 3.1 for the public API |
-| `https://heyresearch.xyz/mcp` | Hosted MCP (Streamable HTTP); registry name `io.github.hey-research-lab/hey-research` ([`apps/mcp/server.json`](apps/mcp/server.json)) |
+| `https://heyresearch.xyz/mcp` | Hosted MCP (Streamable HTTP); listed in the Official MCP Registry as `io.github.hey-research-lab/hey-research` ([`apps/mcp/server.json`](apps/mcp/server.json)) |
 | `https://heyresearch.xyz/api/hey/profile` | `$HEY` as research data: each utility LIVE, PLANNED, RETIRED or UNKNOWN |
 | `https://heyresearch.xyz/developers/agents` | The guide (Markdown at `/developers/agents.md`) |
 
