@@ -1,6 +1,6 @@
 import { cn } from './cn';
 import { ShippingStreakBadge } from './status';
-import { formatRelativeTime, formatUsdCompact } from './format';
+import { formatBuildMomentum, formatRelativeTime, formatUsdCompact } from './format';
 
 /**
  * Project profile visualisations (UI/UX V2 sections 20, 31, 32, 33).
@@ -213,7 +213,7 @@ export function BuildMomentumPanel({
       {heading ? (
         <p className="hey-eyebrow text-hey-muted">
           Build Momentum <span className="text-hey-border-strong">/</span>{' '}
-          <span className="tabular-nums text-hey-ink">{Math.round(score)}</span>
+          <span className="tabular-nums text-hey-ink">{formatBuildMomentum(score)}</span>
         </p>
       ) : null}
 

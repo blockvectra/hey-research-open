@@ -309,7 +309,16 @@ export function Badge({ children, className }: { children: ReactNode; className?
 /* while its tracked token has no liquidity, and a reader should see both    */
 /* facts on the same line without one colouring the other. Neutral surfaces: */
 /* these are market observations, not HEY intelligence signals.              */
+/*                                                                           */
+/* No green (public UX review, 2026-09-28). "Active market" and "Token       */
+/* verified" wore the builder status green (#1f7a5b), so on a meme page with */
+/* no builder signal the only green was the market. Green is builder state;  */
+/* red and green on a market mark are direction (UI rule 13) — a market's    */
+/* *state* is neither, so it is ink, and a quieter state is muted.           */
 /* ------------------------------------------------------------------------ */
+
+/** A market or token-identity state's tone: never a builder colour, never a direction colour. */
+type MarketTone = 'neutral' | 'muted';
 
 export type TokenMarketStatusValue =
   | 'ACTIVE_MARKET'
@@ -321,19 +330,18 @@ export type TokenMarketStatusValue =
   | 'INSUFFICIENT_DATA'
   | 'TOKEN_NOT_LAUNCHED';
 
-const TOKEN_MARKET_PRESENTATION: Record<TokenMarketStatusValue, { label: string; help: string; tone: 'good' | 'neutral' | 'muted' }> = {
-  ACTIVE_MARKET: { label: 'Active market', help: 'The tracked token has liquidity and traded in the last 24 hours.', tone: 'good' },
+const TOKEN_MARKET_PRESENTATION: Record<TokenMarketStatusValue, { label: string; help: string; tone: MarketTone }> = {
+  ACTIVE_MARKET: { label: 'Active market', help: 'The tracked token has liquidity and traded in the last 24 hours.', tone: 'neutral' },
   LOW_LIQUIDITY: { label: 'Low liquidity', help: 'The tracked token has a small pool. Trades move the price a lot.', tone: 'neutral' },
   NO_LIQUIDITY: { label: 'No liquidity', help: 'HEY found no meaningful liquidity for the tracked token.', tone: 'neutral' },
   TRADING_INACTIVE: { label: 'Trading inactive', help: 'The tracked token has liquidity but recorded no trades in the last 24 hours.', tone: 'neutral' },
   LIQUIDITY_REMOVED: { label: 'Liquidity no longer detected', help: 'HEY recorded meaningful liquidity earlier; it is no longer there. A fact HEY observed, not a verdict on why.', tone: 'neutral' },
   MARKET_ABANDONED: { label: 'Market not detected', help: 'HEY recorded a market earlier and has not been able to read one for weeks.', tone: 'muted' },
   INSUFFICIENT_DATA: { label: 'Market data insufficient', help: 'HEY has not read enough market data to describe this token.', tone: 'muted' },
-  TOKEN_NOT_LAUNCHED: { label: 'No token', help: 'HEY tracks no token for this project.', tone: 'muted' },
+  TOKEN_NOT_LAUNCHED: { label: 'No token tracked', help: 'HEY tracks no token for this project.', tone: 'muted' },
 };
 
-const TONE: Record<'good' | 'neutral' | 'muted', string> = {
-  good: 'text-status-active',
+const TONE: Record<MarketTone, string> = {
   neutral: 'text-hey-ink',
   muted: 'text-hey-muted',
 };
@@ -341,7 +349,7 @@ const TONE: Record<'good' | 'neutral' | 'muted', string> = {
 export function TokenMarketChip({ status, className }: { status: TokenMarketStatusValue; className?: string }) {
   const presentation = TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA;
   return (
-    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', TONE[presentation.tone], className)} title={presentation.help}>
+    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', TONE[presentation.tone], className)} title={presentation.help} data-testid="token-market-chip">
       {presentation.label}
     </span>
   );
@@ -376,8 +384,8 @@ export function tokenMarketHelp(status: TokenMarketStatusValue, reason?: string 
 
 export type TokenVerificationValue = 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';
 
-const TOKEN_VERIFICATION_PRESENTATION: Record<TokenVerificationValue, { label: string; help: string; tone: 'good' | 'neutral' | 'muted' }> = {
-  VERIFIED: { label: 'Token verified', help: 'The project itself ties this contract to the project: its site names the contract, or the owner proved control of the deployer.', tone: 'good' },
+const TOKEN_VERIFICATION_PRESENTATION: Record<TokenVerificationValue, { label: string; help: string; tone: MarketTone }> = {
+  VERIFIED: { label: 'Token verified', help: 'The project itself ties this contract to the project: its site names the contract, or the owner proved control of the deployer.', tone: 'neutral' },
   UNVERIFIED: { label: 'Token unverified', help: 'HEY found this token through a launch record or a market listing. Nothing the project itself published ties the contract to the project yet.', tone: 'muted' },
   MISMATCH: { label: 'Contract mismatch', help: 'The project’s own site names a different contract than the one HEY tracks. Treat the tracked token with care.', tone: 'neutral' },
 };
@@ -385,7 +393,7 @@ const TOKEN_VERIFICATION_PRESENTATION: Record<TokenVerificationValue, { label: s
 export function TokenVerificationChip({ verification, className }: { verification: TokenVerificationValue; className?: string }) {
   const presentation = TOKEN_VERIFICATION_PRESENTATION[verification] ?? TOKEN_VERIFICATION_PRESENTATION.UNVERIFIED;
   return (
-    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', TONE[presentation.tone], className)} title={presentation.help}>
+    <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', TONE[presentation.tone], className)} title={presentation.help} data-testid="token-verification-chip">
       {presentation.label}
     </span>
   );

@@ -163,6 +163,14 @@ describe('find_projects', () => {
     expect(text).toContain('Showing 1 of 715. For the rest, call find_projects again with surface=builder-radar and offset=1.');
     // A ranking keeps the API's disclaimer (audit §45 #9).
     expect(text).toContain(fx.builders.disclaimer);
+    expect(text).toContain('on-chain 64');
+  });
+
+  it('builder-radar: an unmeasured on-chain figure is said, never printed as 0 (2026-09-28)', () => {
+    const item = { ...fx.builders.items[0]!, scores: { ...fx.builders.items[0]!.scores, onchain: 0 }, onchainUse: null, onchainUseReason: 'no_contract' as const };
+    const text = renderBuilders({ ...fx.builders, items: [item] }, NOW);
+    expect(text).toContain('on-chain not measured (no contract)');
+    expect(text).not.toContain('on-chain 0');
   });
 });
 

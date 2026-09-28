@@ -92,7 +92,7 @@ export const builders: HeyBuildersPage = {
   total: 715,
   query: { filter: 'most-improved', limit: 1, offset: 0 },
   method: 'Ranked by verified development, on-chain use of the project’s own contracts and research standing.',
-  items: [{ rank: 3, rank7d: 9, slug: 'agentos', name: 'AgentOS', symbol: 'AOS', activityStatus: 'SHIPPING', catalogStatus: 'VERIFIED_BUILDER', firstSeenAt: '2026-06-01T00:00:00.000Z', lastShippedAt: '2026-09-24T10:00:00.000Z', scores: { overall: 81.2, development: 88, onchain: 64, research: 90 }, inputs: {}, url: `${BASE}/project/agentos` }],
+  items: [{ rank: 3, rank7d: 9, slug: 'agentos', name: 'AgentOS', symbol: 'AOS', activityStatus: 'SHIPPING', catalogStatus: 'VERIFIED_BUILDER', firstSeenAt: '2026-06-01T00:00:00.000Z', lastShippedAt: '2026-09-24T10:00:00.000Z', scores: { overall: 81.2, development: 88, onchain: 64, research: 90 }, onchainUse: 64, inputs: {}, url: `${BASE}/project/agentos` }],
   disclaimer: DISCLAIMER,
 };
 

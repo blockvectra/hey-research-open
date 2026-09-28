@@ -14,7 +14,8 @@ import {
 } from './format';
 import { valuationDisplay, valuationDisplayLabel, VALUATION_HIDDEN_HELP, VALUATION_HIDDEN_WORDS } from '@hey/scoring/valuation-display';
 import { ProjectLogo } from './project-logo';
-import { ActivityChip, type ActivityStatusValue, unknownActivityReason, StillBuildingBadge, TokenVerificationChip } from './status';
+import { cardShipPhrase } from './ship-phrase';
+import { ActivityChip, activityPresentation, type ActivityStatusValue, unknownActivityReason, StillBuildingBadge, TokenVerificationChip } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
 import { TokenLockChip, type TokenLockFacts } from './token-lock';
 
@@ -25,7 +26,7 @@ import { TokenLockChip, type TokenLockFacts } from './token-lock';
  *
  *   [LOGO] NAME
  *          $TICKER · Narrative
- *   [● Shipping]  Agent SDK v0.4 · 2d ago          ← builder state + latest signal
+ *   [● Shipping]  SDK v0.4 · 2d ago                ← builder state + latest signal
  *   One or two lines about what it is.
  *   ─────────────────────────────────────────
  *   Market cap                         $1.24M      ← market context
@@ -201,6 +202,15 @@ export function ProjectCard({
    */
   const latest = ship ? undefined : project.latestShip;
   const latestTitle = latest ? plainText(latest.title) : '';
+  /*
+   * The line's words come from one formatter (`cardShipPhrase`, public UX
+   * review 2026-09-28): short by construction and never cut mid-word by CSS.
+   * When all it could say is the status the chip already shows, it says
+   * nothing and the date stands alone.
+   */
+  const latestPhrase = latest
+    ? cardShipPhrase(latest, { ...(now ? { now } : {}), statusLabel: activityPresentation(project.activityStatus, unknownActivityReason(project)).label })
+    : undefined;
   const lastShipAt = latest?.publishedAt ?? project.lastMeaningfulShipAt;
   // "Infrastructure · Infrastructure" says it once: the kind is dropped when
   // the narrative already names it. "Uncategorised" (kind OTHER) is a data
@@ -319,20 +329,21 @@ export function ProjectCard({
        */}
       <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5" data-testid="card-builder">
         <ActivityChip status={project.activityStatus} variant="surface" unknownReason={unknownActivityReason(project)} className="shrink-0" />
-        {!ship && latest ? (
+        {!ship && latest && latestPhrase ? (
           <p
-            className="flex min-w-0 grow basis-[9rem] items-baseline gap-1.5 text-[13px] leading-5"
+            className="min-w-0 grow basis-[9rem] text-[13px] leading-5"
             data-testid="card-latest-signal"
             data-ship-id={latest.id}
             title={`${formatEventType(latest.eventType)}: ${latestTitle}`}
           >
-            <span className="min-w-0 truncate font-medium text-hey-ink">{latestTitle}</span>
+            {/* Wraps at a word when the card is narrow; never an ellipsis in the middle of one. */}
+            <span className="font-medium text-hey-ink">{latestPhrase.what}</span>{' '}
             <time
               dateTime={latest.publishedAt.toISOString()}
               data-testid="card-last-ship"
-              className="shrink-0 tabular-nums text-hey-muted"
+              className="whitespace-nowrap tabular-nums text-hey-muted"
             >
-              · {formatRelativeTime(latest.publishedAt, now)}
+              · {latestPhrase.when}
             </time>
           </p>
         ) : !ship && lastShipAt ? (

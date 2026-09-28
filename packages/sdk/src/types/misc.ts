@@ -25,7 +25,15 @@ export type HeyBuilder = {
   launchpad?: string;
   firstSeenAt: string;
   lastShippedAt?: string;
+  /** `scores.onchain` is the sub-score as ranked — 0 when nothing was measured, so `overall` adds up. */
   scores: { overall: number; development: number; onchain: number; research: number };
+  /**
+   * The on-chain figure to read (additive, 2026-09-28): the sub-score where HEY
+   * measured use, null where it measured nothing — `onchainUseReason` says
+   * whether there is no contract or no readable day. Never a 0 for "unknown".
+   */
+  onchainUse: number | null;
+  onchainUseReason?: 'no_contract' | 'not_measured';
   liquidityHealth?: number;
   inputs: Record<string, unknown>;
   url: string;

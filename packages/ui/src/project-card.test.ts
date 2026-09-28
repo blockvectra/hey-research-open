@@ -382,14 +382,33 @@ describe('ProjectCard — builder line and latest signal (public IA pass, 2026-0
     const html = renderAt({ ...tokenBacked, latestShip, lastMeaningfulShipAt: latestShip.publishedAt });
     expect(html).toContain('data-testid="card-latest-signal"');
     expect(html).toContain('data-ship-id="a1b2"');
-    // Markdown from a source is words on a card.
-    expect(html).toContain('Agent SDK v0.4');
+    // The canonical phrase (`cardShipPhrase`): the kind and the version, then the age.
+    expect(html).toContain('>SDK v0.4<');
     expect(html).toContain('· 2d ago');
+    // Markdown from a source is words in the full title.
     expect(html).toContain('title="SDK release: Agent SDK v0.4"');
+    // Never cut by CSS: the line wraps at a word instead.
+    expect(html).not.toMatch(/data-testid="card-latest-signal"[^>]*class="[^"]*truncate/);
+    expect(html).not.toMatch(/<p[^>]*data-testid="card-latest-signal"[\s\S]*?truncate[\s\S]*?<\/p>/);
     // The status comes before the evidence in reading order.
     expect(html.indexOf('data-activity-status')).toBeLessThan(html.indexOf('card-latest-signal'));
     // One date, not two.
     expect(html.match(/data-testid="card-last-ship"/g)).toHaveLength(1);
+  });
+
+  it('names a code week by its count and its week, never "Active development: 100…"', () => {
+    const code = { id: 'c1', title: 'Active development: 100+ commits since 2026-09-16 across 1 contributor', eventType: 'CODE_ACTIVITY', publishedAt: new Date('2026-09-28T02:00:00Z') };
+    const html = renderAt({ ...tokenBacked, latestShip: code, lastMeaningfulShipAt: code.publishedAt });
+    expect(html).toContain('>100+ commits<');
+    expect(html).toContain('· this week');
+    expect(html).not.toContain('>Active development');
+  });
+
+  it('shows the date alone when the ship would only restate the status', () => {
+    const vague = { id: 'v1', title: 'Active development', eventType: 'CODE_ACTIVITY', publishedAt: new Date('2026-09-25T12:00:00Z') };
+    const html = renderAt({ ...tokenBacked, latestShip: vague, lastMeaningfulShipAt: vague.publishedAt });
+    expect(html).not.toContain('card-latest-signal');
+    expect(html).toContain('Shipped 3d ago');
   });
 
   it('falls back to the date alone when HEY holds a date but no counted ship', () => {

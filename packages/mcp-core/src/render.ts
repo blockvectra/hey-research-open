@@ -470,6 +470,16 @@ export function renderChain(chain: HeyChain): string {
   return lines.join('\n');
 }
 
+/**
+ * The on-chain figure as the API states it (2026-09-28): the sub-score where
+ * HEY measured use, else why not — never "0" for a project with no contract.
+ * A server without the field falls back to the ranked sub-score.
+ */
+function onchainWords(b: HeyBuildersPage['items'][number]): string {
+  if (b.onchainUse === null) return b.onchainUseReason === 'no_contract' ? 'not measured (no contract)' : 'not measured';
+  return String(Math.round(b.onchainUse ?? b.scores.onchain));
+}
+
 /** The Builder Radar as prose, with the method stated. */
 export function renderBuilders(page: HeyBuildersPage, now: Date): string {
   const lines: string[] = [`# Builder Radar — ${page.ranked} projects ranked${page.day ? ` for ${page.day}` : ''}`, page.method, 'Each rank is DERIVED: a rule over verified development, on-chain use and research standing. Market cap, price and volume take no part in it.', ''];
@@ -477,7 +487,7 @@ export function renderBuilders(page: HeyBuildersPage, now: Date): string {
   for (const b of page.items) {
     const move = b.rank7d === undefined ? 'new' : b.rank7d === b.rank ? 'unchanged' : `${b.rank7d > b.rank ? '▲' : '▼'} ${Math.abs(b.rank7d - b.rank)} in 7d`;
     lines.push(
-      `- DERIVED #${b.rank} ${b.name}${b.symbol ? ` ($${b.symbol})` : ''} · overall ${Math.round(b.scores.overall)} (dev ${Math.round(b.scores.development)}, on-chain ${Math.round(b.scores.onchain)}, research ${Math.round(b.scores.research)}) · ${move} · ${b.activityStatus.toLowerCase()}${b.lastShippedAt ? ` · shipped ${ago(b.lastShippedAt, now)}` : ''}${b.liquidityHealth === undefined ? '' : ` · liquidity health ${Math.round(b.liquidityHealth)} (context)`}`,
+      `- DERIVED #${b.rank} ${b.name}${b.symbol ? ` ($${b.symbol})` : ''} · overall ${Math.round(b.scores.overall)} (dev ${Math.round(b.scores.development)}, on-chain ${onchainWords(b)}, research ${Math.round(b.scores.research)}) · ${move} · ${b.activityStatus.toLowerCase()}${b.lastShippedAt ? ` · shipped ${ago(b.lastShippedAt, now)}` : ''}${b.liquidityHealth === undefined ? '' : ` · liquidity health ${Math.round(b.liquidityHealth)} (context)`}`,
       `  ${b.url}`,
     );
   }

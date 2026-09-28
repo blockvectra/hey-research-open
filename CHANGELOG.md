@@ -6,6 +6,9 @@ record.
 
 ## 2026-09-28
 
+- **Counts and cards.** Change counts are true totals for their window, never a read cap; card
+  latest-ship phrases come from one formatter; market state is no longer coloured as a builder
+  signal; the Radar says "not measured" instead of 0 when a project has no contract.
 - **Open Dev Data adapter.** `packages/sources` reads Electric Capital's crypto-ecosystems taxonomy
   (Open Dev Data, data CC BY 4.0, github.com/electric-capital/open-dev-data) as one conditional
   archive request and replays its migrations exactly as their own exporter does, with a bounded tar

@@ -122,6 +122,17 @@ export function formatMonthTick(value: Date | string): string {
   return Number.isNaN(date.getTime()) ? '' : MONTHS[date.getUTCMonth()]!;
 }
 
+/**
+ * Build Momentum as printed, on every surface (2026-09-28, UX review #26): a
+ * whole number. The project page, the card charts, the pulse, the share text
+ * and the MCP printed 43 while the Terminal printed 42.8 for one stored
+ * score; one formatter now serves them all. The score is 0–100 and moves in
+ * whole steps a reader can compare; the decimal was noise, not precision.
+ */
+export function formatBuildMomentum(value: number): string {
+  return String(Math.round(value));
+}
+
 /** Compact USD, because a card has room for `$24K` and not for `$24,013.55`. */
 export function formatUsdCompact(value: number | undefined): string | undefined {
   if (value === undefined || !Number.isFinite(value)) return undefined;
@@ -397,4 +408,90 @@ export function formatSharePct(value: number): string {
 export function tickerLabel(symbol: string): string {
   const bare = symbol.trim().replace(/^\$+/, '').trim();
   return bare ? `$${bare}` : symbol.trim();
+}
+
+/** Separators a cut must not leave dangling before its ellipsis. */
+const TRAILING_SEPARATORS = /[\s,;:·—–(/-]+$/u;
+
+/**
+ * Cut text at a word boundary, never inside a word (public UX review,
+ * 2026-09-28). Card lines and timeline bodies were cut by CSS or at a stored
+ * length, which is how a reader got "Active devel…" and "Their Sourci". The
+ * cut falls on the last space before `max`; trailing separators go with it,
+ * and one ellipsis says there is more. A text with no space within reach (one
+ * long token) is the only case cut mid-token, and `atWord` says so, so a
+ * caller that cannot accept it (the card phrase) can choose other words.
+ */
+export function truncateAtWord(text: string, max: number): { text: string; truncated: boolean; atWord: boolean } {
+  const value = text.trim();
+  if (value.length <= max) return { text: value, truncated: false, atWord: true };
+  const room = value.slice(0, Math.max(1, max - 1));
+  // The room may end exactly at a word's end; then that word stays.
+  const space = value.charAt(room.length) === ' ' ? room.length : room.lastIndexOf(' ');
+  const atWord = space >= Math.floor(max * 0.4);
+  const cut = (atWord ? room.slice(0, space) : room).replace(TRAILING_SEPARATORS, '');
+  return { text: `${cut}…`, truncated: true, atWord };
+}
+
+/**
+ * A transaction hash or an address in running text, shortened the way the
+ * card shortens an address: `0x8d03…61c2` (public UX review, 2026-09-28). A
+ * 66-character hash in a sentence carries nothing a reader can use and broke
+ * the line mid-token; the evidence link keeps the full value.
+ */
+export function shortenHexInText(text: string): string {
+  return text.replace(/\b0x[0-9a-fA-F]{16,}\b/g, (hex) => shortenAddress(hex));
+}
+
+/**
+ * How long a ship summary HEY stores (`MAX_SHIP_SUMMARY_LENGTH` in
+ * `@hey/domain`, which a client bundle cannot import). A stored summary this
+ * long was cut by the store, usually mid-word.
+ */
+export const STORED_SHIP_SUMMARY_CAP = 600;
+
+export type ReadableSummary = {
+  /** One paragraph: points joined with " · ", cut at a word with an ellipsis. */
+  short: string;
+  /** Every point in full (hex shortened), for the expanded view. */
+  items: string[];
+  /** Whether `short` leaves anything out — cut here, or cut by the store. */
+  truncated: boolean;
+};
+
+/**
+ * The one sanitiser for a ship's summary wherever the builder story shows it
+ * (public UX review, 2026-09-28): the build timeline and the latest-ship card.
+ *
+ * Release notes arrive flattened: "- " bullets inline, 66-character hashes
+ * and 42-character addresses, and a body the store cut at 600 characters
+ * mid-word. This returns the words as a reader should see them — bullets as
+ * separate points, hex shortened, and a short form cut at a word boundary
+ * with an ellipsis — and never rewrites what the project said.
+ */
+export function readableSummary(
+  value: string | null | undefined,
+  options: { max?: number; storedCap?: number } = {},
+): ReadableSummary | undefined {
+  const max = options.max ?? 280;
+  const storedCap = options.storedCap ?? STORED_SHIP_SUMMARY_CAP;
+  if (!value) return undefined;
+  // Cut by the store (trimmed, so a character or two short of the cap): the last word is a fragment and goes.
+  const cutAtStore = value.trim().length >= storedCap - 2;
+  let text = shortenHexInText(plainText(value));
+  if (cutAtStore) text = text.replace(/\s+\S*$/, '').replace(TRAILING_SEPARATORS, '');
+  if (!text) return undefined;
+  // An inline bullet: a dash, star or dot standing alone between spaces.
+  const items = text
+    .split(/\s[-*•]\s+(?=\S)/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+  const joined = items.join(' · ');
+  const cut = truncateAtWord(joined, max);
+  const last = items.length - 1;
+  return {
+    short: cut.truncated ? cut.text : cutAtStore ? `${joined}…` : joined,
+    items: cutAtStore ? items.map((item, index) => (index === last ? `${item}…` : item)) : items,
+    truncated: cut.truncated || cutAtStore,
+  };
 }

@@ -42,3 +42,4 @@ export * from './daily-series-chart';
 export * from './token-lock';
 export * from './market-change';
 export * from './glyph';
+export * from './ship-phrase';

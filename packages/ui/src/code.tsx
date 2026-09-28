@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { GitBranch } from 'lucide-react';
 import { cn } from './cn';
 import { formatRelativeTime } from './format';
@@ -25,39 +27,58 @@ export type CodeActivityData =
       heatmap: { day: string; commits: number }[];
     };
 
+/** The panel's heading; the page owns the outline, so it is an h2 like the column's other blocks. */
+function CodeHeading() {
+  return (
+    <h2 id="public-code-heading" className="flex items-center gap-2 text-[13px] font-semibold text-hey-secondary">
+      <GitBranch aria-hidden="true" size={14} strokeWidth={1.9} />
+      Public code activity
+    </h2>
+  );
+}
+
+/**
+ * One light block, not a dark panel beside a second "Code activity" block
+ * (public UX review, 2026-09-28). The column stacked "Code activity" over
+ * "CODE ACTIVITY", printed the heatmap caption twice, and set a bare "42" in
+ * the heaviest element of the page next to Build Momentum 37 — a KPI wall
+ * beside the builder story (UI rule 5), and a number with no scale. The
+ * figure now says what it is out of and what it is made of, and the heatmap
+ * (passed as `children`) sits inside the block it belongs to.
+ */
 export function PublicCodeCard({
   data,
   className,
+  children,
 }: {
   data: CodeActivityData;
   className?: string;
+  /** The day grid, drawn under the figures (`CodeHeatmap` with `bare`). */
+  children?: ReactNode;
 }) {
   if (!data.measurable) {
     return (
-      <div className={cn('rounded-[6px] bg-midnight-900 p-5 text-white', className)}>
-        <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-white/50">
-          <GitBranch aria-hidden="true" size={14} strokeWidth={1.9} />
-          Public code activity
-        </p>
-        <p className="mt-2 text-[15px] font-medium text-white">
-          {data.quiet ? 'Quiet' : 'Not measurable'}
-        </p>
-        <p className="mt-1.5 text-[13px] text-white/55">{data.reason}</p>
-      </div>
+      <section aria-labelledby="public-code-heading" className={className} data-testid="public-code">
+        <CodeHeading />
+        <p className="mt-2 text-[15px] font-medium text-hey-ink">{data.quiet ? 'Quiet' : 'Not measurable'}</p>
+        <p className="mt-1 text-[13px] text-hey-secondary">{data.reason}</p>
+      </section>
     );
   }
 
   return (
-    <div className={cn('rounded-[6px] bg-midnight-900 p-5 text-white', className)}>
-      <p className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-white/50">
-        <GitBranch aria-hidden="true" size={14} strokeWidth={1.9} />
-        Public code activity
+    <section aria-labelledby="public-code-heading" className={className} data-testid="public-code">
+      <CodeHeading />
+      <p className="mt-2 flex items-baseline gap-1.5" data-testid="public-code-score">
+        <span className="text-[22px] font-semibold leading-none tabular-nums text-hey-ink">{data.score}</span>
+        <span className="text-[13px] text-hey-muted">/ 100</span>
       </p>
-      <p className="mt-2 text-[40px] font-semibold leading-none tabular-nums tracking-tight text-white">
-        {data.score}
+      <p className="mt-1.5 text-[13px] text-hey-secondary">
+        A reading of the public repositories over {data.windowDays} days — active days, releases, contributors and how
+        recent — kept apart from Build Momentum.
       </p>
 
-      <dl className="mt-5 space-y-2 text-[15px]">
+      <dl className="mt-4 space-y-2 text-[14px]">
         {/*
           * "Days with recorded activity", not "active dev days" (2026-09-06).
           *
@@ -83,8 +104,10 @@ export function PublicCodeCard({
         />
       </dl>
 
+      {children}
+
       {data.dimensions.some((dimension) => !dimension.measured) ? (
-        <p className="mt-4 text-[13px] text-white/55">
+        <p className="mt-3 text-[13px] text-hey-muted">
           {data.dimensions
             .filter((dimension) => !dimension.measured)
             .map((dimension) => dimension.label)
@@ -92,15 +115,15 @@ export function PublicCodeCard({
           not measured; the remaining dimensions are reweighted rather than counted as zero.
         </p>
       ) : null}
-    </div>
+    </section>
   );
 }
 
 function Row({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-white/55">{label}</dt>
-      <dd className="tabular-nums text-white">{value}</dd>
+      <dt className="text-hey-secondary">{label}</dt>
+      <dd className="tabular-nums text-hey-ink">{value}</dd>
     </div>
   );
 }
@@ -116,11 +139,14 @@ export function CodeHeatmap({
   days,
   weeks = 12,
   now = new Date(),
+  bare = false,
   className,
 }: {
   days: readonly { day: string; commits: number }[];
   weeks?: number;
   now?: Date;
+  /** Inside a block that already carries the heading: no label of its own (the caption stays, once). */
+  bare?: boolean;
   className?: string;
 }) {
   if (days.length === 0) return null;
@@ -146,11 +172,13 @@ export function CodeHeatmap({
 
   return (
     <div className={className}>
-      <p className="text-[11px] font-medium uppercase tracking-wide text-hey-muted">
-        Code activity
-      </p>
+      {bare ? null : (
+        <p className="text-[11px] font-medium uppercase tracking-wide text-hey-muted">
+          Code activity
+        </p>
+      )}
       <div
-        className="mt-2 grid grid-flow-col grid-rows-7 gap-[3px]"
+        className={cn('grid grid-flow-col grid-rows-7 gap-[3px]', !bare && 'mt-2')}
         role="img"
         aria-label={`Days with observed code activity over the last ${weeks} weeks`}
       >

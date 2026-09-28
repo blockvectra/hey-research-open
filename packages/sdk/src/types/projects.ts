@@ -617,7 +617,14 @@ export type HeyProjectIntelligence = {
   signals: HeySignal[];
   /** Absent until the project has been scored. */
   /** `onCurrentBoard` false: `rank` is the last standing, not today's (2026-09-25). `rank7d`: a week earlier, recounted among today's board. */
-  builderRadar?: HeyBuilderRadarDay & { onCurrentBoard: boolean; rank7d?: number; history: HeyBuilderRadarDay[] };
+  builderRadar?: HeyBuilderRadarDay & {
+    onCurrentBoard: boolean;
+    rank7d?: number;
+    /** On the current board only (additive, 2026-09-28): the on-chain figure, or null with its reason — see `HeyBuilder.onchainUse`. */
+    onchainUse?: number | null;
+    onchainUseReason?: 'no_contract' | 'not_measured';
+    history: HeyBuilderRadarDay[];
+  };
   /** Absent for a project without a token. */
   market?: HeyIntelligenceMarket;
   /** Absent when HEY could not read the project's record. */

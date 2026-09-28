@@ -9,6 +9,9 @@ import {
   activityPresentation,
   NO_BUILDER_SIGNAL,
   showsNoBuilderSignal,
+  TokenMarketChip,
+  tokenMarketLabel,
+  TokenVerificationChip,
   unknownActivityReason,
 } from './status';
 
@@ -64,5 +67,33 @@ describe('activityPresentation', () => {
   it('still honours the older noBuilderSource flag', () => {
     const html = renderToStaticMarkup(createElement(ActivityChip, { status: 'UNKNOWN', noBuilderSource: true }));
     expect(html).toContain(NO_BUILDER_SIGNAL.label);
+  });
+});
+
+/**
+ * A market's state is not a builder state and not a direction (public UX
+ * review, 2026-09-28; CLAUDE.md UI rule 13): no chip on the token row wears
+ * the builder green, the market up/down tokens or any other colour.
+ */
+describe('token market and verification chips', () => {
+  const statuses = ['ACTIVE_MARKET', 'LOW_LIQUIDITY', 'NO_LIQUIDITY', 'TRADING_INACTIVE', 'LIQUIDITY_REMOVED', 'MARKET_ABANDONED', 'INSUFFICIENT_DATA', 'TOKEN_NOT_LAUNCHED'] as const;
+
+  it('never colours a market state', () => {
+    for (const status of statuses) {
+      const html = renderToStaticMarkup(createElement(TokenMarketChip, { status }));
+      expect(html, status).not.toMatch(/status-|market-up|market-down|text-green|text-red|text-gold/);
+      expect(html, status).toMatch(/text-hey-(ink|muted)/);
+    }
+  });
+
+  it('never colours a token verification', () => {
+    for (const verification of ['VERIFIED', 'UNVERIFIED', 'MISMATCH'] as const) {
+      const html = renderToStaticMarkup(createElement(TokenVerificationChip, { verification }));
+      expect(html, verification).not.toMatch(/status-|market-up|market-down|text-green|text-red/);
+    }
+  });
+
+  it('says "No token tracked" once, in one wording', () => {
+    expect(tokenMarketLabel('TOKEN_NOT_LAUNCHED')).toBe('No token tracked');
   });
 });

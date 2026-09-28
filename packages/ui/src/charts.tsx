@@ -1,5 +1,5 @@
 import { cn } from './cn';
-import { formatRelativeTime, formatUsdCompact, valuationKindLabel, tickerLabel } from './format';
+import { formatBuildMomentum, formatRelativeTime, formatUsdCompact, valuationKindLabel, tickerLabel } from './format';
 import { activityLabel, type ActivityStatusValue } from './status';
 
 /**
@@ -140,7 +140,7 @@ export function BuildVsMarketChart({
                   {[
                     `${point.name}${point.symbol ? ` (${tickerLabel(point.symbol)})` : ''}`,
                     activityLabel(point.activityStatus),
-                    `Build Momentum ${Math.round(point.buildMomentum)}`,
+                    `Build Momentum ${formatBuildMomentum(point.buildMomentum)}`,
                     `Market attention ${describeAttention(point.marketAttention)}`,
                     point.marketCapUsd === undefined
                       ? 'Valuation not available'
