@@ -10,7 +10,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./fixtures": "./src/fixtures/api.ts",
-    "./tools": "./src/tools.ts"
+    "./tools": "./src/tools.ts",
+    "./version": "./src/version.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

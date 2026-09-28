@@ -107,7 +107,7 @@ its meaning.
 ## From source
 
 The tools live in `packages/mcp-core` of the
-[HEY Research repository](https://github.com/hey-research-lab/hey-research);
+[public HEY Research repository](https://github.com/hey-research-lab/hey-research-open);
 this package is their stdio entry point and bundles them, with
 [`@hey-research-lab/sdk`](https://www.npmjs.com/package/@hey-research-lab/sdk), into one file.
 

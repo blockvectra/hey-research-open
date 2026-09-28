@@ -98,6 +98,13 @@ export type HeyProject = {
   /** `kind: 'fdv'` when the provider reported no circulating figure and the fully diluted valuation stands in. */
   marketCap?: { usd: number; source: string; observedAt?: string; kind?: 'marketCap' | 'fdv' };
   /**
+   * Why `marketCap` is absent when HEY holds a reading it will not publish
+   * (2026-09-28): the market's reason code or status, e.g.
+   * `launch_pool_no_trades` or `readings_implausible`. Absent when HEY holds
+   * no reading at all.
+   */
+  valuationWithheld?: string;
+  /**
    * The liquidity the project page prints. Absent means HEY holds no such
    * figure — never zero. `kind: 'launch_inventory'` is a launch pool's own
    * supply, left out of `minLiquidity` and `sort: 'liquidity'` (2026-09-25).

@@ -169,13 +169,49 @@ export function formatMarketSource(source: string | undefined): string | undefin
 const trim = (value: number): string =>
   (value < 10 ? value.toFixed(1) : Math.round(value).toString()).replace(/\.0$/, '');
 
+/**
+ * Event types in a reader's words (data-correctness pass, 2026-09-28). Title
+ * casing the enum printed "Contract Deploy Followup", "Github Release" and
+ * "Founder Build Update" under every entry of the timeline — an internal
+ * name, not a description. Every type the schema holds has a word here;
+ * `format.test.ts` fails the build when a new type arrives without one. An
+ * unknown value still falls back on title case rather than vanishing.
+ */
+export const SHIP_EVENT_TYPE_LABELS: Readonly<Record<string, string>> = {
+  PRODUCT_LAUNCH: 'Product launch',
+  FEATURE_RELEASE: 'Feature release',
+  APP_RELEASE: 'App release',
+  GITHUB_RELEASE: 'GitHub release',
+  CODE_ACTIVITY: 'Code activity',
+  CONTRACT_DEPLOY: 'Contract deployed',
+  CONTRACT_UPGRADE: 'Contract upgrade',
+  CONTRACT_DEPLOY_FOLLOWUP: 'New contract',
+  INTEGRATION: 'Integration',
+  DOCS_UPDATE: 'Docs update',
+  ROADMAP_MILESTONE: 'Roadmap milestone',
+  API_RELEASE: 'API release',
+  SDK_RELEASE: 'SDK release',
+  DESIGN_RELEASE: 'Design release',
+  DEMO_RELEASE: 'Demo release',
+  COMMUNITY_TOOL: 'Community tool',
+  GAME_RELEASE: 'Game release',
+  CREATIVE_DROP: 'Creative drop',
+  COMMUNITY_EVENT: 'Community event',
+  FOUNDER_BUILD_UPDATE: 'Build update',
+  ANNOUNCEMENT: 'Announcement',
+  OTHER: 'Update',
+};
+
 /** Event types are stored as enums; people read words. */
 export function formatEventType(eventType: string): string {
-  return eventType
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
+  return (
+    SHIP_EVENT_TYPE_LABELS[eventType] ??
+    eventType
+      .toLowerCase()
+      .split('_')
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(' ')
+  );
 }
 
 const KIND_LABELS: Record<string, string> = {
@@ -311,13 +347,34 @@ export function isFullyDiluted(valueUsd: number | null | undefined, fdvUsd: numb
  * Charts and tooltips receive the kind rather than both figures; an unknown
  * kind is "Valuation", which claims neither measure.
  */
-export function valuationKindLabel(kind: 'marketCap' | 'fdv' | null | undefined): string {
-  return kind === 'fdv' ? 'Fully diluted valuation' : kind === 'marketCap' ? 'Market cap' : 'Valuation';
+export function valuationKindLabel(kind: 'marketCap' | 'fdv' | null | undefined, short = false): string {
+  return kind === 'fdv' ? (short ? 'FDV' : 'Fully diluted valuation') : kind === 'marketCap' ? 'Market cap' : 'Valuation';
 }
 
-/** The name a valuation is printed under. */
+/**
+ * A reading older than this is not current, and every surface that prints its
+ * figure says how old it is (data-correctness pass, 2026-09-28). The Terminal
+ * catalogue already did; the card and the project header printed a four-day
+ * Bitquery reading ("Valuation $2.8K") as if it were today's.
+ */
+export const STALE_READING_MS = 24 * 60 * 60 * 1000;
+
+/** "26h", "3d" for a reading too old to be current; undefined for a current reading or an unknown time. */
+export function staleReadingAge(observedAt: Date | string | null | undefined, now: Date = new Date()): string | undefined {
+  if (!observedAt) return undefined;
+  const at = observedAt instanceof Date ? observedAt : new Date(observedAt);
+  const hours = (now.getTime() - at.getTime()) / 3_600_000;
+  if (!Number.isFinite(hours) || !(hours > STALE_READING_MS / 3_600_000)) return undefined;
+  return hours < 48 ? `${Math.floor(hours)}h` : `${Math.floor(hours / 24)}d`;
+}
+
+/**
+ * The name a valuation is printed under. No figure has no kind, and is
+ * "Valuation" (2026-09-28): it used to fall through to "Market cap", the
+ * same slip that made cards print a kind over "No active market".
+ */
 export function valuationLabel(valueUsd: number | null | undefined, fdvUsd: number | null | undefined, short = false): string {
-  return isFullyDiluted(valueUsd, fdvUsd) ? (short ? 'FDV' : 'Fully diluted valuation') : 'Market cap';
+  return valuationKindLabel(valuationKindOf({ valueUsd, fdvUsd }) ?? null, short);
 }
 
 /**

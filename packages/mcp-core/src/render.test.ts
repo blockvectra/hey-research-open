@@ -113,6 +113,8 @@ describe('find_projects', () => {
     expect(projectLine(project({ activityStatus: 'UNKNOWN', hasBuilderSource: true }), NOW)).toContain('UNKNOWN activity: too few public sources to say either way');
     // Not beside a recorded ship (2026-09-25).
     expect(projectLine(project({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastShippedAt: '2026-08-05T00:00:00Z' }), NOW)).not.toContain('no builder signal yet');
+    // The site's "Activity not measurable" (2026-09-28): a ship on record, nothing HEY can keep reading.
+    expect(projectLine(project({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastShippedAt: '2026-08-05T00:00:00Z' }), NOW)).toContain('UNKNOWN activity: not measurable');
   });
 
   it('names a launch pool’s own supply for what it is, and prints no market figure it does not hold', () => {
@@ -243,6 +245,39 @@ describe('get_project_snapshot', () => {
     expect(text).toContain('UNKNOWN HoodLock: HEY has never read it');
     expect(text).toContain(STILL_BUILDING_MEANING);
     expect(text).not.toMatch(NO_GARBAGE);
+  });
+
+  it('prints product usage as its own dimension: calls and contracts, callers per day as addresses, never a window sum', () => {
+    expect(text).toContain('## Usage (its own dimension, never building or a ranking)');
+    expect(text).toContain("- FACT 4 active of 4 watched contracts · 1,842 calls in 7 d (2026-09-19 to 2026-09-25); 1,310 of them the ERC-20 surface, 532 the contracts' own functions.");
+    expect(text).toContain('- FACT distinct caller addresses (a count per day; addresses, not people): newest day 212 or more on 2026-09-25; busiest day 312 or more on 2026-09-22. UNKNOWN across the window: counts for different days cannot be added.');
+    expect(text).toContain('- UNKNOWN events (events_unreadable_on_some_days)');
+    expect(text).toContain('(function names stay on the Terminal)');
+    expect(text).not.toMatch(/\busers\b/i);
+  });
+
+  it('says why there is no usage figure instead of printing a zero', () => {
+    const unwatched = renderSnapshot({ ...fx.snapshot, usage: { ...fx.snapshot.usage!, state: 'NOT_WATCHED', reason: 'contract_not_in_method_watch' } }, NOW);
+    expect(unwatched).toContain("- UNKNOWN usage (contract_not_in_method_watch): the project has a contract, but none is in HEY's method watch");
+    const { usage: _usage, ...rest } = fx.snapshot;
+    expect(renderSnapshot(rest, NOW)).toContain("- UNKNOWN usage: HEY could not read this project's usage just now.");
+    const partial = renderSnapshot({ ...fx.snapshot, usage: { ...fx.snapshot.usage!, state: 'PARTIAL', reason: 'collection_started_in_window', daysCovered: 3 } }, NOW);
+    expect(partial).toContain('1,842 calls over the 3 of 7 days HEY holds (collection started in window; the rest unknown, not zero)');
+  });
+
+  it('opens on the Research Summary exactly as the API composed it: tags, reasons and evidence ids, never restated', () => {
+    const summary = text.slice(text.indexOf('## Research summary'), text.indexOf('## Identity'));
+    expect(summary).toContain('- DERIVED Build: Shipping: 4 meaningful events in 30 days; latest release yesterday. Evidence: ship:2ac87a66-0000-0000-0000-000000000001.');
+    // The summary restates the usage section of the same snapshot: the same calls, never a second reading.
+    expect(summary).toContain(
+      "- FACT Product usage: 4 of 4 watched contracts active · 1,842 calls in 7 days (532 calls to the contracts' own functions). Evidence: method:5b2d0000-0000-0000-0000-000000000001.",
+    );
+    expect(text).toContain('1,842 calls in 7 d');
+    expect(summary).not.toMatch(/market cap|\$0\b/);
+    expect(text.indexOf('## Research summary')).toBeLessThan(text.indexOf('## Identity'));
+    // A server that predates the field prints no section rather than an empty one.
+    const { summary: _omitted, ...older } = fx.snapshot;
+    expect(renderSnapshot(older as typeof fx.snapshot, NOW)).not.toContain('## Research summary');
   });
 
   it('says so when the ledger cannot list changes, rather than an empty list', () => {

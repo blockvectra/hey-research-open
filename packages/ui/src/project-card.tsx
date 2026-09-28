@@ -9,11 +9,12 @@ import {
   formatUsdCompact,
   formatVerification,
   plainText,
-  isFullyDiluted,
+  staleReadingAge,
   tickerLabel,
 } from './format';
+import { valuationDisplay, valuationDisplayLabel, VALUATION_HIDDEN_HELP, VALUATION_HIDDEN_WORDS } from '@hey/scoring/valuation-display';
 import { ProjectLogo } from './project-logo';
-import { ActivityChip, type ActivityStatusValue, showsNoBuilderSignal, StillBuildingBadge } from './status';
+import { ActivityChip, type ActivityStatusValue, unknownActivityReason, StillBuildingBadge, TokenVerificationChip } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
 import { TokenLockChip, type TokenLockFacts } from './token-lock';
 
@@ -59,6 +60,10 @@ export type ProjectCardData = {
   tokenMarketReason?: string;
   /** Which provider the reading came from; shown as a title, never as layout. */
   marketCapSource?: string;
+  /** When the reading was taken: a figure older than a day says its age beside it (2026-09-28). */
+  marketCapObservedAt?: Date;
+  /** Whether the project itself ties the contract to the project; only a mismatch is printed on a card (2026-09-28). */
+  tokenVerification?: string;
   /*
    * Market Lens (2026-09-12): the same reading's liquidity and 24 h volume,
    * and the token's launch stage. Drawn only when the reader chose the Token
@@ -154,18 +159,22 @@ export function ProjectCard({
   marketLens?: boolean;
   className?: string;
 }) {
-  const marketCap = formatUsdCompact(project.marketCapUsd);
   const marketSource = formatMarketSource(project.marketCapSource);
-  // A cap printed for a pool with no liquidity, a removed market or a launch
-  // pool nobody traded is a number about nothing (2026-09-11).
-  const deadMarket =
-    project.tokenMarketStatus === 'NO_LIQUIDITY' ||
-    project.tokenMarketStatus === 'LIQUIDITY_REMOVED' ||
-    project.tokenMarketStatus === 'MARKET_ABANDONED' ||
-    (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') ||
-    project.tokenMarketReason === 'launch_pool_volume_unknown';
-  // Readings that disagree, or one HEY does not believe (2026-09-25): no figure, and no claim of a dead market either.
-  const unsettledMarket = UNSETTLED_MARKET_REASONS.has(project.tokenMarketReason ?? '');
+  /*
+   * Whether a figure is printed and under which name, from one rule
+   * (`valuationDisplay`, 2026-09-28). A cap printed for a pool with no
+   * liquidity, a removed market or a launch pool nobody traded is a number
+   * about nothing (2026-09-11); readings that disagree, or one HEY does not
+   * believe, print no figure and claim no dead market either (2026-09-25).
+   * The label comes from the same display, so a hidden figure never lends
+   * its kind to the empty state beside it.
+   */
+  const valuation = valuationDisplay({
+    valueUsd: project.marketCapUsd,
+    fdvUsd: project.fdvUsd,
+    marketStatus: project.tokenMarketStatus,
+    marketReason: project.tokenMarketReason,
+  });
   const hasToken = Boolean(project.token);
   // What HEY does know about a token it cannot read building from (2026-09-13): trades and on-chain events, as context under the cap.
   const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
@@ -236,7 +245,7 @@ export function ProjectCard({
              * printed twice on those cards).
              */}
             <span className="flex shrink-0 flex-col items-end gap-1">
-              <ActivityChip status={project.activityStatus} variant="surface" noBuilderSource={showsNoBuilderSignal(project)} />
+              <ActivityChip status={project.activityStatus} variant="surface" unknownReason={unknownActivityReason(project)} />
               {!ship && hasToken && project.lastMeaningfulShipAt ? (
                 <time
                   dateTime={project.lastMeaningfulShipAt.toISOString()}
@@ -349,30 +358,30 @@ export function ProjectCard({
               its information budget (PRD V4 16.0 D: no FDV on a card), so it
               says "Valuation" and the tooltip names the measure.
             */}
-            {isFullyDiluted(project.marketCapUsd, project.fdvUsd) ? (
+            {valuation.shown && valuation.kind === 'fdv' ? (
               <span className="text-hey-secondary" title="Fully diluted valuation: the provider reports no circulating supply, so this is price × total supply.">
-                Valuation
+                {valuationDisplayLabel(valuation, 'card')}
               </span>
             ) : (
-              <span className="text-hey-secondary">Market cap</span>
+              <span className="text-hey-secondary">{valuationDisplayLabel(valuation, 'card')}</span>
             )}
-            {deadMarket ? (
-              <span className="text-hey-muted" title="The tracked token has no active market. Context only; it never affects activity status.">
-                No active market
-              </span>
-            ) : unsettledMarket ? (
-              <span className="text-hey-muted" title="HEY’s market readings for this token do not agree, so no figure is shown. Context only; it never affects activity status.">
-                Unconfirmed
-              </span>
-            ) : marketCap ? (
+            {valuation.shown ? (
               <span
                 className="font-medium tabular-nums"
                 {...(marketSource ? { title: `via ${marketSource}` } : {})}
               >
-                {marketCap}
+                {formatUsdCompact(valuation.usd)}
+                {/* Stale is not current (2026-09-28): a reading older than a day says how old, as the Terminal does. */}
+                {staleReadingAge(project.marketCapObservedAt, now) ? (
+                  <span className="ml-1 font-normal text-hey-muted" data-testid="valuation-age">
+                    · {staleReadingAge(project.marketCapObservedAt, now)} old
+                  </span>
+                ) : null}
               </span>
             ) : (
-              <span className="text-hey-muted">Unavailable</span>
+              <span className="text-hey-muted" data-valuation-state={valuation.state} title={VALUATION_HIDDEN_HELP[valuation.state]}>
+                {VALUATION_HIDDEN_WORDS[valuation.state]}
+              </span>
             )}
           </p>
 
@@ -396,6 +405,16 @@ export function ProjectCard({
              * It wraps instead of squeezing the address at 375px.
              */}
             {project.tokenLock ? <TokenLockChip lock={project.tokenLock} /> : null}
+            {/*
+              Token is not project (data-correctness pass, 2026-09-28): where
+              the project's own site names a different contract, the page and
+              the API say "Contract mismatch" and the card printed the tracked
+              contract as the project's with no caveat. The page's own chip,
+              beside the contract it qualifies.
+            */}
+            {project.tokenVerification === 'MISMATCH' ? (
+              <TokenVerificationChip verification="MISMATCH" className="text-[12px]" />
+            ) : null}
           </div>
 
           {/* One line about the token, under its identity (founder, 2026-09-03). */}
@@ -512,9 +531,6 @@ const STAGE_WORDS: Record<NonNullable<ProjectCardData['launchStage']>, string> =
  * liquidity figure says which stage the token is in instead of printing a
  * dash; no reading at all names the stage or says the market is unread.
  */
-/** Reasons under which HEY claims neither a live market nor a dead one (`@hey/scoring` DEAD_MARKET_REASONS). */
-const UNSETTLED_MARKET_REASONS: ReadonlySet<string> = new Set(['pool_readings_disagree', 'readings_implausible', 'removal_unconfirmed']);
-
 export function marketLensLine(project: ProjectCardData): string {
   const parts: string[] = [];
   const liquidity = formatUsdCompact(project.liquidityUsd);

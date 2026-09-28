@@ -153,6 +153,41 @@ describe('ProjectCard — fallbacks', () => {
     expect(marketLensLine(disagree)).toBe('Pool readings disagree');
     expect(render(disagree)).toContain('Unconfirmed');
   });
+
+  it('qualifies a contract the project’s own site contradicts, as the page does (2026-09-28)', () => {
+    // agentos on production: tokens.verification MISMATCH; the page said "Contract mismatch", the card nothing.
+    expect(render({ ...tokenBacked, tokenVerification: 'MISMATCH' })).toContain('Contract mismatch');
+    expect(render({ ...tokenBacked, tokenVerification: 'UNVERIFIED' })).not.toContain('Contract mismatch');
+    expect(render({ ...tokenBacked, tokenVerification: 'VERIFIED' })).not.toContain('Token verified');
+  });
+
+  it('says how old a stale reading is, and nothing for a current one (2026-09-28)', () => {
+    const now = new Date('2026-09-28T12:00:00Z');
+    // firstviralonboardogcreatoraicoin on production: a Bitquery reading four days old, printed as current.
+    const stale = renderToStaticMarkup(createElement(ProjectCard, { project: { ...tokenBacked, marketCapObservedAt: new Date('2026-09-24T00:07:00Z') }, now }));
+    expect(stale).toContain('data-testid="valuation-age"');
+    expect(stale).toContain('4d old');
+    const fresh = renderToStaticMarkup(createElement(ProjectCard, { project: { ...tokenBacked, marketCapObservedAt: new Date('2026-09-28T09:00:00Z') }, now }));
+    expect(fresh).not.toContain('valuation-age');
+  });
+
+  it('names no measure over a hidden figure: "Valuation" for every empty state (2026-09-28)', () => {
+    // Quivertrade on production: a real market cap distinct from its FDV, in a launch pool nobody traded.
+    const deadCap = { ...tokenBacked, marketCapUsd: 22_085, fdvUsd: 29_616, tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'launch_pool_no_trades' } as ProjectCardData;
+    const deadFdv = { ...deadCap, marketCapUsd: 24_000, fdvUsd: 24_000 } as ProjectCardData;
+    const unread = { ...tokenBacked, marketCapUsd: undefined } as ProjectCardData;
+    for (const project of [deadCap, deadFdv, unread]) {
+      const html = render(project);
+      expect(html).toContain('>Valuation<');
+      expect(html).not.toContain('Market cap');
+      expect(html).not.toContain('$22K');
+      expect(html).not.toContain('$24K');
+    }
+    expect(render(deadCap)).toContain('No active market');
+    expect(render(unread)).toContain('data-valuation-state="no_reading"');
+    // A launch pool with no trades is dead whatever status sits beside it (`marketIsLive`); the card's own list missed that.
+    expect(render({ ...deadFdv, tokenMarketStatus: 'LOW_LIQUIDITY' } as ProjectCardData)).toContain('No active market');
+  });
 });
 
 describe('ProjectCard — with a ship (ships feed)', () => {
@@ -179,7 +214,7 @@ describe('ProjectCard — with a ship (ships feed)', () => {
      * hours ago beside a status line saying "Last ship 3h ago".
      */
     expect(html).toContain('>Ship<');
-    expect(html).toContain('Sdk Release');
+    expect(html).toContain('SDK release');
     expect(html).toContain('Agent SDK v0.4');
     expect(html).toContain('2d ago');
     expect(html).toContain('Source verified');

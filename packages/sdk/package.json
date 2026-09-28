@@ -1,7 +1,7 @@
 {
   "name": "@hey-research-lab/sdk",
   "version": "0.1.1",
-  "description": "Typed client for the HEY Research public API: which projects on Robinhood Chain are still building, what they shipped, and which of them nobody is looking at.",
+  "description": "Typed client for the HEY Research Lab public API: evidence-backed research on Robinhood Chain projects — builder activity, ships, contracts, changes and market context, each with its source.",
   "license": "MIT",
   "type": "module",
   "sideEffects": false,
@@ -49,14 +49,14 @@
     "url": "https://github.com/hey-research-lab/hey-research/issues"
   },
   "keywords": [
-    "hey-research",
     "robinhood-chain",
-    "builders",
-    "ships",
-    "crypto",
+    "research",
+    "blockchain-data",
+    "developer-intelligence",
     "api-client",
     "sdk",
-    "typescript"
+    "typescript",
+    "hey-research"
   ],
   "scripts": {
     "build": "tsup",

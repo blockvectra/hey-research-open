@@ -41,7 +41,9 @@ import type {
   HeyWeeklyIndex,
   HeyWeeklyReport,
 } from './types/misc';
+import type { HeyTokenProfile } from './types/hey';
 import type { HeyEvidenceReceipt, HeyExplainedFact, HeyExplainFact, HeyExplainIndex, HeyProjectCoverage, HeyProjectSnapshot } from './types/snapshot';
+import type { HeyProjectUsage } from './types/usage';
 import type {
   HeyPage,
   HeyProject,
@@ -288,6 +290,14 @@ export class HeyClient {
      * on-chain, verification, locks, the newest changes, freshness and coverage.
      */
     snapshot: (slug: string): Promise<HeyProjectSnapshot> => this.get(`/api/projects/${encodeURIComponent(slug)}/snapshot`),
+    /**
+     * `GET /api/projects/{slug}/usage?window=1|7|30` (2026-09-28): is what the
+     * project shipped being used — calls, active contracts, distinct caller
+     * addresses by day (addresses, not people), events, top methods by bucket,
+     * and up to thirty rolled-up days. Its own dimension, never a ranking input.
+     */
+    usage: (slug: string, options: { window?: 1 | 7 | 30 } = {}): Promise<HeyProjectUsage> =>
+      this.get(`/api/projects/${encodeURIComponent(slug)}/usage`, { window: options.window }),
     /** `GET /api/projects/{slug}/coverage`: what HEY knows and does not, per dimension, as states — never a score. */
     coverage: (slug: string): Promise<HeyProjectCoverage> => this.get(`/api/projects/${encodeURIComponent(slug)}/coverage`),
     /**
@@ -490,6 +500,16 @@ export class HeyClient {
   /** `GET /api/this-week`: the weekly rollup. */
   thisWeek(): Promise<HeyThisWeek> {
     return this.get('/api/this-week');
+  }
+
+  /**
+   * `GET /api/hey/profile` (2026-09-28): `$HEY` researched like any token —
+   * contract, supply and market readings with their dates, locks, HEY's own
+   * project snapshot, and each documented utility as LIVE / PLANNED / RETIRED /
+   * UNKNOWN. Research data, not advice.
+   */
+  heyProfile(): Promise<HeyTokenProfile> {
+    return this.get('/api/hey/profile');
   }
 
   /** `GET /api/status`: the public status page as JSON. */

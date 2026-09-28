@@ -191,8 +191,14 @@ const READ_ONLY = { readOnlyHint: true, openWorldHint: true } as const;
 type Query = Record<string, string | number | boolean | readonly string[] | undefined>;
 
 export function createHeyMcpServer(client: HeyClient, now?: () => Date, options: HeyMcpOptions = {}): McpServer {
+  const publicBase = (options.publicBaseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
+  /*
+   * `title` and `websiteUrl` (2026-09-28, agent discovery): the same product
+   * name and agent guide the registry entry, the Agent Card and llms.txt carry,
+   * so a client that only sees the handshake can still resolve who HEY is.
+   */
   const server = new McpServer(
-    { name: 'hey-research', version: MCP_VERSION },
+    { name: 'hey-research', title: 'HEY Research Lab', version: MCP_VERSION, websiteUrl: `${publicBase}/developers/agents` },
     {
       instructions: [
         'HEY Research Lab is the builder-discovery layer for Robinhood Chain (chain id 4663).',
@@ -201,6 +207,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         'Start with get_project_snapshot for one project, get_changes for "what changed", find_projects to find or browse, get_project_coverage for what HEY does not know.',
         'Lines are tagged FACT (recorded, with its source), DERIVED (a rule HEY applied) or UNKNOWN (not held). Absent means HEY does not know: a missing valuation is not zero, and a project with no measures has not been measured.',
         'Every listing says how many it showed of how many, and how to read on. Quote the evidence URLs; never state a cause HEY did not record.',
+        `HEY's own token, $HEY, is researched like any other: lookup_token with its contract, then get_project_snapshot; ${publicBase}/api/hey/profile adds its documented utility, each LIVE, PLANNED, RETIRED or UNKNOWN.`,
         '',
         NOT_ADVICE,
       ].join('\n'),
@@ -208,7 +215,6 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
   );
 
   const at = () => now?.() ?? new Date();
-  const publicBase = (options.publicBaseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
   const apiUrl = (path: string, query: Query = {}): string => {
     const url = new URL(`${publicBase}${path}`);
     for (const [key, value] of Object.entries(query)) {
@@ -348,7 +354,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     {
       ...describe('get_project_snapshot', [
         'Everything important about one project in one read: identity and when HEY first recorded it, build status and Build Momentum, market context with its kind or why it is withheld,',
-        'on-chain use, verification and sources, HoodLock locks, the latest changes, freshness and what HEY does not know. Context blocks, never building: paid promotion seen on the token (presence and dates),',
+        'on-chain use, product usage over 7 days (calls, active contracts, distinct caller addresses per day — addresses, not people), verification and sources, HoodLock locks, the latest changes, freshness and what HEY does not know. Context blocks, never building: paid promotion seen on the token (presence and dates),',
         'DefiLlama protocol economics (each metric measured, not tracked or unread), and the developer footprint (official repositories, newest production deployment, packages, advisories — counts only where measured).',
         'Use this first for "tell me about X".',
       ]),

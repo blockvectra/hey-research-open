@@ -41,3 +41,6 @@ export type * from './types/changes';
 export type * from './types/snapshot';
 export type * from './types/contracts';
 export type * from './types/webhooks';
+export type * from './types/alerts';
+export type * from './types/usage';
+export type * from './types/hey';

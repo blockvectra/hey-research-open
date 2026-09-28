@@ -157,6 +157,23 @@ Full reference: [docs/PUBLIC_API.md](docs/PUBLIC_API.md) · [docs/MCP.md](docs/M
 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) — the line to render, the three answers to handle,
 and the four things not to do.
 
+## For autonomous agents
+
+From the domain alone, with no JavaScript and no cookies:
+
+| Entry point | What it is |
+| --- | --- |
+| `https://heyresearch.xyz/llms.txt` | What HEY is, what it will not do, every machine entry point (llms.txt v2) |
+| `https://heyresearch.xyz/.well-known/agent-card.json` | A2A 1.0 Agent Card; JSON-RPC at `/api/a2a`, six read-only skills |
+| `https://heyresearch.xyz/openapi.json` | OpenAPI 3.1 for the public API |
+| `https://heyresearch.xyz/mcp` | Hosted MCP (Streamable HTTP); registry name `io.github.hey-research-lab/hey-research` ([`apps/mcp/server.json`](apps/mcp/server.json)) |
+| `https://heyresearch.xyz/api/hey/profile` | `$HEY` as research data: each utility LIVE, PLANNED, RETIRED or UNKNOWN |
+| `https://heyresearch.xyz/developers/agents` | The guide (Markdown at `/developers/agents.md`) |
+
+An agent that forms a thesis can record it as an
+[AgentResearchReceipt](docs/AGENT_RESEARCH_RECEIPTS.md) — neutral, for any project, checked but
+never stored or endorsed by HEY. HEY gives no trade instructions and runs no agents of its own.
+
 ## The badge
 
 Any project HEY tracks can embed its own status. It updates itself, and it links back to the

@@ -4,6 +4,79 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-09-28
+
+- **Alerts.** Tell HEY what to watch — when a project ships a release, changes implementation, resumes
+  building after a long quiet period, has an unlock due within seven days, or materially changes its
+  official docs — for one project, your watchlist or any project, and see each match at
+  `/account/alerts` with its evidence. Optionally by email (a confirmed address, at most one message an
+  hour, one-click unsubscribe) or at one of your own webhook subscriptions. Every alert is an event
+  from HEY's change ledger, told once per rule and withdrawn if the ledger withdraws it; HEY sends no
+  price or trading alerts. Managed at `/api/alerts` with an API key; see `docs/ALERTS.md`.
+## Unreleased (2026-09-28)
+
+- **Product usage, its own dimension.** Is what a project shipped being used? A daily rollup per
+  project (`project_usage_days`) derived from HEY's own calls-per-method and decoded usage reads — no
+  new provider call — gives active contracts, calls (the ERC-20 surface apart), functions called,
+  distinct caller addresses per day and events, each day inside a contract's read coverage only, so
+  a quiet day is a measured zero and an unread one is absent. Distinct caller addresses are a count
+  per day, never people, and never added across days; the table stores no address. Served as
+  `snapshot.usage`, `GET /api/projects/{slug}/usage?window=1|7|30` (with up to thirty days and
+  releases, deployments and upgrades dated beside them as context, never a cause), the SDK
+  (`client.projects.usage`), the MCP snapshot, the Terminal's On-chain › Usage view and one line on
+  the project page. Never an input to activity status, Build Momentum, the Discovery Gap or the
+  Radar. The rollup runs every six hours (`ROLLUP_USAGE_DAYS`); `data:usage-rollup` backfills from
+  the collection start, resumably, with `--dry-run`.
+- **The summary's usage line is the usage section.** The research summary's product-usage line now
+  restates the snapshot's own `usage` object — its calls, active contracts, state and reason — instead
+  of a separate reading, so the two can no longer disagree; its detail link is
+  `GET /api/projects/{slug}/usage`.
+- **Every project opens on a research summary.** One line each for build, product usage, market,
+  contracts, fundamentals, security context, the latest change and what HEY does not know yet — each
+  tagged fact, derived or unknown, with its evidence and when HEY read it. The same lines lead the
+  Terminal workspace, the project page (the builder-story lines, with a way into the Terminal), the
+  snapshot API (`summary`) and the MCP snapshot. Unknown is said with a reason, never as zero; an FDV
+  is never called a market cap; security is context, never a verdict.
+- **HEY Today.** The Terminal's "What changed" opens on what reached HEY since your last visit — or
+  today, in 24 hours, in 7 days — most meaningful first, the projects you follow first, every row
+  opening its record. Readers in preview get "Today on Robinhood Chain", the same for everyone.
+- **Agents can discover HEY from the domain alone.** llms.txt follows the v2 format with every machine
+  entry point on its first screen; an A2A 1.0 Agent Card at `/.well-known/agent-card.json` declares a
+  small read-only JSON-RPC interface at `/api/a2a`; `/openapi.json` describes the public API in OpenAPI
+  3.1; `/developers/agents` (and `/developers/agents.md`) walks an agent through discovery, connection,
+  verification and monitoring. All of them read one machine identity, and a test fails the build when
+  any of them drifts.
+- **`$HEY` as research data:** `GET /api/hey/profile` states the contract, supply and market readings
+  with their dates and valuation kind, HEY's own project snapshot, and every documented utility as LIVE,
+  PLANNED, RETIRED or UNKNOWN from the gates the product itself opens on. SDK: `hey.heyProfile()`.
+- **AgentResearchReceipt v1:** a neutral, project-agnostic receipt for an agent's own research, with a
+  JSON Schema and a stateless validator that checks cited HEY ids and stores nothing.
+- **The MCP server is prepared for the Official MCP Registry** (`apps/mcp/server.json`,
+  `io.github.hey-research-lab/hey-research`); its handshake now carries the title and the agent guide.
+- **One answer per fact on every surface (data-correctness pass).** Cards, search, narrative pages,
+  the project page, the Terminal, the API and the MCP now read one rule for each fact they share.
+  A parity suite holds them together.
+- **Why activity is unknown is said.** A Verified Builder with a ship on record and no repository,
+  changelog or feed HEY can keep reading reads **"Activity not measurable"**, not "Activity unknown".
+  "HEY holds a builder source" is the scorer's own rule: an organisation page, or a repository that
+  is disputed or has never been read, no longer counts.
+- **A hidden valuation names no measure.** When no figure is printed, the label is "Valuation", never
+  "Market cap"; the empty state says "No active market", "Unconfirmed" or "Unavailable" on every
+  surface. Launch-record search rows no longer print figures for dead pools. A reading older than a
+  day shows its age on the card and the project page.
+- **API: `valuationWithheld` on list items** (additive): the reason code when HEY holds a reading it
+  will not publish; absent when it holds none.
+- **Counts say which set they count.** The Builders figure is the rankable verified builders on
+  Robinhood Chain, "N of the M published projects"; Explore says "published projects"; the Terminal's
+  "token projects" carries its definition; `/methodology#counts` explains how they nest.
+- **One latest ship.** The project page, the Terminal and the API pick the same latest meaningful ship
+  (the one the "Last ship" date refers to), with ties in one order. The Terminal preview shows the
+  latest ship, Build Momentum and recent signals the public page already shows.
+- **Plain words.** Ship types read "New contract", "GitHub release" and so on; follow-up deploy
+  summaries use the short address; a signal no longer repeats its label as its title; the page says
+  "no repository" once and draws no weekly zeros HEY did not measure; header links say when a website
+  or repository is held only as context; a contradicted contract carries "Contract mismatch" on cards.
+
 ## 2026-09-27
 
 - **The roadmap says what shipped this week.** Webhooks, commit significance, the change ledger, the

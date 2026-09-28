@@ -99,26 +99,79 @@ export function showsNoBuilderSignal(project: {
   hasBuilderSource?: boolean | undefined;
   lastMeaningfulShipAt?: Date | string | null | undefined;
 }): boolean {
-  return project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false && !project.lastMeaningfulShipAt;
+  return unknownActivityReason(project) === 'no_builder_signal';
+}
+
+/**
+ * UNKNOWN with a ship on record and nothing HEY can keep reading
+ * (data-correctness pass, 2026-09-28). A Verified Builder whose ships came
+ * from a deployment, an X post or a repository now gone printed
+ * "VERIFIED BUILDER" directly above "Activity unknown · Last ship 2mo ago":
+ * a verdict and its opposite, with nothing joining them. Both are true — the
+ * badge says HEY verified what it shipped, the status says HEY cannot tell
+ * whether it is shipping now — so the label says why.
+ */
+export const ACTIVITY_NOT_MEASURABLE = {
+  label: 'Activity not measurable',
+  help: 'HEY has a ship on record but no repository, changelog or feed it can keep reading, so whether this project is building now cannot be judged. The last ship is the newest evidence HEY holds.',
+} as const;
+
+/**
+ * Why an UNKNOWN status is unknown, from three facts every surface already
+ * holds: the status, whether HEY reads a builder source (the scorer's
+ * `observableBuilderSource`, selected as `hasBuilderSource`) and the last
+ * meaningful ship. The one rule behind the chip on the card, the project
+ * header, the Terminal catalogue and workspace, and the preview.
+ *
+ *   - `no_builder_signal` — nothing to read and nothing ever shipped;
+ *   - `no_readable_source` — a ship on record, and nothing HEY can keep reading;
+ *   - `null` — not UNKNOWN, or UNKNOWN beside a source HEY reads ("Activity unknown").
+ *
+ * `hasBuilderSource` undefined means the caller does not know, and the chip
+ * keeps the plain status word rather than guess.
+ */
+export type UnknownActivityReason = 'no_builder_signal' | 'no_readable_source';
+
+export function unknownActivityReason(project: {
+  activityStatus: string;
+  hasBuilderSource?: boolean | undefined;
+  lastMeaningfulShipAt?: Date | string | null | undefined;
+}): UnknownActivityReason | null {
+  if (project.activityStatus !== 'UNKNOWN' || project.hasBuilderSource !== false) return null;
+  return project.lastMeaningfulShipAt ? 'no_readable_source' : 'no_builder_signal';
+}
+
+/** The words for a status, with the reason an UNKNOWN is unknown: the one label map every chip reads. */
+export function activityPresentation(
+  status: ActivityStatusValue,
+  unknownReason?: UnknownActivityReason | null,
+): { label: string; help: string } {
+  if (status === 'UNKNOWN' && unknownReason === 'no_builder_signal') return { label: NO_BUILDER_SIGNAL.label, help: NO_BUILDER_SIGNAL.help };
+  if (status === 'UNKNOWN' && unknownReason === 'no_readable_source') return { label: ACTIVITY_NOT_MEASURABLE.label, help: ACTIVITY_NOT_MEASURABLE.help };
+  const presentation = STATUS_PRESENTATION[status] ?? STATUS_PRESENTATION.UNKNOWN;
+  return { label: presentation.label, help: presentation.help };
 }
 
 export function ActivityChip({
   status,
   variant = 'text',
   noBuilderSource = false,
+  unknownReason,
   className,
 }: {
   status: ActivityStatusValue;
   /** `surface` gives the chip its own tinted pill, for hero and card headers. */
   variant?: 'text' | 'surface';
-  /** UNKNOWN because HEY holds no source it can read building from: the chip says so instead of "unknown". */
+  /** UNKNOWN with nothing to read and nothing shipped: "No builder signal yet". Superseded by `unknownReason`. */
   noBuilderSource?: boolean;
+  /** Why an UNKNOWN is unknown (`unknownActivityReason`); takes precedence over `noBuilderSource`. */
+  unknownReason?: UnknownActivityReason | null;
   className?: string;
 }) {
   const presentation = STATUS_PRESENTATION[status] ?? STATUS_PRESENTATION.UNKNOWN;
   const { Icon } = presentation;
-  const label = status === 'UNKNOWN' && noBuilderSource ? NO_BUILDER_SIGNAL.label : presentation.label;
-  const help = status === 'UNKNOWN' && noBuilderSource ? NO_BUILDER_SIGNAL.help : presentation.help;
+  const reason = unknownReason !== undefined ? unknownReason : noBuilderSource ? 'no_builder_signal' : null;
+  const { label, help } = activityPresentation(status, reason);
 
   return (
     <span
@@ -132,6 +185,7 @@ export function ActivityChip({
       title={help}
       // The canonical value behind the words, so every surface can be checked against the API (2026-09-25).
       data-activity-status={status}
+      {...(status === 'UNKNOWN' && reason ? { 'data-unknown-reason': reason } : {})}
     >
       <Icon aria-hidden="true" size={15} strokeWidth={1.9} />
       {label}

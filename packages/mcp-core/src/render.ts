@@ -206,7 +206,10 @@ export function projectLine(project: HeyProject, now?: Date): string {
     // Not beside a last ship (2026-09-25): a project with a recorded ship has had a builder signal.
     project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false && !project.lastShippedAt
       ? 'UNKNOWN activity: no builder signal yet (no repository, changelog or feed to read; trading is not building)'
-      : project.researchLevel === 'INDEXED'
+      : // The site's "Activity not measurable" (2026-09-28): a ship on record, nothing HEY can keep reading.
+        project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false
+        ? 'UNKNOWN activity: not measurable (a ship on record, but no repository, changelog or feed HEY can keep reading)'
+        : project.researchLevel === 'INDEXED'
         ? 'UNKNOWN activity: not researched yet'
         : project.activityStatus === 'UNKNOWN'
           ? 'UNKNOWN activity: too few public sources to say either way'

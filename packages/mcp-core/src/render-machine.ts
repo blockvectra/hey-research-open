@@ -16,7 +16,9 @@ import type {
   HeyProjectContracts,
   HeyProjectCoverage,
   HeyProjectSnapshot,
+  HeyResearchSummary,
   HeySourceFreshness,
+  HeyUsageSummary,
 } from '@hey-research-lab/sdk';
 
 import { STILL_BUILDING_MEANING, TAG_LEGEND, activityTag, atPrecision, liquidityWords, money, recordTag, shownOf, stillBuildingEvidence, tokenMarketWords, valuationWord } from './render';
@@ -118,11 +120,32 @@ function mustNotConclude(dimensions: Record<HeyCoverageDimension, HeyCoverageEnt
     .map(([dimension, entry]) => `${DIMENSION_WORDS[dimension]} (${entry.state})`);
 }
 
+/**
+ * The Research Summary (2026-09-28) as HEY's domain composed it: each line's
+ * own tag, text, freshness and typed evidence ids, printed and never
+ * restated — the MCP says no more than the API does. A server that predates
+ * the field prints nothing here.
+ */
+export function summaryLines(summary: HeyResearchSummary | undefined): string[] {
+  if (!summary || summary.lines.length === 0) return [];
+  const out = ["## Research summary (HEY's answer first; the sections below are its evidence)"];
+  for (const line of summary.lines) {
+    const stale = line.freshness === 'stale' ? ' (stale reading)' : '';
+    const reason = line.tag === 'UNKNOWN' && line.reason ? ` [${reasonWords(line.reason)}]` : '';
+    const evidence = line.evidence.length > 0 ? ` Evidence: ${line.evidence.map((entry) => entry.id).join(', ')}.` : '';
+    out.push(`- ${line.tag} ${line.label}: ${line.text}${stale}${reason}${evidence}`);
+  }
+  out.push('  Each line has a detailUrl and, for its evidence ids, a receiptUrl on the snapshot; get_evidence id=<id> reads one.', '');
+  return out;
+}
+
 /** `GET /api/projects/{slug}/snapshot` as text. */
 export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   const i = s.identity;
   const b = s.build;
   const lines: string[] = [`# ${i.name}${i.symbol ? ` ($${i.symbol})` : ''} — snapshot as of ${s.asOf.slice(0, 16).replace('T', ' ')} UTC`, i.url, ''];
+
+  lines.push(...summaryLines(s.summary));
 
   lines.push('## Identity');
   lines.push(`- DERIVED research level: ${pretty(i.researchLevel)}; catalogue: ${pretty(i.catalogStatus)}; kind: ${pretty(i.projectKind)}${i.primaryNarrative ? `; narrative: ${i.primaryNarrative.name}` : ''}`);
@@ -188,6 +211,9 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
         : `${events}${o.calls24h === undefined ? '' : `; ${o.calls24h} calls in 24 h`} (read ${o.observedAt.slice(0, 10)}). Usage says the contract is used, not that anyone is building.`,
     );
   }
+
+  lines.push('', '## Usage (its own dimension, never building or a ranking)');
+  lines.push(...(s.usage ? usageLines(s.usage) : ["- UNKNOWN usage: HEY could not read this project's usage just now."]));
 
   lines.push('', '## Verification and sources');
   const v = s.verification;
@@ -529,4 +555,44 @@ export function renderBuildMarket(page: HeyBuildMarket): string {
     TAG_LEGEND,
     page.disclaimer,
   ].join('\n');
+}
+
+/**
+ * Product usage in the snapshot (2026-09-28), no stronger than the API: a
+ * count of distinct caller addresses is a count of addresses for one day,
+ * never of people and never added across days; a window with uncovered days
+ * says so; a project HEY does not watch is UNKNOWN, not zero.
+ */
+export function usageLines(u: HeyUsageSummary): string[] {
+  const n = (value: number) => value.toLocaleString('en-US');
+  if (u.state === 'NOT_APPLICABLE') return ['- NOT APPLICABLE usage: no contract recorded for this project.'];
+  if (u.state === 'NOT_WATCHED') return [`- UNKNOWN usage (${u.reason}): the project has a contract, but none is in HEY's method watch, so no count here would be a measured zero.`];
+  if (u.calls === undefined || !u.window) return [`- UNKNOWN usage (${u.state}, ${u.reason}): nothing rolled up for the window yet — not zero.`];
+  const lines: string[] = [];
+  const partial = u.daysCovered !== undefined && u.daysCovered < u.window.days;
+  const span = partial ? ` over the ${u.daysCovered} of ${u.window.days} days HEY holds (${pretty(u.reason)}; the rest unknown, not zero)` : ` in ${u.window.days} d`;
+  const contracts = u.activeContracts === undefined ? '' : `${n(u.activeContracts)} active of ${n(u.watchedContracts)} watched contract${u.watchedContracts === 1 ? '' : 's'} · `;
+  lines.push(
+    `- FACT ${contracts}${n(u.calls)} calls${span} (${u.window.from} to ${u.window.to}); ${n(u.erc20Calls ?? 0)} of them the ERC-20 surface, ${n(u.otherCalls ?? 0)} the contracts' own functions.${u.state === 'STALE' ? ' STALE: the rollup is behind.' : ''}`,
+  );
+  const callers = u.callerAddresses;
+  if (callers) {
+    const figure = (f: { day: string; count: number; basis: 'EXACT' | 'FLOOR' }) => `${n(f.count)}${f.basis === 'FLOOR' ? ' or more' : ''} on ${f.day}`;
+    const parts = [callers.latestDay ? `newest day ${figure(callers.latestDay)}` : 'newest day unknown', ...(callers.peakDay ? [`busiest day ${figure(callers.peakDay)}`] : [])];
+    lines.push(
+      callers.latestDay || callers.peakDay
+        ? `- FACT distinct caller addresses (a count per day; addresses, not people): ${parts.join('; ')}. UNKNOWN across the window: counts for different days cannot be added.`
+        : '- UNKNOWN distinct caller addresses: no day in the window carries a count.',
+    );
+  }
+  lines.push(u.events === null || u.events === undefined ? `- UNKNOWN events (${u.eventsReason ?? 'not read'})` : `- FACT ${n(u.events)} contract events in the window`);
+  const facts = u.methodEvents.firstObserved + u.methodEvents.resumed;
+  if (facts > 0) {
+    lines.push(
+      `- FACT method facts in the window: ${u.methodEvents.firstObserved} first-ever call${u.methodEvents.firstObserved === 1 ? '' : 's'}, ${u.methodEvents.resumed} resumed after 30+ silent days (ids ${u.methodEvents.ids.join(', ')}).`,
+    );
+  }
+  if (u.topMethods.length > 0) lines.push(`- FACT most-called: ${u.topMethods.map((m) => `${pretty(m.bucket)} ${n(m.calls)}`).join(', ')} (function names stay on the Terminal).`);
+  lines.push(`  Usage says the contracts are used, not that anyone is building. Collection starts ${u.collectedFrom ?? 'unknown'}; daily figures: ${u.url}`);
+  return lines;
 }

@@ -4,6 +4,7 @@
  * Absent means HEY does not know; a withheld figure says it is withheld.
  */
 import type { HeyProject } from './projects';
+import type { HeyUsageSummary } from './usage';
 
 /* ------------------------------------------------------------- coverage */
 
@@ -261,8 +262,39 @@ export type HeyDeveloperFootprint = {
   coverageUrl: string;
 };
 
+/* ----------------------------------------------------- research summary */
+
+/** The questions a Research Summary answers, in order (2026-09-28). */
+export type HeySummaryDimension = 'build' | 'usage' | 'market' | 'contract' | 'fundamentals' | 'security' | 'latestChange' | 'unknown';
+
+/** FACT: a record HEY holds. DERIVED: HEY's own reading of records. UNKNOWN: HEY does not know, and `reason` says why — never a zero. */
+export type HeySummaryTag = 'FACT' | 'DERIVED' | 'UNKNOWN';
+
+export type HeySummaryFreshness = 'fresh' | 'stale' | 'unknown' | 'not_applicable';
+
+/** One answer-first line: the same line the Terminal, the project page and the MCP print. */
+export type HeySummaryLine = {
+  dimension: HeySummaryDimension;
+  label: string;
+  tag: HeySummaryTag;
+  text: string;
+  /** Typed public evidence ids (`ship:`, `abi:`, `impl:`, …), each with its receipt on this API. */
+  evidence: { id: string; label: string; url?: string; receiptUrl: string }[];
+  /** Where the detail behind the line is, on this API. */
+  detailUrl: string;
+  /** When HEY read what the line rests on; absent when it holds no reading. */
+  observedAt?: string;
+  freshness: HeySummaryFreshness;
+  reason?: string;
+};
+
+/** The Project Research Summary: one line per dimension that applies. */
+export type HeyResearchSummary = { version: string; lines: HeySummaryLine[]; computedAt: string };
+
 /** `GET /api/projects/{slug}/snapshot`: one project's important state in one read. */
 export type HeyProjectSnapshot = {
+  /** The Project Research Summary (2026-09-28): the answer first; the sections below are its evidence. */
+  summary: HeyResearchSummary;
   identity: {
     slug: string;
     name: string;
@@ -313,6 +345,12 @@ export type HeyProjectSnapshot = {
   /** Absent only when HEY could not read the project's coverage. */
   developerFootprint?: HeyDeveloperFootprint;
   onchain?: { events24h?: number; events7d?: number; calls24h?: number; daysCovered: number; daysMeasured: number; observedAt: string };
+  /**
+   * Product usage over seven days (2026-09-28): its own dimension, never a
+   * building or ranking input. The state says why figures are absent; the
+   * field is absent only when the read failed.
+   */
+  usage?: HeyUsageSummary;
   contracts: { url: string };
   verification: {
     token?: { status: string; reason?: string; verifiedAt?: string };
@@ -331,7 +369,7 @@ export type HeyProjectSnapshot = {
   freshness: HeySourceFreshness[];
   coverage?: Record<HeyCoverageDimension, HeyCoverageEntry>;
   evidenceSummary: { sources: { total: number; own: number; verified: number; contextOnly: number }; meaningfulEvents30d: number | null; explainUrl: string };
-  links: { page: string; detail: string; market?: string; timeline: string; intelligence: string; changes: string; coverage: string; explain: string; contracts: string };
+  links: { page: string; detail: string; market?: string; timeline: string; intelligence: string; changes: string; coverage: string; explain: string; contracts: string; usage: string };
   asOf: string;
   scoringVersion?: string;
   disclaimer: string;

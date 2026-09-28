@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.hey-research-lab/hey-research",
+  "title": "HEY Research Lab",
+  "description": "Evidence-backed Robinhood Chain research: builders, ships, contracts, changes, market context.",
+  "version": "0.1.1",
+  "websiteUrl": "https://heyresearch.xyz/developers/agents",
+  "repository": {
+    "url": "https://github.com/hey-research-lab/hey-research-open",
+    "source": "github",
+    "subfolder": "apps/mcp"
+  },
+  "icons": [
+    {
+      "src": "https://heyresearch.xyz/hey-mark.png",
+      "mimeType": "image/png"
+    }
+  ],
+  "remotes": [
+    {
+      "type": "streamable-http",
+      "url": "https://heyresearch.xyz/mcp"
+    }
+  ]
+}

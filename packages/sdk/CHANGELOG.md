@@ -8,10 +8,15 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ### Changed
 
+- The npm description and keywords name what the API is: evidence-backed research on Robinhood Chain projects.
 - `HeyCodeSubstance.files` gains a `data` count (classifier `commit-substance-v2`): data files outside configuration, which alone no longer count as building.
 
 ### Added
 
+- `HeyAlertRule`, `HeyAlertList`, `HeyAlertPreset`, `HeyAlertConditions`, `HeyAlertEventType`, `HeyAlertPresetId`, `HeyAlertNotification`, `HeyAlertNotifications` and `HeyAlertsMarkedRead` (2026-09-28): the shapes of `/api/alerts`, `/api/alerts/{id}` and `/api/alerts/notifications` — an account's alert rules over the change ledger and the inbox of what they matched, each `event` a `HeyChangeUpsert` or null once withdrawn. Types only; call the routes with `client.get`.
+- Product usage (2026-09-28): `client.projects.usage(slug, { window })` for `GET /api/projects/{slug}/usage` → `HeyProjectUsage` (`HeyUsageSummary`, `HeyUsageSeriesDay`, `HeyUsageMarker`, `HeyUsageCallerFigure`); `usage?: HeyUsageSummary` on `HeyProjectSnapshot`; `links.usage` on the snapshot. Its own dimension, never a ranking input. `callerAddresses` counts distinct transaction-sender addresses per day (addresses, not people); its `window` is always `null` because per-day counts cannot be added. Function names are withheld (`names: "WITHHELD"`).
+- `summary` on `HeyProjectSnapshot` (2026-09-28): the Project Research Summary, typed as `HeyResearchSummary` — one `HeySummaryLine` per dimension that applies (`HeySummaryDimension`: build, usage, market, contract, fundamentals, security, latestChange, unknown), each with its `tag` (`HeySummaryTag`: FACT, DERIVED, UNKNOWN), `text`, typed `evidence` ids with a `receiptUrl`, a `detailUrl`, `observedAt`, `freshness` (`HeySummaryFreshness`) and a `reason` where HEY does not know. Additive; no existing field changes meaning.
+- `heyProfile()` and `HeyTokenProfile` (2026-09-28): `GET /api/hey/profile`, `$HEY` as research data — each documented utility LIVE, PLANNED, RETIRED or UNKNOWN, market readings with valuation kind and freshness, and HEY's own project snapshot.
 - `HeyCodeSubstance`, and `codeSubstance?` on `HeyShip` and `HeyTimelineEntry` (2026-09-27): what a week of code activity changed — the verdict (`SUBSTANTIVE`, `LOW_INFORMATION`, `UNKNOWN`, derived by `classifierVersion`), whether it counts as building, the commit counts, changed files by class and one plain sentence. Absent on every other ship and on a week HEY never evaluated.
 - `research.source_changed` is a webhook event type (`HeyWebhookEventType`, `WEBHOOK_EVENT_TYPES`): HEY delivers it since 2026-09-27.
 

@@ -1,8 +1,6 @@
 import type { ReactNode } from 'react';
 
 import { cn } from './cn';
-import { formatRelativeTime, formatUsdCompact, tickerLabel } from './format';
-import { ActivityChip, type ActivityStatusValue } from './status';
 
 /**
  * Editorial section header (UI/UX V2 section 9).
@@ -43,71 +41,10 @@ export function Section({ children, className }: { children: ReactNode; classNam
   return <section className={cn('mt-16 sm:mt-20', className)}>{children}</section>;
 }
 
-/**
- * Under the Radar feature card (UI/UX V2 section 13).
- *
- * States the two facts side by side — how much the team is building, and how
- * little the market is currently paying attention — and nothing more. It is a
- * discovery signal, never a recommendation, so no wording here may imply value.
+/*
+ * `FeaturedCard` was removed on 2026-09-28 (data-correctness pass). Nothing
+ * rendered it, and it printed every valuation under "Market cap" — an FDV
+ * included — and "Not available" for a figure withheld from a dead market.
+ * The home and Radar feature rows render `ProjectCard`, which reads
+ * `valuationDisplay`.
  */
-export type FeaturedProject = {
-  slug: string;
-  name: string;
-  symbol?: string;
-  activityStatus: ActivityStatusValue;
-  hbm?: number;
-  activeWeeks?: number;
-  totalWeeks?: number;
-  lastMeaningfulShipAt?: Date;
-  marketCapUsd?: number;
-};
-
-export function FeaturedCard({ project, now }: { project: FeaturedProject; now?: Date }) {
-  return (
-    <article className="group relative flex h-full min-w-0 flex-col rounded-[6px] border border-hey-border bg-hey-surface p-6 hover:border-hey-border-strong">
-      <div className="flex items-baseline justify-between gap-3">
-        <h3 className="min-w-0 text-lg font-semibold tracking-tight">
-          <a
-            href={`/project/${project.slug}`}
-            className="block min-w-0 after:absolute after:inset-0 after:content-[''] focus-visible:outline-none"
-          >
-            <span className="block truncate">{project.name}</span>
-          </a>
-        </h3>
-        {project.symbol ? (
-          <span className="max-w-[40%] shrink-0 truncate text-sm text-hey-secondary">
-            {tickerLabel(project.symbol)}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="mt-2">
-        <ActivityChip status={project.activityStatus} />
-      </div>
-
-      <dl className="mt-5 space-y-2.5 text-[15px]">
-        {project.hbm !== undefined ? (
-          <Row label="Build Momentum" value={String(Math.round(project.hbm))} strong />
-        ) : null}
-        {project.activeWeeks !== undefined && project.totalWeeks ? (
-          <Row label="Active weeks" value={`${project.activeWeeks} / ${project.totalWeeks}`} />
-        ) : null}
-        {project.lastMeaningfulShipAt ? (
-          <Row label="Last ship" value={formatRelativeTime(project.lastMeaningfulShipAt, now)} />
-        ) : null}
-        <Row label="Market cap" value={formatUsdCompact(project.marketCapUsd) ?? 'Not available'} />
-      </dl>
-
-      <p className="mt-6 text-sm font-medium text-hey-accent">View project →</p>
-    </article>
-  );
-}
-
-function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {
-  return (
-    <div className="flex items-baseline justify-between gap-4">
-      <dt className="text-hey-secondary">{label}</dt>
-      <dd className={strong ? 'text-lg font-semibold tabular-nums' : 'tabular-nums'}>{value}</dd>
-    </div>
-  );
-}

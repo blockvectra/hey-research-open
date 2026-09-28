@@ -227,6 +227,16 @@ curl -sS -H "authorization: Bearer $KEY" "https://heyresearch.xyz/api/webhooks/$
 | `webhooks_unavailable` | 503 | this deployment cannot sign (no `WEBHOOK_MASTER_KEY`) |
 | `rate_limited` | 429 | per account: 10 creates, 10 rotations, 30 pings, 60 changes an hour |
 
+### From an alert rule
+
+An alert rule (`docs/ALERTS.md`) may name one of the account's own
+subscriptions as a channel. Its matches are queued on the same
+`(subscription, seq)` key the fan-out uses — so a subscription that also asks
+for the type receives the event once — and sent by the same sender with every
+check below. A rule never carries a URL of its own, and only while the
+subscription is ACTIVE; the two in-HEY-only types (`contract.method_*`) are
+never sent.
+
 ## What a callback URL must be
 
 A webhook is a request HEY's servers make to an address a stranger chose, on a

@@ -3,6 +3,8 @@
   "publicName": "hey-research-open",
   "include": [
     "apps/mcp",
+    "docs/AGENT_RESEARCH_RECEIPTS.md",
+    "docs/ALERTS.md",
     "docs/DATA_SOURCES.md",
     "docs/INTEGRATIONS.md",
     "docs/MCP.md",

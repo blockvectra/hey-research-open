@@ -42,7 +42,7 @@ export const HEY_MCP_TOOLS = [
   {
     name: 'get_project_snapshot',
     title: 'Project snapshot',
-    summary: 'The important state of one project in one read: identity, build, market with its withholding, on-chain, verification, locks, latest changes, freshness and what HEY does not know.',
+    summary: 'The important state of one project in one read, opening on the Research Summary (one tagged line each for build, usage, market, contracts, fundamentals, security, the latest change and what HEY does not know), then identity, build, market with its withholding, on-chain, verification, locks, latest changes, freshness and coverage.',
     routes: ['/api/projects/{slug}/snapshot'],
     replaces: ['get_project', 'project_intelligence'],
   },

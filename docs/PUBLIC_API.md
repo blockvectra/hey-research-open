@@ -254,7 +254,10 @@ observations, never a verdict on the team.
 Every listed project with a token also carries `tokenMarket` (2026-09-25): `{ status, reason? }`,
 the same state the card shows. It is why a listing sometimes has no `marketCap` — a dead market's
 valuation (`NO_LIQUIDITY`, `LIQUIDITY_REMOVED`, `MARKET_ABANDONED`, or an untraded launch pool) is
-withheld. The dossier's `tokenMarket` is the same object with more in it.
+withheld. The dossier's `tokenMarket` is the same object with more in it. Since 2026-09-28 a
+listed project whose reading HEY holds but will not publish also carries **`valuationWithheld`**,
+the reason code or status (`launch_pool_no_trades`, `readings_implausible`, `NO_LIQUIDITY`); it is
+absent when HEY holds no reading at all, so a withheld figure and an unknown one never look alike.
 
 `launchedVia` is present only when HEY observed the launch. "Unknown" and "Independent" are
 how the *card* says provenance is missing; the API omits the field instead, so nothing reads
@@ -655,6 +658,37 @@ endpoint, `asOf` and `scoringVersion`.
 `latestChanges` is `{ available: true, items }` from the change ledger, or `{ available: false,
 reason }` when the ledger cannot answer: never an empty list standing in for "unknown".
 
+`summary` (2026-09-28, additive): the **Project Research Summary**, the answer the Terminal, the
+project page and the MCP print first — `{ version: "summary-v1", lines[], computedAt }`, one line per
+dimension that applies, in this order: `build`, `usage`, `market`, `contract`, `fundamentals`,
+`security`, `latestChange`, `unknown`. Each line is `{ dimension, label, tag, text, evidence[],
+detailUrl, observedAt?, freshness, reason? }`:
+
+- `tag` — `FACT` (a record HEY holds), `DERIVED` (HEY's reading of records, such as an activity
+  status or a withheld valuation) or `UNKNOWN` (HEY does not know; `reason` says why, e.g.
+  `no_builder_source`, `indexed_only`, `no_day_read`, `coverage_unread`). An UNKNOWN line never
+  carries a zero.
+- `evidence[]` — `{ id, label, url?, receiptUrl }`: typed public ids (`ship:`, `abi:`, `impl:`, …)
+  from the change ledger, each with its `GET /api/evidence/{id}` receipt; `url` is the record's own
+  public source.
+- `freshness` — `fresh`, `stale` (the reading is older than its limit: a market reading over 24 h,
+  a usage rollup the `usage` section calls `STALE`, a registry day over 3 days), `unknown` or
+  `not_applicable`.
+- `detailUrl` — where the figures behind the line are on this API.
+
+A dimension that does not apply has no line (no `fundamentals` without a matched protocol, no
+`contract` for a tokenless project with no watched contract; `security` only when an OSV reading or a
+registry audit link is stored). The market line names the valuation kind — an FDV is never called a
+market cap — and says when a valuation is withheld; security is context, never a verdict. The
+`usage` line restates this snapshot's own `usage` section (since 2026-09-28, the same object): its
+figures, its state and its reason — `MEASURED`, `PARTIAL` and `STALE` with a figure are `FACT`
+(a partial window says how many of its days HEY holds, the rest unknown, not zero), `NOT_WATCHED`
+and `NOT_READ` are `UNKNOWN` with the usage reason (`contract_not_in_method_watch`,
+`not_rolled_up_yet`, …), `NOT_APPLICABLE` says no contract is recorded; its evidence is the usage
+object's `method:` facts and its `detailUrl` is `GET /api/projects/{slug}/usage`. It never speaks of
+users, and distinct caller addresses (a per-day count) stay off the line. The lines restate the
+sections below them; nothing in `summary` is computed a second way.
+
 Two context blocks, added 2026-09-27 (additive; both absent when HEY holds nothing to say):
 
 - `protocolEconomics` — for a project matched to a DefiLlama protocol: `protocols[]` (at most
@@ -699,6 +733,52 @@ dimension, and a count only where that state says it was measured:
 Plus `contextOnly: true` and `coverageUrl`. Package names, advisory ids and deployment commits are
 not on the snapshot. Nothing here is a ship, a change event or an input to activity status, Build
 Momentum, the Discovery Gap, the Radar or any ordering.
+
+`usage` (2026-09-28, additive; absent only when the read failed) — product usage over seven days, as
+`GET /api/projects/{slug}/usage` summarises it below, and `links.usage` to that route.
+
+### `GET /api/projects/{slug}/usage?window=1|7|30` (2026-09-28)
+
+Is what the project shipped being used? HEY's own daily rollup (`project_usage_days`) of the
+calls-per-method read and the decoded usage read; no provider in the request path. `window` is 1, 7
+(default) or 30 complete UTC days ending on the newest rolled-up day; anything else is a
+`400 invalid_parameter`.
+
+- `usage` — `{ dimension: "usage", state, reason, source: "decoded_calls", window?, collectedFrom?,
+  collectedThrough?, observedAt?, watchedContracts, daysCovered?, activeContracts?, calls?,
+  erc20Calls?, otherCalls?, functionsCalled?, callerAddresses?, events?, eventsReason?, basis?,
+  topMethods[], names: "WITHHELD", methodEvents: { firstObserved, resumed, ids[] }, contextOnly: true,
+  url }`.
+  - `state`: `MEASURED`, `PARTIAL` (only some days of the window are held — `reason`
+    `collection_started_in_window` or `days_missing_in_window`; figures cover `daysCovered`),
+    `STALE`, `NOT_WATCHED` (a contract, none in HEY's method watch), `NOT_APPLICABLE` (no contract),
+    `NOT_READ` (`rollup_not_run`, `no_day_in_window`). The figures are **absent** unless a day is
+    covered — never a zero standing in for unknown. A covered quiet day is a measured `0`.
+  - `callerAddresses` — `{ latestDay, peakDay, window: null, windowReason:
+    "distinct_across_days_not_measured", daysWithoutCount, unit: "addresses" }`. Each day figure is
+    `{ day, count, basis }`: distinct transaction-sender addresses whose transactions called the
+    watched contracts that UTC day, a count the provider computed; HEY stores no address. `basis`
+    `EXACT`, or `FLOOR` when several contracts took calls (the largest count; the true figure is at
+    least that). A window-wide distinct figure is never published: days cannot be added.
+    **Addresses, not people.**
+  - `events` — decoded events in the window, or `null` with `eventsReason` when any covered day's
+    count is unreadable.
+  - `topMethods[]` — `{ rank, contract, bucket, calls }`, the five most-called methods across the
+    watched contracts; function names stay on the Terminal (founder decision F3).
+  - `methodEvents.ids` — the change ledger's `method:` ids for functions called for the first time,
+    or again after thirty or more silent days, in the window (`GET /api/evidence/{id}`).
+- `series[]` — up to thirty rolled-up days ending on the window's last day, oldest first: `{ day,
+  watchedContracts, activeContracts, calls, erc20Calls, functionsCalled, callerAddresses,
+  callerBasis, events, basis }`. `basis` is `observed` (read within four days of the day) or
+  `reconstructed_from_chain` (filled later by the archive read). Days before the project's
+  collection start are absent, never zero.
+- `markers[]` — `{ kind: "release" | "deployment" | "implementation_change", day, evidenceId, label,
+  relation: "context_only_not_a_cause" }`, dated beside the series. HEY never says one caused a
+  change in use.
+- `methodology` — the five rules above in words; `computedAt`; `disclaimer`.
+
+Usage is its own dimension: it never feeds activity status, Build Momentum, the Discovery Gap, the
+Radar or any ordering. SDK: `client.projects.usage(slug, { window })` → `HeyProjectUsage`.
 
 ### `GET /api/projects/{slug}/coverage`
 
@@ -1361,7 +1441,7 @@ about that project.
 |---|---|
 | `associatedProject`, `role`, `token`, `watched` | the published project that knows this contract and how — `token`, `declared` (a contract the project names) or `followup` (deployed later by the account that launched the token). `watched` is true for a token and a declared contract; a follow-up is watched from 2026-09-27 once its launcher has been measured as not creating contracts for many projects (fewer than 100 in 90 days) and HEY's proxy watch has read it, and is `false` until then. `null` when no published project claims it, or when more than one shares the strongest link (a follow-up two projects' deployer put up): HEY then names none rather than pick one. In `/api/projects/{slug}/contracts` a follow-up names the listing project and cites its own ship |
 | `creation` | `tx`, `at`, `block`, `precision: "EXACT"`, and an `evidenceId` for a follow-up |
-| `deployer` | the token's deployer — the only account this object ever names — with `sharedAcrossTrackedProjects` (HEY's stored shared-deployer flag, set once the account launched three tracked projects' tokens; the same flag `/market` publishes as `deployerShared`) and `otherProjectsCount` (a plain count, which may be above zero while the flag is false) |
+| `deployer` | the token's deployer — the only account this object ever names — with `sharedAcrossTrackedProjects` (HEY's stored shared-deployer flag, set once the account launched three tracked projects' tokens; the same flag `/market` publishes as `deployerShared`) and `otherProjectsCount` (a plain count of the other *published* projects this account launched, which may be above zero while the flag is false, and zero while it is true: the flag counts every tracked launch, and HEY never counts or names an unpublished record here — clarified 2026-09-28, meaning unchanged) |
 | `factory` | the factory that created the token, when one did |
 | `verifiedSource` | `state`, `verified`, `compiler`, `contractName`, `readFrom` (a proxy's implementation), `checkedAt`. Since 2026-09-27: `method` — how the explorer came to hold the source (`SOURCE_PUBLISHED` for this address, `BYTECODE_MATCH` to source published for another contract's identical bytecode, `SOURCIFY`, `VERIFIER_ALLIANCE`; absent until HEY has read the explorer's contract record, which is unknown and never "published"), `match` (`FULL` or `PARTIAL`), `verifiedAt`; `authorship` — `{ kind, reason }` by one rule: `TEMPLATE` (a launchpad template name, a name verified on five or more projects, or an immutable clone), `EXPLORER_MATCHED`, `PROJECT_AUTHORED` or `UNCONFIRMED` (present only when some verifier holds source; a fact about the code, never a score); and `sourcify` — `{ state, status?, match?, creationMatch?, runtimeMatch?, checkedAt? }`, Sourcify's independent answer (`MATCH` or `NOT_FOUND`), read only for watched contracts the explorer calls unverified and proxies: `NOT_READ` is never "not verified" |
 | `proxy` | `state`, `status`, `kind` (`EIP1967`, `BEACON`, `EXPLORER_REPORTED`, `NONE_DETECTED`), `implementation`, `beacon`, `checkedAt`, `changedAt`, `clonedFrom` (2026-09-27: the contract an immutable minimal clone, EIP-1167, copies, as the explorer reports it — its code is that contract's and cannot change), and `history[]` — each change with an `id` (`impl:<chainId>:<address>:<block>:<logIndex>` for a chain log), `occurredAt` and `precision: "EXACT"` for a log, or `occurredAt: null` and `precision: "OBSERVED"` for a change HEY saw between two reads (`source: "hey_reads"`) |
@@ -1456,6 +1536,68 @@ them unchanged, and they can say nothing this API does not. An `Origin` outside 
 refused, the body is capped at 64 KB, and 60 JSON-RPC calls a minute per address bound handshake
 spam. Every answer tags its lines FACT, DERIVED or UNKNOWN and links the JSON route it was rendered
 from. The tools, resources and prompts are in `docs/MCP.md`.
+
+## Agent discovery (2026-09-28)
+
+For an autonomous agent that has never heard of HEY. Everything here is built from one machine
+identity (name, domain, chain, `$HEY` contract, MCP endpoint, API URLs) and makes no provider or
+model call. The walk-through is `/developers/agents` (Markdown at `/developers/agents.md`).
+
+| Route | What it is |
+| --- | --- |
+| `GET /llms.txt` | llmstxt.org v2: what HEY is, what it will not do, every machine entry point, how to research one project. Pages point at it with `Link: </llms.txt>; rel="describedby"`. |
+| `GET /.well-known/agent-card.json` | The A2A 1.0 Agent Card: one JSON-RPC interface, no auth, no streaming, no push, six skills. ETag and `cache-control: public, max-age=3600`; a matching `If-None-Match` answers 304. Not signed. |
+| `POST /api/a2a` | The A2A JSON-RPC interface. Send `A2A-Version: 1.0` (an empty header means 0.3 and answers `-32009`). `SendMessage` runs one skill and answers with a Message (no task is stored): a text part with a one-line summary, a data part with this API's JSON for the same question, and `metadata.evidenceIds`. `GetTask`/`CancelTask` answer `-32001`, streaming and push `-32004`/`-32003`. 60 messages a minute per client, 32 KB per body. |
+| `GET /openapi.json` | The OpenAPI 3.1 description of this API, the semantic traps in its descriptions. |
+| `GET /api/hey/profile` | `$HEY` as research data (below). |
+| `POST /api/receipts/validate` | Checks an AgentResearchReceipt (below). |
+| `GET /schemas/agent-research-receipt.v1.json` | The receipt's JSON Schema (draft 2020-12). |
+
+A2A skills, each one read this API already serves: `research_project` (the snapshot),
+`compare_projects` (`/api/compare`), `what_changed` (`/api/changes`), `explain_fact` (`/explain`),
+`check_project_coverage` (`/coverage`), `investigate_contract` (`/api/contracts/{chainId}/{address}`).
+Ask with a data part `{"skill":"research_project","project":"<slug>"}` or a text part
+`research_project <slug>`; nothing reads free text beyond that.
+
+```bash
+curl -s https://heyresearch.xyz/api/a2a -H 'content-type: application/json' -H 'A2A-Version: 1.0' \
+  -d '{"jsonrpc":"2.0","id":1,"method":"SendMessage","params":{"message":{"messageId":"m1","role":"ROLE_USER","parts":[{"data":{"skill":"what_changed","limit":5}}]}}}'
+```
+
+### `GET /api/hey/profile`
+
+`$HEY` researched like any other token (`schema: "hey.token-profile/v1"`):
+
+- `subject` — ticker, chain, contract (null before launch, with `contractReason`), explorer link;
+- `project` — HEY's own project and its snapshot URL, `sameRulesAsEveryProject: true`;
+- `supply` — total supply HEY read from the chain, with `observedAt`, or null with a reason;
+- `launch` — Pons version and factory from configuration, HEY's curve reading, and when HEY first
+  recorded the token (knowledge time, not launch time);
+- `market` — the snapshot's market block unchanged (valuation `kind` `marketCap` or `fdv`, provider,
+  `observedAt`), with the market source's freshness state (`fresh`, `stale`, `unknown`); context only;
+- `locks`, `builderEvidence`, `recentChanges`, `coverage` — the snapshot's own blocks;
+- `treasury` — the configured address, balances read from the chain with block and time, the
+  creator tax, and the documented policy: thirds allocation, **no buyback**, a monthly ledger;
+- `holderTiers` — the console's tier table (thresholds in whole HEY, API allowance, discount, early
+  access); a tier is never an input to ranking;
+- `utility` — every documented use, each `LIVE`, `PLANNED`, `RETIRED` or `UNKNOWN` with a
+  `statusReason`, the gate that decides it (`decidedBy`), an effective date only when HEY holds one
+  as data, and a doc link. The status is computed from the same gates the product opens on
+  (`isBountiesOpen`, `isApiKeysOpen`, the console settings …); a setting HEY could not read is
+  `UNKNOWN`, never a default;
+- `risksAndUnknowns` — what HEY does not know or holds only partly: a withheld or FDV valuation, a
+  stale reading, every coverage gap, an unread supply or treasury.
+
+Reads HEY's tables and configuration only. It is research data, not investment advice, and it
+never says staking, deflationary or buyback as something `$HEY` does.
+
+### `POST /api/receipts/validate`
+
+Stateless and read-only: the body is an AgentResearchReceipt (`docs/AGENT_RESEARCH_RECEIPTS.md`), at
+most 64 KB. The answer lists shape errors with their paths, the subject project's status, and each
+cited HEY id as `exists`, `withdrawn`, `moved`, `not_found`, `invalid_id` or `not_checked` (at most
+25 HEY ids are checked). Nothing is stored and nothing the receipt names is fetched; the answer
+carries `stored: false` and `endorsement: false`. 30 checks a minute per client.
 
 ## Feeds
 

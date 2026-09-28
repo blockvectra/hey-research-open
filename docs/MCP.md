@@ -84,7 +84,8 @@ aliased: nothing was published and the MCP had been called once.
 |---|---|---|
 | `find_projects` | "What is *AgentOS*?" · "What is still being built?" · "Who is building quietly?" · "Who is shipping faster?" · "Top builders on Pons?" — a name, ticker or contract, or one of HEY's surfaces with the catalogue's filters. A pasted `0x…` address is answered as `lookup_token` would. | `search_projects`, `list_projects`, `shipping_in_silence`, `builder_comebacks`, `accelerating_builders`, `list_builders` |
 | `lookup_token` | "Is anyone building this token?" — activity status in HEY's words, ship records and meaningful ships in 30 days, the last ship with its source, whether the project names the contract. On `MISMATCH` (the project's own site names another contract) it says the activity does not apply to this token and gives no link to the project (2026-09-27). | — |
-| `get_project_snapshot` | "Tell me about X." — identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. Since 2026-09-27 three context blocks, never building: paid promotion seen on the token (presence and dates, never an amount), DefiLlama protocol economics (each metric measured, not tracked or unread — a measured zero says so), and the developer footprint (official repositories, newest production deployment, packages, advisories; a count only where measured). | `get_project`, `project_intelligence` |
+| `get_project_snapshot` | "Tell me about X." — identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. Since 2026-09-27 three context blocks, never building: paid promotion seen on the token (presence and dates, never an amount), DefiLlama protocol economics (each metric measured, not tracked or unread — a measured zero says so), and the developer footprint (official repositories, newest production deployment, packages, advisories; a count only where measured). Since 2026-09-28 a **Usage** section, its own dimension and never building: active and watched contracts and calls in 7 days (the ERC-20 surface apart), distinct caller addresses on the newest and busiest day — a count per day, "addresses, not people", and UNKNOWN across the window because days cannot be added — events or why they are unknown, method facts by id, most-called buckets without names; a project outside the method watch is UNKNOWN, never zero. No new tool: the daily series is `GET /api/projects/{slug}/usage`. | `get_project`, `project_intelligence` |
+| `get_project_snapshot` | "Tell me about X." — opening since 2026-09-28 on the Research Summary: one tagged line (FACT, DERIVED, UNKNOWN) each for build, product usage, market, contracts, fundamentals, security context, the latest change and what HEY does not know, printed as the API serves them with their evidence ids and reasons, never restated; then identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. Since 2026-09-27 three context blocks, never building: paid promotion seen on the token (presence and dates, never an amount), DefiLlama protocol economics (each metric measured, not tracked or unread — a measured zero says so), and the developer footprint (official repositories, newest production deployment, packages, advisories; a count only where measured). | `get_project`, `project_intelligence` |
 | `get_changes` | "What changed?" · "Anything new on X since Monday?" — the change ledger, one event per change, with its own time, precision, when HEY knew and its evidence; browse or sync with a cursor. | `list_ships`, `list_signals`, `contract_changes` |
 | `get_project_timeline` | "Show me X's history." — every kind of evidence on one axis, paged with a cursor. | `project_timeline` |
 | `get_project_coverage` | "What does HEY not know about X?" — a state per dimension, never a score. Reason codes an agent could misread carry words (2026-09-27): `none_found_in_package_index` is a reading of that index only, not "no package"; `not_tracked_by_registry` is the registry's silence, not a zero; a template token's verified source is not project-authored code. | — |
@@ -193,6 +194,26 @@ And never:
   launch service only on HEY's own shared-deployer flag (three projects), the rule `/market`
   reads;
 - **returns Terminal-only data** — the public API does not, so the MCP cannot.
+
+## Discovery: the registry, the handshake, $HEY (2026-09-28)
+
+- **Official MCP Registry.** The entry is `apps/mcp/server.json` (schema
+  `2025-12-11/server.schema.json`, validated in the gate and by
+  `node scripts/release/validate-mcp-server-json.mjs [--live]`): name
+  `io.github.hey-research-lab/hey-research`, the hosted remote `https://heyresearch.xyz/mcp`
+  (Streamable HTTP), the public repository and the agent guide. The npm package carries the same
+  name as `mcpName`, which is how the registry verifies an npm package; it ships with the next MCP
+  release, and only then is the package added to the entry. Publishing needs the project's GitHub
+  login and is the founder's step — `docs/RELEASING.md`, "Official MCP Registry".
+- **The handshake** names the server `hey-research`, titled `HEY Research Lab`, with
+  `websiteUrl` the agent guide (`/developers/agents`). The MCP SDK in use (1.30) negotiates protocol
+  versions up to `2025-11-25`; the current specification is `2026-07-28`.
+- **`$HEY`** is researched with the same tools as any token: `lookup_token` with its contract, then
+  `get_project_snapshot`. The token's documented utility, each LIVE, PLANNED, RETIRED or UNKNOWN, is
+  at `GET /api/hey/profile` (`hey.heyProfile()` in the SDK); no tool was added for it, and the
+  server instructions say where it is.
+- **A2A** is a separate, task-oriented door (`/.well-known/agent-card.json`, `POST /api/a2a`) over
+  the same reads; this server stays tool-oriented. See `docs/PUBLIC_API.md`, "Agent discovery".
 
 ## How it is built
 

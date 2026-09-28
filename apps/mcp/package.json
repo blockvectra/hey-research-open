@@ -1,7 +1,8 @@
 {
   "name": "@hey-research-lab/mcp",
   "version": "0.1.1",
-  "description": "MCP server for HEY Research: which projects on Robinhood Chain are still building, what they shipped, and which of them nobody is looking at — as tools an assistant can call.",
+  "mcpName": "io.github.hey-research-lab/hey-research",
+  "description": "MCP server for HEY Research Lab: evidence-backed research on Robinhood Chain projects — builder activity, ships, contracts, changes and market context, each with its source. Read-only; not investment advice.",
   "license": "MIT",
   "type": "module",
   "bin": {
@@ -33,11 +34,12 @@
   "keywords": [
     "mcp",
     "model-context-protocol",
-    "hey-research",
     "robinhood-chain",
+    "research",
+    "blockchain-data",
+    "developer-intelligence",
     "builders",
-    "claude",
-    "assistant"
+    "hey-research"
   ],
   "publishConfig": {
     "access": "public"

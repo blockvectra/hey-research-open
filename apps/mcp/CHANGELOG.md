@@ -6,6 +6,15 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+### Added
+
+- `mcpName` (`io.github.hey-research-lab/hey-research`) in `package.json`, which the Official MCP Registry reads to verify the npm package; `server.json` is the registry entry.
+- The handshake's server info carries `title` ("HEY Research Lab") and `websiteUrl` (the agent guide), and the instructions say where `$HEY`'s research profile is.
+
+### Changed
+
+- The npm description and keywords name what the server does: evidence-backed research on Robinhood Chain projects.
+
 ## 0.1.1 — 2026-09-27
 
 ### Changed
