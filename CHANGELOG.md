@@ -6,6 +6,8 @@ record.
 
 ## 2026-09-28
 
+- **Listed in the Official MCP Registry** as `io.github.hey-research-lab/hey-research` (remote
+  `https://heyresearch.xyz/mcp`).
 - **Machine identity and day words.** The Agent Card (a data-only extension), the OpenAPI document
   (`info.x-hey`) and the site's JSON-LD now carry the `$HEY` contract and the hosted MCP endpoint
   from the same identity as llms.txt, and no URL in their prose is followed by punctuation. Relative
