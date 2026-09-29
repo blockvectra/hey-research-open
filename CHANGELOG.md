@@ -16,6 +16,18 @@ record.
   `PARTIAL`, not `DEGRADED`. The platform summary gives each finding a severity (critical,
   degraded, notice), and the failed-jobs SLO counts failures with no later success of the same
   work.
+- **Self-heal and health.** The freshness sweep backs off a job that keeps failing (30 minutes,
+  doubling per failure since its last success, capped at 12 hours) instead of re-queueing it every
+  quarter hour, and the market-source heals run one attempt. The platform verdict reads a breach
+  behind a paused provider as degraded with its resume time, and critical only if it is still
+  behind two hours after the pause lifts. The console offers no Retry on a failure a later run
+  superseded or behind a paused provider, and says why. A failed distribution run keeps its error
+  class and a redacted message (migration 0189).
+- **API answers.** `/history` and `/diff` answer 400 for a day that does not exist (`2026-02-30`)
+  instead of 500. A database timeout, held lock or dropped connection answers `503
+  service_unavailable` with `retry-after`. A `hey-internal/` user agent is counted as HEY's own
+  even when the SDK's name follows it. `scripts/smoke.sh --deep` checks the demo fixtures from the
+  database instead of requesting their pages.
 - **Terminal chart: the last-close label.** `packages/ui` exports `lastCloseMark(rows)`. The label
   on the price axis carries ▲ or ▼ with its market colour, never colour alone. It is flat, with no
   arrow, when the newest close is older than the axis's end (trailing unread rows).

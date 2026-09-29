@@ -79,6 +79,7 @@ Every public read route answers an error in one envelope:
 | 429 | `rate_limited` | yes | the per-minute bucket is spent; `retryAfterSeconds` and `retry-after` say when |
 | 429 | `quota` | yes | the monthly allowance is spent (or a bulk request would cross it) |
 | 500 | `internal_error` | yes | HEY failed; quote the `requestId` |
+| 503 | `service_unavailable` | yes | the database was busy for a moment (a timeout or a held lock); `retryAfterSeconds` and `retry-after` say when to ask again (2026-09-30) |
 
 Every answer, success or error, is readable cross-origin and exposes `retry-after`,
 `x-request-id`, `x-hey-tier` and `x-hey-monthly-remaining` to a browser caller. The 500 and the
