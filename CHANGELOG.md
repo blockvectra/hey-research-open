@@ -46,6 +46,12 @@ record.
   `chain_token_coverage_days` row feeds one line on Explore's token view. New authority entry
   `token_repo_link`.
 
+- **Operator figures that say what they count.** HEY's private admin console was audited against
+  production; no public package and no API field changes. For API callers: a key's monthly
+  allowance still answers `429` with the reset date once spent, and HEY's operators now see the
+  account as exhausted (with a warning from 80 %) instead of learning it from the caller. MCP
+  protocol refusals (4xx) are no longer counted as HEY errors in HEY's own health figures.
+
 - **Telegram bot adapter.** `packages/sources` has `telegram-bot.ts`, the Telegram Bot API as an
   outbound channel. It handles `sendMessage`, `editMessageText`, `deleteMessage`, `setWebhook`,
   `getWebhookInfo`, `setMyCommands` and `getMe`, with previews always off and the token redacted

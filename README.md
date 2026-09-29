@@ -179,7 +179,10 @@ distinct caller addresses per day, never people, never summed into a window) and
 adds the daily series (2026-09-28).
 
 Paging follows the API's own cursor, a `429` arrives as `HeyApiError` with `retryAfterSeconds`
-and is never retried for you, and an absent field means HEY does not know — never a zero.
+and is never retried for you, and an absent field means HEY does not know — never a zero. A keyed
+account's monthly allowance is counted per UTC month; once it is spent every counted call answers
+`429` with the reset date until the first of the next month, and HEY's operators see the account
+as exhausted (from 80 % they see a warning) rather than learning it from the caller.
 
 **For an assistant** — fifteen read-only tools over the same API, hosted or on your machine, listed in the
 Official MCP Registry as `io.github.hey-research-lab/hey-research`:
