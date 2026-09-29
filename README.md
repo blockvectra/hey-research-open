@@ -232,6 +232,15 @@ change ledger inside the event's official window. Announcements made at the even
 with their official source and are never counted as shipped. The first is HOOD Summit '26
 (`/events/hood-summit-26`).
 
+## Uniswap on Robinhood Chain
+
+HEY links a project's token to its page on the Uniswap web app when the chain shows it in a Uniswap
+pool — liquidity in Uniswap v4's published PoolManager, or a pool Uniswap's published v2/v3 factory
+created. A venue a data provider merely *names* "uniswap" is not enough, and forks are never called
+Uniswap. Market activity never affects HEY's builder research. See
+https://heyresearch.xyz/integrations/uniswap. Uniswap is a trademark of Uniswap Labs; HEY Research
+Lab is not affiliated with or endorsed by Uniswap Labs.
+
 ## The badge
 
 Any project HEY tracks can embed its own status. It updates itself, and it links back to the

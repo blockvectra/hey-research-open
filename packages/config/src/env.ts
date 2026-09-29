@@ -162,6 +162,26 @@ export const serverEnvSchema = z
         .pipe(z.number().finite().nonnegative().optional()),
     }),
 
+    /*
+     * The Uniswap integration (2026-09-30, docs/UNISWAP_INTEGRATION.md). All
+     * three default off. "View on Uniswap" is a plain link and needs none of
+     * them; these govern the one thing that calls Uniswap — the indicative
+     * quote a Terminal reader asks for — and the swap-form handoff after it.
+     *
+     *  - UNISWAP_ENABLED: the quote may be asked at all (a kill switch that
+     *    leaves the key in place).
+     *  - UNISWAP_API_KEY: the Trading API key from the Uniswap Developer
+     *    Platform. Server only; never sent to a browser, never logged.
+     *  - UNISWAP_SWAP_ENABLED: after a quote, offer "Continue on Uniswap" to
+     *    Uniswap's own swap form with the reader's amount. HEY builds no
+     *    transaction and embeds no swap either way.
+     */
+    uniswap: z.object({
+      enabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+      swapEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+      apiKey: optionalString,
+    }),
+
     /** Signs builder session cookies. Required only for write flows. */
     sessionSecret: optionalString,
 
@@ -663,6 +683,11 @@ function shapeEnv(raw: RawEnv) {
       bitqueryMethodDailyRequests: raw.BITQUERY_METHOD_DAYS_DAILY_REQUESTS,
       geckoterminalBaseUrl: raw.GECKOTERMINAL_BASE_URL,
     },
+    uniswap: {
+      enabled: raw.UNISWAP_ENABLED,
+      swapEnabled: raw.UNISWAP_SWAP_ENABLED,
+      apiKey: raw.UNISWAP_API_KEY,
+    },
     github: {
       clientId: raw.GITHUB_CLIENT_ID,
       clientSecret: raw.GITHUB_CLIENT_SECRET,
@@ -769,6 +794,9 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'market.bitqueryApiKey': 'BITQUERY_API_KEY',
   'market.bitqueryMethodDailyRequests': 'BITQUERY_METHOD_DAYS_DAILY_REQUESTS',
   'market.geckoterminalBaseUrl': 'GECKOTERMINAL_BASE_URL',
+  'uniswap.enabled': 'UNISWAP_ENABLED',
+  'uniswap.swapEnabled': 'UNISWAP_SWAP_ENABLED',
+  'uniswap.apiKey': 'UNISWAP_API_KEY',
   'github.clientId': 'GITHUB_CLIENT_ID',
   'github.clientSecret': 'GITHUB_CLIENT_SECRET',
   'github.publicApiToken': 'GITHUB_PUBLIC_API_TOKEN',

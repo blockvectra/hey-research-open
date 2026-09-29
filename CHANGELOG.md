@@ -51,6 +51,16 @@ record.
   research profile is live" panel: share verified builder status, the README badge, the widget,
   the share card, the canonical page, the API and changes endpoints.
 
+- **Uniswap integration for Robinhood Chain research.** A token links to its page on the Uniswap web
+  app ("View on Uniswap") only when the chain puts it in a Uniswap pool — liquidity in the published
+  v4 PoolManager, or a pool whose `factory()` is Uniswap's published v2/v3 factory (new table
+  `pool_factory_reads`, read once per pool). Forks keep the name their source gave them and are
+  never called Uniswap. New adapters: a batched pool-factory read and the documented Trading API
+  `/quote` (contract-tested against Uniswap's published example); the indicative quote is built and
+  off by default (`UNISWAP_ENABLED`, `UNISWAP_API_KEY`, `UNISWAP_SWAP_ENABLED`). Market context only:
+  it never reaches any builder score. Uniswap is a trademark of Uniswap Labs; no affiliation or
+  endorsement.
+
 - **HEY Scan inside the Research Terminal.** `/terminal/scan` and `/terminal/scan/<address>` run the
   public scan — the same form, report, rate limit and provider budget — in the Terminal's shell,
   open to every Terminal reader including preview. The ⌘K palette offers "Scan 0x…" as its first row

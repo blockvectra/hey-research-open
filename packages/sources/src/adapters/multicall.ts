@@ -186,3 +186,81 @@ export function createErc20MetadataBatchAdapter(): SourceAdapter<Erc20BatchInput
     },
   };
 }
+
+/**
+ * Which factory made each pool, a hundred pools to a request (2026-09-30).
+ *
+ * A v2- or v3-style pool answers `factory()` with the contract that created
+ * it; HEY compares the answer with the factories Uniswap publishes, so a pool
+ * is called Uniswap only when the chain says Uniswap made it — never because
+ * a provider named its venue that way. `allowFailure` keeps a pool with no
+ * `factory()` (a launch curve, an address with no code) from failing the
+ * batch; it answers with no factory, which is a reading, not an error. An RPC
+ * failure is an error for the whole batch and nothing is written from it.
+ */
+export type PoolFactoryBatchInput = { rpcUrl: string; pools: readonly string[] };
+/** One entry per pool asked, in order; `factory` is absent when the pool gave none. */
+export type PoolFactoryValue = { pool: string; factory?: string };
+
+/** `keccak("factory()")[0:4]`, pinned by the adapter test. */
+export const FACTORY_CALL = '0xc45a0155';
+export const POOL_FACTORY_BATCH_SIZE = 100;
+
+/** An ABI address word: twelve zero bytes, then twenty. Anything else — and the zero address — is not a factory. */
+export function decodeAbiAddress(hex: string): string | undefined {
+  const data = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (data.length !== 64 || !/^0{24}[0-9a-fA-F]{40}$/.test(data)) return undefined;
+  const address = `0x${data.slice(24).toLowerCase()}`;
+  return /^0x0{40}$/.test(address) ? undefined : address;
+}
+
+export function createPoolFactoryBatchAdapter(): SourceAdapter<PoolFactoryBatchInput, PoolFactoryValue[]> {
+  return {
+    name: 'pool-factory',
+
+    canHandle(input) {
+      return (
+        Boolean(input.rpcUrl) &&
+        input.pools.length > 0 &&
+        input.pools.length <= POOL_FACTORY_BATCH_SIZE &&
+        input.pools.every((pool) => /^0x[a-fA-F0-9]{40}$/.test(pool))
+      );
+    },
+
+    async fetch(input, ctx: SourceContext): Promise<SourceResult<PoolFactoryValue[]>> {
+      if (!this.canHandle(input)) return errorResult(ctx, 'INVALID_RESPONSE', 'a batch needs one to a hundred well-formed pool addresses; nothing was asked');
+      const calls: Call3[] = input.pools.map((pool) => ({ target: pool, allowFailure: true, callData: FACTORY_CALL }));
+      const body = JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_call',
+        params: [{ to: MULTICALL3_ADDRESS, data: encodeAggregate3(calls) }, 'latest'],
+      });
+
+      return performSourceFetch(
+        ctx,
+        { url: input.rpcUrl, method: 'POST', body, headers: { 'content-type': 'application/json' }, conditional: false },
+        {
+          schema: envelopeSchema.superRefine((value, context) => {
+            // A provider error is not evidence that a hundred pools have no factory.
+            if (value.error) context.addIssue({ code: z.ZodIssueCode.custom, message: `rpc error: ${value.error.message}` });
+            else if (!value.result || decodeAggregate3(value.result)?.length !== calls.length) {
+              context.addIssue({ code: z.ZodIssueCode.custom, message: value.result === '0x' ? 'no multicall contract answered' : 'aggregate3 answer did not decode' });
+            }
+          }),
+          parse: (raw) => JSON.parse(raw) as unknown,
+          // A pool's factory never changes; the caller stores it and never asks twice.
+          cacheTtlSeconds: 86_400,
+          normalize: (raw): PoolFactoryValue[] => {
+            const results = decodeAggregate3(raw.result ?? '') ?? [];
+            return input.pools.map((pool, index) => {
+              const entry = results[index];
+              const factory = entry?.success ? decodeAbiAddress(entry.returnData) : undefined;
+              return { pool: pool.toLowerCase(), ...opt('factory', factory) };
+            });
+          },
+        },
+      );
+    },
+  };
+}

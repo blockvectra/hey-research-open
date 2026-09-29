@@ -19,6 +19,7 @@ export * from './adapters/dexscreener-search';
 export * from './adapters/dexscreener-tokens';
 export * from './adapters/erc20';
 export * from './adapters/multicall';
+export * from './adapters/uniswap-trading';
 export * from './adapters/hoodfun-curve';
 export * from './adapters/feed';
 export * from './adapters/geckoterminal';
