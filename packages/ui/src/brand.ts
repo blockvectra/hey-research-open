@@ -17,10 +17,14 @@ export const BRAND = {
   /** Public block explorer for the chain; token pages live under `/token/<address>`. */
   explorerUrl: 'https://robinhoodchain.blockscout.com',
   tagline: "Find who's actually building on Robinhood Chain.",
-  secondaryTagline: 'See who is shipping before the market notices.',
+  /*
+   * No "before the market notices" line (positioning pass, 2026-09-30): it
+   * promised a timing edge on a price, which HEY cannot prove and must not
+   * sell. The site's words are in apps/web/src/lib/home-positioning.ts.
+   */
   positioning: 'Builder intelligence for Robinhood Chain.',
   description:
-    'Discover active projects, recent ships, and builders across Robinhood Chain with HEY Research Lab.',
+    'The evidence behind Robinhood Chain projects: what builders shipped, when, and the public source for it.',
 } as const;
 
 /** `{Page} | HEY Research Lab`, with the homepage carrying the full positioning. */

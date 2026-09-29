@@ -6,6 +6,46 @@ record.
 
 ## Unreleased (2026-09-30)
 
+- **Worker reliability.** A worker claims only the job types it has a handler for (`claimJobs`
+  takes `types`), so a row enqueued by a newer build waits for one that can run it instead of
+  failing. The GeckoTerminal OHLCV adapter merges a bucket the provider lists twice into one bar
+  (`mergeDuplicateBars`; open from the first listing, close from the last, never a summed volume),
+  with a saved fixture. A failed chain read is classified (`rpc-failure.ts`): a refusal is
+  deferred, a revert is declined with its reason (`PermanentJobError` gains `declined`, parked
+  CANCELLED). A source whose run succeeded but whose provider serves less than the window holds is
+  `PARTIAL`, not `DEGRADED`. The platform summary gives each finding a severity (critical,
+  degraded, notice), and the failed-jobs SLO counts failures with no later success of the same
+  work.
+- **Terminal chart: the last-close label.** `packages/ui` exports `lastCloseMark(rows)`. The label
+  on the price axis carries ▲ or ▼ with its market colour, never colour alone. It is flat, with no
+  arrow, when the newest close is older than the axis's end (trailing unread rows).
+
+- **A day is a UTC day on every clock.** Every daily series — the chain's days, a contract's seven
+  complete days, the ships-per-day heartbeat, rank history — already keyed UTC days, but some
+  windows were counted from the database session's date; on a database whose clock was not UTC
+  they were off by a day for part of every day. Production runs in UTC, so no published answer
+  changed.
+
+- **Positioning: the builder, not just the chart.** The homepage's first viewport now says what HEY
+  is and how it differs from a directory, what it offers a trader and a builder, and leads into one
+  action, "Search project or paste contract", then Research · Follow · Monitor. A pasted contract
+  address goes to `/scan/<address>`, which opens a published project's page. `/scan`, the project
+  page header, Explore, `/developers`, the default meta description and llms.txt use the same line:
+  price tells you what the market is doing; HEY tells you what the builder is doing.
+  `BRAND.secondaryTagline` ("before the market notices") is removed and `BRAND.description` is
+  rewritten; `SearchField` takes an optional `labelClassName`.
+
+- **Coverage: every token on the chain, and the builder behind it.** The launchpad scan also reads
+  Uniswap V2 `PairCreated` and V3 `PoolCreated` (`UNISWAP_V2_PAIRS`, `UNISWAP_V3_POOLS`): tokens
+  with a pool that HEY held nowhere become token records, recorded as DEX discovery, never with a
+  launchpad key. hood.fun's first launchpad (`HOODFUN_LEGACY`) is scanned. A new hourly job asks
+  GitHub code search which repositories name a token's contract (`token_code_search_reads`,
+  `token_repo_mentions`, migration 0186) and links a repository only by a corroborating tie; the
+  quality gate counts a declared repository once it names the contract (`repoNamesToken`).
+  Declared GitHub links in launch socials are registered as declarations (migration 0187). A daily
+  `chain_token_coverage_days` row feeds one line on Explore's token view. New authority entry
+  `token_repo_link`.
+
 - **Telegram bot adapter.** `packages/sources` has `telegram-bot.ts`, the Telegram Bot API as an
   outbound channel. It handles `sendMessage`, `editMessageText`, `deleteMessage`, `setWebhook`,
   `getWebhookInfo`, `setMyCommands` and `getMe`, with previews always off and the token redacted

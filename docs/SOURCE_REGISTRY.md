@@ -237,6 +237,7 @@ verification record, launch counts and the one-off backfill commands are in
 | --- | --- | --- | --- | --- | --- |
 | **Pools** (pools.trade, Uniswap Labs) | `0x0000FffFBE8efE702c8703aE3477FF5dE3d319C0` LiquidityLauncher | `0x2e2b3f61…` | `topics[1]` | none — `name()`/`symbol()` from the token | ~50,700 since block 28.52M |
 | **hood.fun** | `0x8c529f0a77c07ce0e6796f153d292501ee6f66f6` | `0x91de26bc…` | `topics[1]` | name, symbol, inline-JSON metadata (description, links) | 352 |
+| **hood.fun** (first launchpad, `HOODFUN_LEGACY`, added 2026-09-30) | `0x6a63d96ef77ae569fcb85934cf1bd1ec7fe9b33d` | `0x91de26bc…` | `topics[1]` | name, symbol, image URL | 85 (blocks 2.79M–6.14M; 84 were not in HEY) |
 | **Robinlaunch** | 9 bonding factories (V4–V12) + 5 direct + boost, from its bundle | `0x463df9e0…` / `0x88401197…` | `topics[2]` | name, symbol, `ipfs://` metadata | ~75 |
 | **PAIR** (pair.fund) | `0x8660A7F019C7943b0b0A91B8E39AFf3b6DB6Ae62` | `0x82a616e6…` | `topics[1]` | metadata URL only — identity from the `pairfund` adapter | 1,474 |
 | **Clanker** v4 | `0xD3f2cC1731b7Fd17f28798835C2E02f0a1839A94` | `0x9299d1d1…` | `topics[1]` | image, name, symbol, JSON metadata (description, socials) | 14,898 |
@@ -245,6 +246,21 @@ verification record, launch counts and the one-off backfill commands are in
 | **Hoodit** | `0xd9ec2db5f3d1b236843925949fe5bd8a3836fccb` | Pons V1 `0xdb51ea9a…` | `topics[1]` | none | 21,443 (blocks 61k–6.72M, dormant since) |
 | **Robinpad** | 8 factories from its bundle (`RH4663`) | 5 creation topics | `topics[1]` | none | ~141 |
 | **Flap** (flap.sh) | `0x26605f322f7ff986f381bb9a6e3f5dab0beaeb09` | `0x504e7f36…` | data word 3 | name, symbol, IPFS CID | ~90,000 since before block 30M |
+
+**DEX pool factories (coverage audit, 2026-09-30).** Not launchpads — a pool is where a token
+trades, not where it was launched — but the one complete, free list of every token that was ever
+given a market on the chain. Read by the same hourly scan (`UNISWAP_V2_PAIRS`, `UNISWAP_V3_POOLS`,
+`packages/sources/src/factories/dex-pools.ts`), both token topics of each log, the chain's quote
+assets (USDG, WETH, ETH) skipped, no launchpad key ever written, and only tokens HEY holds in no
+intake table are recorded (as DEX discovery, discovered value = the factory id, authority `rpc`).
+
+| Factory | Address on 4663 | Event topic | Tokens | Census 2026-09-30 (blocks 0–75.95M) |
+| --- | --- | --- | --- | --- |
+| Uniswap V2 | `0x8bceaa40b9acdfaedf85adf4ff01f5ad6517937f` | `PairCreated` `0x0d3648bd…` | `topics[1]`, `topics[2]` | 73,709 pairs · 73,435 tokens · 15,071 not in HEY |
+| Uniswap V3 | `0x1f7d7550b1b028f7571e69a784071f0205fd2efa` | `PoolCreated` `0x783cca1c…` | `topics[1]`, `topics[2]` | 437,791 pools · 435,070 tokens · 91,225 not in HEY |
+
+Token ↔ repository discovery (`SEARCH_TOKEN_REPOS`, budget `github-code-search`, authority
+`token_repo_link`) is described in `docs/COVERAGE_AUDIT_2026_09_30.md`.
 
 | | |
 | --- | --- |

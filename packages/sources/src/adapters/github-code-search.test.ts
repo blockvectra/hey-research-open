@@ -69,3 +69,26 @@ describe('GitHub code search', () => {
     expect(result.errorCode).toBe('INVALID_RESPONSE');
   });
 });
+
+describe('GitHub code search for a token contract (coverage audit, 2026-09-30)', () => {
+  const adapter = createGithubCodeSearchAdapter();
+  const address = '0x99f381b8bcd5b367178809abdbb7ae79da782e0e';
+
+  it('asks for the quoted address and returns every file with its path, file link and fork flag', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('github-code-search-address.json') });
+    const result = await adapter.fetch({ query: `"${address}"`, token: 'ghp_test' }, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(stub.requests[0]?.url).toBe(`https://api.github.com/search/code?q=%22${address}%22&per_page=100&page=1`);
+    expect(hasData(result)).toBe(true);
+    expect(result.data?.totalCount).toBe(5);
+    expect(result.data?.hits.map((hit) => `${hit.fullName}:${hit.path}`)).toEqual([
+      'example-builder/robin-app:broadcast/Deploy.s.sol/4663/run-latest.json',
+      'example-builder/robin-app:README.md',
+      'example-lists/token-lists:lists/robinhood.tokenlist.json',
+      'example-copier/robin-app:src/config/addresses.ts',
+      'example-trader/sniper:bot/constants.py',
+    ]);
+    expect(result.data?.hits[0]?.fileUrl).toMatch(/^https:\/\/github\.com\/example-builder\/robin-app\/blob\/.+\/run-latest\.json$/);
+    expect(result.data?.hits[3]?.isFork).toBe(true);
+  });
+});

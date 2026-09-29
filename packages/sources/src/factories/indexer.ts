@@ -4,6 +4,23 @@ import type { SourceContext } from '../adapter';
 import type { LaunchFactoryConfig } from './registry';
 
 /**
+ * What the scanner needs to read one contract's creation events: a launch
+ * factory, or a DEX factory whose event names two tokens (2026-09-30).
+ */
+export type ScannableFactory = Pick<
+  LaunchFactoryConfig,
+  'id' | 'chainId' | 'factoryAddress' | 'eventTopic0' | 'tokenTopicIndex' | 'tokenDataWord' | 'eventStrings' | 'version'
+> & {
+  /**
+   * Every indexed topic that carries a token (a DEX pool pairs two). When
+   * set it replaces `tokenTopicIndex`.
+   */
+  pairTokenTopics?: readonly (1 | 2 | 3)[];
+  /** Lowercase addresses never recorded as a launch (a pool's quote asset). */
+  skipTokens?: readonly string[];
+};
+
+/**
  * Generic factory-event indexer (Discovery Coverage V2 §13).
  *
  * One engine for every on-chain launch source: give it a factory, an event
@@ -114,7 +131,7 @@ const logSchema = z.object({
 
 /** The strings a registry entry says the event carries, decoded from one log. */
 function eventStringsOf(
-  factory: LaunchFactoryConfig,
+  factory: ScannableFactory,
   data: string | undefined,
 ): Pick<FactoryLaunch, 'name' | 'symbol' | 'metadataUri' | 'imageUri'> {
   const words = factory.eventStrings;
@@ -206,7 +223,7 @@ export type ScanOptions = {
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
 export async function scanFactory(
-  factory: LaunchFactoryConfig,
+  factory: ScannableFactory,
   options: ScanOptions,
   ctx: SourceContext,
 ): Promise<ScanResult> {
@@ -225,6 +242,7 @@ export async function scanFactory(
   let errors = 0;
   let stopReason: ScanResult['stopReason'];
   const maxRequests = options.maxRequests ?? 400;
+  const skip = new Set((factory.skipTokens ?? []).map((address) => address.toLowerCase()));
 
   while (from <= options.toBlock) {
     if (requests >= maxRequests) {
@@ -315,25 +333,29 @@ export async function scanFactory(
     }
 
     for (const log of parsed.result ?? []) {
-      const topic =
-        factory.tokenTopicIndex === 'data'
-          ? dataWord(log.data, factory.tokenDataWord)
-          : log.topics[factory.tokenTopicIndex];
-      if (!topic) continue;
-      const contractAddress = ADDRESS_FROM_TOPIC(topic);
-      if (!/^0x[a-f0-9]{40}$/.test(contractAddress)) continue;
-      if (contractAddress === '0x0000000000000000000000000000000000000000') continue;
+      const topics = factory.pairTokenTopics
+        ? factory.pairTokenTopics.map((index) => log.topics[index])
+        : [factory.tokenTopicIndex === 'data' ? dataWord(log.data, factory.tokenDataWord) : log.topics[factory.tokenTopicIndex]];
+      for (const topic of topics) {
+        if (!topic) continue;
+        const contractAddress = ADDRESS_FROM_TOPIC(topic);
+        if (!/^0x[a-f0-9]{40}$/.test(contractAddress)) continue;
+        if (contractAddress === '0x0000000000000000000000000000000000000000') continue;
+        if (skip.has(contractAddress)) continue;
+        // The first sighting in the window is the one kept: a token's earliest pool.
+        if (factory.pairTokenTopics && launches.has(contractAddress)) continue;
 
-      launches.set(contractAddress, {
-        sourceId: factory.id,
-        chainId: factory.chainId,
-        contractAddress,
-        blockNumber: Number.parseInt(log.blockNumber, 16),
-        txHash: log.transactionHash,
-        factoryAddress: factory.factoryAddress.toLowerCase(),
-        ...(factory.version ? { version: factory.version } : {}),
-        ...eventStringsOf(factory, log.data),
-      });
+        launches.set(contractAddress, {
+          sourceId: factory.id,
+          chainId: factory.chainId,
+          contractAddress,
+          blockNumber: Number.parseInt(log.blockNumber, 16),
+          txHash: log.transactionHash,
+          factoryAddress: factory.factoryAddress.toLowerCase(),
+          ...(factory.version ? { version: factory.version } : {}),
+          ...eventStringsOf(factory, log.data),
+        });
+      }
     }
 
     lastIndexedBlock = to;

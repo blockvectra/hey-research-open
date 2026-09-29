@@ -118,7 +118,8 @@ export function createGeckoterminalOhlcvAdapter(): SourceAdapter<GeckoterminalOh
               }))
               .filter((c) => Number.isFinite(c.highUsd) && c.highUsd > 0 && !Number.isNaN(c.day.getTime()))
               .sort((a, b) => a.day.getTime() - b.day.getTime());
-            return candles.length > 0 ? candles : undefined;
+            const merged = mergeDuplicateBars(candles);
+            return merged.length > 0 ? merged : undefined;
           },
         },
       );
@@ -126,6 +127,39 @@ export function createGeckoterminalOhlcvAdapter(): SourceAdapter<GeckoterminalOh
       return requireData(result, ctx, 'no candles for pool', { sourceUrl: url, cacheTtlSeconds: ttl });
     },
   };
+}
+
+/**
+ * One bar per bucket (2026-09-30).
+ *
+ * The provider can list the same bucket twice in one page. Measured on
+ * production's first intraday pool: a 1,000-bar hourly page listed
+ * 2026-08-19 04:00 twice, with the same volume and a different open, and the
+ * intraday upsert failed on it ("ON CONFLICT DO UPDATE command cannot affect
+ * row a second time") every hour from the job's first run. Two listings of a
+ * bucket are one bar: its open is the earlier listing's, its close the later's,
+ * its range covers both, and its volume is the larger — never their sum, which
+ * would count the same trades twice. Input is sorted by time, which keeps the
+ * provider's own order within a bucket.
+ */
+export function mergeDuplicateBars(sorted: readonly DailyCandle[]): DailyCandle[] {
+  const out: DailyCandle[] = [];
+  for (const bar of sorted) {
+    const last = out[out.length - 1];
+    if (last && last.day.getTime() === bar.day.getTime()) {
+      out[out.length - 1] = {
+        day: last.day,
+        openUsd: last.openUsd,
+        highUsd: Math.max(last.highUsd, bar.highUsd),
+        lowUsd: Math.min(last.lowUsd, bar.lowUsd),
+        closeUsd: bar.closeUsd,
+        volumeUsd: Number.isFinite(last.volumeUsd) && Number.isFinite(bar.volumeUsd) ? Math.max(last.volumeUsd, bar.volumeUsd) : Number.isFinite(bar.volumeUsd) ? bar.volumeUsd : last.volumeUsd,
+      };
+      continue;
+    }
+    out.push(bar);
+  }
+  return out;
 }
 
 /**

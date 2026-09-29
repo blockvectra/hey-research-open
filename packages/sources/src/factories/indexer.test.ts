@@ -422,3 +422,24 @@ describe('scanFactory with the token in a data word', () => {
     expect(result.launches[0]).toMatchObject({ contractAddress: token, name: 'Ducky', symbol: 'DUCKYY', txHash: '0xt10' });
   });
 });
+
+describe('hood.fun legacy launchpad (coverage audit, 2026-09-30)', () => {
+  it('decodes a saved live log from the first hood.fun launchpad', async () => {
+    const legacy = factoryById('HOODFUN_LEGACY')!;
+    const stub = stubFetch({ status: 200, body: readFixture('hoodfun-legacy-launch.json') });
+    const result = await scanFactory(
+      legacy,
+      { rpcUrl: 'https://rpc.example', fromBlock: 2_790_789, toBlock: 2_790_789, sleep: noSleep },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+    expect(result.launches).toHaveLength(1);
+    expect(result.launches[0]).toMatchObject({
+      sourceId: 'HOODFUN_LEGACY',
+      contractAddress: '0xce215543d0c755d442e3fcdceb0177f175c2600d',
+      name: 'HOOD lrfnypvk',
+      symbol: 'HOOD',
+      blockNumber: 2_790_789,
+      version: 'legacy',
+    });
+  });
+});

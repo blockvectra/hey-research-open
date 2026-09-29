@@ -23,6 +23,8 @@ Not *which wallet bought* and not *which token is pumping*, but:
 
 > **Which projects are still building, what have they shipped, and which of them is nobody looking at?**
 
+Price tells you what the market is doing. HEY tells you what the builder is doing.
+
 Every answer on HEY is a fact with the source it came from. There is no score of a project's
 worth, no grade, no verdict, and the words *rug* and *scam* appear nowhere in the product — an
 end-to-end test asserts it.
@@ -270,6 +272,17 @@ React snippet and the API call.
 The script reads only its own attributes, sets no cookie and draws one sandboxed frame; HEY counts
 that a widget was shown and the host's domain, never who saw it.
 
+## Coverage of the chain
+
+HEY reads every launchpad factory it has a verified entry for and, since 2026-09-30, the chain's
+own Uniswap V2 and V3 factories, so every token that was launched or given a pool becomes a token
+record. A token is not a project: a record becomes a public page only through the quality gate.
+To find the builder behind a token, HEY asks GitHub which repositories name the token's contract
+and links one only by a corroborating tie — the token itself declared the repository and it names
+the contract back, or the repository's homepage is the token's own site. Explore's "With a token"
+view says how many token contracts HEY knows, how many reached a page and how many of those carry
+the builder's repository; for the rest, the builder is not found yet.
+
 ## Rules that do not move
 
 - **Building is not price.** Market cap, liquidity and volume are context and filters. Nothing in
@@ -282,6 +295,8 @@ that a widget was shown and the host's domain, never who saw it.
   token's market page. An address there is a point on a chart of one supply — never a person, never
   scored, never ranked across tokens, never an input to any status or score.
 - **Absent means unknown.** A figure HEY has not measured is omitted, never published as zero.
+- **A day is a UTC day.** Every daily figure and window keys a UTC calendar day, whatever the
+  clock of the machine that computed it.
 - **Security is evidence, never a verdict.** An audit shows an audit took place; it is not a
   guarantee of safety. HEY says where a report is published and where it found the link — no
   score, no "safe", and "no advisory found" is a reading of one index, never a clean bill.

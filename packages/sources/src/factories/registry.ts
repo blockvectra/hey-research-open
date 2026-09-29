@@ -296,6 +296,28 @@ export const LAUNCH_FACTORIES: readonly LaunchFactoryConfig[] = [
       'the second launchpad hood.fun/api/board names (`launchpad` on its two community launches, isCommunity); 20,518 bytes on 4663; censused 2026-09-05 with eth_getLogs around each launch\'s createdAtBlock: block 6,151,910 (tx 0xc280d098…) and block 7,523,403 (tx 0xd015d2ef…) each emit the main launchpad\'s topic with the token in topics[1] and name / symbol / inline-JSON metadata in data words 0/1/2; the tokens answer symbol() "robin" (name "Robin", 0x67AF360b…) and "FEATHER" (0x72081aDC…); the FEATHER log is saved as fixtures/hoodfun-community-launch.json',
     sourceUrl: 'https://hood.fun/',
   },
+  /**
+   * hood.fun's first launchpad (coverage audit, 2026-09-30). `HOODFUN_LAUNCHPADS`
+   * in the curve adapter always listed it, but no scan read it: its 85 launches
+   * (blocks 2,790,789–6,136,207, before the main launchpad took over at
+   * 6,151,910) were missing from HEY entirely — 84 of 85 not even a candidate.
+   */
+  {
+    id: 'HOODFUN_LEGACY',
+    name: 'hood.fun',
+    launchpad: 'hoodfun',
+    version: 'legacy',
+    chainId: 4663,
+    factoryAddress: '0x6a63d96ef77ae569fcb85934cf1bd1ec7fe9b33d',
+    startBlock: 2_780_000,
+    eventTopic0: HOODFUN_LAUNCH_TOPIC0,
+    tokenTopicIndex: 1,
+    eventStrings: { name: 0, symbol: 1, metadataUri: 2 },
+    enabled: true,
+    verification:
+      'the first address in HOODFUN_LAUNCHPADS (hoodfun-curve.ts); census 2026-09-30 with eth_getLogs over blocks 0–75.9M: 85 logs of the main launchpad\'s topic 0x91de26bc… between blocks 2,790,789 and 6,136,207, token in topics[1], name / symbol / URI in data words 0/1/2 — the first (tx 0x1589babd…) launched "HOOD lrfnypvk" / "HOOD" (0xce215543…600d); the log is saved as fixtures/hoodfun-legacy-launch.json',
+    sourceUrl: 'https://hood.fun/',
+  },
 
   /* Robinlaunch bonding-curve factories, oldest first; each censused 2026-09-03. */
   robinlaunch({

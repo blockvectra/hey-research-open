@@ -45,8 +45,9 @@ describe('launch factory registry', () => {
     expect(LAUNCH_FACTORIES.filter((f) => f.launchpad === 'pons')).toHaveLength(5);
     expect(LAUNCH_FACTORIES.filter((f) => f.launchpad === 'robinlaunch').length).toBeGreaterThan(10);
     // hood.fun's main and community launchpads emit the same event and share one card name.
-    expect(LAUNCH_FACTORIES.filter((f) => f.launchpad === 'hoodfun').map((f) => f.id)).toEqual(['HOODFUN', 'HOODFUN_COMMUNITY']);
+    expect(LAUNCH_FACTORIES.filter((f) => f.launchpad === 'hoodfun').map((f) => f.id)).toEqual(['HOODFUN', 'HOODFUN_COMMUNITY', 'HOODFUN_LEGACY']);
     expect(factoryById('HOODFUN_COMMUNITY')?.eventTopic0).toBe(factoryById('HOODFUN')?.eventTopic0);
+    expect(factoryById('HOODFUN_LEGACY')?.eventTopic0).toBe(factoryById('HOODFUN')?.eventTopic0);
   });
 
   it('starts Flap at its first launch, not at the block the census happened to begin from', () => {

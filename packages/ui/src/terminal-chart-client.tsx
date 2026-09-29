@@ -306,6 +306,25 @@ function draw(model: ChartModel): { paths: Paths; y: (v: number) => number; cw: 
 const close = (row: ChartRow | undefined): number | null =>
   row && row.length > 1 ? (row[4] ?? null) : null;
 
+/**
+ * The last-close label on the price axis (full audit, 2026-09-30): the newest
+ * row with a close, its direction, and the arrow that says it. UI rule 13 —
+ * never colour alone, and no direction for a reading that is not the newest
+ * row: when trailing rows are gaps, the close is older than the axis's end
+ * and the label is flat, with no arrow.
+ */
+export function lastCloseMark(rows: readonly ChartRow[]): { index: number; close: number; direction: 'up' | 'down' | 'flat'; arrow: '' | '▲' | '▼' } | null {
+  let index = rows.length - 1;
+  while (index > 0 && close(rows[index]) === null) index -= 1;
+  const row = rows[index];
+  const value = close(row);
+  if (value === null || !row || row.length < 2) return null;
+  const code = index === rows.length - 1 ? row[7] : 'f';
+  if (code === 'u') return { index, close: value, direction: 'up', arrow: '▲' };
+  if (code === 'd') return { index, close: value, direction: 'down', arrow: '▼' };
+  return { index, close: value, direction: 'flat', arrow: '' };
+}
+
 /** The reference day every date label is written against: the model's, never the browser clock. */
 const referenceDay = (model: ChartModel) => new Date(`${model.today}T12:00:00Z`);
 
@@ -805,11 +824,8 @@ export function TerminalChartInteractive({
   const n = model.rows.length;
   const at = hover ?? pin;
   const x = (i: number) => pct(cw * (i + 0.5), W);
-  let last = n - 1;
-  while (last > 0 && close(model.rows[last]) === null) last -= 1;
-  const lastRow = model.rows[last];
-  const lastClose = close(lastRow);
-  const lastDir = lastRow && lastRow.length > 1 ? lastRow[7] : 'f';
+  const lastMark = lastCloseMark(model.rows);
+  const lastClose = lastMark?.close ?? null;
   const showCross = hover !== null || active;
   const familyOrder = useMemo(() => model.families.map((f) => f.key), [model.families]);
   /* The callouts' research rank: the families' own `rank`, else their chip order. */
@@ -1581,20 +1597,21 @@ export function TerminalChartInteractive({
               </div>
             ) : null}
 
-            {lastClose !== null ? (
+            {lastMark ? (
               <span
                 aria-hidden="true"
                 data-testid="last-close"
-                data-direction={lastDir === 'u' ? 'up' : lastDir === 'd' ? 'down' : 'flat'}
+                data-direction={lastMark.direction}
                 className="pointer-events-none absolute left-[calc(100%+2px)] -translate-y-1/2 whitespace-nowrap rounded-[var(--hey-radius-tooltip)] px-1 py-0.5 font-mono text-t-micro font-medium tabular-nums lg:left-[calc(100%+4px)] lg:px-1.5"
                 style={{
-                  top: pct(y(lastClose), H),
+                  top: pct(y(lastMark.close), H),
                   background:
-                    lastDir === 'u' || lastDir === 'd' ? TONE[lastDir] : 'var(--hey-market-flat)',
+                    lastMark.direction === 'up' ? TONE.u : lastMark.direction === 'down' ? TONE.d : 'var(--hey-market-flat)',
                   color: 'var(--hey-on-market)',
                 }}
               >
-                {formatTerminalPrice(lastClose)}
+                {lastMark.arrow ? `${lastMark.arrow} ` : ''}
+                {formatTerminalPrice(lastMark.close)}
               </span>
             ) : null}
             <span

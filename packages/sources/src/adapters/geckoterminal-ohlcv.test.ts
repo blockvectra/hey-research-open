@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { hasData } from '../adapter';
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createGeckoterminalOhlcvAdapter, ohlcvUrl } from './geckoterminal-ohlcv';
+import { createGeckoterminalOhlcvAdapter, mergeDuplicateBars, ohlcvUrl } from './geckoterminal-ohlcv';
 
 describe('geckoterminal ohlcv adapter', () => {
   const pool = '0x04de0599e1f0701f55e16cee7a7489c33eb0e74363a4aa886235e80e01f32fd0';
@@ -77,5 +77,45 @@ describe('geckoterminal ohlcv adapter, intraday (2026-09-29)', () => {
     const adapter = createGeckoterminalOhlcvAdapter();
     expect(adapter.canHandle({ network: 'robinhood', poolAddress: pool, timeframe: 'minute', aggregate: 10 })).toBe(false);
     expect(adapter.canHandle({ network: 'robinhood', poolAddress: pool, timeframe: 'hour', aggregate: 1 })).toBe(true);
+  });
+});
+
+describe('geckoterminal ohlcv adapter, a bucket listed twice (2026-09-30)', () => {
+  const pool = '0xb040f18affd851c6ea02b896b2f846cb77edbb33cc5361f7f8c6d14b87c01573';
+
+  /*
+   * Saved from production's first intraday pool: the provider listed
+   * 2026-08-19 04:00 UTC twice in one hourly page, and the intraday upsert
+   * failed on it every hour. One bucket is one bar.
+   */
+  it('returns one bar per bucket, merging the two listings without doubling the volume', async () => {
+    const ctx = testContext({ fetchImpl: stubFetch({ status: 200, body: readFixture('geckoterminal-ohlcv-hour-duplicate.json') }).fetchImpl });
+    const result = await createGeckoterminalOhlcvAdapter().fetch({ network: 'robinhood', poolAddress: pool, timeframe: 'hour', aggregate: 1, limit: 1000 }, ctx);
+    expect(hasData(result)).toBe(true);
+    if (!hasData(result)) return;
+    const starts = result.data.map((c) => c.day.getTime());
+    expect(new Set(starts).size).toBe(starts.length);
+    expect(starts).toHaveLength(5);
+    const bucket = result.data.find((c) => c.day.toISOString() === '2026-08-19T04:00:00.000Z')!;
+    // The first listing's open is the previous bar's close: it is the bar's start.
+    expect(bucket.openUsd).toBeCloseTo(6.19083754951161e-7, 18);
+    expect(bucket.closeUsd).toBeCloseTo(6.18726890041547e-7, 18);
+    expect(bucket.highUsd).toBeCloseTo(6.19083754951161e-7, 18);
+    expect(bucket.lowUsd).toBeCloseTo(6.1706028291392e-7, 18);
+    expect(bucket.volumeUsd).toBeCloseTo(92.87512297657518, 9);
+  });
+
+  it('merges only equal buckets: open from the earlier listing, close from the later, range over both', () => {
+    const at = new Date('2026-09-01T00:00:00Z');
+    const later = new Date('2026-09-01T01:00:00Z');
+    const merged = mergeDuplicateBars([
+      { day: at, openUsd: 1, highUsd: 2, lowUsd: 0.9, closeUsd: 1.5, volumeUsd: 10 },
+      { day: at, openUsd: 1.5, highUsd: 3, lowUsd: 1.2, closeUsd: 2.5, volumeUsd: 7 },
+      { day: later, openUsd: 2.5, highUsd: 2.6, lowUsd: 2.4, closeUsd: 2.4, volumeUsd: 1 },
+    ]);
+    expect(merged).toEqual([
+      { day: at, openUsd: 1, highUsd: 3, lowUsd: 0.9, closeUsd: 2.5, volumeUsd: 10 },
+      { day: later, openUsd: 2.5, highUsd: 2.6, lowUsd: 2.4, closeUsd: 2.4, volumeUsd: 1 },
+    ]);
   });
 });

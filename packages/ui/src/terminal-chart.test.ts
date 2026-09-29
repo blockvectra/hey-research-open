@@ -13,7 +13,7 @@ import {
   type CandleDay,
   type ChartEvent,
 } from './terminal-chart';
-import { LANE_COUNT_ROOM, LANE_HIT_HALF, codeFacts, laneRooms } from './terminal-chart-client';
+import { LANE_COUNT_ROOM, LANE_HIT_HALF, codeFacts, lastCloseMark, laneRooms, type ChartRow } from './terminal-chart-client';
 import { DailyCandleChart } from './terminal-chart-view';
 
 const TODAY = '2026-09-26';
@@ -526,5 +526,25 @@ describe('the code lane', () => {
     })!;
     expect(built.model.families).toEqual([{ key: 'code', label: 'Code activity', shape: 'bar', tone: 't', codeLane: true, noCallout: true, count: 0 }]);
     expect(built.model.code?.cells.every((cell) => cell !== null && cell[0] === 0)).toBe(true);
+  });
+});
+
+describe('lastCloseMark (full audit, 2026-09-30)', () => {
+  const row = (day: string, close: number, dir: 'u' | 'd' | 'f' | 'p'): ChartRow => [day, close, close, close, close, null, 1, dir];
+
+  it('a measured direction carries its arrow, never colour alone', () => {
+    expect(lastCloseMark([row('2026-09-28', 1, 'f'), row('2026-09-29', 1.2, 'u')])).toEqual({ index: 1, close: 1.2, direction: 'up', arrow: '▲' });
+    expect(lastCloseMark([row('2026-09-28', 1, 'f'), row('2026-09-29', 0.8, 'd')])).toMatchObject({ direction: 'down', arrow: '▼' });
+    // Today, still open, has no direction yet.
+    expect(lastCloseMark([row('2026-09-29', 1, 'p')])).toMatchObject({ direction: 'flat', arrow: '' });
+  });
+
+  it('a close older than the axis end (trailing gaps) is flat, with no arrow', () => {
+    expect(lastCloseMark([row('2026-09-27', 1.2, 'u'), ['2026-09-28'], ['2026-09-29']])).toEqual({ index: 0, close: 1.2, direction: 'flat', arrow: '' });
+  });
+
+  it('no close at all is no label', () => {
+    expect(lastCloseMark([['2026-09-28'], ['2026-09-29']])).toBeNull();
+    expect(lastCloseMark([])).toBeNull();
   });
 });
