@@ -27,6 +27,7 @@ export * from './adapters/geckoterminal-ohlcv';
 export * from './adapters/geckoterminal-pools';
 export * from './adapters/github';
 export * from './adapters/github-commits';
+export * from './adapters/github-pulls';
 export * from './adapters/github-commit-detail';
 export * from './adapters/launchpad';
 export * from './adapters/ponspad';

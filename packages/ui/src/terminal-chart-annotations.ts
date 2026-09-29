@@ -445,7 +445,8 @@ export function layoutAnnotations(items: readonly AnnotationItem[], options: Lay
 /** The axis place of a lane event: its column, the fraction of its day, or its span. */
 export function axisOf(event: { i: number; j?: number | undefined; f?: number | undefined; p: AnnotationPrecision }, columns: number): { x: number; span?: [number, number] } {
   const n = Math.max(1, columns);
-  if (event.j !== undefined && (event.p === 'WEEK' || event.p === 'WINDOW')) {
+  // A week, a window — or, on an intraday axis, a date's whole day (2026-09-29): a span, never one point of it.
+  if (event.j !== undefined) {
     const span: [number, number] = [event.i / n, (event.j + 1) / n];
     return { x: (span[0] + span[1]) / 2, span };
   }

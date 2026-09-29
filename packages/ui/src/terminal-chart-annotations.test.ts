@@ -319,3 +319,52 @@ describe('the newest and most important events keep their titles (review repair,
     expect(layoutAnnotations([...input].reverse(), options)).toEqual(layoutAnnotations(input, options));
   });
 });
+
+/*
+ * Intraday (2026-09-29): the same rule at 1H — the layout takes time, span,
+ * rank and width, and two unrelated price histories lay out identically.
+ */
+describe('the layout never sees a price at 1H either', () => {
+  const HOUR = 3_600_000;
+  const start = Date.UTC(2026, 8, 22);
+  const events: ChartEvent[] = [
+    { id: 'ship:r', at: '2026-09-24T14:05:00Z', title: 'v0.7.1', family: 'releases', precision: 'EXACT' },
+    { id: 'ship:d', at: '2026-09-25T00:00:00Z', title: 'Docs site', family: 'ships', precision: 'DATE' },
+    { id: 'ship:w', at: '2026-09-23T12:00:00Z', title: 'Code activity', family: 'code', precision: 'WEEK' },
+  ];
+  const series = (scale: number, wild: boolean): CandleDay[] =>
+    Array.from({ length: 7 * 24 }, (_, k) => {
+      const day = new Date(start + k * HOUR).toISOString().slice(0, 16) + 'Z';
+      const open = scale * (1 + (wild ? Math.sin(k) * 0.9 : 0.001 * k));
+      const close = open * (wild ? 1.5 - (k % 2) : 1.001);
+      return { day, open, close, high: Math.max(open, close) * 1.1, low: Math.min(open, close) * 0.9, readings: 1, ohlcSource: 'price' as const };
+    }).filter((_, k) => k % 7 !== 3);
+  const build = (scale: number, wild: boolean) =>
+    buildChartModel(series(scale, wild), events, { todayUtc: '2026-09-29', timeframe: '1h', openBucket: '2026-09-29T12:00Z' })!.model;
+
+  it('lays the same events out identically over two unrelated price histories', () => {
+    const calm = build(0.00002, false);
+    const wild = build(900, true);
+    const order = ['releases', 'ships', 'code'];
+    const a = annotationItems(calm.lane, order, calm.rows.length);
+    const b = annotationItems(wild.lane, order, wild.rows.length);
+    expect(b).toEqual(a);
+    for (const item of a) expect(Object.keys(item).every((key) => ['id', 'x', 'span', 'rank', 'width'].includes(key))).toBe(true);
+    const options = { plotWidth: 900, bands: 2, maxCallouts: 10 };
+    expect(layoutAnnotations(b, options)).toEqual(layoutAnnotations(a, options));
+  });
+
+  it('draws a date as its whole day and a week as its week — never a point at an invented hour', () => {
+    const model = build(1, false);
+    const date = model.lane.find((e) => e.id === 'ship:d')!;
+    const week = model.lane.find((e) => e.id === 'ship:w')!;
+    expect(date.f).toBeUndefined();
+    expect(date.j! - date.i + 1).toBe(24);
+    const axis = axisOf(date, model.rows.length);
+    expect(axis.span).toBeDefined();
+    expect(axis.span![1] - axis.span![0]).toBeCloseTo(24 / model.rows.length, 9);
+    // Its ISO week runs Monday 21 to Sunday 27 Sep; clipped to an axis that opens on the 22nd, it ends at 27 Sep 23:00.
+    expect(week.i).toBe(0);
+    expect(model.rows[week.j!]![0]).toBe('2026-09-27T23:00Z');
+  });
+});

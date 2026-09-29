@@ -4,6 +4,8 @@ import {
   type CandleDay,
   type ChartEvent,
   type ChartFamilyMeta,
+  type ChartTimeframe,
+  type CodeActivityInput,
 } from './terminal-chart';
 import { TerminalChartInteractive, type ChartLens } from './terminal-chart-client';
 
@@ -33,6 +35,9 @@ export function DailyCandleChart({
   symbol,
   choiceKey,
   className,
+  timeframe = '1d',
+  openBucket,
+  code,
 }: {
   days: readonly CandleDay[];
   events?: readonly ChartEvent[];
@@ -51,8 +56,16 @@ export function DailyCandleChart({
   /** The project the session's family choice is kept under (its slug): never the ticker. */
   choiceKey?: string | undefined;
   className?: string;
+  /**
+   * The bar size (2026-09-29). Below 1D, `days` are bars keyed by their start
+   * (`2026-09-29T14:00Z`), and the bar still open is `openBucket`.
+   */
+  timeframe?: ChartTimeframe;
+  openBucket?: string | undefined;
+  /** The code lane (2026-09-29): commits per bar and merged pull requests; absent draws none. */
+  code?: CodeActivityInput | undefined;
 }) {
-  const built = buildChartModel(days, events, { todayUtc, selectedDay, families });
+  const built = buildChartModel(days, events, { todayUtc, selectedDay, families, timeframe, openBucket, code });
   if (!built) {
     return (
       <ChartNote
@@ -64,6 +77,13 @@ export function DailyCandleChart({
   }
   return (
     <TerminalChartInteractive
+      /*
+       * A new axis is a new chart (2026-09-29): a client navigation to another
+       * timeframe or range keeps this component, and its pinned column from the
+       * old axis could point past the new one's last bar. Keyed by the axis,
+       * the island starts fresh on each.
+       */
+      key={`${timeframe}:${built.model.rows[0]?.[0] ?? ''}:${built.model.rows.length}`}
       model={built.model}
       summary={built.summary}
       initialLens={lens}

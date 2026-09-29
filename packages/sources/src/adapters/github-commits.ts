@@ -73,7 +73,8 @@ const CACHE_TTL_SECONDS = 1800;
 const REPO_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 /** Automation that should not be mistaken for a human shipping (PRD V4 26). */
-const BOT_LOGIN = /\[bot\]$|^(dependabot|renovate|github-actions|greenkeeper|snyk-bot)/i;
+export const GITHUB_BOT_LOGIN = /\[bot\]$|^(dependabot|renovate|github-actions|greenkeeper|snyk-bot)/i;
+const BOT_LOGIN = GITHUB_BOT_LOGIN;
 const BOT_MESSAGE = /^(chore\(deps\)|build\(deps\)|bump |merge pull request|merge branch)/i;
 
 const toDate = (value: string | null | undefined): Date | undefined => {

@@ -105,7 +105,39 @@ export type LaneEvent = {
 /** A scheduled event after the last day on the axis: it has no column yet. */
 export type AheadEvent = Omit<LaneEvent, 'i' | 'j' | 'f'> & { day: string };
 
-export type ChartFamilyChip = { key: string; label: string; shape: string; tone: string; count: number; rank?: number };
+export type ChartFamilyChip = {
+  key: string;
+  label: string;
+  shape: string;
+  tone: string;
+  count: number;
+  rank?: number;
+  /** The chip also toggles the code lane. */
+  codeLane?: boolean;
+  /** Lane marks only, never a callout. */
+  noCallout?: boolean;
+};
+
+/** One column of the code lane: commits, substantive, low-information, not read, and 1 when the count is a floor. */
+export type CodeCell = [commits: number, substantive: number, lowInformation: number, unknown: number, floor: 0 | 1];
+
+/**
+ * The code lane (2026-09-29): commits per column in neutral ink with a
+ * substance pattern — solid substantive, hatched low-information, dashed not
+ * yet read — never a market colour. `null` is a column before the counts
+ * start: absent, never zero. `prs` are merged pull requests, [column, place
+ * in it]; `prsFrom` the first column the PR ticks cover.
+ */
+export type CodeLaneModel = {
+  state: 'MEASURED' | 'NO_REPOSITORY' | 'NOT_READ';
+  cells: (CodeCell | null)[];
+  max: number;
+  total: number;
+  /** Some count in range is a floor (a page cut at a hundred commits, or a column read part-way). */
+  floor: boolean;
+  prs: [number, number][];
+  prsFrom?: number;
+};
 
 export type ChartModel = {
   rows: ChartRow[];
@@ -132,6 +164,14 @@ export type ChartModel = {
    * hydrating render (remaining issues, 2026-09-26: React #418).
    */
   today: string;
+  /**
+   * An intraday timeframe (2026-09-29); absent is the daily chart. A row's
+   * key is then its bar's start (`2026-09-29T14:00Z`), and every label says
+   * "bar" where the daily chart says "day".
+   */
+  tf?: '15m' | '1h' | '4h';
+  /** The code lane, when the caller read one. */
+  code?: CodeLaneModel;
 };
 
 export type ChartLens = 'events' | 'market';
@@ -269,6 +309,20 @@ const close = (row: ChartRow | undefined): number | null =>
 /** The reference day every date label is written against: the model's, never the browser clock. */
 const referenceDay = (model: ChartModel) => new Date(`${model.today}T12:00:00Z`);
 
+/** A row's time in words: "14 Sep" on 1D, "14 Sep 14:00" on an intraday bar (UTC). */
+export const rowWhen = (model: Pick<ChartModel, 'today'>, key: string): string =>
+  key.length > 10 ? `${formatShortDate(key.slice(0, 10), referenceDay(model as ChartModel))} ${key.slice(11, 16)}` : formatShortDate(key, referenceDay(model as ChartModel));
+
+/** The label of the window one bar's own move covers: "1D", "1H", "15m", "4H". */
+const barWindow = (model: ChartModel) => (model.tf === '15m' ? '15m' : model.tf === '1h' ? '1H' : model.tf === '4h' ? '4H' : '1D');
+
+/** "daily", "hourly", "15-minute", "4-hour": the figure caption's word for the candles. */
+const captionAdjective = (model: ChartModel) =>
+  model.tf === '15m' ? '15-minute' : model.tf === '1h' ? 'hourly' : model.tf === '4h' ? '4-hour' : 'daily';
+
+/** Where a label says "bar" intraday and "day" on the daily chart. */
+const unitOf = (model: ChartModel) => (model.tf ? 'bar' : 'day');
+
 /** The accessible name of one event: "Release: Agent SDK v0.4. 14 September 2026, 13:05 UTC. Evidence available." */
 export const eventLabel = (e: Pick<LaneEvent, 'k' | 't' | 'dl' | 'h'>) =>
   `${e.k}: ${e.t}. ${e.dl}. ${e.h ? 'Evidence available.' : 'No evidence record to open.'}`;
@@ -315,28 +369,60 @@ function Marker({ shape, precision, tone, className }: { shape: string; precisio
   );
 }
 
+/** "3 commits (2 substantive) · 1 PR merged · Release v0.7.1 14:02": the column's code facts, in words. */
+export function codeFacts(model: Pick<ChartModel, 'code' | 'tf'>, at: number, events: readonly LaneEvent[]): string | undefined {
+  const code = model.code;
+  if (!code) return undefined;
+  const unit = model.tf ? 'bar' : 'day';
+  if (code.state === 'NO_REPOSITORY') return 'No repository HEY reads for this project';
+  if (code.state === 'NOT_READ') return 'Repository not read yet';
+  const cell = code.cells[at];
+  const parts: string[] = [];
+  if (cell === null || cell === undefined) parts.push(`Commits not collected for this ${unit}`);
+  else {
+    const [commits, substantive, low, , floor] = cell;
+    const count = `${commits}${floor ? '+' : ''} commit${commits === 1 && !floor ? '' : 's'}`;
+    const detail = [substantive ? `${substantive} substantive` : '', low ? `${low} low-information` : ''].filter(Boolean).join(', ');
+    parts.push(commits > 0 && detail ? `${count} (${detail})` : count);
+  }
+  const prs = code.prs.filter(([column]) => column === at).length;
+  if (prs > 0) parts.push(`${prs} PR${prs === 1 ? '' : 's'} merged`);
+  for (const e of events) {
+    if (e.p !== 'EXACT' || !/^(Release|Prerelease)$/.test(e.k)) continue;
+    const time = /(\d{2}:\d{2}) UTC/.exec(e.dl)?.[1];
+    parts.push(`${e.k} ${e.t}${time ? ` ${time}` : ''}`);
+  }
+  return parts.join(' · ');
+}
+
 function Readout({
   model,
   at,
   events,
   lens,
+  codeOn = false,
 }: {
   model: ChartModel;
   at: number;
   events: readonly LaneEvent[];
   lens: ChartLens;
+  codeOn?: boolean;
 }) {
   const row = model.rows[at]!;
-  const date = formatShortDate(row[0], referenceDay(model));
+  const date = rowWhen(model, row[0]);
   const money = (v: number | null) => (v === null ? '—' : formatTerminalPrice(v));
   let line1;
   if (row.length === 1) {
-    line1 = <span className="text-hey-secondary">No reading · HEY did not read this day</span>;
+    line1 = (
+      <span className="text-hey-secondary">
+        {model.tf ? 'No bar · the source listed no trade here, or HEY did not read it' : 'No reading · HEY did not read this day'}
+      </span>
+    );
   } else {
     const [, o, h, l, c, v, , dir] = row;
     const vol = (
       <span className="text-hey-secondary">
-        · Vol {typeof v === 'number' ? (formatUsdCompact(v) ?? '—') : '—'}
+        · {model.tf ? 'Vol per bar' : 'Vol'} {typeof v === 'number' ? (formatUsdCompact(v) ?? '—') : '—'}
       </span>
     );
     if (dir === 'x') line1 = <span className="text-hey-secondary">No price recorded</span>;
@@ -355,7 +441,7 @@ function Readout({
       const change = o !== null && c !== null && o > 0 ? (c / o - 1) * 100 : undefined;
       line1 = (
         <>
-          {dir === 'p' ? <span className="text-hey-secondary">Today so far ·</span> : null}
+          {dir === 'p' ? <span className="text-hey-secondary">{model.tf ? 'This bar so far ·' : 'Today so far ·'}</span> : null}
           {(
             [
               ['O', o],
@@ -370,10 +456,10 @@ function Readout({
           ))}
           {dir === 'p' ? (
             <span className="text-hey-unavailable" data-direction="partial">
-              {describeMarketChange(change, '1D').text} so far
+              {describeMarketChange(change, barWindow(model)).text} so far
             </span>
           ) : (
-            <MarketChange pct={change} window="1D" showWindow={false} />
+            <MarketChange pct={change} window={barWindow(model)} showWindow={false} />
           )}
           {vol}
         </>
@@ -405,14 +491,14 @@ function Readout({
         <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-t-meta text-hey-secondary" data-testid="chart-around">
           <span className="hey-chart-kicker">Around this time</span>
           {events.length === 0 ? (
-            <span>No build event in view on this day.</span>
+            <span>No build event in view on this {unitOf(model)}.</span>
           ) : (
             <>
               {events.slice(0, 2).map((e) => (
                 <span key={e.id} className="inline-flex min-w-0 items-baseline gap-1.5">
                   <Marker shape={e.s} precision={e.p} tone={e.c} />
                   <span className="text-hey-ink">{e.k}</span>·{' '}
-                  <span className="max-w-[18rem] truncate text-hey-ink">{e.t}</span>· {e.j !== undefined ? e.d : e.w}
+                  <span className="max-w-[18rem] truncate text-hey-ink">{e.t}</span>· {spanWords(e)}
                   {e.h ? (
                     <a
                       href={e.h}
@@ -435,9 +521,18 @@ function Readout({
           )}
         </p>
       ) : null}
+      {lens === 'events' && codeOn && model.code ? (
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-t-meta text-hey-secondary" data-testid="chart-code">
+          <span className="hey-chart-kicker">Code</span>
+          <span className="text-hey-ink">{codeFacts(model, at, events)}</span>
+        </p>
+      ) : null}
     </div>
   );
 }
+
+/** A week or a window names its span ("wk of 8 Sep"); anything else its precision in words — a date's day-wide span on an intraday axis included. */
+const spanWords = (e: Pick<LaneEvent, 'j' | 'p' | 'd' | 'w'>) => (e.j !== undefined && e.p !== 'DATE' && e.p !== 'SCHEDULED' ? e.d : e.w);
 
 /** What the evidence panel prints of an event, on the axis or ahead of it. */
 type PanelEvent = Pick<LaneEvent, 'id' | 'k' | 'd' | 'w' | 't' | 'h' | 's' | 'p' | 'c'>;
@@ -582,6 +677,77 @@ function useRoving(count: number) {
   return { index, setActive, refs, onKeyDown };
 }
 
+/**
+ * The code lane (2026-09-29): under the volume bars and over the event lane,
+ * one column per bar. Bar height is the column's commits against the range's
+ * busiest column; the fill says what they changed — solid substantive,
+ * hatched low-information, dashed not yet read — in neutral ink, never a
+ * market colour. A column before the counts start has no baseline at all
+ * (absent is not zero); a measured column with no commit keeps the baseline.
+ * Merged pull requests are ticks above, at their minute. Decorative for a
+ * screen reader: the readout says the same facts in words for the column in
+ * focus, and the keyboard moves it.
+ */
+const CODE_H = 24;
+
+function CodeLane({ code, n, unit }: { code: CodeLaneModel; n: number; unit: string }) {
+  if (code.state !== 'MEASURED') {
+    return (
+      <div className="hey-code-lane relative mt-1 flex h-6 items-center" data-testid="code-lane" data-state={code.state}>
+        <span className="text-t-micro text-hey-muted">
+          {code.state === 'NO_REPOSITORY' ? 'Code · no repository HEY reads for this project' : 'Code · repository not read yet'}
+        </span>
+      </div>
+    );
+  }
+  const col = (i: number) => (i / n) * 100;
+  /* Measured runs keep a baseline; the first unmeasured run is named when it is wide enough to carry words. */
+  const runs: { from: number; to: number; measured: boolean }[] = [];
+  code.cells.forEach((cell, i) => {
+    const measured = cell !== null;
+    const last = runs[runs.length - 1];
+    if (last && last.measured === measured) last.to = i;
+    else runs.push({ from: i, to: i, measured });
+  });
+  const max = Math.max(1, code.max);
+  return (
+    <div
+      aria-hidden="true"
+      className="hey-code-lane relative mt-1"
+      style={{ height: CODE_H }}
+      data-testid="code-lane"
+      data-state={code.state}
+      data-total={code.total}
+    >
+      {runs.map((run) =>
+        run.measured ? (
+          <span key={`b-${run.from}`} className="hey-code-base" style={{ left: `${col(run.from)}%`, width: `${col(run.to + 1) - col(run.from)}%` }} />
+        ) : run.to - run.from + 1 >= n * 0.15 ? (
+          <span key={`a-${run.from}`} className="hey-code-absent text-t-micro" style={{ left: `${col(run.from)}%`, width: `${col(run.to + 1) - col(run.from)}%` }}>
+            Not collected before this {unit}
+          </span>
+        ) : null,
+      )}
+      {code.cells.map((cell, i) => {
+        if (!cell || cell[0] === 0) return null;
+        const [commits, substantive, low, unknown] = cell;
+        const height = Math.max(3, Math.round((commits / max) * (CODE_H - 6)));
+        const part = (value: number) => (commits === 0 ? 0 : (value / commits) * height);
+        return (
+          <span key={i} className="hey-code-col" style={{ left: `${col(i)}%`, width: `${100 / n}%`, height }} data-commits={commits} data-floor={cell[4] ? '' : undefined}>
+            {substantive ? <span className="hey-code-part" data-kind="substantive" style={{ height: part(substantive) }} /> : null}
+            {low ? <span className="hey-code-part" data-kind="low" style={{ height: part(low) }} /> : null}
+            {unknown ? <span className="hey-code-part" data-kind="unknown" style={{ height: part(unknown) }} /> : null}
+          </span>
+        );
+      })}
+      {code.prs.map(([i, f], k) => (
+        <span key={`p-${k}`} className="hey-code-pr" data-testid="code-lane-pr" style={{ left: `${((i + f) / n) * 100}%` }} />
+      ))}
+    </div>
+  );
+}
+
 export function TerminalChartInteractive({
   model,
   summary,
@@ -649,6 +815,11 @@ export function TerminalChartInteractive({
   /* The callouts' research rank: the families' own `rank`, else their chip order. */
   const rankOrder = useMemo(() => calloutRankOrder(model.families), [model.families]);
   const storageKey = `hey-chart-events:${choiceKey ?? symbol ?? ''}`;
+
+  /* The code lane is on while its chip is, in the events lens (2026-09-29). */
+  const laneKey = model.families.find((family) => family.codeLane)?.key;
+  const codeOn = Boolean(model.code && laneKey && lens === 'events' && selected.has(laneKey));
+  const noCallout = useMemo(() => new Set(model.families.filter((family) => family.noCallout).map((family) => family.key)), [model.families]);
 
   /* The events in view: the lens and the chips, over the one lane the server placed. */
   const visible = useMemo(
@@ -737,16 +908,18 @@ export function TerminalChartInteractive({
   };
 
   /* The callouts: laid out once the width is known, from time, rank and width only. */
-  const bands = wide ? bandsFor(visible.length) : 0;
-  const reservedBands = bandsFor(visible.length);
+  /* A steady rollup keeps its lane mark and takes no callout (the code family's weeks). */
+  const calloutable = useMemo(() => visible.filter((e) => !noCallout.has(e.fam)), [visible, noCallout]);
+  const bands = wide ? bandsFor(calloutable.length) : 0;
+  const reservedBands = bandsFor(calloutable.length);
   const layout: AnnotationLayout | null = useMemo(() => {
     if (width === null || !wide || bands === 0) return null;
-    return layoutAnnotations(annotationItems(visible, rankOrder, n), {
+    return layoutAnnotations(annotationItems(calloutable, rankOrder, n), {
       plotWidth: width,
       bands,
       maxCallouts: width < 900 ? 7 : width < 1200 ? 10 : 12,
     });
-  }, [width, wide, bands, visible, rankOrder, n]);
+  }, [width, wide, bands, calloutable, rankOrder, n]);
   const marks = useMemo(
     () =>
       layout
@@ -892,12 +1065,13 @@ export function TerminalChartInteractive({
 
   let prevMonth = -1;
   const months = model.months.filter(([i]) => {
-    const keep = prevMonth < 0 || (i - prevMonth) / n > 0.07;
+    // An intraday label ("29 Sep", "18:00") is wider than a month word: it needs more room (2026-09-29).
+    const keep = prevMonth < 0 || (i - prevMonth) / n > (model.tf ? 0.14 : 0.07);
     if (keep) prevMonth = i;
     return keep && i / n < 0.95;
   });
   /* The phone's list under the chart: the newest nine day-placed events in view, each with its evidence. */
-  const numbered = visible.filter((e) => e.j === undefined).slice(-9).reverse();
+  const numbered = visible.filter((e) => e.j === undefined || e.p === 'DATE' || e.p === 'SCHEDULED').slice(-9).reverse();
   const hiEvent = hi ? (byId.get(hi) ?? null) : null;
   const hoverRow = hover !== null ? model.rows[hover] : undefined;
   const hoverEvents = hover !== null ? around(hover) : [];
@@ -947,11 +1121,11 @@ export function TerminalChartInteractive({
                   data-family={family.key}
                   data-testid="chart-family-chip"
                   className="hey-chart-chip"
-                  aria-label={`${family.label}, ${family.count} in range, ${on ? 'shown' : 'hidden'}`}
+                  aria-label={`${family.label}${family.count > 0 ? `, ${family.count} in range` : ''}${family.codeLane ? ', and the code lane' : ''}, ${on ? 'shown' : 'hidden'}`}
                 >
                   <Marker shape={family.shape} tone={family.tone} />
                   <span>{family.label}</span>
-                  <span className="hey-chart-chip-count">{family.count}</span>
+                  {family.count > 0 ? <span className="hey-chart-chip-count">{family.count}</span> : null}
                 </button>
               );
             })}
@@ -989,7 +1163,7 @@ export function TerminalChartInteractive({
       ) : null}
 
       <div aria-live={focused ? 'polite' : 'off'} className="mb-3 min-h-[4.5rem] sm:min-h-10">
-        <Readout model={model} at={at} events={atEvents} lens={lens} />
+        <Readout model={model} at={at} events={atEvents} lens={lens} codeOn={codeOn} />
       </div>
 
       {/*
@@ -1337,7 +1511,7 @@ export function TerminalChartInteractive({
                 className="pointer-events-none absolute top-1.5 -translate-x-1/2 whitespace-nowrap rounded-[3px] bg-hey-surface/85 px-1 text-t-micro text-hey-muted"
                 style={{ left: pct(cw * ((a + b + 1) / 2), W) }}
               >
-                No readings · {label}
+                {model.tf ? 'No bars' : 'No readings'} · {label}
               </span>
             ))}
 
@@ -1371,10 +1545,10 @@ export function TerminalChartInteractive({
                 data-side={hover / n > 0.6 ? 'left' : 'right'}
                 style={{ left: x(hover) }}
               >
-                <p className="font-medium text-hey-ink">{formatShortDate(hoverRow[0], referenceDay(model))}</p>
+                <p className="font-medium text-hey-ink">{rowWhen(model, hoverRow[0])}</p>
                 <p className="hey-chart-kicker mt-1">Market</p>
                 {hoverRow.length === 1 ? (
-                  <p className="text-hey-secondary">No reading · no candle drawn</p>
+                  <p className="text-hey-secondary">{model.tf ? 'No bar · no candle drawn' : 'No reading · no candle drawn'}</p>
                 ) : hoverRow[4] === null ? (
                   <p className="text-hey-secondary">No price recorded</p>
                 ) : (
@@ -1401,6 +1575,7 @@ export function TerminalChartInteractive({
                         {hoverEvents.length > 3 ? <li className="text-hey-secondary">+{hoverEvents.length - 3} more</li> : null}
                       </ul>
                     )}
+                    {codeOn && model.code ? <p className="mt-1 text-hey-secondary">Code · {codeFacts(model, hover, hoverEvents)}</p> : null}
                   </>
                 ) : null}
               </div>
@@ -1429,6 +1604,8 @@ export function TerminalChartInteractive({
               style={{ display: 'none' }}
             />
           </div>
+
+          {codeOn && model.code ? <CodeLane code={model.code} n={n} unit={unitOf(model)} /> : null}
 
           {/*
             The event lane: the canonical anchor every callout's stem ends on.
@@ -1563,7 +1740,7 @@ export function TerminalChartInteractive({
                 className="absolute top-0 z-10 -translate-x-1/2 whitespace-nowrap rounded-[var(--hey-radius-tooltip)] bg-[var(--hey-tooltip-bg)] px-1.5 py-0.5 text-[var(--hey-tooltip-ink)]"
                 style={{ left: x(at) }}
               >
-                {formatShortDate(model.rows[at]![0], referenceDay(model))}
+                {rowWhen(model, model.rows[at]![0])}
               </span>
             ) : null}
           </div>
@@ -1598,8 +1775,33 @@ export function TerminalChartInteractive({
             aria-hidden="true"
             className="inline-block h-2.5 w-1.5 rounded-[1px] border border-[var(--hey-market-flat)]"
           />
-          Outline: day still open
+          Outline: {unitOf(model)} still open
         </span>
+        {model.tf ? <span data-testid="volume-per-bar">Bars under the candles: volume per bar</span> : null}
+        {codeOn && model.code?.state === 'MEASURED' ? (
+          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1" data-testid="code-lane-key">
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true" className="hey-code-swatch" data-kind="substantive" />
+              Substantive commit
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true" className="hey-code-swatch" data-kind="low" />
+              Low-information
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true" className="hey-code-swatch" data-kind="unknown" />
+              Not yet read
+            </span>
+            <span className="inline-flex items-center gap-1">
+              <span aria-hidden="true" className="hey-code-swatch" data-kind="pr" />
+              PR merged
+            </span>
+            <span className="text-hey-secondary" data-testid="code-lane-total">
+              · {model.code.total}
+              {model.code.floor ? '+' : ''} commit{model.code.total === 1 && !model.code.floor ? '' : 's'} in range
+            </span>
+          </span>
+        ) : null}
         {lens === 'events' && hidden > 0 ? (
           <span data-testid="chart-hidden-count">
             {hidden} event{hidden === 1 ? '' : 's'} in families switched off
@@ -1642,13 +1844,13 @@ export function TerminalChartInteractive({
             className="mt-2 overflow-x-auto"
             tabIndex={0}
             role="region"
-            aria-label="Last 30 days as a table"
+            aria-label={model.tf ? 'Last 30 bars as a table' : 'Last 30 days as a table'}
             data-testid="chart-table"
           >
             <table className="w-full min-w-[44rem] border-collapse text-left font-mono tabular-nums">
               <thead>
                 <tr className="border-b border-hey-border font-sans text-hey-secondary">
-                  {['Date', 'Open', 'High', 'Low', 'Close', 'Direction', 'Volume', 'Events around this day'].map((h) => (
+                  {[model.tf ? 'Bar (UTC)' : 'Date', 'Open', 'High', 'Low', 'Close', 'Direction', model.tf ? 'Volume per bar' : 'Volume', model.tf ? 'Events around this bar' : 'Events around this day'].map((h) => (
                     <th key={h} className="py-1.5 pr-3 font-medium">
                       {h}
                     </th>
@@ -1664,10 +1866,10 @@ export function TerminalChartInteractive({
                       key={row[0]}
                       className="border-b border-hey-border align-top text-hey-ink last:border-0"
                     >
-                      <td className="py-1.5 pr-3 font-sans">{formatShortDate(row[0], referenceDay(model))}</td>
+                      <td className="py-1.5 pr-3 font-sans">{rowWhen(model, row[0])}</td>
                       {row.length === 1 ? (
                         <td colSpan={6} className="py-1.5 pr-3 font-sans text-hey-secondary">
-                          No reading
+                          {model.tf ? 'No bar' : 'No reading'}
                         </td>
                       ) : (
                         <>
@@ -1700,7 +1902,7 @@ export function TerminalChartInteractive({
                                 ) : (
                                   `${e.k}: ${e.t}`
                                 )}
-                                <span className="text-hey-secondary"> · {e.j !== undefined ? e.d : e.w}</span>
+                                <span className="text-hey-secondary"> · {spanWords(e)}</span>
                               </li>
                             ))}
                           </ul>
@@ -1716,8 +1918,8 @@ export function TerminalChartInteractive({
       </details>
 
       <figcaption className="hey-sr-only">
-        {symbol ? `${symbol} daily candles. ` : 'Daily candles. '}
-        {summary} Use the left and right arrow keys to move between days.
+        {symbol ? `${symbol} ${captionAdjective(model)} candles. ` : `${captionAdjective(model).charAt(0).toUpperCase()}${captionAdjective(model).slice(1)} candles. `}
+        {summary} Use the left and right arrow keys to move between {unitOf(model)}s.
       </figcaption>
     </figure>
   );

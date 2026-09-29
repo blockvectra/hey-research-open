@@ -3,14 +3,17 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import {
+  bucketKey,
   buildChartModel,
   candleDirection,
   dayCoverage,
   niceTicks,
+  placeEventIntraday,
+  buildCodeLane,
   type CandleDay,
   type ChartEvent,
 } from './terminal-chart';
-import { LANE_COUNT_ROOM, LANE_HIT_HALF, laneRooms } from './terminal-chart-client';
+import { LANE_COUNT_ROOM, LANE_HIT_HALF, codeFacts, laneRooms } from './terminal-chart-client';
 import { DailyCandleChart } from './terminal-chart-view';
 
 const TODAY = '2026-09-26';
@@ -419,5 +422,109 @@ describe('the event lane and the lens, for touch and for screen readers (review 
     const button = /<button[^>]*data-testid="lens-events"[^>]*>([\s\S]*?)<\/button>/.exec(html)![1]!;
     expect(button).toMatch(/<span class="max-sm:sr-only">Market \+ build events<\/span>/);
     expect(button).toMatch(/<span aria-hidden="true" class="sm:hidden">\+ Events<\/span>/);
+  });
+});
+
+/*
+ * Intraday (2026-09-29): the model steps by the bar, keeps a bar the source
+ * did not list as a gap with no colour, and draws the bar still open as an
+ * outline, never green or red.
+ */
+describe('buildChartModel at 1H', () => {
+  const HOUR = 3_600_000;
+  const start = Date.UTC(2026, 8, 29, 0);
+  const bar = (h: number, open: number, close: number): CandleDay => ({ ...candle(bucketKey(start + h * HOUR, HOUR), open, close), readings: 1 });
+
+  it('keys each row by its bar, keeps a missing bar a gap, and colours only measured bars', () => {
+    const bars = [bar(0, 1, 1.1), bar(1, 1.1, 1.0), bar(4, 1.0, 1.2), bar(5, 1.2, 1.3)];
+    const built = buildChartModel(bars, [], { todayUtc: '2026-09-29', timeframe: '1h', openBucket: bucketKey(start + 5 * HOUR, HOUR) })!;
+    const rows = built.model.rows;
+    expect(rows.map((row) => row[0])).toEqual(['2026-09-29T00:00Z', '2026-09-29T01:00Z', '2026-09-29T02:00Z', '2026-09-29T03:00Z', '2026-09-29T04:00Z', '2026-09-29T05:00Z']);
+    // The two bars the source did not list stay gaps: a key and nothing else, never a zero candle.
+    expect(rows[2]).toEqual(['2026-09-29T02:00Z']);
+    expect(rows[3]).toEqual(['2026-09-29T03:00Z']);
+    expect(rows.map((row) => (row.length > 1 ? row[7] : 'gap'))).toEqual(['u', 'd', 'gap', 'gap', 'u', 'p']);
+    expect(built.counts).toMatchObject({ up: 2, down: 1, partial: 1, gaps: 2 });
+    expect(built.model.tf).toBe('1h');
+    expect(built.summary).toContain('over 6 hours');
+    expect(built.summary).toContain('2 bars without a bar');
+    expect(dayCoverage(bars, HOUR)).toEqual({ span: 6, indexed: 4, gaps: 2 });
+  });
+
+  it('keeps the daily model exactly as it was when no timeframe is named', () => {
+    const days = [candle('2026-09-20', 1, 1.1), candle('2026-09-22', 1.1, 1.2)];
+    const built = buildChartModel(days, [], { todayUtc: TODAY })!;
+    expect(built.model.tf).toBeUndefined();
+    expect(built.model.rows.map((row) => row[0])).toEqual(['2026-09-20', '2026-09-21', '2026-09-22']);
+    expect(built.summary).toContain('over 3 days');
+  });
+
+  it('puts an exact time on its bar at its minute, and a date over its whole day', () => {
+    const grid = { firstMs: start, bucketMs: HOUR, n: 48 };
+    const now = new Date('2026-09-30T12:00:00Z');
+    const exact = placeEventIntraday({ id: 'ship:x', at: '2026-09-29T14:30:00Z', title: 'v0.7.1', family: 'releases', precision: 'EXACT' }, grid, now, undefined)!;
+    expect(exact).toMatchObject({ i: 14, f: 0.5, d: '29 Sep 14:30' });
+    expect(exact.dl).toContain('14:30 UTC');
+    const date = placeEventIntraday({ id: 'ship:y', at: '2026-09-30T00:00:00Z', title: 'Docs', family: 'ships', precision: 'DATE' }, grid, now, undefined)!;
+    expect(date).toMatchObject({ i: 24, j: 47 });
+    expect(date.f).toBeUndefined();
+    expect(date.d).not.toMatch(/\d{2}:\d{2}/);
+    // Outside the axis: nothing.
+    expect(placeEventIntraday({ id: 'ship:z', at: '2026-09-27T09:00:00Z', title: 'Old', family: 'ships', precision: 'EXACT' }, grid, now, undefined)).toBeUndefined();
+  });
+});
+
+/*
+ * The code lane (2026-09-29): absent is never zero, a cut page is a floor
+ * ("100+"), merged PRs sit at their minute, and the facts read in words.
+ */
+describe('the code lane', () => {
+  const HOUR = 3_600_000;
+  const start = Date.UTC(2026, 8, 29, 0);
+  const keys = Array.from({ length: 6 }, (_, h) => bucketKey(start + h * HOUR, HOUR));
+
+  it('leaves columns before the counts start absent, keeps a measured empty column at zero, and counts a floor', () => {
+    const lane = buildCodeLane(
+      {
+        state: 'MEASURED',
+        measuredFrom: '2026-09-29T02:30:00Z',
+        buckets: [
+          { start: '2026-09-29T02:00:00Z', commits: 100, substantive: 60, lowInformation: 10, unknown: 30, atLeast: true },
+          { start: '2026-09-29T04:00:00Z', commits: 3, substantive: 2, lowInformation: 1, unknown: 0 },
+        ],
+        pullMerges: ['2026-09-29T04:30:00Z', '2026-09-28T23:00:00Z'],
+        pullsFrom: '2026-09-29T01:00:00Z',
+      },
+      keys,
+      HOUR,
+    );
+    expect(lane.cells).toEqual([null, null, [100, 60, 10, 30, 1], [0, 0, 0, 0, 0], [3, 2, 1, 0, 0], [0, 0, 0, 0, 0]]);
+    expect(lane).toMatchObject({ state: 'MEASURED', max: 100, total: 103, floor: true, prs: [[4, 0.5]], prsFrom: 1 });
+    const model = { code: lane, tf: '1h' as const };
+    expect(codeFacts(model, 0, [])).toBe('Commits not collected for this bar');
+    expect(codeFacts(model, 2, [])).toBe('100+ commits (60 substantive, 10 low-information)');
+    expect(codeFacts(model, 3, [])).toBe('0 commits');
+    const release = { id: 'ship:r', i: 4, f: 0.1, fam: 'releases', t: 'v0.7.1', k: 'Release', s: 'square', p: 'EXACT' as const, w: 'exact', d: '29 Sep 04:06', dl: '29 September 2026, 04:06 UTC', c: 'x' };
+    expect(codeFacts(model, 4, [release])).toBe('3 commits (2 substantive, 1 low-information) · 1 PR merged · Release v0.7.1 04:06');
+  });
+
+  it('says there is no repository, or that it is not read, instead of drawing zeros', () => {
+    expect(buildCodeLane({ state: 'NO_REPOSITORY', buckets: [], pullMerges: [] }, keys, HOUR)).toMatchObject({ state: 'NO_REPOSITORY', cells: [] });
+    expect(codeFacts({ code: buildCodeLane({ state: 'NOT_READ', buckets: [], pullMerges: [] }, keys, HOUR) }, 0, [])).toBe('Repository not read yet');
+  });
+
+  it('offers the lane’s chip even with no code event in range, with no count to show', () => {
+    const bars = keys.map((key, h) => ({ ...candle(key, 1 + h * 0.01, 1.01 + h * 0.01), readings: 1 }));
+    const built = buildChartModel(bars, [], {
+      todayUtc: '2026-09-29',
+      timeframe: '1h',
+      families: [
+        { key: 'releases', label: 'Releases', shape: 'square', tone: 't' },
+        { key: 'code', label: 'Code activity', shape: 'bar', tone: 't', codeLane: true, noCallout: true },
+      ],
+      code: { state: 'MEASURED', measuredFrom: '2026-09-29T00:00:00Z', buckets: [], pullMerges: [] },
+    })!;
+    expect(built.model.families).toEqual([{ key: 'code', label: 'Code activity', shape: 'bar', tone: 't', codeLane: true, noCallout: true, count: 0 }]);
+    expect(built.model.code?.cells.every((cell) => cell !== null && cell[0] === 0)).toBe(true);
   });
 });

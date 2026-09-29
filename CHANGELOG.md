@@ -6,6 +6,16 @@ record.
 
 ## 2026-09-29
 
+- **Intraday candles and a code lane.** `packages/sources`: the GeckoTerminal OHLCV adapter takes a
+  timeframe (`day`, `hour`, `minute`), an aggregate, a limit and `before_timestamp`; the daily URL is
+  byte-identical to before. A new GitHub adapter reads a repository's merged pull requests with an
+  ETag and keeps only the number, the merge time and whether automation opened it — no title, no
+  person (the schema declares nothing else, so the rest never leaves the parser). Both have saved
+  fixtures and contract tests. `packages/ui`: the Terminal chart steps by a bar size (15m, 1H, 4H, 1D);
+  a bar the source did not list stays a gap with no colour, the open bar is an outline, an exact event
+  sits on its bar at its minute and a date spans its whole day, never an invented hour; a code lane
+  under the volume bars draws commits per bar in neutral ink by substance, absent before the first
+  read (never zero), with merged pull requests as ticks.
 - **Market chart: build × market correlation.** `packages/ui` draws builder and research events on
   the Terminal's candle chart as callouts above the plot, each with a stem down to the event lane at
   the event's time. The layout (`terminal-chart-annotations.ts`) is pure and deterministic and takes

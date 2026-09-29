@@ -29,6 +29,7 @@ depends on a live API.
 | --- | --- | --- | --- |
 | `dexscreener` | Primary market context | 5 min | Deepest-liquidity pair wins; figures are never merged across pairs |
 | `geckoterminal` | Fallback market context | 5 min | Same normalized shape as DEX Screener |
+| `geckoterminal-ohlcv` (hour, minute) | 1h and 15m candles for the Terminal chart, a bounded token set (2026-09-29) | 15 min | Per-pool OHLC with per-bar volume; only bars that traded are listed, so a missing bar stays missing; own key `geckoterminal-intraday` 1,440/day inside the provider's 6,000; context only |
 | `blockscout` | Contract metadata, verification, deployment evidence | 1 h | Holder endpoints are deliberately not implemented |
 | `rpc-contract` | `eth_getCode` existence check | 1 h | Lightweight verification only; HEY runs no node |
 | `github-repo` | Repository activity window | 30 min | Stars are display context, never a score input |
@@ -44,6 +45,7 @@ depends on a live API.
 | `robinhood-stock-assets` / `robinhood-stock-price` | Tokenized-equity assets, multipliers and raw underlying bid/ask | 1 h / 60 s | Off by default (`HEY_STOCK_TOKEN_PRICES_ENABLED`); price only, no market cap; source `robinhood-stock-api` |
 | launchpad | Interface + registry only | — | No provider ships until its access is public, documented and permitted |
 | `github-deployments` | Newest deployment to an environment named production (2026-09-27) | 30 min | ETag; name, time and commit only; context, never a ship; budget 1,000/day |
+| `github-pulls` | Merged pull requests of an already-read repository (2026-09-29) | 30 min | ETag; number, merge time and whether automation opened it — never a title or a person; display context on the Terminal chart's code lane, never a ship; budget 3,000/day |
 | `depsdev-packageversions` / `-package` / `-version` / `-project` | Packages naming an official repository, their versions, the latest version's links and provenance, the repository's Scorecard checks (2026-09-27) | 1 h | Keyless deps.dev v3; no stars, forks or aggregate score; budget `depsdev` 2,000/day |
 | `osv-querybatch` / `osv-vuln` | Advisories about accepted packages' published versions (2026-09-27) | 1 h | Keyless; context, never a verdict or a score; budget `osv` 500/day |
 | `open-dev-data` | Which Open Dev Data (Electric Capital crypto-ecosystems taxonomy) ecosystems list a repository HEY already attributes (2026-09-28) | 7 d | One conditional archive request a week (ETag, 304 when unchanged); migrations replayed as their own tool does; data CC BY 4.0, "Open Dev Data by Electric Capital"; candidates for a person, never an attribution, ship or score; budget `open-dev-data` 4/day |
