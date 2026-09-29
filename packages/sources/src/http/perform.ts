@@ -79,6 +79,7 @@ export async function performSourceFetch<TRaw, TOut>(
           ? {}
           : { retryAfterSeconds: error.retryAfterSeconds }),
         ...(error.attempts === undefined ? {} : { attempts: error.attempts }),
+        ...(error.status === undefined ? {} : { httpStatus: error.status }),
       });
     }
     return errorResult(ctx, 'NETWORK', describe(error), { sourceUrl: request.url });

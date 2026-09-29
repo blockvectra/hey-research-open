@@ -6,6 +6,27 @@ record.
 
 ## Unreleased (2026-09-30)
 
+- **Telegram bot adapter.** `packages/sources` has `telegram-bot.ts`, the Telegram Bot API as an
+  outbound channel. It handles `sendMessage`, `editMessageText`, `deleteMessage`, `setWebhook`,
+  `getWebhookInfo`, `setMyCommands` and `getMe`, with previews always off and the token redacted
+  from every result. `parseTelegramUpdate` is the Zod-validated inbound webhook shape; update
+  kinds HEY does not answer are dropped before their fields are read. It ships with fixtures and
+  contract tests, and no test reaches Telegram. `SourceResult` gains an additive `httpStatus` on a
+  refused request. The SDK's `HeyAlertRule.channels` gains `telegram: boolean` (additive): an
+  alert can now be delivered to the reader's linked Telegram chat. `packages/config` adds
+  `HEY_TELEGRAM_BOT_ENABLED`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET` and
+  `TELEGRAM_BOT_USERNAME`; the bot is off unless all four are set.
+
+- **SHARE INTELLIGENCE.** A Share control on eligible records (project timeline, signal page,
+  weekly report, event pages, HEY Today) composes the record as a post for X, Telegram, a short
+  plain text (≤ 280 characters) for social terminals such as Fomo, a link and its raw facts, from
+  one deterministic template module (`share-v1`) keyed by change type. Links carry
+  `utm_source`/`utm_medium=share`/`utm_campaign=<change type>`. New `GET /api/share/<subject>` and
+  `GET /og/share/<subject>`. `SHARE_BANNED_WORDS` adds sell, rug, safe and guaranteed, matched as
+  whole words. `packages/ui`: `BuildTimeline` takes an optional per-item `action`.
+- **Event research mode.** `/events/<slug>`: what changed on Robinhood Chain inside an event's
+  official window, from the change ledger, with announcements (each with its official source)
+  listed apart as ANNOUNCED. HOOD Summit '26 is the first event (`/events/hood-summit-26`).
 - **HEY Scan inside the Research Terminal.** `/terminal/scan` and `/terminal/scan/<address>` run the
   public scan — the same form, report, rate limit and provider budget — in the Terminal's shell,
   open to every Terminal reader including preview. The ⌘K palette offers "Scan 0x…" as its first row
@@ -18,6 +39,16 @@ record.
   never a live provider call — opens the Terminal beta without a request. A price older than six
   hours, or from a market HEY does not call active, makes the value unknown: it never admits and is
   never shown as zero. Re-checked daily. The invitation and hand-approved requests are unchanged.
+
+- **Research Desks.** A research board its owner chooses to publish becomes a public page at
+  `/desk/{slug}`: the owner's title and description, an optional self-declared "Curated by
+  @handle", the board's projects as cards, its panels from HEY's public records, its window, when
+  it last changed and how many readers follow it — never the owner's note, account, watchlist or
+  alerts. Readers can follow a desk, get alerts on its projects, follow all of its projects after a
+  confirmation that lists them, clone it onto a board of their own, and share it. `/desk` lists
+  desks by last change, never by popularity. New keyless routes: `GET /api/desks` and
+  `GET /api/desks/{slug}` (facts with `null` and a reason when unknown), and the share image
+  `/og/desk/{slug}`.
 
 ## 2026-09-29
 

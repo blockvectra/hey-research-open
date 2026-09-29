@@ -48,6 +48,12 @@ export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 /** Resend issues API keys prefixed `re_`; anything else is a paste of the wrong secret. */
 const RESEND_KEY_PATTERN = /^re_[A-Za-z0-9_-]{8,}$/;
+/** A Bot API token: the bot's numeric id, a colon, and its key (docs/TELEGRAM.md). */
+const TELEGRAM_BOT_TOKEN_PATTERN = /^\d{6,}:[A-Za-z0-9_-]{20,}$/;
+/** Telegram accepts 1-256 of these characters as `secret_token`; HEY asks for at least 16. */
+const TELEGRAM_WEBHOOK_SECRET_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;
+/** A bot username: 5-32 characters, ending in "bot". */
+const TELEGRAM_BOT_USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{1,28}[Bb][Oo][Tt]$/;
 
 /**
  * `Name <local@domain>` — the display name is required, so no message ever
@@ -312,6 +318,8 @@ export const serverEnvSchema = z
         alertsEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
         /** Research boards (2026-09-28): saved, private arrangements of projects and panels in the Terminal. On unless "false"; off answers 404. */
         boardsEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
+        /** Research Desks (2026-09-30): the public view of a board its owner published, at /desk/{slug}. On unless "false"; off answers 404 and hides publishing. */
+        desksEnabled: optionalString.transform((value) => value !== 'false').pipe(z.boolean()),
         /** Bonds behind claims (M13-C): Scout claim, owner update, project submission. */
         bondsEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
         /** Blocks a receipt must be buried under before a payment counts (M13-B). */
@@ -504,6 +512,44 @@ export const serverEnvSchema = z
       }),
 
     /**
+     * The HEY Telegram bot (2026-09-30, docs/TELEGRAM.md): a reader's alert
+     * channel and a read-only lookup in chats and groups. Separate from the ops
+     * alerts above, which post to one founder chat with their own bot.
+     *
+     * Off unless `HEY_TELEGRAM_BOT_ENABLED=true` and all three values are set:
+     * the token (from @BotFather), the webhook secret Telegram echoes in
+     * `X-Telegram-Bot-Api-Secret-Token` (1-256 of A-Z a-z 0-9 _ -), and the
+     * bot's username, which the account page links to. Turning the flag on
+     * without one of them is refused at boot. The values are never echoed.
+     */
+    telegram: z
+      .object({
+        enabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+        botToken: optionalString,
+        webhookSecret: optionalString,
+        botUsername: optionalString,
+      })
+      .superRefine((telegram, context) => {
+        if (telegram.botToken && !TELEGRAM_BOT_TOKEN_PATTERN.test(telegram.botToken)) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['botToken'], message: 'TELEGRAM_BOT_TOKEN does not look like a bot token (`<digits>:<key>`)' });
+        }
+        if (telegram.webhookSecret && !TELEGRAM_WEBHOOK_SECRET_PATTERN.test(telegram.webhookSecret)) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['webhookSecret'], message: 'TELEGRAM_WEBHOOK_SECRET is 16-256 characters of A-Z, a-z, 0-9, _ and -' });
+        }
+        if (telegram.botUsername && !TELEGRAM_BOT_USERNAME_PATTERN.test(telegram.botUsername)) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['botUsername'], message: 'TELEGRAM_BOT_USERNAME is the bot\'s username without @, ending in "bot"' });
+        }
+        if (!telegram.enabled) return;
+        for (const [key, name] of [
+          ['botToken', 'TELEGRAM_BOT_TOKEN'],
+          ['webhookSecret', 'TELEGRAM_WEBHOOK_SECRET'],
+          ['botUsername', 'TELEGRAM_BOT_USERNAME'],
+        ] as const) {
+          if (!telegram[key]) context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `HEY_TELEGRAM_BOT_ENABLED=true requires ${name}` });
+        }
+      }),
+
+    /**
      * Google Search Console (2026-09-18, docs/ANALYTICS.md). Both optional:
      * without them the `GSC_SYNC` job records "not configured" and the console
      * shows its own coverage views. `credentialsJson` is the service-account
@@ -661,6 +707,7 @@ function shapeEnv(raw: RawEnv) {
       watchlistEnabled: raw.HEY_WATCHLIST_ENABLED,
       alertsEnabled: raw.HEY_ALERTS_ENABLED,
       boardsEnabled: raw.HEY_BOARDS_ENABLED,
+      desksEnabled: raw.HEY_DESKS_ENABLED,
       holderVoteEnabled: raw.HEY_HOLDER_VOTE_ENABLED,
       scoutStakingEnabled: raw.HEY_SCOUT_STAKING_ENABLED,
       evidenceChallengesEnabled: raw.HEY_EVIDENCE_CHALLENGES_ENABLED,
@@ -674,6 +721,12 @@ function shapeEnv(raw: RawEnv) {
     alerts: {
       telegramBotToken: raw.HEY_TELEGRAM_BOT_TOKEN,
       telegramChatId: raw.HEY_TELEGRAM_CHAT_ID,
+    },
+    telegram: {
+      enabled: raw.HEY_TELEGRAM_BOT_ENABLED,
+      botToken: raw.TELEGRAM_BOT_TOKEN,
+      webhookSecret: raw.TELEGRAM_WEBHOOK_SECRET,
+      botUsername: raw.TELEGRAM_BOT_USERNAME,
     },
     searchConsole: {
       credentialsJson: raw.GOOGLE_SEARCH_CONSOLE_CREDENTIALS,
@@ -753,6 +806,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'hey.watchlistEnabled': 'HEY_WATCHLIST_ENABLED',
   'hey.alertsEnabled': 'HEY_ALERTS_ENABLED',
   'hey.boardsEnabled': 'HEY_BOARDS_ENABLED',
+  'hey.desksEnabled': 'HEY_DESKS_ENABLED',
   'hey.holderVoteEnabled': 'HEY_HOLDER_VOTE_ENABLED',
   'hey.scoutStakingEnabled': 'HEY_SCOUT_STAKING_ENABLED',
   'hey.evidenceChallengesEnabled': 'HEY_EVIDENCE_CHALLENGES_ENABLED',
@@ -762,6 +816,10 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'mail.from': 'HEY_MAIL_FROM',
   'alerts.telegramBotToken': 'HEY_TELEGRAM_BOT_TOKEN',
   'alerts.telegramChatId': 'HEY_TELEGRAM_CHAT_ID',
+  'telegram.enabled': 'HEY_TELEGRAM_BOT_ENABLED',
+  'telegram.botToken': 'TELEGRAM_BOT_TOKEN',
+  'telegram.webhookSecret': 'TELEGRAM_WEBHOOK_SECRET',
+  'telegram.botUsername': 'TELEGRAM_BOT_USERNAME',
   'searchConsole.credentialsJson': 'GOOGLE_SEARCH_CONSOLE_CREDENTIALS',
   'searchConsole.site': 'GOOGLE_SEARCH_CONSOLE_SITE',
   'webhooks.masterKey': 'WEBHOOK_MASTER_KEY',
@@ -905,6 +963,21 @@ export function isBondsOpen(env: ServerEnv): boolean {
  */
 export function isMailEnabled(env: ServerEnv): boolean {
   return env.mail.enabled && Boolean(env.mail.apiKey) && Boolean(env.mail.from);
+}
+
+/**
+ * The HEY Telegram bot (2026-09-30, docs/TELEGRAM.md) is on when the flag is
+ * set and the token, the webhook secret and the username are all present.
+ * Off, the account page says Telegram is not available yet, the webhook
+ * answers 404 and nothing is delivered.
+ */
+export function isTelegramBotEnabled(env: ServerEnv): boolean {
+  return env.telegram.enabled && Boolean(env.telegram.botToken) && Boolean(env.telegram.webhookSecret) && Boolean(env.telegram.botUsername);
+}
+
+/** The bot's public link, `https://t.me/<username>`, or undefined while the bot is off. */
+export function telegramBotUrl(env: ServerEnv): string | undefined {
+  return isTelegramBotEnabled(env) ? `https://t.me/${env.telegram.botUsername as string}` : undefined;
 }
 
 /** Telegram ops alerts are on when both the bot token and the chat id are set. */

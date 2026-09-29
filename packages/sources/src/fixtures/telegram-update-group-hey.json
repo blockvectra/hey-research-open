@@ -1,0 +1,1 @@
+{"update_id":900000002,"message":{"message_id":88,"from":{"id":222222222,"is_bot":false,"first_name":"Member","username":"member_name"},"chat":{"id":-1001234567890,"title":"Robinhood Chain builders","type":"supergroup"},"date":1790700100,"text":"/hey@HeyResearchBot agentos","entities":[{"offset":0,"length":19,"type":"bot_command"}]}}

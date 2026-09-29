@@ -1,0 +1,1 @@
+{"ok":true,"result":{"url":"https://heyresearch.xyz/api/telegram/webhook","has_custom_certificate":false,"pending_update_count":0,"max_connections":10,"ip_address":"203.0.113.10","allowed_updates":["message","callback_query","my_chat_member"],"last_error_date":1790690000,"last_error_message":"Wrong response from the webhook: 404 Not Found"}}

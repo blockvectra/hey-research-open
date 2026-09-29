@@ -66,7 +66,7 @@ This is the published half of HEY: the parts that stand on their own and are saf
 
 | Path | What it is |
 | --- | --- |
-| [`packages/sources`](packages/sources) | Every public-data adapter HEY reads — GitHub, Blockscout, Sourcify (verification and its signature database), DEX Screener, GeckoTerminal, CoinGecko, launchpads, feeds, npm, deps.dev, OSV — each with saved fixtures and contract tests. The tests fail on a real network call. All of them go through one fetch guard (private-address and DNS-rebinding checks, redirect and credential rules, size, time and content-type limits) and bounded HTML and XML parsers, tested against hostile pages and feeds. |
+| [`packages/sources`](packages/sources) | Every public-data adapter HEY reads — GitHub, Blockscout, Sourcify (verification and its signature database), DEX Screener, GeckoTerminal, CoinGecko, launchpads, feeds, npm, deps.dev, OSV — each with saved fixtures and contract tests, plus the Telegram Bot API adapter HEY's alert bot sends through. The tests fail on a real network call. All of them go through one fetch guard (private-address and DNS-rebinding checks, redirect and credential rules, size, time and content-type limits) and bounded HTML and XML parsers, tested against hostile pages and feeds. |
 | [`packages/scoring`](packages/scoring) | Activity status, Build Momentum, Still Building and Under the Radar, deterministic and versioned. They read no price and no balance, and that is tested. |
 | [`packages/sdk`](packages/sdk) | `@hey-research-lab/sdk`, the typed client over the public API. No dependencies, ESM and CJS, Node 18 or a browser. |
 | [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: fourteen read-only tools, each answer tagged FACT, DERIVED or UNKNOWN. |
@@ -145,6 +145,11 @@ single-project route sends everything the listing does. `/api/projects/{slug}/ma
 contract's deployer, its pools and 1% depth, and a supply-concentration summary with no addresses
 (2026-09-25).
 
+A **Research Desk** is a reader's published board of projects: `GET /api/desks` lists them by last
+change (never by popularity), and `GET /api/desks/{slug}` answers its projects, the curator's
+self-declared handle and its facts over its window — projects, shipped, development spikes,
+contract changes — with `null` and a reason for anything HEY cannot state (2026-09-30).
+
 `/api/projects/{slug}/relationships` lists what a project is connected to and why HEY thinks so —
 every edge with its standing and evidence, never an account and never a "partnership" — and the
 snapshot's `peerContext` places some of its figures among comparable projects, one figure at a time,
@@ -194,6 +199,24 @@ From the domain alone, with no JavaScript and no cookies:
 An agent that forms a thesis can record it as an
 [AgentResearchReceipt](docs/AGENT_RESEARCH_RECEIPTS.md) — neutral, for any project, checked but
 never stored or endorsed by HEY. HEY gives no trade instructions and runs no agents of its own.
+
+## Sharing a record
+
+Any eligible record — a ship, a release, a deployment, a development spike, a builder resuming,
+a verified builder, a contract implementation or interface change, a HoodLock lock or unlock, a
+material change to a project's official site, a weekly report, an event window — can be shared
+from its page as a ready-made post for X or Telegram, a short plain text, a link or its raw facts.
+The words come from one deterministic template module keyed by change type: the project first,
+only facts HEY holds (a sentence is dropped rather than filled when a fact is unknown), with its
+evidence id and source, and never promotional language. `GET /api/share/<subject>` returns the
+same composition as JSON.
+
+## Event research
+
+`/events/<slug>` answers "What actually changed on Robinhood Chain during <event>?" from HEY's
+change ledger inside the event's official window. Announcements made at the event are listed apart
+with their official source and are never counted as shipped. The first is HOOD Summit '26
+(`/events/hood-summit-26`).
 
 ## The badge
 

@@ -1,0 +1,1 @@
+{"ok":true,"result":{"message_id":4211,"from":{"id":7000000001,"is_bot":true,"first_name":"HEY Research","username":"HeyResearchBot"},"chat":{"id":123456789,"first_name":"Reader","type":"private"},"date":1790700000,"text":"AgentOS shipped a release","entities":[{"offset":0,"length":7,"type":"bold"}],"link_preview_options":{"is_disabled":true}}}

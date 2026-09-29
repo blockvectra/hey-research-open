@@ -56,7 +56,7 @@ event. The preset says so.
   "projects": ["hoodlock"],
   "eventTypes": ["build.release"],
   "conditions": {},
-  "channels": { "email": false, "webhook": null },
+  "channels": { "email": false, "webhook": null, "telegram": false },
   "enabled": true
 }
 ```
@@ -123,7 +123,15 @@ published, plus `contract.method_first_observed` and `contract.method_resumed`.
   immediate delivery, whichever job ran first.
 - The two `contract.method_*` types are **shown in HEY only**: pushing them out
   of HEY (email, webhook) is a founder decision that has not been made.
-- **Telegram and Discord are not built** (see [Not built](#not-built)).
+- **Telegram** (2026-09-30), to a private chat you linked from **Account →
+  Telegram** (a ten-minute, single-use code the bot confirms by your display
+  name). One message per event however many of your rules matched it, paced to
+  a few a minute per chat; a burst of twenty or more becomes one message
+  pointing to your inbox. A retracted event is never sent, and one already
+  sent is edited to say it was withdrawn. Only the pushable types (the
+  webhook-deliverable set) are sent, like email. Off until the bot is
+  configured on the deployment; see [docs/TELEGRAM.md](TELEGRAM.md).
+- **Discord is not built** (see [Not built](#not-built)).
 
 ## Matching, dedupe and retractions
 
@@ -170,7 +178,7 @@ account's rule answers 404, exactly like one that does not exist.
 
 Refusals: `invalid_parameter`, `invalid_event_types` (with the reason per type),
 `unknown_projects`, `rule_limit` (409), `email_unconfirmed` (409),
-`unknown_webhook`, `not_found`. The SDK types are `HeyAlertRule`,
+`telegram_unlinked` (409), `unknown_webhook`, `not_found`. The SDK types are `HeyAlertRule`,
 `HeyAlertList`, `HeyAlertNotifications` and friends. There is no MCP tool.
 
 ## Security
@@ -206,11 +214,9 @@ Refusals: `invalid_parameter`, `invalid_event_types` (with the reason per type),
 
 ## Not built
 
-- **Telegram and Discord.** Founder-owned: each needs a bot HEY registers
-  (a Telegram bot token from @BotFather; a Discord application with a bot
-  token), a place to keep the token as a server secret, and a way for a reader
-  to link their chat (a one-time code the bot receives) so HEY never sends to a
-  chat nobody proved they own. Until then those channels do not exist.
+- **Discord.** Founder-owned: it needs a Discord application with a bot token
+  kept as a server secret, and the same one-time linking Telegram uses
+  (2026-09-30) so HEY never sends to a channel nobody proved they own.
 - **Email for `contract.method_*` events** and **pushing** them at all: a
   founder decision.
 - **Natural-language alert creation.** The copilot may later propose a rule

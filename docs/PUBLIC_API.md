@@ -1372,6 +1372,24 @@ Errors: `invalid_parameter`, `unknown_projects` (unknown and unpublished alike),
 `board_limit` (409), `not_found`. Sharing is managed in the Terminal, where the link is shown once;
 the API never returns a share token. No MCP tool.
 
+## Research Desks: `/api/desks` (2026-09-30)
+
+A Research Desk is the public view of a board its owner published ([`docs/BOARDS.md`](BOARDS.md#research-desks)).
+Keyless, the public read budget, `no-store` (an unpublished desk is a `404` the moment it is taken
+down). Never the board's note, the owner's account, watchlist or alerts.
+
+| Route | What it answers |
+|---|---|
+| `GET /api/desks` | published desks, newest visible change first — `{desks: [{slug, url, api, title, description, curator, projects, updatedAt}], shown, limit: 60, order}`. A directory, never a ranking: no follower, view or clone count |
+| `GET /api/desks/{slug}` | `{desk: {slug, url, title, description, curator, windowDays, panels, publishedAt, updatedAt, followers, projects: [{slug, name, url, api}], facts, image}}` |
+
+`curator` is `{handle, verified: false}` or `null`: a handle the curator typed, which HEY does not
+verify. `facts` counts the desk's projects over its window — `projects`, `shipped` (last
+meaningful ship in the window), `developmentSpikes` (`build.accelerating` on the ledger),
+`contractChanges` (the ledger's contract events) — with `definitions`; a fact HEY cannot state is
+`null` with its reason in `unknown` (`projects_not_researched`, `change_ledger_not_run`), never 0.
+The share image is `GET /og/desk/{slug}` (1200×630, never cached).
+
 ## `GET /api/signals` and `GET /api/signals/{id}` (2026-09-13)
 
 HEY Signal: measured changes about published projects. `group` (`development`, `contract`,

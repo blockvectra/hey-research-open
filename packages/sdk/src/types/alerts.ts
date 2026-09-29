@@ -42,6 +42,8 @@ export type HeyAlertRule = {
     email: boolean;
     /** One of the account's own webhook subscriptions, by host; null when none. */
     webhook: { id: string; host: string; status: string } | null;
+    /** Sent to the account's linked Telegram chat (2026-09-30, additive). The chat is never named. */
+    telegram: boolean;
   };
   origin: 'site' | 'api';
   createdAt: string;

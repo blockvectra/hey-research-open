@@ -32,6 +32,13 @@ export type SourceResult<T> = {
    * this figure rather than one per call.
    */
   attempts?: number;
+  /**
+   * The provider's HTTP status on a refused request (2026-09-30), for an
+   * adapter whose caller must tell a refusal apart by it — the Telegram bot
+   * unlinks a chat on 403 and gives up on an edit on 400. Absent on success
+   * and on a failure that never got a status (a timeout, a network error).
+   */
+  httpStatus?: number;
 };
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -113,7 +120,7 @@ export function errorResult<T>(
   ctx: SourceContext,
   code: SourceErrorCode,
   message: string,
-  options: { sourceUrl?: string; retryAfterSeconds?: number; cacheTtlSeconds?: number; attempts?: number } = {},
+  options: { sourceUrl?: string; retryAfterSeconds?: number; cacheTtlSeconds?: number; attempts?: number; httpStatus?: number } = {},
 ): SourceResult<T> {
   return {
     fetchedAt: resolveNow(ctx),
@@ -133,6 +140,7 @@ export function errorResult<T>(
       ? {}
       : { retryAfterSeconds: options.retryAfterSeconds }),
     ...(options.attempts === undefined ? {} : { attempts: options.attempts }),
+    ...(options.httpStatus === undefined ? {} : { httpStatus: options.httpStatus }),
   };
 }
 

@@ -1,3 +1,5 @@
+import type { ReactNode } from 'react';
+
 import { cn } from './cn';
 import { formatEventType, formatRelativeTime, formatVerification, plainText, readableSummary, shortenHexInText, type ReadableSummary } from './format';
 
@@ -27,10 +29,17 @@ export function BuildTimeline({
   items,
   now,
   className,
+  action,
 }: {
   items: readonly TimelineItem[];
   now?: Date;
   className?: string;
+  /**
+   * One quiet control after an item's evidence link (2026-09-30): the
+   * project page's Share. The page decides which items get one; the timeline
+   * only places it, so this package holds no share semantics.
+   */
+  action?: (item: TimelineItem) => ReactNode;
 }) {
   return (
     <ol className={cn('relative space-y-6', className)}>
@@ -77,15 +86,20 @@ export function BuildTimeline({
             <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{item.substanceNote}</p>
           ) : null}
 
-          {item.sourceUrl ? (
-            <a
-              href={item.sourceUrl}
-              rel="nofollow noopener noreferrer"
-              target="_blank"
-              className="mt-2 inline-block text-sm text-hey-accent underline underline-offset-4"
-            >
-              View evidence
-            </a>
+          {item.sourceUrl || action ? (
+            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+              {item.sourceUrl ? (
+                <a
+                  href={item.sourceUrl}
+                  rel="nofollow noopener noreferrer"
+                  target="_blank"
+                  className="inline-block text-sm text-hey-accent underline underline-offset-4"
+                >
+                  View evidence
+                </a>
+              ) : null}
+              {action?.(item)}
+            </div>
           ) : null}
         </li>
       ))}
