@@ -13,6 +13,11 @@ record.
   its Navigate group and the More menu carry "Scan a contract". A published address opens its
   Terminal workspace; nothing is scanned until the reader presses the button. `scan` is a reserved
   project slug.
+- **Research Terminal holder access, valued in dollars.** An account whose linked wallet held at
+  least $500 worth of $HEY at the time of HEY's balance check — valued at HEY's own market reading,
+  never a live provider call — opens the Terminal beta without a request. A price older than six
+  hours, or from a market HEY does not call active, makes the value unknown: it never admits and is
+  never shown as zero. Re-checked daily. The invitation and hand-approved requests are unchanged.
 
 ## 2026-09-29
 

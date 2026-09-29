@@ -236,7 +236,8 @@ The full rules, with the thresholds they use, are on [the methodology page](http
 `$HEY` (`0xB33eb16782776b4D738c0Fd643577cb0284Db610` on Robinhood Chain) pays for evidence:
 research bounties set in dollars and paid in HEY, claim bonds, and priority on research requests.
 Holding changes what a reader pays, when they see new research and how much API the lab serves
-them. It never buys a rank, a status or a score.
+them; $HEY worth at least $500 at the time of HEY's balance check, valued at HEY's own market
+reading, also opens the Research Terminal beta. It never buys a rank, a status or a score.
 
 ## How this repository is produced
 
