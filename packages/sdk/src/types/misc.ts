@@ -6,6 +6,7 @@
  * know.
  */
 
+import type { HeyChangePrecision, HeyChangeType } from './changes';
 import type { HeyActivityStatus, HeyLiquidityKind } from './projects';
 
 /* ---------------------------------------------------------------- builders */
@@ -329,7 +330,62 @@ export type HeyBuilderCard = {
   activity_measured: boolean;
   /** When the project was last scored; null when never. */
   as_of: string | null;
+  /* The Partner Card (2026-09-30, additive; heyresearch.xyz/developers/partners). */
+  /** HEY's catalogue marks the project a verified builder (the scan card's `verified_builder`). */
+  verified_builder: boolean;
+  /** The newest ship HEY counts as building evidence now, with its typed evidence id; null when HEY holds none. */
+  latest_meaningful_ship: HeyPartnerShip | null;
+  /** Meaningful ships in thirty days by the rule behind the status; null — never 0 — when HEY did not measure building and holds none. */
+  meaningful_ships_30d: number | null;
+  /** The newest builder-story change in the change ledger (no market, usage, coverage or narrative events); null when none or unavailable — see `latest_change_state`. */
+  latest_change: HeyPartnerChange | null;
+  /** `unavailable` means the ledger has not run or could not be read: unknown, not none. */
+  latest_change_state: 'recorded' | 'none_recorded' | 'unavailable';
+  /** The newest standing HEY Signal about building, contracts, launch or research; null when none stands. */
+  latest_signal: HeyPartnerSignal | null;
+  /** This token's market state: context only, never a builder input. `INSUFFICIENT_DATA` is "not measured". */
+  market_status: { status: string; observed_at: string | null };
+  badge_url: string;
+  /** `hey_project_url` with HEY's attribution labels (`utm_medium=partner_api`); link this one. */
+  project_link: string;
   disclaimer: string;
+};
+
+/** A ship on the partner card (2026-09-30). */
+export type HeyPartnerShip = {
+  title: string;
+  url: string | null;
+  timestamp: string;
+  /** HEY's ship type (`RELEASE`, `CODE_ACTIVITY`, `CONTRACT_UPGRADE`, …). */
+  kind: string;
+  /** `ship:<uuid>`; resolve at `/api/evidence/{id}`. */
+  evidence_id: string;
+};
+
+/** One change-ledger event on the partner card (2026-09-30). */
+export type HeyPartnerChange = {
+  id: string;
+  type: HeyChangeType;
+  summary: string;
+  /** Null when only HEY's own observation dates it (`precision: "OBSERVED"`). */
+  occurred_at: string | null;
+  precision: HeyChangePrecision;
+  detected_at: string;
+  evidence_id: string | null;
+  url: string;
+};
+
+/** One HEY Signal on the partner card (2026-09-30). */
+export type HeyPartnerSignal = {
+  id: string;
+  /** A HEY Signal kind (`release_published`, `development_spike`, …); never a market-group kind. */
+  kind: string;
+  label: string;
+  headline: string;
+  observed_at: string;
+  /** `signal:<uuid>`. */
+  evidence_id: string;
+  url: string;
 };
 
 /* ------------------------------------------------------------ search */

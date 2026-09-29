@@ -538,6 +538,8 @@ export type HeyScanCard =
       };
       project: { slug: string; name: string; symbol?: string };
       project_url: string;
+      /** `project_url` with HEY's attribution labels (`utm_medium=partner_api`, `utm_source` = your declared integration or `hey_api`); link this one (2026-09-30). */
+      project_link: string;
       logo_url?: string;
       badge_url: string;
       /** The link back to the project page; absent when `activity_applies_to_token` is false (2026-09-27). */

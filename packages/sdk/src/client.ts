@@ -98,6 +98,14 @@ export type HeyClientOptions = {
    * rather than as the SDK. Browsers may drop the header; that is fine.
    */
   userAgent?: string;
+  /**
+   * Your integration's name, optionally with its version — `my-bot` or
+   * `my-bot/1.4.0` (2026-09-30): sent as `x-hey-integration` so HEY's partner
+   * console can count your calls by version, and used as `utm_source` on the
+   * `project_link` the partner cards return. Lower-case letters, digits,
+   * `.`, `_` and `-`; anything else is ignored by the server. Optional.
+   */
+  integration?: string;
 };
 
 export type QueryParams = Record<string, string | number | boolean | readonly string[] | undefined>;
@@ -160,6 +168,7 @@ export class HeyClient {
   private readonly timeoutMs: number;
   private readonly apiKey: string | undefined;
   private readonly userAgent: string;
+  private readonly integration: string | undefined;
 
   constructor(options: HeyClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
@@ -168,6 +177,7 @@ export class HeyClient {
     this.apiKey = options.apiKey?.trim() || undefined;
     const prefix = options.userAgent?.trim();
     this.userAgent = prefix ? `${prefix} ${USER_AGENT}` : USER_AGENT;
+    this.integration = options.integration?.trim() || undefined;
   }
 
   /**
@@ -240,6 +250,7 @@ export class HeyClient {
         headers: {
           accept: 'application/json',
           'user-agent': this.userAgent,
+          ...(this.integration ? { 'x-hey-integration': this.integration } : {}),
           ...(this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {}),
         },
       });

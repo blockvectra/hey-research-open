@@ -638,6 +638,29 @@ every malformed token keep their `400`, which also spends nothing.
 | `/api/token/{chainId}/{address}` | `project.activityAppliesToToken` | as above; `project.url` is still sent |
 | `/api/v1/builder` | `activity_applies_to_token` | as above; `hey_project_url` is still sent — do not link from the token to it when `false` |
 
+## The Partner Card: additive fields (2026-09-30)
+
+`/api/v1/builder` is the Partner Card (`/developers/partners`, `PartnerBuilderCard`
+in `/openapi.json`). Additive only; no existing field changes meaning. Explicit `null` is unknown.
+
+| Route | Added | Meaning |
+|---|---|---|
+| `/api/v1/builder` | `verified_builder` | the catalogue marks the project a verified builder (the scan card's `verified_builder`) |
+| | `latest_meaningful_ship` | `{title, url, timestamp, kind, evidence_id}`: the newest counted ship dated no later than now; `null` when none |
+| | `meaningful_ships_30d` | the scan card's `meaningful_ships_30d`; `null` (never 0) when building is not measured and none is held |
+| | `latest_change`, `latest_change_state` | the newest builder-story ledger event (`{id, type, summary, occurred_at, precision, detected_at, evidence_id, url}`); state `recorded`, `none_recorded` or `unavailable` (ledger not run or unreadable: unknown, not none). Market, usage, coverage-churn and narrative events are left out |
+| | `latest_signal` | `{id, kind, label, headline, observed_at, evidence_id, url}`: the newest standing signal that is not a market-group kind, an address-day count or a new page; `null` when none |
+| | `market_status` | `{status, observed_at}`: this token's market state, context only; `INSUFFICIENT_DATA` / `null` when not measured |
+| | `badge_url` | `/badge/<slug>.svg` |
+| | `project_link` | `hey_project_url` with `utm_source=<integration or hey_api>&utm_medium=partner_api&utm_campaign=builder_card` |
+| `/api/v1/scan` | `project_link` | the same, `utm_campaign=scan_card` |
+
+**Integration label (optional).** `x-hey-integration: name/version` or `?integration=name/version`
+on any API call: lower-case letters, digits, `.`, `_`, `-`; anything else is ignored. Recorded as a
+self-declaration (`api_requests.integration`) and used as `project_link`'s `utm_source`. An answer
+shaped by the header is `private` with `vary: x-hey-integration`; the query form caches normally.
+The header is allowed in CORS preflight.
+
 ## Project snapshot, coverage, explain and evidence (2026-09-26)
 
 Four reads for an agent or a bot that needs one answer rather than four requests. Public, the

@@ -18,7 +18,7 @@ const ok = (body: unknown, status = 200, headers: Record<string, string> = {}): 
 type Call = { url: URL; init: RequestInit | undefined };
 
 /** A client whose every request is recorded, answering `body` to all of them. */
-function recording(body: unknown = { items: [] }, options: { apiKey?: string; userAgent?: string } = {}) {
+function recording(body: unknown = { items: [] }, options: { apiKey?: string; userAgent?: string; integration?: string } = {}) {
   const calls: Call[] = [];
   const fetchImpl = vi.fn(async (input: string, init?: RequestInit) => {
     calls.push({ url: new URL(input), init });
@@ -85,6 +85,16 @@ describe('HeyClient.get', () => {
     const named = recording({}, { userAgent: 'hey-research-mcp/0.1.0' });
     await named.client.get('/api/status');
     expect((named.calls[0]!.init?.headers as Record<string, string>)['user-agent']).toBe(`hey-research-mcp/0.1.0 ${USER_AGENT}`);
+  });
+
+  it('names the integration in x-hey-integration only when the caller gave one (2026-09-30)', async () => {
+    const named = recording({}, { integration: ' my-bot/1.4.0 ' });
+    await named.client.get('/api/v1/builder');
+    expect((named.calls[0]!.init?.headers as Record<string, string>)['x-hey-integration']).toBe('my-bot/1.4.0');
+
+    const bare = recording({}, { integration: '   ' });
+    await bare.client.get('/api/v1/builder');
+    expect(bare.calls[0]!.init?.headers as Record<string, string>).not.toHaveProperty('x-hey-integration');
   });
 
   it('sends the API key as a bearer token and never without one', async () => {

@@ -126,6 +126,20 @@ the Research Terminal at `/terminal/scan`, where the ⌘K palette offers it for 
 not track. One scan behind both, and the same boundary: who is building this, never what the token
 might do next.
 
+**Builder intelligence in your product, in one call** — the Partner Card (2026-09-30):
+
+```bash
+curl -H "x-hey-integration: my-bot/1.0.0" "https://heyresearch.xyz/api/v1/builder?chain=4663&token=0x…"
+```
+
+Builder status in HEY's words, verified builder, the latest meaningful ship with its evidence id,
+meaningful ships in 30 days (`null`, never 0, when not measured), the latest builder-side change and
+signal, the token's market state as context, a badge and `project_link` — the page to link, labelled
+so HEY can count your click-through. The fields, the rules of use and eight tested examples
+(Telegram, Discord, a trading terminal, a DEX, a launchpad, an explorer, a directory, an AI agent)
+are at [heyresearch.xyz/developers/partners](https://heyresearch.xyz/developers/partners) and in
+[docs/PUBLIC_API.md](docs/PUBLIC_API.md).
+
 **The same thing, typed:**
 
 ```ts
@@ -230,6 +244,22 @@ evidence behind it.
 ```
 
 `?theme=dark` and `?style=pill` are the other two looks. [docs/BADGES.md on the site](https://heyresearch.xyz/docs/badges).
+
+### Live widgets (Embed Kit)
+
+A live builder widget for any site — activity status, the latest ship, meaningful ships in 30
+days, verified builder, or the latest changes — from HEY's own records, with no price, score or
+rank. One script, one element; the configurator at
+[heyresearch.xyz/developers/embeds](https://heyresearch.xyz/developers/embeds) also hands out a
+React snippet and the API call.
+
+```html
+<script src="https://heyresearch.xyz/embed/hey-project.js" async></script>
+<hey-project project="<slug>" variant="builder" theme="auto"></hey-project>
+```
+
+The script reads only its own attributes, sets no cookie and draws one sandboxed frame; HEY counts
+that a widget was shown and the host's domain, never who saw it.
 
 ## Rules that do not move
 

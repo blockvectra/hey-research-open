@@ -6,6 +6,12 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (partner card, 2026-09-30)
+
+- `HeyBuilderCard` gains the partner card fields, all additive: `verified_builder`, `latest_meaningful_ship` (`HeyPartnerShip`, with its `ship:` evidence id), `meaningful_ships_30d` (null, never 0, when HEY did not measure building), `latest_change` (`HeyPartnerChange`) with `latest_change_state` (`recorded`, `none_recorded`, `unavailable`), `latest_signal` (`HeyPartnerSignal`), `market_status` (context only), `badge_url` and `project_link`. No existing field changes meaning.
+- `HeyScanCard` gains `project_link`: `project_url` with HEY's attribution labels (`utm_medium=partner_api`).
+- `HeyClientOptions.integration`: your integration's `name` or `name/version`, sent as `x-hey-integration`; the server shape-checks it and uses the name as `project_link`'s `utm_source`.
+
 ### Changed
 
 - The npm description and keywords name what the API is: evidence-backed research on Robinhood Chain projects.

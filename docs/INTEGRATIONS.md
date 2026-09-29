@@ -188,6 +188,14 @@ Five things worth knowing before you render it:
   thirty-day count as the card call's `commits_30d`, so the two calls agree; `commits` is the newest
   weekly summary's own figure, as that week recorded it.
 
+**The Partner Card (2026-09-30, additive).** This call is now HEY's canonical partner card
+([/developers/partners](/developers/partners)): it also sends `verified_builder`,
+`latest_meaningful_ship`, `meaningful_ships_30d` (null, never 0, when not measured),
+`latest_change` with `latest_change_state`, `latest_signal`, `market_status` (context only),
+`badge_url` and `project_link` — the project page with `utm_medium=partner_api`, which is the link
+to render. Name your integration with `x-hey-integration: my-bot/1.0.0` (or `?integration=`) and it
+becomes `project_link`'s `utm_source`, so HEY can report your click-through to you.
+
 ## The card call: `GET /api/v1/scan?chain=4663&token=0x…` (2026-09-18)
 
 The same answer as the one call above, in the shape a trading bot's card wants and with two more
@@ -266,7 +274,8 @@ migration note. `/api/v1/` is the partner namespace, not an API version.
   id in the path, digits only; `shipsLast30Days` as a number. `researchLevel` is sent for every
   published project (the docs once said it was absent for a researched page; it never was).
 
-Additive fields so far: `token_verification` / `tokenVerification` (2026-09-25); `research_level`,
+Additive fields so far: the Partner Card fields on `/api/v1/builder` and `project_link` on both
+`/api/v1/*` calls (2026-09-30); `token_verification` / `tokenVerification` (2026-09-25); `research_level`,
 `activity_measured`, `coverage`, `as_of`, `meaningful_ships_30d`, `last_ship_url`,
 `activityMeasured`, `meaningfulShipsLast30Days`, `asOf`, and the builder call's `commits_30d`,
 `commits_30d_partial`, `window_start` (2026-09-26); `activity_applies_to_token` /

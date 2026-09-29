@@ -27,6 +27,30 @@ record.
 - **Event research mode.** `/events/<slug>`: what changed on Robinhood Chain inside an event's
   official window, from the change ledger, with announcements (each with its official source)
   listed apart as ANNOUNCED. HOOD Summit '26 is the first event (`/events/hood-summit-26`).
+
+- **The Partner Card: builder intelligence in one call.** `GET /api/v1/builder` gains, additively,
+  `verified_builder`, `latest_meaningful_ship` (with its `ship:` evidence id), `meaningful_ships_30d`
+  (`null`, never 0, when not measured), `latest_change` + `latest_change_state` (the newest
+  builder-story ledger event; `unavailable` is unknown, not none), `latest_signal` (never a
+  market-group kind), `market_status` (context only), `badge_url` and `project_link`; `/api/v1/scan`
+  gains `project_link`. No existing field changes meaning. An optional `x-hey-integration: name/version`
+  header (or `?integration=`) names your integration and becomes `project_link`'s `utm_source`.
+  `/openapi.json` now describes both `/api/v1/*` calls, with the `PartnerBuilderCard` schema. SDK:
+  the new `HeyBuilderCard`/`HeyScanCard` fields and a `HeyClient({ integration })` option. New page:
+  `/developers/partners`, with eight examples the test suite runs.
+
+- **Embed Kit.** `/embed/project/<slug | chainId:0x…>?variant=compact|builder|changes|full|signal&theme=light|dark|auto`
+  renders a live builder widget for any site: a tiny server-rendered document with a strict CSP (a
+  hashed stylesheet, one same-origin script, `frame-ancestors *` on this route family and the badge
+  page only), no cookie, no third-party request and no provider call. `<hey-project>`
+  (`/embed/hey-project.js`) is a dependency-free Web Component that draws one sandboxed frame and
+  resizes it from the frame's own message. `/developers/embeds` configures a widget and copies
+  HTML, React or the API call. Unknown values are left out, never shown as 0; no market figure,
+  score or rank appears, and the change and signal widgets leave market events out.
+- **Builder Distribution Pack.** A verified builder's project page carries a collapsed "Your HEY
+  research profile is live" panel: share verified builder status, the README badge, the widget,
+  the share card, the canonical page, the API and changes endpoints.
+
 - **HEY Scan inside the Research Terminal.** `/terminal/scan` and `/terminal/scan/<address>` run the
   public scan — the same form, report, rate limit and provider budget — in the Terminal's shell,
   open to every Terminal reader including preview. The ⌘K palette offers "Scan 0x…" as its first row
