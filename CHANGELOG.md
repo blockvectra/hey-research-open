@@ -4,6 +4,16 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## Unreleased (2026-09-30)
+
+- **HEY Scan inside the Research Terminal.** `/terminal/scan` and `/terminal/scan/<address>` run the
+  public scan — the same form, report, rate limit and provider budget — in the Terminal's shell,
+  open to every Terminal reader including preview. The ⌘K palette offers "Scan 0x…" as its first row
+  for a whole address no published project holds (second, after the project, when one does), and
+  its Navigate group and the More menu carry "Scan a contract". A published address opens its
+  Terminal workspace; nothing is scanned until the reader presses the button. `scan` is a reserved
+  project slug.
+
 ## 2026-09-29
 
 - **Intraday candles and a code lane.** `packages/sources`: the GeckoTerminal OHLCV adapter takes a

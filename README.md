@@ -121,6 +121,11 @@ curl "https://heyresearch.xyz/api/v1/scan?chain=4663&token=0xB33eb16782776b4D738
 A token HEY has no published page for answers `200` with `found: false`, so a bot prints nothing
 rather than guessing.
 
+A person asks the same question at [heyresearch.xyz/scan](https://heyresearch.xyz/scan), or inside
+the Research Terminal at `/terminal/scan`, where the ⌘K palette offers it for any address HEY does
+not track. One scan behind both, and the same boundary: who is building this, never what the token
+might do next.
+
 **The same thing, typed:**
 
 ```ts
