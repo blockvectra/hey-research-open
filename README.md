@@ -72,7 +72,7 @@ This is the published half of HEY: the parts that stand on their own and are saf
 | [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: fourteen read-only tools, each answer tagged FACT, DERIVED or UNKNOWN. |
 | [`apps/mcp`](apps/mcp) | `@hey-research-lab/mcp`, the stdio entry point that bundles them. Node 20. The same tools are hosted at `https://heyresearch.xyz/mcp`. |
 | [`packages/config`](packages/config) | Environment schema and chain constants. |
-| [`packages/ui`](packages/ui) | The presentation components — cards, chips, status, formatting. |
+| [`packages/ui`](packages/ui) | The presentation components — cards, chips, status, formatting, and the Terminal's candle chart, whose builder-event callouts are laid out from each event's time alone (`terminal-chart-annotations.ts`): never a price, never a cause. |
 | [`docs/`](docs) | The public API, the MCP server, the source registry, and every data source with what it refuses and why. |
 
 The ingestion pipeline, the quality gate, the database schema, the web app and the operations

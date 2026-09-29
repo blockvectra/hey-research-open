@@ -10,6 +10,7 @@ import {
   type CandleDay,
   type ChartEvent,
 } from './terminal-chart';
+import { LANE_COUNT_ROOM, LANE_HIT_HALF, laneRooms } from './terminal-chart-client';
 import { DailyCandleChart } from './terminal-chart-view';
 
 const TODAY = '2026-09-26';
@@ -155,49 +156,93 @@ describe('buildChartModel', () => {
     ).toBeUndefined();
   });
 
-  it('numbers the newest events for the phone list and gives a week no number', () => {
+  const ev = (id: string, at: string, family: string, precision: ChartEvent['precision'], extra: Partial<ChartEvent> = {}): ChartEvent => ({
+    id,
+    at,
+    title: id.toUpperCase(),
+    family,
+    precision,
+    ...extra,
+  });
+
+  it('keeps the events in range, in time order, and leaves out one before it', () => {
     const events: ChartEvent[] = [
-      {
-        id: 'a',
-        day: '2026-09-01',
-        title: 'A',
-        layer: 'ship',
-        precision: 'exact',
-        precisionLabel: 'exact',
-        timeLabel: '',
-      },
-      {
-        id: 'w',
-        day: '2026-09-02',
-        title: 'W',
-        layer: 'code',
-        precision: 'week',
-        precisionLabel: 'week precision',
-        timeLabel: 'week of 2026-08-31',
-      },
-      {
-        id: 'b',
-        day: '2026-09-12',
-        title: 'B',
-        layer: 'release',
-        precision: 'day',
-        precisionLabel: 'date precision',
-        timeLabel: '',
-      },
-      {
-        id: 'out',
-        day: '2025-01-01',
-        title: 'Out of range',
-        layer: 'ship',
-        precision: 'exact',
-        precisionLabel: 'exact',
-        timeLabel: '',
-      },
+      ev('b', '2026-09-12T00:00:00Z', 'releases', 'DATE'),
+      ev('a', '2026-09-01T09:30:00Z', 'ships', 'EXACT'),
+      ev('w', '2026-09-02T15:00:00Z', 'code', 'WEEK'),
+      ev('out', '2025-01-01T10:00:00Z', 'ships', 'EXACT'),
     ];
     const { lane } = buildChartModel(days, events, { todayUtc: TODAY })!.model;
     expect(lane.map((e) => e.t)).toEqual(['A', 'W', 'B']);
-    expect(lane.map((e) => e.n)).toEqual(['①', undefined, '②']);
-    expect(lane[1]!.w).toBe('week of 2026-08-31');
+    // The phone list numbers nothing: no circled digits to fall back to a system font.
+    expect(JSON.stringify(lane)).not.toMatch(/[①-⑳]/);
+  });
+
+  it('places an exact event at its hour, a date mid-day, and a week over its ISO week', () => {
+    const events: ChartEvent[] = [
+      ev('a', '2026-09-01T18:00:00Z', 'ships', 'EXACT'),
+      ev('d', '2026-09-03T00:00:00Z', 'releases', 'DATE'),
+      // Wednesday 2 September: its ISO week runs Monday 31 August to Sunday 6 September, clipped to the range.
+      ev('w', '2026-09-02T15:00:00Z', 'code', 'WEEK'),
+    ];
+    const { lane } = buildChartModel(days, events, { todayUtc: TODAY })!.model;
+    const by = new Map(lane.map((e) => [e.id, e]));
+    expect(by.get('a')).toMatchObject({ i: 0, f: 0.75, p: 'EXACT', d: '1 Sep' });
+    expect(by.get('a')!.dl).toBe('1 September 2026, 18:00 UTC');
+    expect(by.get('d')).toMatchObject({ i: 2, p: 'DATE', w: 'date precision' });
+    expect(by.get('d')!.f).toBeUndefined();
+    expect(by.get('w')).toMatchObject({ i: 0, j: 5, p: 'WEEK', d: 'wk of 31 Aug' });
+  });
+
+  it('keeps an event on a day HEY did not read on the axis, with no candle for it', () => {
+    const { model } = buildChartModel(days, [ev('g', '2026-09-08T12:00:00Z', 'ships', 'EXACT')], {
+      todayUtc: TODAY,
+    })!;
+    const e = model.lane[0]!;
+    expect(model.rows[e.i]).toEqual(['2026-09-08']);
+    expect(e.p).toBe('EXACT');
+  });
+
+  it('never puts a scheduled event on a day that has not happened: it waits ahead of the axis', () => {
+    const { model } = buildChartModel(
+      days,
+      [ev('lock:1', '2026-10-20T00:00:00Z', 'more', 'SCHEDULED', { kindLabel: 'Unlock' })],
+      { todayUtc: TODAY },
+    )!;
+    expect(model.lane).toHaveLength(0);
+    expect(model.ahead).toMatchObject([{ id: 'lock:1', day: '2026-10-20', p: 'SCHEDULED', d: 'due 20 Oct' }]);
+  });
+
+  it('labels an observation as seen by HEY and a bounded window as a span', () => {
+    const { lane } = buildChartModel(
+      days,
+      [
+        ev('o', '2026-09-04T08:00:00Z', 'contract', 'OBSERVED'),
+        ev('win', '2026-09-02T00:00:00Z', 'more', 'WINDOW', { until: '2026-09-04T00:00:00Z' }),
+      ],
+      { todayUtc: TODAY },
+    )!.model;
+    const by = new Map(lane.map((e) => [e.id, e]));
+    expect(by.get('o')).toMatchObject({ i: 3, p: 'OBSERVED', w: 'seen by HEY', d: 'seen 4 Sep' });
+    expect(by.get('o')!.f).toBeUndefined();
+    expect(by.get('win')).toMatchObject({ i: 1, j: 3, p: 'WINDOW' });
+  });
+
+  it('counts only the families present, in the caller’s order', () => {
+    const families = [
+      { key: 'ships', label: 'Ships', shape: 'circle' as const, tone: 'var(--hey-layer-ship)' },
+      { key: 'releases', label: 'Releases', shape: 'square' as const, tone: 'var(--hey-layer-release)' },
+      { key: 'code', label: 'Code activity', shape: 'bar' as const, tone: 'var(--hey-layer-code)' },
+    ];
+    const { model } = buildChartModel(
+      days,
+      [ev('a', '2026-09-01T09:00:00Z', 'code', 'EXACT'), ev('b', '2026-09-02T09:00:00Z', 'ships', 'EXACT'), ev('c', '2026-09-03T09:00:00Z', 'ships', 'EXACT')],
+      { todayUtc: TODAY, families },
+    )!;
+    expect(model.families.map((f) => [f.key, f.count])).toEqual([
+      ['ships', 2],
+      ['code', 1],
+    ]);
   });
 });
 
@@ -223,29 +268,25 @@ describe('DailyCandleChart render', () => {
   });
   const events: ChartEvent[] = [
     {
-      id: 'r',
-      day: '2026-08-10',
+      id: 'ship:r',
+      at: '2026-08-10T12:00:00Z',
       title: 'Agent SDK v0.4',
-      layer: 'release',
-      precision: 'exact',
-      precisionLabel: 'exact',
-      timeLabel: '',
-      tone: 'var(--hey-layer-release)',
+      family: 'releases',
+      precision: 'EXACT',
       kindLabel: 'Release',
-      glyph: '■',
-      shape: 'square',
       href: '/terminal/agentos/timeline?open=ship%3Ar#t-ship-r',
     },
   ];
+  const families = [{ key: 'releases', label: 'Releases', shape: 'square' as const, tone: 'var(--hey-layer-release)' }];
   const html = renderToStaticMarkup(
-    createElement(DailyCandleChart, { days, events, todayUtc: TODAY }),
+    createElement(DailyCandleChart, { days, events, families, todayUtc: TODAY }),
   );
   const plot = /<svg[^>]*data-plot[^>]*>([\s\S]*?)<\/svg>/.exec(html)?.[1] ?? '';
 
   it('draws the price plot in market tokens only, never a builder or event tone', () => {
     expect(plot).toContain('--hey-market-up');
     expect(plot).toContain('--hey-market-down');
-    expect(plot).not.toMatch(/--hey-accent|--hey-status-|--hey-layer/);
+    expect(plot).not.toMatch(/--hey-accent|--hey-status-|--hey-layer|--hey-chart-family/);
   });
 
   it('draws with a handful of aggregated paths and no per-candle titles', () => {
@@ -253,8 +294,9 @@ describe('DailyCandleChart render', () => {
     expect(html).not.toContain('<title>');
   });
 
-  it('carries the direction counts in the figure caption', () => {
+  it('carries the direction counts and the event count in the figure caption', () => {
     expect(html).toMatch(/<figcaption[^>]*>[^<]*\d+ up days?, \d+ down, \d+ unchanged/);
+    expect(html).toMatch(/1 builder and research event in range, aligned by time only/);
   });
 
   it('renders the readout for the latest complete day with O/H/L/C and an arrow or a word', () => {
@@ -264,9 +306,39 @@ describe('DailyCandleChart render', () => {
     expect(html).toMatch(/[▲▼]|0\.0%/);
   });
 
-  it('keeps the event lane out of market colour', () => {
+  it('keeps the event lane and the filter chips out of market colour', () => {
     const lane = /data-testid="event-lane"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+    expect(lane).toContain('data-testid="lane-marker"');
     expect(lane).not.toMatch(/--hey-market-|--hey-accent/);
+    const filters = /data-testid="chart-event-filters"[\s\S]*?<\/details>/.exec(html)?.[0] ?? '';
+    expect(filters).toContain('aria-pressed');
+    expect(filters).not.toMatch(/--hey-market-|--hey-accent/);
+  });
+
+  it('names every lane mark in words, with its evidence', () => {
+    expect(html).toContain('aria-label="Release: Agent SDK v0.4. 10 August 2026, 12:00 UTC. Evidence available."');
+  });
+
+  it('carries the methodology note: aligned by time, no inferred cause', () => {
+    expect(html).toContain(
+      'Events are aligned by time to market history. HEY does not infer that an event caused a price move.',
+    );
+  });
+
+  it('reserves the callout band on the server, so the plot does not jump when the callouts arrive', () => {
+    expect(html).toMatch(/data-chart-band="" class="relative max-md:hidden" style="height:46px"/);
+    // The callouts themselves wait for the measured width.
+    expect(html).not.toContain('data-testid="chart-callout"');
+  });
+
+  it('draws nothing of the events in the market-only lens but the chips', () => {
+    const market = renderToStaticMarkup(
+      createElement(DailyCandleChart, { days, events, families, todayUtc: TODAY, lens: 'market' }),
+    );
+    expect(market).toContain('data-lens="market"');
+    expect(market).not.toContain('data-testid="lane-marker"');
+    expect(market).not.toContain('data-chart-band');
+    expect(market).toContain('data-testid="chart-family-chip"');
   });
 });
 
@@ -295,5 +367,57 @@ describe('dayCoverage', () => {
         { day: '2026-09-02', readings: 0 },
       ]),
     ).toEqual({ span: 2, indexed: 1, gaps: 1 });
+  });
+});
+
+describe('the event lane and the lens, for touch and for screen readers (review repairs, 2026-09-29)', () => {
+  it('gives each day mark a 24px target where there is room, never taking a neighbour’s ground', () => {
+    // Far apart: 12px each side of the time — a 24px target around a 7px glyph.
+    expect(laneRooms([100, 300])).toEqual([
+      { left: 12, right: 12, count: true },
+      { left: 12, right: 12, count: true },
+    ]);
+    // Ten pixels apart (90 days on a desk): each reaches half-way, so the targets meet and never overlap.
+    const tight = laneRooms([100, 110, 120]);
+    expect(tight.map((r) => [r.left, r.right])).toEqual([[12, 5], [5, 5], [5, 12]]);
+    for (let k = 1; k < tight.length; k += 1) expect(tight[k - 1]!.right + tight[k]!.left).toBeLessThanOrEqual(10);
+    // A busy day prints its count only with room beside it; the order of the input is kept.
+    expect(laneRooms([300, 100, 110]).map((r) => r.count)).toEqual([true, false, false]);
+    expect(LANE_HIT_HALF * 2).toBeGreaterThanOrEqual(24);
+    expect(LANE_COUNT_ROOM).toBeGreaterThanOrEqual(3 + 8 + 7);
+  });
+
+  const week: CandleDay[] = Array.from({ length: 10 }, (_, k) => ({
+    day: `2026-09-${String(k + 1).padStart(2, '0')}`,
+    open: 1,
+    close: 1.01,
+    high: 1.02,
+    low: 0.99,
+    readings: 3,
+    ohlcSource: 'price',
+  }));
+  const ships = [{ key: 'ships', label: 'Ships', shape: 'circle' as const, tone: 'var(--hey-layer-ship)' }];
+
+  it('draws one glyph a day with its count, never three glyphs running into the next day', () => {
+    const busy: ChartEvent[] = Array.from({ length: 4 }, (_, k) => ({ id: `ship:b${k}`, at: `2026-09-05T0${k}:00:00Z`, title: `Ship ${k}`, family: 'ships', precision: 'EXACT' }));
+    const html = renderToStaticMarkup(createElement(DailyCandleChart, { days: week, events: busy, families: ships, todayUtc: '2026-09-20' }));
+    const lane = /data-testid="event-lane"[\s\S]*?<\/button>/.exec(html)![0];
+    expect((lane.match(/hey-lane-glyph/g) ?? []).length).toBe(1);
+    expect(lane).toContain('hey-chart-lane-count">4<');
+    expect(lane).toContain('data-count="4"');
+  });
+
+  it('names the lens button once at every width: the phone’s short label is hidden from assistive tech', () => {
+    const html = renderToStaticMarkup(
+      createElement(DailyCandleChart, {
+        days: week,
+        events: [{ id: 'ship:a', at: '2026-09-02T00:00:00Z', title: 'A', family: 'ships', precision: 'DATE' }],
+        families: ships,
+        todayUtc: '2026-09-20',
+      }),
+    );
+    const button = /<button[^>]*data-testid="lens-events"[^>]*>([\s\S]*?)<\/button>/.exec(html)![1]!;
+    expect(button).toMatch(/<span class="max-sm:sr-only">Market \+ build events<\/span>/);
+    expect(button).toMatch(/<span aria-hidden="true" class="sm:hidden">\+ Events<\/span>/);
   });
 });

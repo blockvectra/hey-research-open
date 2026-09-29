@@ -1,6 +1,9 @@
 'use client';
 
 import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -15,29 +18,42 @@ import {
   formatTerminalPriceLong,
   formatUsdCompact,
 } from './format';
-import { Glyph } from './glyph';
 import { MarketChange, describeMarketChange } from './market-change';
+import {
+  axisOf,
+  bandsFor,
+  calloutWidth,
+  clusterLabel,
+  coversColumn,
+  layoutAnnotations,
+  type AnnotationItem,
+  type AnnotationLayout,
+  type AnnotationPrecision,
+} from './terminal-chart-annotations';
 
 /**
- * The market chart's interaction island (Terminal redesign, 2026-09-26).
+ * The market chart's interaction island (Terminal redesign, 2026-09-26; build
+ * × market correlation, founder brief §21A, 2026-09-29).
  *
  * It receives data only — a compact array per day, already given its
- * direction by `candleDirection` on the server — and draws the SVG itself, so
- * the drawing is serialised once (as HTML) instead of twice (HTML plus the
- * server component tree). It is still server-rendered: without JavaScript the
- * reader gets the same chart and a readout of the latest complete day.
+ * direction by `candleDirection` on the server, and the events already placed
+ * on the time axis by `placeEvent` — and draws the SVG itself, so the drawing
+ * is serialised once (as HTML) instead of twice. It is still server-rendered:
+ * without JavaScript the reader gets the same candles, the event lane and a
+ * readout of the latest complete day.
  *
- * What the JavaScript adds: a crosshair and readout for pointer and touch,
- * and ←/→/Home/End/Esc/Enter on the focused figure. Moves never allocate
+ * What the JavaScript adds: the event filters and the market-only lens; the
+ * callouts above the plot, laid out by `layoutAnnotations` once the plot's
+ * width is measured (a width the server cannot know); a crosshair, a floating
+ * readout and "around this time" for pointer and touch; ←/→/Home/End/Esc/
+ * Enter on the focused figure; arrow keys inside the callouts and the lane;
+ * and the evidence panel, a bottom sheet on a phone. Moves never allocate
  * React state per pixel: the day under the pointer is state only when it
- * changes, and the horizontal price line is written straight to the DOM in an
- * animation frame.
+ * changes, and the horizontal price line is written straight to the DOM.
  *
  * Direction colours (CLAUDE.md UI rule 13) are read here only from the
- * direction code the server decided. Candle bodies are drawn as strokes with
- * `vector-effect: non-scaling-stroke`, so their width is in real pixels:
- * `--bw` is 70% of a column, clamped to 1–14px, from container query units —
- * right on a phone and on a desktop before any script runs.
+ * direction code the server decided, and only by candles and volume. An
+ * event's colour is its family's research tone, never a market token.
  */
 
 /** u up · d down · f flat (doji) · n close only · m mixed series · p today, still open · x read but no price. */
@@ -57,21 +73,39 @@ export type ChartRow =
       RowDirection,
     ];
 
+/** One event on the time axis. Nothing here is a price. */
 export type LaneEvent = {
-  /** Column index. */
+  /** The record's typed public id. */
+  id: string;
+  /** Column index: the event's day, or the first day of its week or window. */
   i: number;
+  /** The last column of a week or window. */
+  j?: number;
+  /** Where in its day an EXACT event falls, 0–1. */
+  f?: number;
+  /** Family key. */
+  fam: string;
   t: string;
   /** Kind in words: "Release". */
   k: string;
-  g: string;
+  /** Marker shape. */
   s: string;
-  p: 'exact' | 'day' | 'week' | 'unknown';
-  /** Precision in words: "exact", "date precision", "week of 2026-09-14", "seen by HEY". */
+  p: AnnotationPrecision;
+  /** Precision in words: "exact", "date precision", "week precision", "seen by HEY". */
   w: string;
+  /** The callout's short date: "14 Sep", "wk of 8 Sep", "seen 14 Sep". */
+  d: string;
+  /** The date in full, for a screen reader. */
+  dl: string;
+  /** The family's tone. */
   c: string;
   h?: string;
-  n?: string;
 };
+
+/** A scheduled event after the last day on the axis: it has no column yet. */
+export type AheadEvent = Omit<LaneEvent, 'i' | 'j' | 'f'> & { day: string };
+
+export type ChartFamilyChip = { key: string; label: string; shape: string; tone: string; count: number; rank?: number };
 
 export type ChartModel = {
   rows: ChartRow[];
@@ -84,6 +118,9 @@ export type ChartModel = {
   maxVol: number;
   volLabel: string;
   lane: LaneEvent[];
+  ahead: AheadEvent[];
+  /** The families present in range, in importance order, with their counts. */
+  families: ChartFamilyChip[];
   /** The latest complete day with a price. */
   latest: number;
   /** The day the readout opens on. */
@@ -97,10 +134,32 @@ export type ChartModel = {
   today: string;
 };
 
+export type ChartLens = 'events' | 'market';
+
 const W = 1000;
 const H = 400;
 const PLOT = 326;
 const VOL_TOP = 342;
+
+/* The callout band: rows above the plot, px. */
+const ROW_H = 36;
+const ROW_GAP = 6;
+const STEM_SPACE = 10;
+/* From the stage's bottom edge to the lane's middle: the month axis (20) and half the lane (10). */
+const LANE_MID_FROM_BOTTOM = 30;
+
+/* How close (px) an axis tick may sit to the crosshair's price label before it steps aside. */
+const TICK_CLEARANCE = 14;
+
+const bandHeight = (bands: number) => (bands === 0 ? 0 : bands * ROW_H + (bands - 1) * ROW_GAP + STEM_SPACE);
+/**
+ * A row's top inside the reserved band. The height is reserved for `bands`
+ * rows before the width is known; the rows the layout used are packed toward
+ * the plot, in order (`rank` 0 nearest it), so stems stay short and any spare
+ * height falls between the readout and the callouts, never inside the plot.
+ */
+export const rowTop = (bands: number, rank: number) =>
+  bandHeight(bands) - STEM_SPACE - ROW_H - rank * (ROW_H + ROW_GAP);
 
 const r2 = (v: number) => Math.round(v * 100) / 100;
 const pct = (v: number, of: number) => `${(v / of) * 100}%`;
@@ -210,14 +269,69 @@ const close = (row: ChartRow | undefined): number | null =>
 /** The reference day every date label is written against: the model's, never the browser clock. */
 const referenceDay = (model: ChartModel) => new Date(`${model.today}T12:00:00Z`);
 
-function Readout({ model, at }: { model: ChartModel; at: number }) {
+/** The accessible name of one event: "Release: Agent SDK v0.4. 14 September 2026, 13:05 UTC. Evidence available." */
+export const eventLabel = (e: Pick<LaneEvent, 'k' | 't' | 'dl' | 'h'>) =>
+  `${e.k}: ${e.t}. ${e.dl}. ${e.h ? 'Evidence available.' : 'No evidence record to open.'}`;
+
+/**
+ * Research rank, never price impact: the family's place in the caller's
+ * importance order first, then the newest, then the id.
+ */
+export function rankEvents(events: readonly LaneEvent[], familyOrder: readonly string[]): LaneEvent[] {
+  const order = new Map(familyOrder.map((key, index) => [key, index]));
+  return [...events].sort(
+    (a, b) =>
+      (order.get(a.fam) ?? familyOrder.length) - (order.get(b.fam) ?? familyOrder.length) ||
+      b.i + (b.f ?? 0.5) - (a.i + (a.f ?? 0.5)) ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  );
+}
+
+/** The family keys in research rank for the callouts: each family's `rank`, else its place among the chips. */
+export function calloutRankOrder(families: readonly Pick<ChartFamilyChip, 'key' | 'rank'>[]): string[] {
+  return families
+    .map((family, index) => ({ key: family.key, rank: family.rank ?? families.length + index, index }))
+    .sort((a, b) => a.rank - b.rank || a.index - b.index)
+    .map((family) => family.key);
+}
+
+/** The layout's input for the visible events: time on the axis, rank and width — no price reaches it. */
+export function annotationItems(events: readonly LaneEvent[], familyOrder: readonly string[], columns: number): AnnotationItem[] {
+  return rankEvents(events, familyOrder).map((e, rank) => {
+    const { x, span } = axisOf(e, columns);
+    return { id: e.id, x, ...(span ? { span } : {}), rank, width: calloutWidth(e.t, `${e.k} · ${e.d}`) };
+  });
+}
+
+function Marker({ shape, precision, tone, className }: { shape: string; precision?: string; tone?: string; className?: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`hey-lane-glyph ${className ?? ''}`}
+      data-shape={shape}
+      data-precision={precision ?? 'EXACT'}
+      style={tone ? { color: tone } : undefined}
+    />
+  );
+}
+
+function Readout({
+  model,
+  at,
+  events,
+  lens,
+}: {
+  model: ChartModel;
+  at: number;
+  events: readonly LaneEvent[];
+  lens: ChartLens;
+}) {
   const row = model.rows[at]!;
   const date = formatShortDate(row[0], referenceDay(model));
-  const events = model.lane.filter((e) => e.i === at);
   const money = (v: number | null) => (v === null ? '—' : formatTerminalPrice(v));
   let line1;
   if (row.length === 1) {
-    line1 = <span className="text-hey-secondary">No reading</span>;
+    line1 = <span className="text-hey-secondary">No reading · HEY did not read this day</span>;
   } else {
     const [, o, h, l, c, v, , dir] = row;
     const vol = (
@@ -278,47 +392,194 @@ function Readout({ model, at }: { model: ChartModel; at: number }) {
       : undefined;
   return (
     <div
-      className="grid gap-0.5 text-t-ui tabular-nums text-hey-ink"
+      className="hey-chart-readout grid gap-0.5 text-t-ui tabular-nums text-hey-ink"
       data-testid="chart-readout"
       data-day={row[0]}
     >
       <p className="flex flex-wrap items-baseline gap-x-2 font-mono">
+        <span className="hey-chart-kicker font-sans">Market</span>
         <span className="font-sans font-medium">{date}</span>
         {line1}
       </p>
-      <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-t-meta text-hey-secondary">
-        {events.length === 0 ? (
-          <span>No builder event on this day.</span>
-        ) : (
-          <>
-            {events.slice(0, 2).map((e, n) => (
-              <span key={n} className="inline-flex min-w-0 items-baseline gap-1.5">
-                <Glyph glyph={e.g} />
-                <span className="text-hey-ink">{e.k}</span>·{' '}
-                <span className="max-w-[18rem] truncate text-hey-ink">{e.t}</span>· {e.w}
-                {e.h ? (
-                  <a
-                    href={e.h}
-                    className="font-medium text-hey-ink underline-offset-2 hover:underline"
-                    data-testid="chart-event-link"
-                  >
-                    Open in timeline →
-                  </a>
-                ) : null}
-              </span>
-            ))}
-            {events.length > 2 ? <span>+{events.length - 2} more</span> : null}
-            {since !== undefined ? (
-              <span className="inline-flex items-baseline gap-1">
-                <MarketChange pct={since} window="since event" showWindow={false} size="meta" />{' '}
-                since {date} close
-              </span>
-            ) : null}
-          </>
-        )}
-      </p>
+      {lens === 'events' ? (
+        <p className="flex min-w-0 flex-wrap items-baseline gap-x-2 text-t-meta text-hey-secondary" data-testid="chart-around">
+          <span className="hey-chart-kicker">Around this time</span>
+          {events.length === 0 ? (
+            <span>No build event in view on this day.</span>
+          ) : (
+            <>
+              {events.slice(0, 2).map((e) => (
+                <span key={e.id} className="inline-flex min-w-0 items-baseline gap-1.5">
+                  <Marker shape={e.s} precision={e.p} tone={e.c} />
+                  <span className="text-hey-ink">{e.k}</span>·{' '}
+                  <span className="max-w-[18rem] truncate text-hey-ink">{e.t}</span>· {e.j !== undefined ? e.d : e.w}
+                  {e.h ? (
+                    <a
+                      href={e.h}
+                      className="font-medium text-hey-ink underline-offset-2 hover:underline"
+                      data-testid="chart-event-link"
+                    >
+                      Open evidence →
+                    </a>
+                  ) : null}
+                </span>
+              ))}
+              {events.length > 2 ? <span>+{events.length - 2} more</span> : null}
+              {since !== undefined ? (
+                <span className="inline-flex items-baseline gap-1">
+                  <MarketChange pct={since} window="since event" showWindow={false} size="meta" />{' '}
+                  close since {date}, observed, not caused
+                </span>
+              ) : null}
+            </>
+          )}
+        </p>
+      ) : null}
     </div>
   );
+}
+
+/** What the evidence panel prints of an event, on the axis or ahead of it. */
+type PanelEvent = Pick<LaneEvent, 'id' | 'k' | 'd' | 'w' | 't' | 'h' | 's' | 'p' | 'c'>;
+
+/** The evidence list for one or more events: a popover on a desktop, a bottom sheet on a phone. */
+function EventPanel({
+  events,
+  title,
+  left,
+  top,
+  onClose,
+}: {
+  events: readonly PanelEvent[];
+  title: string;
+  left: number | null;
+  /** Opened from a callout: hangs under it. Otherwise it stands on the lane. */
+  top?: number;
+  onClose: (restore: boolean) => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    // The first evidence link, else the close button.
+    (ref.current?.querySelector<HTMLElement>('li a') ?? ref.current?.querySelector<HTMLElement>('button'))?.focus();
+    const away = (event: globalThis.PointerEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) onClose(false);
+    };
+    document.addEventListener('pointerdown', away);
+    return () => document.removeEventListener('pointerdown', away);
+  }, [onClose]);
+  return (
+    <div
+      ref={ref}
+      role="dialog"
+      aria-label={title}
+      data-testid="chart-event-panel"
+      className="hey-chart-panel"
+      data-anchor={top === undefined ? 'lane' : 'band'}
+      style={
+        {
+          ...(left === null ? {} : { '--panel-left': `${left}px` }),
+          ...(top === undefined ? {} : { '--panel-top': `${top}px` }),
+        } as CSSProperties
+      }
+      onKeyDown={(event) => {
+        event.stopPropagation();
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          onClose(true);
+        }
+      }}
+    >
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="hey-chart-kicker">{title}</p>
+        <button type="button" className="hey-chart-panel-close" onClick={() => onClose(true)} aria-label="Close">
+          ×
+        </button>
+      </div>
+      <ul className="mt-1.5 grid gap-2">
+        {events.map((e) => (
+          <li key={e.id} className="grid gap-0.5" data-event-id={e.id}>
+            <p className="flex items-center gap-1.5 text-t-meta text-hey-secondary">
+              <Marker shape={e.s} precision={e.p} tone={e.c} />
+              <span className="font-medium text-hey-ink">{e.k}</span>
+              <span>· {e.d}</span>
+              {/* "seen 14 Aug", "due 18 Oct" and "wk of 8 Sep" already say their precision. */}
+              {e.p === 'EXACT' || e.p === 'DATE' ? <span>· {e.w}</span> : null}
+            </p>
+            <p className="text-t-ui text-hey-ink">{e.t}</p>
+            {e.h ? (
+              <a href={e.h} className="text-t-meta font-medium text-hey-ink underline-offset-2 hover:underline" aria-label={`Open evidence: ${e.t}`}>
+                Open evidence →
+              </a>
+            ) : (
+              <span className="text-t-meta text-hey-muted">No record to open</span>
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-t-micro text-hey-muted">Aligned by time. HEY does not infer that an event caused a price move.</p>
+    </div>
+  );
+}
+
+/**
+ * Tells the page's own links (the range and series controls) the reader's
+ * current families and lens, so they carry the choice instead of the one the
+ * page opened with (review repair, 2026-09-29). A DOM event, so this package
+ * names no app component; `hey-chart-choice` with `{ layers, lens }`.
+ */
+function announceChoice(families: readonly string[], lens: ChartLens) {
+  window.dispatchEvent(new CustomEvent('hey-chart-choice', { detail: { layers: families.length ? families.join(',') : 'none', lens } }));
+}
+
+/** A lane mark's hit area reaches this far each side of its time, px: 24 px wide when there is room. */
+export const LANE_HIT_HALF = 12;
+/** A busy day shows its count beside its glyph only with this much room on each side, px. */
+export const LANE_COUNT_ROOM = 22;
+
+/**
+ * The room beside each day mark on the lane, from the marks' times in px
+ * (review repair, 2026-09-29). A mark's invisible hit area reaches
+ * `LANE_HIT_HALF` each side — 24 px, the WCAG 2.2 target size — clamped to
+ * half the distance to its neighbour, so two targets never take each other's
+ * ground; and a busy day prints its count only when the count has room, so a
+ * glyph never sits on a neighbour's count.
+ */
+export function laneRooms(centres: readonly number[]): { left: number; right: number; count: boolean }[] {
+  const order = centres.map((x, k) => [x, k] as const).sort((a, b) => a[0] - b[0]);
+  const out: { left: number; right: number; count: boolean }[] = centres.map(() => ({ left: LANE_HIT_HALF, right: LANE_HIT_HALF, count: true }));
+  order.forEach(([x, k], rank) => {
+    const before = rank > 0 ? x - order[rank - 1]![0] : Number.POSITIVE_INFINITY;
+    const after = rank < order.length - 1 ? order[rank + 1]![0] - x : Number.POSITIVE_INFINITY;
+    out[k] = {
+      left: Math.round(Math.min(LANE_HIT_HALF, before / 2) * 100) / 100,
+      right: Math.round(Math.min(LANE_HIT_HALF, after / 2) * 100) / 100,
+      count: Math.min(before, after) >= LANE_COUNT_ROOM,
+    };
+  });
+  return out;
+}
+
+/** Roving focus inside a group: one tab stop, arrow keys between items. */
+function useRoving(count: number) {
+  const [active, setActive] = useState(0);
+  const refs = useRef<(HTMLElement | null)[]>([]);
+  const index = Math.min(active, Math.max(0, count - 1));
+  const onKeyDown = useCallback(
+    (event: KeyboardEvent<HTMLElement>) => {
+      let next: number | undefined;
+      if (event.key === 'ArrowRight' || event.key === 'ArrowDown') next = Math.min(count - 1, index + 1);
+      else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') next = Math.max(0, index - 1);
+      else if (event.key === 'Home') next = 0;
+      else if (event.key === 'End') next = count - 1;
+      if (next === undefined) return;
+      event.preventDefault();
+      event.stopPropagation();
+      setActive(next);
+      refs.current[next]?.focus();
+    },
+    [count, index],
+  );
+  return { index, setActive, refs, onKeyDown };
 }
 
 export function TerminalChartInteractive({
@@ -326,11 +587,31 @@ export function TerminalChartInteractive({
   summary,
   symbol,
   className,
+  initialFamilies,
+  initialLens = 'events',
+  familiesFromUrl = false,
+  lensFromUrl = false,
+  familyParam = 'layers',
+  choiceKey,
 }: {
   model: ChartModel;
   summary: string;
   symbol?: string;
+  /**
+   * What this session's family choice is kept under: the project (its slug,
+   * or its chain and contract), never the ticker, which two projects can
+   * share (review repair, 2026-09-29).
+   */
+  choiceKey?: string;
   className?: string;
+  /** The families on when the page opened (the URL's, else the defaults). */
+  initialFamilies?: readonly string[];
+  initialLens?: ChartLens;
+  /** Whether the URL named them: if not, this session's last choice is restored after hydration. */
+  familiesFromUrl?: boolean;
+  lensFromUrl?: boolean;
+  /** The query parameter the families live in. */
+  familyParam?: string;
 }) {
   const { paths, y, cw } = useMemo(() => draw(model), [model]);
   const [hover, setHover] = useState<number | null>(null);
@@ -338,9 +619,21 @@ export function TerminalChartInteractive({
   const [active, setActive] = useState(false);
   const [focused, setFocused] = useState(false);
   const [table, setTable] = useState(false);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(
+    () => new Set(initialFamilies ?? model.families.map((f) => f.key)),
+  );
+  const [lens, setLens] = useState<ChartLens>(initialLens);
+  const [width, setWidth] = useState<number | null>(null);
+  const [wide, setWide] = useState(false);
+  const [hi, setHi] = useState<string | null>(null);
+  const [panel, setPanel] = useState<{ ids: string[]; title: string; left: number | null; top?: number } | null>(null);
+  const [overBand, setOverBand] = useState(false);
+  const stageRef = useRef<HTMLDivElement>(null);
   const plotRef = useRef<HTMLDivElement>(null);
   const lineRef = useRef<HTMLDivElement>(null);
   const pillRef = useRef<HTMLSpanElement>(null);
+  const scaleRef = useRef<HTMLDivElement>(null);
+  const invoker = useRef<HTMLElement | null>(null);
   const frame = useRef(0);
 
   const n = model.rows.length;
@@ -352,7 +645,152 @@ export function TerminalChartInteractive({
   const lastClose = close(lastRow);
   const lastDir = lastRow && lastRow.length > 1 ? lastRow[7] : 'f';
   const showCross = hover !== null || active;
-  const atEvents = model.lane.filter((e) => e.i === at && e.p !== 'week');
+  const familyOrder = useMemo(() => model.families.map((f) => f.key), [model.families]);
+  /* The callouts' research rank: the families' own `rank`, else their chip order. */
+  const rankOrder = useMemo(() => calloutRankOrder(model.families), [model.families]);
+  const storageKey = `hey-chart-events:${choiceKey ?? symbol ?? ''}`;
+
+  /* The events in view: the lens and the chips, over the one lane the server placed. */
+  const visible = useMemo(
+    () => (lens === 'events' ? model.lane.filter((e) => selected.has(e.fam)) : []),
+    [lens, model.lane, selected],
+  );
+  const visibleAhead = useMemo(
+    () => (lens === 'events' ? model.ahead.filter((e) => selected.has(e.fam)) : []),
+    [lens, model.ahead, selected],
+  );
+  const byId = useMemo(() => new Map(visible.map((e) => [e.id, e])), [visible]);
+  const around = (column: number) => visible.filter((e) => coversColumn(e, column));
+  const atEvents = around(at);
+  const nearIds = useMemo(
+    () => new Set(showCross ? visible.filter((e) => coversColumn(e, at)).map((e) => e.id) : []),
+    [showCross, visible, at],
+  );
+
+  /* The plot's width and whether the callouts are drawn at all (768px and up). */
+  useLayoutEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const media = window.matchMedia('(min-width: 768px)');
+    const measure = () => {
+      setWidth(Math.round(stage.clientWidth));
+      setWide(media.matches);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(stage);
+    media.addEventListener('change', measure);
+    return () => {
+      observer.disconnect();
+      media.removeEventListener('change', measure);
+    };
+  }, []);
+
+  /* This session's last choice, when the URL named none (after hydration, so the server's HTML still matches). */
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(storageKey) ?? 'null') as { families?: string[]; lens?: ChartLens } | null;
+      const families = saved && !familiesFromUrl && Array.isArray(saved.families) ? saved.families : undefined;
+      const savedLens = saved && !lensFromUrl && (saved.lens === 'events' || saved.lens === 'market') ? saved.lens : undefined;
+      if (families) setSelected(new Set(families));
+      if (savedLens) setLens(savedLens);
+      if (families || savedLens) {
+        announceChoice(
+          families ?? familyOrder.filter((key) => selected.has(key)),
+          savedLens ?? lens,
+        );
+      }
+    } catch {
+      /* storage unavailable: the URL and the defaults still apply */
+    }
+    // Only on mount: later changes are the reader's own.
+  }, []);
+
+  /* The choice, kept for this session: in the URL (shareable, and read by the server) and in session storage. */
+  const persist = (families: ReadonlySet<string>, nextLens: ChartLens) => {
+    try {
+      const url = new URL(window.location.href);
+      const keys = familyOrder.filter((key) => families.has(key));
+      url.searchParams.set(familyParam, keys.length ? keys.join(',') : 'none');
+      if (nextLens === 'market') url.searchParams.set('lens', 'market');
+      else url.searchParams.delete('lens');
+      window.history.replaceState(window.history.state, '', url);
+      announceChoice(keys, nextLens);
+      sessionStorage.setItem(storageKey, JSON.stringify({ families: keys, lens: nextLens }));
+    } catch {
+      /* private mode: the choice lasts until the page is left */
+    }
+  };
+  const toggleFamily = (key: string) => {
+    const next = new Set(selected);
+    if (next.has(key) && lens === 'events') next.delete(key);
+    else next.add(key);
+    setSelected(next);
+    // Choosing a family asks to see events: it switches the lens back on.
+    setLens('events');
+    persist(next, 'events');
+  };
+  const chooseLens = (next: ChartLens) => {
+    setLens(next);
+    setPanel(null);
+    persist(selected, next);
+  };
+
+  /* The callouts: laid out once the width is known, from time, rank and width only. */
+  const bands = wide ? bandsFor(visible.length) : 0;
+  const reservedBands = bandsFor(visible.length);
+  const layout: AnnotationLayout | null = useMemo(() => {
+    if (width === null || !wide || bands === 0) return null;
+    return layoutAnnotations(annotationItems(visible, rankOrder, n), {
+      plotWidth: width,
+      bands,
+      maxCallouts: width < 900 ? 7 : width < 1200 ? 10 : 12,
+    });
+  }, [width, wide, bands, visible, rankOrder, n]);
+  const marks = useMemo(
+    () =>
+      layout
+        ? [
+            ...layout.callouts.map((c) => ({ ...c, ids: [c.id, ...c.more] })),
+            ...layout.clusters,
+          ].sort((a, b) => a.left - b.left || a.band - b.band)
+        : [],
+    [layout],
+  );
+  /* The bands the layout used, in order from the plot up: row ranks with no empty row between them. */
+  const rankOf = useMemo(() => {
+    const used = [...new Set(marks.map((mark) => mark.band))].sort((a, b) => a - b);
+    return new Map(used.map((band, rank) => [band, rank]));
+  }, [marks]);
+  const topOf = (band: number) => rowTop(bands, rankOf.get(band) ?? band);
+  const folded = marks.reduce((sum, mark) => sum + (mark.kind === 'cluster' ? mark.ids.length : mark.ids.length - 1), 0);
+  /* One tab stop for the band; arrows walk every callout, its "+N" and every chip, left to right. */
+  const calloutRoving = useRoving(marks.reduce((sum, mark) => sum + (mark.kind === 'callout' && mark.ids.length > 1 ? 2 : 1), 0));
+
+  /* The lane: events that share a day are one mark; a week or a window is its own bracket. */
+  const laneGroups = useMemo(() => {
+    const points = new Map<number, LaneEvent[]>();
+    const spans: LaneEvent[] = [];
+    for (const e of visible) {
+      if (e.j !== undefined) spans.push(e);
+      else points.set(e.i, [...(points.get(e.i) ?? []), e]);
+    }
+    return [
+      ...spans.map((e) => ({ key: `s-${e.id}`, i: e.i, j: e.j!, events: [e] })),
+      ...[...points].map(([i, events]) => ({ key: `p-${i}`, i, j: i, events })),
+    ].sort((a, b) => a.i - b.i || a.j - b.j);
+  }, [visible]);
+  const laneRoving = useRoving(laneGroups.length + (visibleAhead.length ? 1 : 0));
+  /* Each day mark's time in px and the room beside it: its hit area and whether its count fits. */
+  const laneRoom = useMemo(() => {
+    const points = laneGroups.filter((group) => group.j === group.i);
+    const centres = points.map((group) => {
+      const e0 = group.events[0]!;
+      return ((group.i + (group.events.length === 1 && e0.p === 'EXACT' && e0.f !== undefined ? e0.f : 0.5)) / n) * (width ?? 0);
+    });
+    const room = width === null ? [] : laneRooms(centres);
+    return new Map(points.map((group, k) => [group.key, room[k]]));
+  }, [laneGroups, n, width]);
 
   const indexAt = (clientX: number): number | undefined => {
     const box = plotRef.current?.getBoundingClientRect();
@@ -362,6 +800,9 @@ export function TerminalChartInteractive({
 
   const onMove = (event: PointerEvent<HTMLDivElement>) => {
     const { clientX, clientY } = event;
+    const inBand = Boolean((event.target as HTMLElement).closest?.('[data-chart-band]'));
+    if (inBand !== overBand) setOverBand(inBand);
+    if (inBand) return;
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
       const i = indexAt(clientX);
@@ -374,6 +815,7 @@ export function TerminalChartInteractive({
       const plotPx = (PLOT / H) * box.height;
       const inside = offset >= 0 && offset <= plotPx;
       line.style.display = pill.style.display = inside ? '' : 'none';
+      clearTicksUnder(inside ? offset : null, box.height);
       if (!inside) return;
       line.style.transform = `translateY(${offset}px)`;
       pill.style.top = `${offset}px`;
@@ -384,19 +826,34 @@ export function TerminalChartInteractive({
   };
 
   /*
-   * Leaving the plot keeps the day the reader was on: the readout's "Open in
-   * timeline" sits above the plot, and reverting on the way to it would take
+   * The crosshair's price label sits in the scale's gutter: the axis tick it
+   * would cover steps aside while it is there, so two prices never print over
+   * each other (review repair, 2026-09-29). Written to the DOM, like the line.
+   */
+  const clearTicksUnder = (offset: number | null, height: number) => {
+    for (const tick of scaleRef.current?.querySelectorAll<HTMLElement>('[data-tick-y]') ?? []) {
+      const at = (Number(tick.dataset.tickY) / H) * height;
+      tick.style.visibility = offset !== null && Math.abs(at - offset) < TICK_CLEARANCE ? 'hidden' : '';
+    }
+  };
+
+  /*
+   * Leaving the plot keeps the day the reader was on: the readout's "Open
+   * evidence" sits above the plot, and reverting on the way to it would take
    * the link away before it could be clicked. Esc returns to the latest day.
    */
   const onLeave = () => {
     cancelAnimationFrame(frame.current);
     if (hover !== null) setPin(hover);
     setHover(null);
+    setOverBand(false);
     if (lineRef.current) lineRef.current.style.display = 'none';
     if (pillRef.current) pillRef.current.style.display = 'none';
+    clearTicksUnder(null, 0);
   };
 
   const onDown = (event: PointerEvent<HTMLDivElement>) => {
+    if ((event.target as HTMLElement).closest?.('[data-chart-band], [data-testid=lane-marker], [data-testid=chart-event-panel]')) return;
     const i = indexAt(event.clientX);
     if (i === undefined) return;
     setPin(i);
@@ -404,6 +861,8 @@ export function TerminalChartInteractive({
   };
 
   const onKey = (event: KeyboardEvent<HTMLElement>) => {
+    // Keys inside the callouts, the lane, the filters or the panel are theirs.
+    if (event.target !== event.currentTarget) return;
     const from = hover ?? pin;
     let next: number | undefined;
     if (event.key === 'ArrowLeft') next = Math.max(0, from - 1);
@@ -412,8 +871,8 @@ export function TerminalChartInteractive({
     else if (event.key === 'End') next = n - 1;
     else if (event.key === 'Escape') next = model.latest;
     else if (event.key === 'Enter') {
-      const href = model.lane.find((e) => e.i === from && e.h)?.h;
-      if (href && event.target === event.currentTarget) window.location.assign(href);
+      const href = around(from).find((e) => e.h)?.h;
+      if (href) window.location.assign(href);
       return;
     } else return;
     event.preventDefault();
@@ -422,16 +881,35 @@ export function TerminalChartInteractive({
     setActive(event.key !== 'Escape');
   };
 
-  /* Same-day events stack sideways, three at most, then "+n". */
-  const groups = new Map<number, LaneEvent[]>();
-  for (const e of model.lane) if (e.p !== 'week') groups.set(e.i, [...(groups.get(e.i) ?? []), e]);
+  const openPanel = (ids: string[], title: string, left: number | null, from: HTMLElement, top?: number) => {
+    invoker.current = from;
+    setPanel({ ids, title, left, ...(top === undefined ? {} : { top }) });
+  };
+  const closePanel = useCallback((restore: boolean) => {
+    setPanel(null);
+    if (restore) invoker.current?.focus();
+  }, []);
+
   let prevMonth = -1;
   const months = model.months.filter(([i]) => {
     const keep = prevMonth < 0 || (i - prevMonth) / n > 0.07;
     if (keep) prevMonth = i;
     return keep && i / n < 0.95;
   });
-  const numbered = model.lane.filter((e) => e.n).reverse();
+  /* The phone's list under the chart: the newest nine day-placed events in view, each with its evidence. */
+  const numbered = visible.filter((e) => e.j === undefined).slice(-9).reverse();
+  const hiEvent = hi ? (byId.get(hi) ?? null) : null;
+  const hoverRow = hover !== null ? model.rows[hover] : undefined;
+  const hoverEvents = hover !== null ? around(hover) : [];
+  const panelEvents: PanelEvent[] = panel
+    ? panel.ids
+        .map((id): PanelEvent | undefined => byId.get(id) ?? model.ahead.find((e) => e.id === id))
+        .filter((e): e is PanelEvent => e !== undefined)
+    : [];
+  const hidden = model.lane.length + model.ahead.length - visible.length - visibleAhead.length;
+
+  const tableRows = model.rows.slice(-30).reverse();
+  const tableEvents = (column: number) => visible.filter((e) => e.i === column);
 
   return (
     <figure
@@ -440,10 +918,78 @@ export function TerminalChartInteractive({
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       data-testid="market-chart"
-      className={`m-0 rounded-card outline-none focus-visible:ring-2 focus-visible:ring-hey-ink focus-visible:ring-offset-2 focus-visible:ring-offset-hey-surface ${className ?? ''}`}
+      data-lens={lens}
+      className={`hey-chart m-0 rounded-card outline-none focus-visible:ring-2 focus-visible:ring-hey-ink focus-visible:ring-offset-2 focus-visible:ring-offset-hey-surface ${className ?? ''}`}
     >
+      {model.families.length > 0 || model.lane.length > 0 ? (
+        <div className="hey-chart-filters" data-testid="chart-event-filters">
+          <div className="hey-chart-lens" role="group" aria-label="Chart lens">
+            <button type="button" aria-pressed={lens === 'market'} onClick={() => chooseLens('market')} data-testid="lens-market">
+              Market only
+            </button>
+            {/* One name at every width (review repair, 2026-09-29): the phone's short label is for the eye only. */}
+            <button type="button" aria-pressed={lens === 'events'} onClick={() => chooseLens('events')} data-testid="lens-events">
+              <span className="max-sm:sr-only">Market + build events</span>
+              <span aria-hidden="true" className="sm:hidden">
+                + Events
+              </span>
+            </button>
+          </div>
+          <div className="hey-chart-chips" data-scroll-cue="" role="group" aria-label="Event families on the chart">
+            {model.families.map((family) => {
+              const on = lens === 'events' && selected.has(family.key);
+              return (
+                <button
+                  key={family.key}
+                  type="button"
+                  aria-pressed={on}
+                  onClick={() => toggleFamily(family.key)}
+                  data-family={family.key}
+                  data-testid="chart-family-chip"
+                  className="hey-chart-chip"
+                  aria-label={`${family.label}, ${family.count} in range, ${on ? 'shown' : 'hidden'}`}
+                >
+                  <Marker shape={family.shape} tone={family.tone} />
+                  <span>{family.label}</span>
+                  <span className="hey-chart-chip-count">{family.count}</span>
+                </button>
+              );
+            })}
+          </div>
+          <details className="hey-chart-info" data-testid="chart-method-note">
+            <summary aria-label="How events are placed">
+              <span aria-hidden="true" className="hey-chart-info-mark">
+                i
+              </span>
+              <span className="max-md:hidden">How events are placed</span>
+            </summary>
+            <div className="hey-chart-info-body">
+              <p className="text-hey-ink">
+                Events are aligned by time to market history. HEY does not infer that an event caused a price move.
+              </p>
+              <p className="mt-1.5">
+                A callout&rsquo;s height is layout only; its stem ends at the event lane, never at a price.
+                Dense periods fold into &ldquo;+N changes&rdquo;.
+              </p>
+              <ul className="mt-2 grid grid-cols-2 gap-x-3 gap-y-1">
+                <li className="flex items-center gap-2"><Marker shape="circle" precision="EXACT" />Exact time</li>
+                <li className="flex items-center gap-2"><Marker shape="circle" precision="DATE" />Date only</li>
+                <li className="flex items-center gap-2"><Marker shape="circle" precision="OBSERVED" />Seen by HEY</li>
+                <li className="flex items-center gap-2"><Marker shape="circle" precision="SCHEDULED" />Scheduled</li>
+                <li className="flex items-center gap-2">
+                  <span aria-hidden="true" className="inline-block h-[6px] w-5 border border-t-0 border-hey-ink" />A week
+                </li>
+                <li className="flex items-center gap-2">
+                  <span aria-hidden="true" className="inline-block h-[6px] w-5 border border-dashed border-t-0 border-hey-ink" />A window
+                </li>
+              </ul>
+            </div>
+          </details>
+        </div>
+      ) : null}
+
       <div aria-live={focused ? 'polite' : 'off'} className="mb-3 min-h-[4.5rem] sm:min-h-10">
-        <Readout model={model} at={at} />
+        <Readout model={model} at={at} events={atEvents} lens={lens} />
       </div>
 
       {/*
@@ -454,16 +1000,203 @@ export function TerminalChartInteractive({
       */}
       <div className="grid grid-cols-[minmax(0,1fr)_52px] gap-x-1 lg:grid-cols-[minmax(0,1fr)_64px] lg:gap-x-2">
         <div
+          ref={stageRef}
           onPointerMove={onMove}
           onPointerLeave={onLeave}
           onPointerDown={onDown}
-          className="touch-pan-y select-none"
+          className="hey-chart-stage relative touch-pan-y select-none"
         >
+          {/* The callout band: reserved at the same height on the server and in the browser, so nothing jumps. */}
+          {reservedBands > 0 ? (
+            <div
+              data-chart-band=""
+              className="relative max-md:hidden"
+              style={{ height: bandHeight(reservedBands) }}
+              onPointerLeave={() => setHi(null)}
+            >
+              {marks.length > 0 ? (
+                <div
+                  role="group"
+                  aria-label={`Build events on the chart: ${layout!.callouts.length} labelled, ${folded} more counted beside them. Arrow keys move between them.`}
+                  onKeyDown={calloutRoving.onKeyDown}
+                  data-testid="chart-callouts"
+                >
+                  {(() => {
+                    let slot = 0;
+                    const focusable = () => {
+                      const index = slot++;
+                      return {
+                        ref: (node: HTMLElement | null) => {
+                          calloutRoving.refs.current[index] = node;
+                        },
+                        tabIndex: index === calloutRoving.index ? 0 : -1,
+                        onFocus: () => calloutRoving.setActive(index),
+                      };
+                    };
+                    return marks.map((mark) => {
+                      const top = topOf(mark.band);
+                      const box = { left: mark.left, top, width: mark.width, height: ROW_H } as CSSProperties;
+                      const members = mark.ids.map((id) => byId.get(id)).filter((e): e is LaneEvent => Boolean(e));
+                      /* In time order: a stretch of time is read left to right. */
+                      const inTime = [...members].sort((a, b) => a.i + (a.f ?? 0.5) - (b.i + (b.f ?? 0.5)) || (a.id < b.id ? -1 : 1));
+                      const first = inTime[0]!;
+                      const lastM = inTime.reduce((a, b) => ((a.j ?? a.i) >= (b.j ?? b.i) ? a : b), first);
+                      const range = first.d === lastM.d ? first.d : `${first.d} – ${lastM.d}`;
+                      const open = (from: HTMLElement, title: string) =>
+                        openPanel(
+                          inTime.map((e) => e.id),
+                          title,
+                          Math.max(0, Math.min((width ?? 0) - 300, mark.left + mark.width / 2 - 150)),
+                          from,
+                          top + ROW_H + 6,
+                        );
+                      if (mark.kind === 'cluster') {
+                        return (
+                          <button
+                            key={`c-${mark.ids[0]}`}
+                            type="button"
+                            {...focusable()}
+                            style={box}
+                            className="hey-chart-cluster"
+                            data-testid="chart-cluster"
+                            data-count={mark.ids.length}
+                            aria-expanded={panel?.ids.join() === inTime.map((e) => e.id).join()}
+                            aria-label={`${clusterLabel(mark.ids.length)} between ${first.dl} and ${lastM.dl}. Opens the list.`}
+                            onPointerEnter={() => setHi(mark.ids[0]!)}
+                            onClick={(event) => open(event.currentTarget, `${clusterLabel(mark.ids.length)} · ${range}`)}
+                          >
+                            <span className="font-medium">{clusterLabel(mark.ids.length)}</span>
+                          </button>
+                        );
+                      }
+                      const e = byId.get(mark.id)!;
+                      const extra = mark.ids.length - 1;
+                      return (
+                        <div
+                          key={e.id}
+                          style={box}
+                          className="hey-chart-callout"
+                          data-testid="chart-callout"
+                          data-family={e.fam}
+                          data-precision={e.p}
+                          data-event-id={e.id}
+                          data-more={extra || undefined}
+                          data-hi={mark.ids.includes(hi ?? '') ? '' : undefined}
+                          data-near={mark.ids.some((id) => nearIds.has(id)) ? '' : undefined}
+                          onPointerEnter={() => setHi(e.id)}
+                        >
+                          <a
+                            href={e.h ?? '#'}
+                            {...focusable()}
+                            className="hey-chart-callout-link"
+                            aria-label={eventLabel(e)}
+                            onFocus={(event) => {
+                              calloutRoving.setActive(calloutRoving.refs.current.indexOf(event.currentTarget));
+                              setHi(e.id);
+                            }}
+                            onBlur={() => setHi(null)}
+                          >
+                            <span className="hey-chart-callout-meta">
+                              <Marker shape={e.s} precision={e.p} tone={e.c} />
+                              <span className="truncate">
+                                {e.k} · {e.d}
+                              </span>
+                              {extra ? null : (
+                                <span aria-hidden="true" className="ml-auto pl-1">
+                                  →
+                                </span>
+                              )}
+                            </span>
+                            <span className="hey-chart-callout-title">{e.t}</span>
+                          </a>
+                          {extra ? (
+                            <button
+                              type="button"
+                              {...focusable()}
+                              className="hey-chart-callout-more"
+                              data-testid="chart-callout-more"
+                              data-count={extra}
+                              aria-label={`${extra} more around this time, ${range}: ${inTime
+                                .filter((m) => m.id !== e.id)
+                                .map((m) => `${m.k}: ${m.t}`)
+                                .join('; ')}. Opens the list.`}
+                              onClick={(event) => open(event.currentTarget, `${mark.ids.length} events · ${range}`)}
+                            >
+                              +{extra}
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {/* Stems: from each callout down to the event lane, at the event's time. Under the candles, never ending on one. */}
+          {layout && marks.length > 0 ? (
+            <div aria-hidden="true" className="pointer-events-none absolute inset-0 max-md:hidden" data-testid="chart-stems">
+              {marks.map((mark) => {
+                const bottom = topOf(mark.band) + ROW_H;
+                const e = mark.kind === 'callout' ? byId.get(mark.ids[0]!) : undefined;
+                const span = mark.kind === 'cluster' ? ([mark.from, mark.to] as const) : e ? (() => {
+                  const axis = axisOf(e, n);
+                  return axis.span ? ([axis.span[0] * (width ?? 0), axis.span[1] * (width ?? 0)] as const) : undefined;
+                })() : undefined;
+                const lit = mark.ids.some((id) => id === hi);
+                const dashed = e ? e.p === 'OBSERVED' || e.p === 'WINDOW' || e.p === 'SCHEDULED' : false;
+                const bracket = Boolean(span && span[1] - span[0] > 2);
+                /* A chip — or a lone callout with no room over its time — set beside its time joins it by a dotted connector. */
+                const centre = mark.left + mark.width / 2;
+                const off = mark.anchor < mark.left || mark.anchor > mark.left + mark.width;
+                const level = bottom + 3;
+                return (
+                  <span key={`s-${mark.ids[0]}`}>
+                    {bracket ? (
+                      <span
+                        className="hey-chart-bracket"
+                        data-dashed={e?.p === 'WINDOW' ? '' : undefined}
+                        data-hi={lit ? '' : undefined}
+                        style={{ left: span![0], width: span![1] - span![0], top: level - 3 }}
+                      />
+                    ) : null}
+                    {off ? (
+                      <>
+                        <span className="hey-chart-stem" data-hi={lit ? '' : undefined} style={{ left: centre, top: bottom, height: 3 }} />
+                        <span
+                          className="hey-chart-connector"
+                          data-hi={lit ? '' : undefined}
+                          style={{ left: Math.min(centre, mark.anchor), width: Math.abs(mark.anchor - centre), top: level }}
+                        />
+                      </>
+                    ) : null}
+                    <span
+                      className="hey-chart-stem"
+                      data-dashed={dashed ? '' : undefined}
+                      data-hi={lit ? '' : undefined}
+                      data-anchor={mark.anchor}
+                      style={{ left: mark.anchor, top: bracket || off ? level : bottom, bottom: LANE_MID_FROM_BOTTOM }}
+                    />
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
+
           <div
             ref={plotRef}
             className="@container relative h-[min(56vh,320px)] sm:h-[360px]"
             style={{ '--bw': `clamp(1px, calc(70cqw / ${n}), 14px)` } as CSSProperties}
           >
+            {hiEvent ? (
+              <div
+                aria-hidden="true"
+                className="hey-chart-colband pointer-events-none absolute inset-y-0"
+                data-testid="chart-colband"
+                style={{ left: pct(cw * hiEvent.i, W), width: pct(cw * ((hiEvent.j ?? hiEvent.i) - hiEvent.i + 1), W) }}
+              />
+            ) : null}
             <svg
               viewBox={`0 0 ${W} ${H}`}
               preserveAspectRatio="none"
@@ -570,6 +1303,7 @@ export function TerminalChartInteractive({
 
             {/* Price scale: in its own column beside the plot, 52px below 1024px and 64px from there. */}
             <div
+              ref={scaleRef}
               aria-hidden="true"
               className="pointer-events-none font-mono text-t-micro tabular-nums text-hey-muted"
             >
@@ -579,6 +1313,7 @@ export function TerminalChartInteractive({
                 (lastClose === null || Math.abs(y(v) - y(lastClose)) > 16) ? (
                   <span
                     key={v}
+                    data-tick-y={y(v)}
                     className="absolute left-[calc(100%+4px)] -translate-y-1/2 whitespace-nowrap lg:left-[calc(100%+8px)]"
                     style={{ top: pct(y(v), H) }}
                   >
@@ -627,6 +1362,50 @@ export function TerminalChartInteractive({
               style={{ display: 'none' }}
             />
 
+            {/* The floating readout: the hovered day's market facts and what HEY holds around it. Pointer only; the readout above is the accessible one. */}
+            {hover !== null && hoverRow && !overBand ? (
+              <div
+                aria-hidden="true"
+                data-testid="chart-hover-card"
+                className="hey-chart-hovercard"
+                data-side={hover / n > 0.6 ? 'left' : 'right'}
+                style={{ left: x(hover) }}
+              >
+                <p className="font-medium text-hey-ink">{formatShortDate(hoverRow[0], referenceDay(model))}</p>
+                <p className="hey-chart-kicker mt-1">Market</p>
+                {hoverRow.length === 1 ? (
+                  <p className="text-hey-secondary">No reading · no candle drawn</p>
+                ) : hoverRow[4] === null ? (
+                  <p className="text-hey-secondary">No price recorded</p>
+                ) : (
+                  <p className="font-mono tabular-nums text-hey-ink">
+                    {hoverRow[1] !== null ? `O ${formatTerminalPrice(hoverRow[1])} ` : ''}C {formatTerminalPrice(hoverRow[4])}
+                    <span className="text-hey-secondary"> · {DIRECTION_WORD[hoverRow[7]]}</span>
+                  </p>
+                )}
+                {lens === 'events' ? (
+                  <>
+                    <p className="hey-chart-kicker mt-1.5">Around this time</p>
+                    {hoverEvents.length === 0 ? (
+                      <p className="text-hey-secondary">No build event in view</p>
+                    ) : (
+                      <ul className="grid gap-0.5">
+                        {hoverEvents.slice(0, 3).map((e) => (
+                          <li key={e.id} className="flex min-w-0 items-center gap-1.5">
+                            <Marker shape={e.s} precision={e.p} tone={e.c} />
+                            <span className="truncate text-hey-ink">
+                              {e.k}: {e.t}
+                            </span>
+                          </li>
+                        ))}
+                        {hoverEvents.length > 3 ? <li className="text-hey-secondary">+{hoverEvents.length - 3} more</li> : null}
+                      </ul>
+                    )}
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+
             {lastClose !== null ? (
               <span
                 aria-hidden="true"
@@ -651,56 +1430,112 @@ export function TerminalChartInteractive({
             />
           </div>
 
-          {/* The event lane: no price coordinate, ink at rest, the layer tone only for the selected day. */}
-          <div aria-hidden="true" className="relative mt-1.5 h-[18px]" data-testid="event-lane">
-            {model.lane
-              .filter((e) => e.p === 'week')
-              .map((e, k) => {
-                const from = Math.max(0, e.i - 3);
-                const to = Math.min(n - 1, e.i + 3);
-                return (
-                  <span
-                    key={`w${k}`}
-                    className="absolute top-[6px] h-[6px] border border-t-0"
-                    style={{
-                      left: pct(cw * from, W),
-                      width: pct(cw * (to - from + 1), W),
-                      borderColor: e.i === at ? e.c : 'var(--hey-ink-soft)',
-                    }}
-                  />
-                );
-              })}
-            {[...groups].map(([i, list]) => (
-              <span
-                key={i}
-                className="absolute top-[5px] flex -translate-x-1/2 items-center gap-[3px]"
-                style={{ left: x(i) }}
-              >
-                {list.find((e) => e.n) ? (
-                  <span className="text-t-meta leading-none text-hey-ink sm:hidden">
-                    {list.find((e) => e.n)!.n}
-                  </span>
-                ) : null}
-                <span
-                  className={`items-center gap-[3px] ${list.some((e) => e.n) ? 'hidden sm:flex' : 'flex'}`}
+          {/*
+            The event lane: the canonical anchor every callout's stem ends on.
+            No price coordinate, ink at rest, the family tone for the day in
+            focus and the event under a hovered callout. Each mark is a button
+            that opens its evidence; the lane is one tab stop, arrows move.
+          */}
+          <div
+            className="hey-chart-lane relative mt-1.5 h-5"
+            data-testid="event-lane"
+            role={laneGroups.length || visibleAhead.length ? 'group' : undefined}
+            aria-label={laneGroups.length || visibleAhead.length ? `Event lane: ${visible.length} event${visible.length === 1 ? '' : 's'} in view. Arrow keys move, Enter opens.` : undefined}
+            onKeyDown={laneRoving.onKeyDown}
+          >
+            {laneGroups.map((group, k) => {
+              const span = group.j > group.i;
+              const e0 = group.events[0]!;
+              const room = span ? undefined : laneRoom.get(group.key);
+              const lit = group.events.some((e) => e.id === hi || nearIds.has(e.id)) || (group.i <= at && at <= group.j && (hover !== null || active));
+              const title =
+                group.events.length === 1
+                  ? eventLabel(e0)
+                  : `${group.events.length} events on ${e0.dl.replace(/, .*$/, '')}: ${group.events.map((e) => `${e.k}: ${e.t}`).join('; ')}. Opens the list.`;
+              return (
+                <button
+                  key={group.key}
+                  type="button"
+                  data-testid="lane-marker"
+                  data-span={span ? '' : undefined}
+                  data-precision={e0.p}
+                  data-hi={lit ? '' : undefined}
+                  ref={(node) => {
+                    laneRoving.refs.current[k] = node;
+                  }}
+                  tabIndex={k === laneRoving.index ? 0 : -1}
+                  onFocus={() => {
+                    laneRoving.setActive(k);
+                    setHi(e0.id);
+                  }}
+                  onBlur={() => setHi(null)}
+                  onPointerEnter={() => setHi(e0.id)}
+                  onPointerLeave={() => setHi(null)}
+                  aria-label={title}
+                  className={span ? 'hey-chart-lane-span' : 'hey-chart-lane-mark'}
+                  data-count={group.events.length > 1 ? group.events.length : undefined}
+                  style={
+                    span
+                      ? { left: pct(cw * group.i, W), width: pct(cw * (group.j - group.i + 1), W), color: lit ? e0.c : undefined }
+                      : ({
+                          left: pct(cw * (group.i + (group.events.length === 1 && e0.p === 'EXACT' && e0.f !== undefined ? e0.f : 0.5)), W),
+                          ...(room ? { '--hit-l': `${room.left}px`, '--hit-r': `${room.right}px` } : {}),
+                        } as CSSProperties)
+                  }
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    const box = stageRef.current?.getBoundingClientRect();
+                    const px = box ? event.currentTarget.getBoundingClientRect().left - box.left : 0;
+                    openPanel(
+                      group.events.map((e) => e.id),
+                      group.events.length === 1 ? `${e0.k} · ${e0.d}` : `${group.events.length} events · ${e0.d}`,
+                      Math.max(0, Math.min((width ?? 0) - 300, px - 150)),
+                      event.currentTarget,
+                    );
+                  }}
                 >
-                  {list.slice(0, 3).map((e, k) => (
-                    <span
-                      key={k}
-                      className="hey-lane-glyph"
-                      data-shape={e.s}
-                      data-precision={e.p}
-                      style={{ color: i === at ? e.c : 'var(--hey-ink-soft)' }}
-                    />
-                  ))}
-                  {list.length > 3 ? (
-                    <span className="text-t-micro leading-none text-hey-secondary">
-                      +{list.length - 3}
+                  {span ? (
+                    <span aria-hidden="true" className="hey-chart-lane-bracket" data-dashed={e0.p === 'WINDOW' ? '' : undefined} />
+                  ) : (
+                    /*
+                     * One glyph a day, and a busy day's count beside it only when the count
+                     * has room (review repair, 2026-09-29): three glyphs and a "+N" ran into
+                     * the next day's marks. The name says every event either way.
+                     */
+                    <span aria-hidden="true" className="hey-chart-lane-glyphs">
+                      <Marker shape={e0.s} precision={e0.p} tone={lit ? e0.c : 'var(--hey-ink-soft)'} />
+                      {group.events.length > 1 ? (
+                        room && !room.count ? (
+                          <span className="hey-chart-lane-stack" />
+                        ) : (
+                          <span className="hey-chart-lane-count">{group.events.length}</span>
+                        )
+                      ) : null}
                     </span>
-                  ) : null}
-                </span>
-              </span>
-            ))}
+                  )}
+                </button>
+              );
+            })}
+            {visibleAhead.length > 0 ? (
+              <button
+                type="button"
+                data-testid="chart-ahead"
+                ref={(node) => {
+                  laneRoving.refs.current[laneGroups.length] = node;
+                }}
+                tabIndex={laneGroups.length === laneRoving.index ? 0 : -1}
+                onFocus={() => laneRoving.setActive(laneGroups.length)}
+                className="hey-chart-ahead"
+                aria-label={`${visibleAhead.length} scheduled after today: ${visibleAhead.map((e) => `${e.k}: ${e.t}, ${e.dl}`).join('; ')}. Opens the list.`}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  openPanel(visibleAhead.map((e) => e.id), `Scheduled after today · ${visibleAhead.length}`, Math.max(0, (width ?? 0) - 300), event.currentTarget);
+                }}
+              >
+                <Marker shape="circle" precision="SCHEDULED" />
+                <span>{visibleAhead.length} ahead</span>
+              </button>
+            ) : null}
           </div>
 
           <div
@@ -732,6 +1567,16 @@ export function TerminalChartInteractive({
               </span>
             ) : null}
           </div>
+
+          {panel ? (
+            <EventPanel
+              events={panelEvents}
+              title={panel.title}
+              left={panel.left}
+              {...(panel.top === undefined ? {} : { top: panel.top })}
+              onClose={closePanel}
+            />
+          ) : null}
         </div>
       </div>
 
@@ -755,21 +1600,28 @@ export function TerminalChartInteractive({
           />
           Outline: day still open
         </span>
+        {lens === 'events' && hidden > 0 ? (
+          <span data-testid="chart-hidden-count">
+            {hidden} event{hidden === 1 ? '' : 's'} in families switched off
+          </span>
+        ) : null}
       </p>
 
       {numbered.length > 0 ? (
         <ol
           className="mt-3 grid gap-2 border-t border-hey-border pt-3 text-t-meta text-hey-secondary sm:hidden"
-          aria-label="Builder events on the chart"
+          aria-label="Build events on the chart"
+          data-testid="chart-event-list"
         >
-          {numbered.map((e, k) => (
-            <li key={k} className="flex min-w-0 items-baseline gap-1.5">
-              <span className="text-hey-ink">{e.n}</span>
-              <Glyph glyph={e.g} />
-              <span className="min-w-0 flex-1 truncate text-hey-ink">{e.t}</span>
-              <span className="whitespace-nowrap">· {formatShortDate(model.rows[e.i]![0], referenceDay(model))}</span>
+          {numbered.map((e) => (
+            <li key={e.id} className="flex min-w-0 items-baseline gap-1.5">
+              <Marker shape={e.s} precision={e.p} tone={e.c} />
+              <span className="min-w-0 flex-1 truncate text-hey-ink">
+                {e.k}: {e.t}
+              </span>
+              <span className="whitespace-nowrap">· {e.d}</span>
               {e.h ? (
-                <a href={e.h} className="whitespace-nowrap font-medium text-hey-ink">
+                <a href={e.h} className="whitespace-nowrap font-medium text-hey-ink" aria-label={`Open evidence: ${e.t}`}>
                   Open →
                 </a>
               ) : null}
@@ -791,11 +1643,12 @@ export function TerminalChartInteractive({
             tabIndex={0}
             role="region"
             aria-label="Last 30 days as a table"
+            data-testid="chart-table"
           >
-            <table className="w-full min-w-[34rem] border-collapse text-left font-mono tabular-nums">
+            <table className="w-full min-w-[44rem] border-collapse text-left font-mono tabular-nums">
               <thead>
                 <tr className="border-b border-hey-border font-sans text-hey-secondary">
-                  {['Date', 'Open', 'High', 'Low', 'Close', 'Direction', 'Volume'].map((h) => (
+                  {['Date', 'Open', 'High', 'Low', 'Close', 'Direction', 'Volume', 'Events around this day'].map((h) => (
                     <th key={h} className="py-1.5 pr-3 font-medium">
                       {h}
                     </th>
@@ -803,13 +1656,13 @@ export function TerminalChartInteractive({
                 </tr>
               </thead>
               <tbody>
-                {model.rows
-                  .slice(-30)
-                  .reverse()
-                  .map((row) => (
+                {tableRows.map((row) => {
+                  const column = model.rows.indexOf(row);
+                  const events = tableEvents(column);
+                  return (
                     <tr
                       key={row[0]}
-                      className="border-b border-hey-border text-hey-ink last:border-0"
+                      className="border-b border-hey-border align-top text-hey-ink last:border-0"
                     >
                       <td className="py-1.5 pr-3 font-sans">{formatShortDate(row[0], referenceDay(model))}</td>
                       {row.length === 1 ? (
@@ -833,8 +1686,29 @@ export function TerminalChartInteractive({
                           </td>
                         </>
                       )}
+                      <td className="py-1.5 pr-3 font-sans" data-testid="chart-table-events">
+                        {events.length === 0 ? (
+                          <span className="text-hey-muted">—</span>
+                        ) : (
+                          <ul className="grid gap-0.5">
+                            {events.map((e) => (
+                              <li key={e.id}>
+                                {e.h ? (
+                                  <a href={e.h} className="underline-offset-2 hover:underline">
+                                    {e.k}: {e.t}
+                                  </a>
+                                ) : (
+                                  `${e.k}: ${e.t}`
+                                )}
+                                <span className="text-hey-secondary"> · {e.j !== undefined ? e.d : e.w}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </td>
                     </tr>
-                  ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

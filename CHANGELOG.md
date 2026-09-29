@@ -4,6 +4,17 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-09-29
+
+- **Market chart: build × market correlation.** `packages/ui` draws builder and research events on
+  the Terminal's candle chart as callouts above the plot, each with a stem down to the event lane at
+  the event's time. The layout (`terminal-chart-annotations.ts`) is pure and deterministic and takes
+  only an event's time, rank and label width — never a price — so a callout's height is layout, not
+  a value. Dense stretches fold into counted "+N changes"; every event stays reachable and opens its
+  record. Precision is drawn as recorded (EXACT at its hour, DATE mid-day, WEEK as an ISO-week
+  bracket, WINDOW and OBSERVED dashed, SCHEDULED waiting ahead of today). Event marks never use the
+  market's green or red. Aligned by time; no cause is inferred.
+
 ## 2026-09-28
 
 - **Listed in the Official MCP Registry** as `io.github.hey-research-lab/hey-research` (remote

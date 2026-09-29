@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import { TOKEN_MARKET_LABELS, type UnconfirmedMarketReason } from '@hey/scoring/market-status-words';
+
 import { cn } from './cn';
 
 /**
@@ -331,13 +333,13 @@ export type TokenMarketStatusValue =
   | 'TOKEN_NOT_LAUNCHED';
 
 const TOKEN_MARKET_PRESENTATION: Record<TokenMarketStatusValue, { label: string; help: string; tone: MarketTone }> = {
-  ACTIVE_MARKET: { label: 'Active market', help: 'The tracked token has liquidity and traded in the last 24 hours.', tone: 'neutral' },
-  LOW_LIQUIDITY: { label: 'Low liquidity', help: 'The tracked token has a small pool. Trades move the price a lot.', tone: 'neutral' },
-  NO_LIQUIDITY: { label: 'No liquidity', help: 'HEY found no meaningful liquidity for the tracked token.', tone: 'neutral' },
-  TRADING_INACTIVE: { label: 'Trading inactive', help: 'The tracked token has liquidity but recorded no trades in the last 24 hours.', tone: 'neutral' },
-  LIQUIDITY_REMOVED: { label: 'Liquidity no longer detected', help: 'HEY recorded meaningful liquidity earlier; it is no longer there. A fact HEY observed, not a verdict on why.', tone: 'neutral' },
-  MARKET_ABANDONED: { label: 'Market not detected', help: 'HEY recorded a market earlier and has not been able to read one for weeks.', tone: 'muted' },
-  INSUFFICIENT_DATA: { label: 'Market data insufficient', help: 'HEY has not read enough market data to describe this token.', tone: 'muted' },
+  ACTIVE_MARKET: { label: TOKEN_MARKET_LABELS.ACTIVE_MARKET, help: 'The tracked token has liquidity and traded in the last 24 hours.', tone: 'neutral' },
+  LOW_LIQUIDITY: { label: TOKEN_MARKET_LABELS.LOW_LIQUIDITY, help: 'The tracked token has a small pool. Trades move the price a lot.', tone: 'neutral' },
+  NO_LIQUIDITY: { label: TOKEN_MARKET_LABELS.NO_LIQUIDITY, help: 'HEY found no meaningful liquidity for the tracked token.', tone: 'neutral' },
+  TRADING_INACTIVE: { label: TOKEN_MARKET_LABELS.TRADING_INACTIVE, help: 'The tracked token has liquidity but recorded no trades in the last 24 hours.', tone: 'neutral' },
+  LIQUIDITY_REMOVED: { label: TOKEN_MARKET_LABELS.LIQUIDITY_REMOVED, help: 'HEY recorded meaningful liquidity earlier; it is no longer there. A fact HEY observed, not a verdict on why.', tone: 'neutral' },
+  MARKET_ABANDONED: { label: TOKEN_MARKET_LABELS.MARKET_ABANDONED, help: 'HEY recorded a market earlier and has not been able to read one for weeks.', tone: 'muted' },
+  INSUFFICIENT_DATA: { label: TOKEN_MARKET_LABELS.INSUFFICIENT_DATA, help: 'HEY has not read enough market data to describe this token.', tone: 'muted' },
   TOKEN_NOT_LAUNCHED: { label: 'No token tracked', help: 'HEY tracks no token for this project.', tone: 'muted' },
 };
 
@@ -364,7 +366,8 @@ export function tokenMarketLabel(status: TokenMarketStatusValue): string {
  * status alone said "has liquidity and traded" over a reading of $1, because
  * the market was in another pool the page did not name.
  */
-const TOKEN_MARKET_REASON_HELP: Readonly<Record<string, string>> = {
+/* Keyed by the scoring package's list, so the summary's "Readings not confirmed" rule and these sentences cannot drift. */
+const TOKEN_MARKET_REASON_HELP: Readonly<Record<UnconfirmedMarketReason, string>> = {
   liquidity_in_another_pool:
     'The pool the latest reading follows is nearly empty, but another pool HEY read in the last day holds liquidity. The figures shown are the latest reading’s own pool.',
   pool_readings_disagree:
@@ -378,7 +381,8 @@ const TOKEN_MARKET_REASON_HELP: Readonly<Record<string, string>> = {
 };
 
 export function tokenMarketHelp(status: TokenMarketStatusValue, reason?: string | null): string {
-  if (reason && TOKEN_MARKET_REASON_HELP[reason]) return TOKEN_MARKET_REASON_HELP[reason]!;
+  const exact = reason ? (TOKEN_MARKET_REASON_HELP as Readonly<Record<string, string>>)[reason] : undefined;
+  if (exact) return exact;
   return (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA).help;
 }
 
