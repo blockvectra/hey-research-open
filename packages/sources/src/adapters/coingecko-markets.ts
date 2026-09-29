@@ -31,6 +31,41 @@ import { COINGECKO_DEFAULT_BASE_URL } from './coingecko';
  */
 export const COINGECKO_MARKETS_BATCH_SIZE = 250;
 
+/**
+ * The longest `/coins/markets` URL HEY sends. Measured 2026-09-29 from the
+ * production host with the demo key: a 1,991-character URL (100 ids) answered
+ * 200, a 2,722-character one (150 ids) got CloudFront's 403 "Request blocked"
+ * HTML, which the schema then refused as an invalid response. With 1,177
+ * Robinhood Chain coins listed, a 250-id batch is ~4,600 characters, so the
+ * batch is bounded by URL length as well as by count.
+ */
+export const COINGECKO_MARKETS_MAX_URL_LENGTH = 1_900;
+
+/**
+ * Splits coin ids into batches whose `/coins/markets` URL stays within
+ * `COINGECKO_MARKETS_MAX_URL_LENGTH` and whose size stays within
+ * `COINGECKO_MARKETS_BATCH_SIZE`. Order is preserved; an id too long to fit
+ * even alone still gets a batch of its own rather than being dropped.
+ */
+export function coingeckoMarketsBatches(base: string, ids: readonly string[]): string[][] {
+  const fixed = coingeckoMarketsUrl(base, []).length;
+  const batches: string[][] = [];
+  let current: string[] = [];
+  let length = fixed;
+  for (const id of ids) {
+    const added = encodeURIComponent(id).length + (current.length > 0 ? 1 : 0);
+    if (current.length > 0 && (length + added > COINGECKO_MARKETS_MAX_URL_LENGTH || current.length >= COINGECKO_MARKETS_BATCH_SIZE)) {
+      batches.push(current);
+      current = [];
+      length = fixed;
+    }
+    length += encodeURIComponent(id).length + (current.length > 0 ? 1 : 0);
+    current.push(id);
+  }
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
 /** The free tier is roughly 5–15 requests a minute; readings an hour old are fine. */
 const CACHE_TTL_SECONDS = 60 * 60;
 

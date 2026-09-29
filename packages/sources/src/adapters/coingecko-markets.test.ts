@@ -4,6 +4,8 @@ import { hasData } from '../adapter';
 import { readFixture, stubFetch, testContext } from '../testing';
 import {
   COINGECKO_MARKETS_BATCH_SIZE,
+  COINGECKO_MARKETS_MAX_URL_LENGTH,
+  coingeckoMarketsBatches,
   coingeckoMarketsUrl,
   createCoingeckoMarketsAdapter,
 } from './coingecko-markets';
@@ -80,5 +82,36 @@ describe('CoinGecko markets adapter', () => {
     const result = await adapter.fetch({ ids }, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.status).toBe('error');
     expect(result.errorCode).toBe('INVALID_RESPONSE');
+  });
+});
+
+describe('CoinGecko markets batches', () => {
+  const base = 'https://api.coingecko.com/api/v3';
+  const ids = Array.from({ length: 1177 }, (_, i) => `robinhood-coin-number-${i}`);
+
+  it('keeps every URL under the length CoinGecko serves, in order, dropping nothing', () => {
+    const batches = coingeckoMarketsBatches(base, ids);
+    expect(batches.length).toBeGreaterThan(1);
+    for (const batch of batches) {
+      expect(coingeckoMarketsUrl(base, batch).length).toBeLessThanOrEqual(COINGECKO_MARKETS_MAX_URL_LENGTH);
+      expect(batch.length).toBeLessThanOrEqual(COINGECKO_MARKETS_BATCH_SIZE);
+    }
+    expect(batches.flat()).toEqual(ids);
+  });
+
+  it('still caps a batch at the count limit when ids are short', () => {
+    const short = Array.from({ length: 600 }, (_, i) => `c${i}`);
+    const batches = coingeckoMarketsBatches(base, short);
+    expect(Math.max(...batches.map((batch) => batch.length))).toBeLessThanOrEqual(COINGECKO_MARKETS_BATCH_SIZE);
+    expect(batches.flat()).toEqual(short);
+  });
+
+  it('gives an over-long id a batch of its own rather than losing it', () => {
+    const long = 'x'.repeat(COINGECKO_MARKETS_MAX_URL_LENGTH);
+    expect(coingeckoMarketsBatches(base, ['a', long, 'b'])).toEqual([['a'], [long], ['b']]);
+  });
+
+  it('returns no batch for no ids', () => {
+    expect(coingeckoMarketsBatches(base, [])).toEqual([]);
   });
 });
