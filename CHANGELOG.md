@@ -6,6 +6,14 @@ record.
 
 ## Unreleased (2026-09-30)
 
+- **RPC refusals and start minutes.** A launch or pool scan the shared RPC refused part-way (a
+  429, a 403 challenge, a 5xx, a dropped connection) is `PARTIAL` with its reason and its resume
+  block held, not `DEGRADED`, and counts as a success only when it read new blocks. The hood.fun
+  curve reader reports a cool-off as the provider's pause, keeps what it read, and comes back for
+  the rest; its sync row says `HEALTHY`, `PARTIAL` or `DEGRADED` with a reason. The scheduled jobs
+  that read the chain node start on minutes of their own after the tick that opens their bucket,
+  instead of all at a UTC midnight.
+
 - **Distribution: counted honestly, labelled where it leaves.** HEY's console gains one page for
   how its research travels, composed from the reads it already had, with no new tracking: every
   figure says what it counts, an unmeasured one reads "—" with its reason, and HEY's own traffic
