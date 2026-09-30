@@ -134,6 +134,13 @@ export type HeyAgentResearchData = {
     explainUrl: string;
   };
   latestMeaningfulChange: HeyAgentChange | null;
+  /**
+   * Why `latestMeaningfulChange` is null (2026-10-01, additive):
+   * `not_in_recent_changes` — HEY holds meaningful building, but none of it is
+   * among the newest changes listed here, so null is "not listed", never
+   * "none"; `none_recorded`; `changes_unavailable`.
+   */
+  latestMeaningfulChangeReason?: 'not_in_recent_changes' | 'none_recorded' | 'changes_unavailable';
   recentChanges: { available: boolean; reason?: string; items: HeyAgentChange[]; url: string };
   contractIdentity: {
     token: { chainId: number; address: string; verification: string | null; verificationReason: string | null } | null;

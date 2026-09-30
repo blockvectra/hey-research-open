@@ -228,9 +228,11 @@ export function ProjectCard({
   // state, not a fact about the project; it is shown only when the line
   // would otherwise be empty, never beside a ticker or a narrative.
   const kindLabel = formatProjectKind(project.projectKind);
+  // The catch-all narrative "Other" is a data state too (ux-data audit, 2026-10-01): "$CHIT · Other · Infrastructure" named no category.
+  const narrative = project.primaryNarrative?.slug === 'other' ? undefined : project.primaryNarrative;
   const showKind =
-    project.primaryNarrative?.name.toLowerCase() !== kindLabel.toLowerCase() &&
-    (project.projectKind !== 'OTHER' || (!project.symbol && !project.primaryNarrative));
+    narrative?.name.toLowerCase() !== kindLabel.toLowerCase() &&
+    (project.projectKind !== 'OTHER' || (!project.symbol && !narrative));
   const identityParts: ReactNode[] = [];
   if (project.symbol)
     identityParts.push(
@@ -238,10 +240,10 @@ export function ProjectCard({
         {tickerLabel(project.symbol)}
       </span>,
     );
-  if (project.primaryNarrative)
+  if (narrative)
     identityParts.push(
       <span key="narrative" data-testid="card-narrative">
-        {project.primaryNarrative.name}
+        {narrative.name}
       </span>,
     );
   if (showKind)
@@ -409,7 +411,7 @@ export function ProjectCard({
               {formatRelativeTime(ship.publishedAt, now)}
             </time>
           </p>
-          <p className="mt-1 truncate text-[14px] font-medium text-hey-ink" title={shipTitle} data-testid="ship-title">
+          <p className="mt-1 line-clamp-2 break-words text-[14px] font-medium text-hey-ink" title={shipTitle} data-testid="ship-title">
             {shipTitle}
           </p>
           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px]">

@@ -247,6 +247,12 @@ and takes `building=only`; a comparison says when it did not happen; the 64 KB b
 an answer is made; invisible Unicode tag characters are stripped and instruction detection reads
 normalised text; a caller's text is never repeated back as HEY's words.
 
+A design and data-wiring audit (2026-10-01) held the same rule on the answers: a null
+`latestMeaningfulChange` now carries `latestMeaningfulChangeReason` — `not_in_recent_changes`
+when HEY holds meaningful building that is not among the newest changes listed, so null is never
+read as "none" — and the explain engine calls a project Under the Radar only on a positive gap,
+as `/radar` does.
+
 ## Sharing a record
 
 Any eligible record — a ship, a release, a deployment, a development spike, a builder resuming,

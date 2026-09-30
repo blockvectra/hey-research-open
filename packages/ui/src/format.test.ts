@@ -7,6 +7,14 @@ import { formatUsdCompact, plainText, formatRelativeTime } from './format';
  * 2026-09-04). Every case here was seen on a production card or page.
  */
 describe('plainText', () => {
+  it('reads punctuation alone as no text, so a card never prints a lone dash (ux-data audit, 2026-10-01)', () => {
+    expect(plainText('-')).toBe('');
+    expect(plainText(' — ')).toBe('');
+    expect(plainText('...')).toBe('');
+    expect(plainText('- AI agents on Robinhood Chain')).toBe('AI agents on Robinhood Chain');
+    expect(plainText('100x')).toBe('100x');
+  });
+
   it('drops Markdown images, which were the first line of a homepage card', () => {
     expect(
       plainText(

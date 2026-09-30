@@ -312,6 +312,12 @@ export function shortenAddress(address: string, head = 6, tail = 4): string {
  */
 export function plainText(value: string | null | undefined): string {
   if (!value) return '';
+  const words = plainWords(value);
+  // Punctuation alone is no text (ux-data audit, 2026-10-01): a launchpad description of "-" printed a lone dash on the home page's featured card.
+  return /[\p{L}\p{N}]/u.test(words) ? words : '';
+}
+
+function plainWords(value: string): string {
   return (
     value
       // Images carry no words; a bare URL in their place would be noise.

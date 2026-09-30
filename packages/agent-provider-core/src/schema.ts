@@ -230,6 +230,14 @@ const researchData = z
       })
       .strict(),
     latestMeaningfulChange: change.nullable(),
+    /**
+     * Why `latestMeaningfulChange` is null (ux-data audit, 2026-10-01, additive):
+     * `not_in_recent_changes` — HEY holds meaningful building, but none of it is
+     * among the newest changes this answer lists, so null is "not listed here",
+     * never "none"; `none_recorded` — HEY records no meaningful building;
+     * `changes_unavailable` — the ledger could not be read.
+     */
+    latestMeaningfulChangeReason: z.enum(['not_in_recent_changes', 'none_recorded', 'changes_unavailable']).optional(),
     recentChanges: z
       .object({ available: z.boolean(), reason: code.optional(), items: z.array(change).max(AGENT_LIMITS.changes), url })
       .strict(),

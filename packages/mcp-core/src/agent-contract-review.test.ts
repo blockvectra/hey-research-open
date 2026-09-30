@@ -47,6 +47,24 @@ describe('research_project after the adversarial review', () => {
     expect(line.status).toBe('DERIVED');
   });
 
+  it('a null latest meaningful change says why: not among the newest changes listed, never "none" (ux-data audit, 2026-10-01)', () => {
+    const snapshot = clone(fx.snapshot) as HeyProjectSnapshot;
+    // The newest changes are all market changes, while HEY holds a ship from last week.
+    const items = itemsOf(snapshot);
+    items.splice(0, items.length, ...Array.from({ length: 5 }, (_, i) => ({ id: `signal:a0598180-0000-0000-0000-00000000000${i}`, revision: 1, op: 'upsert', type: 'market.liquidity_moved', domain: 'market', occurredAt: null, precision: 'OBSERVED', detectedAt: '2026-09-26T10:00:00.000Z', recordedAt: '2026-09-26T10:00:00.000Z', summary: 'Liquidity lower', evidence: [{ id: `signal:a0598180-0000-0000-0000-00000000000${i}` }], source: 'hey' }) as never));
+    const answer = composeResearch(ctx, { snapshot, gaps: [] });
+    expect(answer.data?.latestMeaningfulChange).toBeNull();
+    expect(snapshot.build.lastShippedAt).toBeTruthy();
+    expect(answer.data?.latestMeaningfulChangeReason).toBe('not_in_recent_changes');
+    expect(agentIntelligenceResponseSchema.safeParse(answer).success).toBe(true);
+    // With a building change listed there is nothing to explain.
+    const building = clone(fx.snapshot) as HeyProjectSnapshot;
+    (itemsOf(building)[0] as { countsAsBuilding?: boolean }).countsAsBuilding = true;
+    const listed = composeResearch(ctx, { snapshot: building, gaps: [] });
+    expect(listed.data?.latestMeaningfulChange).not.toBeNull();
+    expect(listed.data && 'latestMeaningfulChangeReason' in listed.data).toBe(false);
+  });
+
   it('a mismatched token is named in the answer and the unknowns, and liquidity keeps its kind', () => {
     const snapshot = clone(fx.snapshot) as HeyProjectSnapshot;
     snapshot.verification.token = { status: 'MISMATCH', reason: 'site_names_another_contract', verifiedAt: '2026-09-11T00:00:00.000Z' } as never;

@@ -4,7 +4,18 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
-## Unreleased (2026-09-30)
+## Unreleased (2026-10-01)
+
+- **Design and data-wiring audit.** Every surface that withholds a valuation now says so in the
+  same words, with the reason (the market page, the Terminal chart, header and compare, `/hey`).
+  Unknown is never printed as zero and a capped read never as a total: a failed Terminal read
+  says it was not read, full reads say "the newest N" or "100+", Pulse averages measured Build
+  Momentum only, and a code summary with no commit count is no day. Under the Radar means the same
+  thing in the explain engine as on `/radar` (a positive gap). The agent API's `research_project`
+  adds `latestMeaningfulChangeReason` beside a null latest change (additive). A malformed id is a
+  404, not a 500. Design polish on cards, the project page, the Discovery radar and the 404.
+
+## 2026-09-30
 
 - **Luminous Glass on the whole site.** The public pages now wear the Research Terminal's material
   system (founder decision): one stylesheet and one set of primitives for both, Lab Paper in light

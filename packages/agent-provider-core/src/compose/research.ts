@@ -391,6 +391,20 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         explainUrl: explain('activity.status'),
       },
       latestMeaningfulChange: latestMeaningful,
+      /*
+       * A null here is read as "none" unless it says why (ux-data audit,
+       * 2026-10-01): the newest five changes can all be market changes while
+       * HEY holds a ship from last week.
+       */
+      ...(latestMeaningful === null
+        ? {
+            latestMeaningfulChangeReason: !snapshot.latestChanges.available
+              ? ('changes_unavailable' as const)
+              : b.lastShippedAt || (events30d !== null && events30d > 0)
+                ? ('not_in_recent_changes' as const)
+                : ('none_recorded' as const),
+          }
+        : {}),
       recentChanges: { available: snapshot.latestChanges.available, ...(snapshot.latestChanges.available ? {} : { reason: snapshot.latestChanges.reason }), items: changes, url: snapshot.latestChanges.url },
       contractIdentity: {
         token: token ? { chainId: token.chainId, address: token.contractAddress.toLowerCase(), verification: verification?.status ?? null, verificationReason: verification?.reason ?? null } : null,

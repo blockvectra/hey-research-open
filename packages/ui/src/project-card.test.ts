@@ -255,10 +255,11 @@ describe('ProjectCard — with a ship (ships feed)', () => {
     expect(selfReported).toMatch(/data-testid="ship-verification" class="italic text-hey-muted"/);
   });
 
-  it('clamps the title to one line and carries the full title', () => {
+  // Two lines, not one (ux-data audit, 2026-10-01): on /ships one line cut "Active development: 100+ commits since 20…" before the dates that tell two cards apart.
+  it('clamps the title to two lines and carries the full title', () => {
     const html = renderWithShip({ title: 'A very long release title that would otherwise wrap onto several lines' });
     expect(html).toMatch(/data-testid="ship-title"/);
-    expect(html).toMatch(/class="[^"]*truncate[^"]*"[^>]*title="A very long release title/);
+    expect(html).toMatch(/class="[^"]*line-clamp-2[^"]*"[^>]*title="A very long release title/);
   });
 
   it('renders the same card as before when no ship is given', () => {
@@ -486,5 +487,20 @@ describe('the $HEY disclosure line (round 4, 2026-09-30)', () => {
     expect(plain).not.toContain('heys-own-token');
     const marked = renderToStaticMarkup(createElement(ProjectCard, { project: tokenBacked, disclosure: DISCLOSURE }));
     expect(marked.replace(/<p class="[^"]*" data-testid="heys-own-token">[^<]*<\/p>/, '')).toBe(plain);
+  });
+});
+
+describe('ProjectCard — data states are not categories (ux-data audit, 2026-10-01)', () => {
+  it('names no category from the catch-all "Other" narrative', () => {
+    const html = render({ ...tokenBacked, primaryNarrative: { slug: 'other', name: 'Other' } });
+    expect(html).not.toContain('data-testid="card-narrative"');
+    expect(html).not.toMatch(/>Other</);
+    // A real narrative still reads.
+    expect(render({ ...tokenBacked, primaryNarrative: { slug: 'ai-agents', name: 'AI Agents' } })).toContain('>AI Agents<');
+  });
+
+  it('prints no lone dash where a description is only punctuation', () => {
+    const html = render({ ...tokenBacked, shortDescription: '-' });
+    expect(html).not.toMatch(/>\s*-\s*</);
   });
 });
