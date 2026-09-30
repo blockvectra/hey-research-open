@@ -17,6 +17,7 @@ import {
   VERIFICATION_WEIGHTS,
 } from './config';
 import { COMMIT_SUBSTANCE_VERSION } from './commit-substance';
+import { VALUATION_PLAUSIBILITY } from './valuation-plausibility';
 import { SCORING_VERSION, SCORING_VERSIONS } from './version';
 
 /**
@@ -42,6 +43,8 @@ const RULES_DIGEST = createHash('sha256')
       VERIFICATION_WEIGHTS,
       COMMIT_SUBSTANCE_VERSION,
       DISCOVERY_GAP,
+      // The valuation gate decides which valuations the Discovery Gap and Still Building read (hbm-v20).
+      VALUATION_PLAUSIBILITY,
     }),
   )
   .digest('hex')
@@ -66,8 +69,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v19',
-      rules: '913065a875f3a721',
+      version: 'hbm-v20',
+      rules: 'cdefe88c44a3ffa0',
     });
   });
 });

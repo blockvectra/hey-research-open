@@ -218,7 +218,8 @@ From the domain alone, with no JavaScript and no cookies:
 | `https://heyresearch.xyz/llms.txt` | What HEY is, what it will not do, every machine entry point (llms.txt v2) |
 | `https://heyresearch.xyz/.well-known/agent-card.json` | A2A 1.0 Agent Card; JSON-RPC at `/api/a2a`, six read-only skills |
 | `https://heyresearch.xyz/openapi.json` | OpenAPI 3.1 for the public API |
-| `https://heyresearch.xyz/mcp` | Hosted MCP (Streamable HTTP); listed in the Official MCP Registry as `io.github.hey-research-lab/hey-research` ([`apps/mcp/server.json`](apps/mcp/server.json)) |
+| `https://heyresearch.xyz/mcp` | Hosted MCP (Streamable HTTP); listed in the Official MCP Registry as `io.github.hey-research-lab/hey-research` ([`apps/mcp/server.json`](apps/mcp/server.json)). Every tool returns typed `structuredContent` with an `outputSchema` |
+| `https://heyresearch.xyz/mcp/research` | The MCP research profile: builder intelligence only — `research_answer`, a project lookup by identity, the ledger without market events, timeline, explain, evidence, contracts; no market-move, Under the Radar or valuation tool |
 | `https://heyresearch.xyz/api/hey/profile` | `$HEY` as research data: each utility LIVE, PLANNED, RETIRED or UNKNOWN |
 | `https://heyresearch.xyz/developers/agents` | The guide (Markdown at `/developers/agents.md`) |
 | `https://heyresearch.xyz/api/agent` | The agent contract: `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns` — the same answer on REST, MCP (`research_answer`) and A2A |
@@ -276,6 +277,12 @@ What HEY records about a reader, what it never stores and for how long:
 https://heyresearch.xyz/privacy. The terms of using the site, the API and the MCP server — research,
 not advice; no trade execution; keys, allowances and limits; and Uniswap Labs' own terms for
 quotes: https://heyresearch.xyz/terms.
+
+Signed-in readers can download everything HEY holds about their account, or delete it, from their
+account page; what deletion keeps (the treasury's record of a transfer, a closed vote's tally,
+published research, the audit trail) stays with nothing linking it to them. Anyone signed in can
+report an error on a project page; a moderator checks it against the page's sources, and a report
+never changes a status, a score or a ranking by itself.
 
 ## The badge
 
@@ -346,7 +353,22 @@ stops at 85% of the plan's share; a backfill reads only while a third of the day
   A Discovery Gap is measured only on an active market (2026-09-30). On a thin market or a launch
   curve it reads "not measured — market too thin", and the API says why
   (`discoveryGapWithheld`). Still Building is measured on the same markets only: elsewhere it is
-  "not measured", never "not met" (`stillBuildingWithheld`, scoring `hbm-v19`).
+  "not measured", never "not met" (`stillBuildingWithheld`, scoring `hbm-v19`), and
+  `stillBuildingState` (`HELD`, `NOT_HELD`, `NOT_MEASURED`) sits beside every `stillBuilding`.
+- **A valuation must be plausible from the readings HEY has.** A market cap or FDV at least
+  10,000× the liquidity in the same reading, or above $10B on a Robinhood Chain token no listing
+  HEY reads carries, is never printed, never FACT and never a scoring input; it reads "Not
+  plausible" with its reason (`valuationWithheld`, scoring `hbm-v20`).
+- **HEY's own token is researched by the same rules.** `$HEY`'s card says "HEY’s own token —
+  researched by the same rules", and the API marks it `heysOwnToken: true`. The flag is set after
+  a list is ordered: no bonus, no demotion.
+- **A borrowed brand is not an affiliation.** A project whose name or ticker uses Robinhood's name
+  ("Robinhood", or "HOOD" as a word) is kept off the homepage, Under the Radar, the featured spots
+  and the Builder Radar until HEY verifies a builder behind it — and a name that claims Robinhood's
+  authority ("official", "team", "labs", "foundation", "inc" beside it) stays off even then; its
+  page stays open and says HEY holds no evidence Robinhood is involved.
+- **HEY's own project has no pinned place.** It takes its position on every list by the same
+  rules as every project.
 - **A site two projects declare is neither's.** Its host is read the same way everywhere (a query
   string or a port does not make a second site), and a platform's page — a launchpad listing every
   token it launched — never counts as a token's own site, even when it prints the contract.

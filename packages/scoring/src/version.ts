@@ -185,7 +185,21 @@
  * Nothing else about the badge, and nothing about the gap, Under the Radar or
  * the population, changes.
  */
-export const SCORING_VERSION = 'hbm-v19' as const;
+/*
+ * hbm-v20 (2026-09-30, founder decision "valuation plausibility", round 4):
+ * no weight, threshold or Build Momentum figure changes. A valuation that is
+ * not plausible from the readings HEY has (`valuationPlausibility`,
+ * `VALUATION_PLAUSIBILITY`: at least 10,000× the liquidity measured in the
+ * same reading, or above $10B on a Robinhood Chain token that no listing HEY
+ * reads carries) is never an input: it leaves the Discovery Gap's market
+ * percentile (the remaining market figures are renormalised, as for any
+ * missing one), it is no current value and no tracked high for Still
+ * Building's drawdown, and a snapshot carrying one is never the high. The
+ * reason is persisted as `components.marketValuationWithheld`. Price,
+ * liquidity and volume, the population, Under the Radar's own rules and
+ * activity status are unchanged.
+ */
+export const SCORING_VERSION = 'hbm-v20' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

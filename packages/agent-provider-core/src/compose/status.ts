@@ -3,6 +3,7 @@ import type { HeyExplainedFact } from '@hey-research-lab/sdk';
 import { ageBucket, familyFreshness, type RefreshTier } from '../freshness';
 import type { AgentClaim, AgentEvidenceRef, AgentResponseOf, AgentUnknown } from '../schema';
 import { derivedText, externalText, heyText } from '../text';
+import { stillBuildingStateOfClassification } from '../disclosures';
 import { envelope, evidenceRef, looksLikeEvidenceId, type AgentComposeContext } from './common';
 
 /**
@@ -88,6 +89,7 @@ function factClaim(ctx: AgentComposeContext, id: string, fact: HeyExplainedFact,
     freshness: FRESH_TO_BUCKET(fact, ctx.now),
     evidence: factEvidence(ctx, fact, isEvidenceId).slice(0, 12),
     explainUrl,
+    evidenceKind: fact.state === 'UNKNOWN' ? 'not_held' : 'rule_output',
     ...(fact.state === 'UNKNOWN' ? { reason: fact.unknownInputs[0] ?? fact.classification.toLowerCase() } : {}),
   };
 }
@@ -153,6 +155,7 @@ export function composeBuilderStatus(ctx: AgentComposeContext, input: BuilderSta
         value: typeof stillBuilding.value === 'boolean' ? stillBuilding.value : null,
         state: stillBuilding.state,
         classification: stillBuilding.classification,
+        stillBuildingState: stillBuildingStateOfClassification(stillBuilding.classification),
         meaning: heyText('Still Building: verified activity continuing through a market drawdown HEY tracked; a record of what happened, not a prediction and not a buy signal.'),
         explainUrl: `${api}?fact=still_building`,
       },

@@ -20,6 +20,10 @@
     {
       "type": "streamable-http",
       "url": "https://heyresearch.xyz/mcp"
+    },
+    {
+      "type": "streamable-http",
+      "url": "https://heyresearch.xyz/mcp/research"
     }
   ]
 }

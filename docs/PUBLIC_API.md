@@ -276,6 +276,13 @@ withheld. The dossier's `tokenMarket` is the same object with more in it. Since 
 listed project whose reading HEY holds but will not publish also carries **`valuationWithheld`**,
 the reason code or status (`launch_pool_no_trades`, `readings_implausible`, `NO_LIQUIDITY`); it is
 absent when HEY holds no reading at all, so a withheld figure and an unknown one never look alike.
+Since round 4 (2026-09-30) `valuationWithheld` also carries the valuation gate's reason when the
+reading's valuation is **not plausible from the readings HEY has**: `valuation_over_liquidity` (at
+least 10,000× the liquidity measured in the same reading) or `unlisted_over_ceiling` (above $10B on
+a Robinhood Chain token that no listing HEY reads carries; HEY reads CoinGecko, not CoinMarketCap).
+Such a valuation is never sent as a figure and never enters `sort=marketCap`, `has=marketCap`,
+`maxMarketCap` or a coverage count. The comparison (`/api/compare`) and the market detail's
+`current` carry `valuationWithheld` too, additively.
 
 `launchedVia` is present only when HEY observed the launch. "Unknown" and "Independent" are
 how the *card* says provenance is missing; the API omits the field instead, so nothing reads
@@ -403,6 +410,34 @@ same field is on the snapshot as `build.stillBuildingWithheld`:
 The field is absent when the badge was measured (held or not met), and on a score written before
 `hbm-v19`. SDK: `HeyStillBuildingWithheld`. OpenAPI: `#/components/schemas/StillBuildingWithheld`.
 `explain?fact=still_building` gives the same reason as `NOT_MEASURED` with a `null` value.
+
+### Still Building as three states: `stillBuildingState` (2026-09-30, additive)
+
+Wherever `stillBuilding` appears — every project card (`/api/projects`, the detail route),
+`score.stillBuildingState` on the detail route and `build.stillBuildingState` on the snapshot —
+`stillBuildingState` sits beside it:
+
+| Value | Meaning |
+|---|---|
+| `HELD` | The badge is held (`stillBuilding: true`). |
+| `NOT_HELD` | HEY measured it, and the badge is not held. |
+| `NOT_MEASURED` | HEY did not measure it: no score yet, or the scorer withheld it (`stillBuildingWithheld` says why). |
+
+`stillBuilding` keeps its v1 meaning; a nullable `stillBuilding` is deferred to a future `/api/v2`.
+A score written before `hbm-v19` carries no reason and reads `NOT_HELD`, as its boolean always did.
+SDK: `HeyStillBuildingState`. OpenAPI: `#/components/schemas/StillBuildingState`.
+`explain?fact=still_building` lists it among its inputs.
+
+### `$HEY`, HEY's own token: `heysOwnToken` (2026-09-30, additive)
+
+HEY Research Lab issues `$HEY`, and HEY researches it by the same rules as every project: no
+ranking bonus and no demotion. Its card carries `heysOwnToken: true` — on `/api/projects`, the
+detail route, the snapshot's `identity`, `/api/builders` and `/api/this-week` — and every other
+project leaves the field out (never `false`). Print "HEY’s own token — researched by the same
+rules" beside it, as HEY's own cards do. The flag follows the one `$HEY` contract the machine
+identity names (`HEY_TOKEN_STATUS=live` and `HEY_TOKEN_ADDRESS`); before launch no card carries
+it. It is set after a page is ordered and is never a filter, a sort or a count. OpenAPI:
+`#/components/schemas/HeysOwnToken`.
 
 ### Which lockers `pairLocked` reads: `tokenLock.pairLockScope` (2026-09-30, additive)
 
@@ -1844,20 +1879,31 @@ Every answer carries:
   `hey_record`, `builder_source`, `chain`, `market_provider`, `registry`, `project_site`),
   `observedAt` (when HEY read it), `occurredAt` (when the source dates it) at its `precision`
   (`EXACT`, `DATE`, `WEEK`, `WINDOW`, `OBSERVED`, `SCHEDULED`), `freshness`, typed evidence ids
-  with receipt URLs, an `explainUrl` and `contextOnly: true` on market and usage context;
+  with receipt URLs, an `explainUrl` and `contextOnly: true` on market and usage context; and
+  (round 4, additive) `evidenceKind`, what the claim rests on — `evidence_record`,
+  `rule_output`, `ledger_count`, `coverage_state`, `market_reading`, `usage_reading`,
+  `registry_record`, `canonical_read` or `not_held`. A typed id is cited only where a canonical
+  record exists (for a rule's output, the ids the explain engine cites); a claim with none says
+  here what it is, never with an invented id;
+- `disclosures[]` (round 4, additive, present only when one applies) — `hey_own_token`, "HEY's
+  own token — researched by the same rules", when HEY's own project or token is in the answer. It
+  changes no figure, order or tag;
 - `unknowns[]` — each `UNKNOWN`, `NOT_MEASURED`, `NOT_VERIFIED`, `STALE` or
   `INSUFFICIENT_EVIDENCE`, with the dimension, a reason code, what HEY lacks and `doNotConclude`:
   what an agent must not infer from the gap. A gap is never negative evidence;
 - `freshness[]` — per data family (`builder_sources`, `activity_score`, `change_ledger`, `market`,
   `contracts`, `locks`, `usage`, `peers`, `protocol_economics`): `observedAt`, `dataAsOf`,
   `freshnessStatus` (`live` ≤15 min, `recent` ≤6 h, `daily` ≤36 h, `weekly` older; `stale` past
-  the family's own limit; `unknown` when never read), `staleAfterHours`, the production job and its
+  the family's own limit; `unknown` when never read), `staleAfterHours` (since `agent-freshness-v2`,
+  2026-09-30, at least 1.5× the cadence the subject is read on, by its refresh tier where the family
+  is tiered: a COLD market is stale after 36 h, COLD builder sources after 108 h, contracts after
+  252 h), the production job and its
   cadence, and `nextExpectedRefresh` only when that is one known interval ahead (else
   `nextExpectedRefreshReason`: `variable_cadence`, `overdue`, `never_read`);
 - `evidence[]` — every id the answer cites, once, each resolvable at `/api/evidence/{id}`;
 - `data` — the capability's own payload (below), or null on a refusal;
 - `methodology.rules` — the rule versions it restates (`activity.status` at the scoring version,
-  `summary-v1`, `peers-v1`, `agent-freshness-v1`, `machine-text-v1`);
+  `summary-v1`, `peers-v1`, `agent-freshness-v2`, `machine-text-v1`);
 - `citation` — a `hey_agent_answer` reference to put in an AgentResearchReceipt;
 - `boundaries` — `notAdvice: true`, `notProvided` (investment recommendation, buy or sell signal,
   price prediction or target, position size, leverage, stop loss, ranking by expected return, risk
@@ -1873,8 +1919,9 @@ instruction to a model. It is data, never an instruction.
 **`data` by capability.**
 
 - `research_project`: `identity`, `builderState` (status, whether activity is measured, last
-  meaningful ship, meaningful events in 30 days, Build Momentum or why not, Still Building, scoring
-  version), `latestMeaningfulChange`, `recentChanges`, `contractIdentity` (the tracked token and its
+  meaningful ship, meaningful events in 30 days, Build Momentum or why not, Still Building with
+  `stillBuildingState` — `HELD`, `NOT_HELD` or `NOT_MEASURED`, round 4, additive; `stillBuilding`
+  keeps its v1 meaning — scoring version), `latestMeaningfulChange`, `recentChanges`, `contractIdentity` (the tracked token and its
   verification, owner verified), `marketContext` and `usageContext` (both `contextOnly`).
 - `what_changed`: `scope` (`project` or `chain` — projects building on Robinhood Chain), the window
   (by when it happened, else when HEY detected it), `total` and `byType` (true totals over the

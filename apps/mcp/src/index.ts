@@ -26,6 +26,8 @@ async function main(): Promise<void> {
     marketIntegrity: marketIntegrityFromEnv(process.env.HEY_MARKET_INTEGRITY),
     // The canonical JSON behind each answer is linked on the instance the server reads.
     publicBaseUrl: baseUrl,
+    // HEY_MCP_PROFILE=research serves the research profile (round 4): builder intelligence only. Anything else is the full set.
+    profile: process.env.HEY_MCP_PROFILE?.trim().toLowerCase() === 'research' ? 'research' : 'full',
   });
   await server.connect(new StdioServerTransport());
   // The origin, not the configured string: it is the host the key actually goes to, and a reader can check it at a glance.

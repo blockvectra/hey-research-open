@@ -19,6 +19,8 @@ export type HeyBuilder = {
   slug: string;
   name: string;
   symbol?: string;
+  /** `true` on `$HEY`, HEY's own token, researched by the same rules (2026-09-30, additive): the rank is the board's, unchanged. */
+  heysOwnToken?: true;
   /** The artwork the project chose; absent where HEY does not know it. */
   logoUrl?: string;
   activityStatus: string;
@@ -264,6 +266,8 @@ export type HeyCompare = {
     marketCapUsd?: number;
     /** `fdv` when the figure is the fully diluted valuation standing in for a market cap. */
     valuationKind?: 'marketCap' | 'fdv';
+    /** Why `marketCapUsd` is absent although HEY holds a reading (round 4, 2026-09-30): the list's `valuationWithheld` code. */
+    valuationWithheld?: string;
     /** The liquidity the project page prints: the current reading's, else the token's last recorded depth (2026-09-25). */
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply (2026-09-25). */

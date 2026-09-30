@@ -3,7 +3,9 @@ import type { HeyProjectSnapshot, HeySummaryLine } from '@hey-research-lab/sdk';
 import { ageBucket, familyFreshness, SNAPSHOT_SOURCE_FAMILY, type AgentFreshnessEntry, type RefreshTier } from '../freshness';
 import type { AgentChange, AgentClaim, AgentFreshness, AgentResponseOf, AgentSourceType } from '../schema';
 import { derivedText, externalText, heyText } from '../text';
-import { countOf, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
+import { countOf, valuationWithheldSentence, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
+import { stillBuildingStateOf } from '../disclosures';
+import type { AgentEvidenceKind } from '../evidence-kinds';
 import { agentChange, envelope, evidenceRef, isContextChange, looksLikeEvidenceId, projectApi, type AgentComposeContext } from './common';
 import { projectUnknowns, type CanonicalGap } from './gaps';
 
@@ -18,8 +20,17 @@ export type ResearchInput = {
   snapshot: HeyProjectSnapshot;
   /** The domain's canonical gap list for the project (`coverageGaps`). */
   gaps: readonly CanonicalGap[];
+  /** The domain's brand gap for the project (`brandGap`), when its name borrows a brand; the one matcher decides it. */
+  brand?: { sentence: string; reason: string };
   /** The project's refresh tier by the domain's rule, when the caller computed it. */
   tier?: RefreshTier;
+  /**
+   * The explain engine's evidence ids for the three builder facts (round 4,
+   * 2026-09-30): exactly what `/api/projects/{slug}/explain?fact=…` cites for
+   * `activity.status`, `build.momentum` and `still_building`. Absent, those
+   * claims cite none, as before.
+   */
+  explained?: { activity: readonly string[]; momentum: readonly string[]; stillBuilding: readonly string[] };
   isEvidenceId?: (id: string) => boolean;
 };
 
@@ -28,9 +39,17 @@ const STILL_BUILDING_WITHHELD_TEXT: Readonly<Record<string, string>> = {
   market_not_live: 'the token has no live market HEY tracks',
   token_not_the_projects: "the tracked token is not the project's own",
   market_too_thin: 'the market is too thin to hold a drawdown HEY measures',
+  valuation_not_plausible: 'its current valuation is not plausible from the readings HEY has, so there is no drawdown HEY measures',
 };
 
 const STILL_BUILDING_MEANING = 'Still Building: verified activity continuing through a market drawdown HEY tracked; a record of what happened, not a prediction and not a buy signal.';
+
+/** What each Research Summary line rests on when it cites no record (round 4): its reading, its coverage state, or the snapshot read. */
+const LINE_KIND: Readonly<Partial<Record<HeySummaryLine['dimension'], AgentEvidenceKind>>> = {
+  usage: 'usage_reading',
+  market: 'market_reading',
+  unknown: 'coverage_state',
+};
 
 const LINE_SOURCE: Readonly<Record<HeySummaryLine['dimension'], { name: string; type: AgentSourceType; context?: true }>> = {
   build: { name: 'builder sources', type: 'builder_source' },
@@ -85,6 +104,7 @@ export function summaryClaim(line: HeySummaryLine, ctx: AgentComposeContext, isE
     explainUrl: line.detailUrl,
     ...(line.reason ? { reason: line.reason } : {}),
     ...(context ? { contextOnly: true as const } : {}),
+    ...(tag !== 'UNKNOWN' && evidence.length === 0 && LINE_KIND[line.dimension] ? { evidenceKind: LINE_KIND[line.dimension] } : {}),
   };
 }
 
@@ -127,6 +147,23 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
     : [];
   const latestMeaningful = changes.find((change) => change.countsAsBuilding) ?? null;
   const events30d = snapshot.evidenceSummary.meaningfulEvents30d;
+  // Round 4 (2026-09-30): the API's own state, as the scorer decided it; the contract derives none of its own.
+  const stillBuildingState = stillBuildingStateOf({ apiState: b.stillBuildingState });
+  const explainedRefs = (ids: readonly string[] | undefined) => (ids ?? []).filter(isEvidenceId).slice(0, 12).map((id) => evidenceRef(ctx.baseUrl, id));
+  /*
+   * The count's own events, as far as the ledger lists them (round 4): the
+   * building events among the snapshot's latest changes dated inside the
+   * 30 days. A sample of what is counted, never a list HEY assembles apart
+   * from the ledger, and none when the count is not measured or zero.
+   */
+  const windowStart = ctx.now.getTime() - 30 * 86_400_000;
+  const windowEvidence =
+    events30d !== null && events30d > 0
+      ? changes
+          .filter((change) => change.countsAsBuilding && Date.parse(change.occurredAt ?? change.detectedAt) >= windowStart)
+          .flatMap((change) => change.evidence)
+          .slice(0, 12)
+      : [];
   const token = snapshot.identity.token;
   const verification = snapshot.verification.token;
 
@@ -143,8 +180,9 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
       occurredAt: null,
       precision: null,
       freshness: scoreFresh?.freshnessStatus ?? 'unknown',
-      evidence: [],
+      evidence: status === 'UNKNOWN' ? [] : explainedRefs(input.explained?.activity),
       explainUrl: explain('activity.status'),
+      evidenceKind: status === 'UNKNOWN' ? 'not_held' : 'rule_output',
     },
     b.lastShippedAt
       ? {
@@ -177,20 +215,24 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         },
     events30d === null
       ? { id: 'build.meaningful_events_30d', dimension: 'build', statement: heyText('Meaningful building events in 30 days are not measured for this project; no count is published, because a zero would mean "not read".'), status: 'UNKNOWN', value: null, source: null, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], reason: 'activity_not_measured', explainUrl: explain('activity.status') }
-      : { id: 'build.meaningful_events_30d', dimension: 'build', statement: derivedText(`${countOf(events30d, WORD_MEANINGFUL_BUILDING_EVENT)} in the last 30 days.`), status: 'DERIVED', value: events30d, source: { name: 'hey', type: 'hey_rule' }, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], explainUrl: explain('activity.status') },
+      : { id: 'build.meaningful_events_30d', dimension: 'build', statement: derivedText(`${countOf(events30d, WORD_MEANINGFUL_BUILDING_EVENT)} in the last 30 days.`), status: 'DERIVED', value: events30d, source: { name: 'hey', type: 'hey_rule' }, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: windowEvidence, explainUrl: explain('activity.status'), evidenceKind: 'rule_output' },
     b.buildMomentum === undefined
       ? { id: 'build.momentum', dimension: 'build', statement: heyText('Build Momentum is not measured for this project.'), status: 'UNKNOWN', value: null, source: null, observedAt: scoreAt, occurredAt: null, precision: null, freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], reason: 'not_measured', explainUrl: explain('build.momentum') }
-      : { id: 'build.momentum', dimension: 'build', statement: derivedText(`Build Momentum ${b.buildMomentum} (0–100, from development evidence only; never price).`), status: 'DERIVED', value: b.buildMomentum, source: { name: 'hey', type: 'hey_rule' }, observedAt: scoreAt, occurredAt: null, precision: null, freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], explainUrl: explain('build.momentum') },
+      : { id: 'build.momentum', dimension: 'build', statement: derivedText(`Build Momentum ${b.buildMomentum} (0–100, from development evidence only; never price).`), status: 'DERIVED', value: b.buildMomentum, source: { name: 'hey', type: 'hey_rule' }, observedAt: scoreAt, occurredAt: null, precision: null, freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: explainedRefs(input.explained?.momentum), explainUrl: explain('build.momentum'), evidenceKind: 'rule_output' },
     /*
      * Not measured is not "does not hold" (2026-09-30, hbm-v19): the API sends
      * stillBuilding: false beside stillBuildingWithheld, and the claim is then
      * UNKNOWN with the reason, never a false the contract would restate.
      */
-    b.stillBuildingWithheld
+    b.stillBuildingWithheld || stillBuildingState === 'NOT_MEASURED'
       ? {
           id: 'build.still_building',
           dimension: 'build',
-          statement: heyText(`Still Building is not measured for this project: ${STILL_BUILDING_WITHHELD_TEXT[b.stillBuildingWithheld] ?? 'its market does not hold a drawdown HEY measures'}.`),
+          statement: heyText(
+            b.stillBuildingWithheld
+              ? `Still Building is not measured for this project: ${STILL_BUILDING_WITHHELD_TEXT[b.stillBuildingWithheld] ?? 'its market does not hold a drawdown HEY measures'}.`
+              : 'Still Building is not measured for this project: HEY has not scored it.',
+          ),
           status: 'UNKNOWN',
           value: null,
           source: null,
@@ -199,7 +241,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
           precision: null,
           freshness: scoreFresh?.freshnessStatus ?? 'unknown',
           evidence: [],
-          reason: b.stillBuildingWithheld,
+          reason: b.stillBuildingWithheld ?? 'not_scored',
           explainUrl: explain('still_building'),
         }
       : {
@@ -213,8 +255,10 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
           occurredAt: null,
           precision: null,
           freshness: scoreFresh?.freshnessStatus ?? 'unknown',
-          evidence: [],
+          // The explain engine cites records only for a badge that holds; a "does not hold" is the rule's output alone.
+          evidence: b.stillBuilding ? explainedRefs(input.explained?.stillBuilding) : [],
           explainUrl: explain('still_building'),
+          evidenceKind: 'rule_output',
         },
   ];
 
@@ -239,6 +283,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
       freshness: verification?.verifiedAt ? ageBucket(Math.max(0, ctx.now.getTime() - Date.parse(verification.verifiedAt))) : 'unknown',
       evidence: [],
       explainUrl: explain('token.verification'),
+      ...(state === 'VERIFIED' || state === 'MISMATCH' ? { evidenceKind: 'registry_record' as const } : {}),
       ...(verification?.reason ? { reason: verification.reason } : {}),
     });
   }
@@ -263,11 +308,12 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
             evidence: [],
             explainUrl: explain('market.valuation'),
             contextOnly: true,
+            evidenceKind: 'market_reading',
           }
         : {
             id: 'market.valuation',
             dimension: 'market',
-            statement: heyText(market.valuationWithheld ? 'HEY holds a market reading for this token and withholds the valuation: the market is not live.' : 'HEY holds no market reading for this token.'),
+            statement: heyText(market.valuationWithheld ? valuationWithheldSentence(market.valuationWithheld) : 'HEY holds no market reading for this token.'),
             status: market.valuationWithheld ? 'DERIVED' : 'UNKNOWN',
             value: null,
             source: market.valuationWithheld ? { name: 'hey', type: 'hey_rule' } : null,
@@ -279,6 +325,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
             explainUrl: explain('market.valuation'),
             reason: market.valuationWithheld ?? 'no_reading',
             contextOnly: true,
+            ...(market.valuationWithheld ? { evidenceKind: 'rule_output' as const } : {}),
           },
     );
   }
@@ -293,7 +340,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
       buildMomentum: b.buildMomentum,
       usage: snapshot.usage ? { state: snapshot.usage.state, reason: snapshot.usage.reason, ...(snapshot.usage.observedAt ? { observedAt: snapshot.usage.observedAt } : {}) } : null,
       ledger: snapshot.latestChanges.available ? { available: true } : { available: false, reason: snapshot.latestChanges.reason },
-      identity: { name: snapshot.identity.name, symbol: snapshot.identity.symbol ?? null },
+      ...(input.brand ? { brand: input.brand } : {}),
     },
     coverageUrl: `${api}/coverage`,
     explainUrl: explain,
@@ -338,6 +385,8 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         ...(b.buildMomentum === undefined ? { buildMomentumReason: 'not_measured' } : {}),
         stillBuilding: b.stillBuilding,
         ...(b.stillBuildingWithheld ? { stillBuildingWithheld: b.stillBuildingWithheld } : {}),
+        // Round 4 (2026-09-30): the API's own state when it sends one, else read from stillBuilding and stillBuildingWithheld.
+        stillBuildingState,
         scoringVersion: snapshot.scoringVersion ?? null,
         explainUrl: explain('activity.status'),
       },

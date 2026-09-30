@@ -51,8 +51,8 @@ describe('security context in the MCP snapshot (2026-09-28)', () => {
   it('lists each audit with where it is published and its evidence id, and names the indexes a none-found read', () => {
     const lines = securityLines(found).join('\n');
     expect(lines).toContain("- FACT 2 audit report links found (read from the project's homepage, its DefiLlama listing):");
-    expect(lines).toContain(`CertiK, on the auditor's own site: https://skynet.certik.com/projects/example [security:${PROJECT}:audit:0123456789abcdef]`);
-    expect(lines).toContain('Cyfrin (named in the link only), listed by DefiLlama only');
+    expect(lines).toContain(`«CertiK», on the auditor's own site: https://skynet.certik.com/projects/example [security:${PROJECT}:audit:0123456789abcdef]`);
+    expect(lines).toContain('«Cyfrin» (named in the link only), listed by DefiLlama only');
     expect(lines).toContain("- FACT no bug-bounty link found on the project's homepage — a reading of those only");
     expect(lines).toContain('- UNKNOWN security.txt: not read (site files not read yet)');
     expect(lines).toContain('no open OSV advisory for the published versions of the 3 packages HEY reads (read 2026-09-26) — a reading of OSV, not a statement about the code');

@@ -6,6 +6,11 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (valuation plausibility, round 4, 2026-09-30)
+
+- `valuationWithheld` carries two new codes, additively, wherever it is sent (`HeyProject`, the detail's `market`, the snapshot's `market`): `valuation_over_liquidity` (the valuation is at least 10,000× the liquidity measured in the same reading) and `unlisted_over_ceiling` (above $10B on a Robinhood Chain token that no listing HEY reads carries). Such a valuation is not plausible from the readings HEY has: it is never sent as a figure. No existing code changes meaning.
+- `valuationWithheld?: string` on the comparison's projects (it was dropped there) and on the market detail's `current`.
+
 ### Added (agent contract, 2026-09-30)
 
 - `client.agent.answer(capability, query)` for `GET /api/agent/{capability}` → `HeyAgentResponse` (AgentIntelligenceResponse v1): `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns`. A refusal's envelope (400, 404) resolves with `status` and `error` instead of throwing; a rate limit or an unreachable HEY still throws. `client.agent.capabilities()` for `GET /api/agent`. Types: `HeyAgentCapability`, `HeyAgentText` (with `contentOrigin`), `HeyAgentClaim`, `HeyAgentUnknown`, `HeyAgentFreshness`, `HeyAgentChange` and each capability's data.

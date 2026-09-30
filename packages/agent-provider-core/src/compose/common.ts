@@ -3,6 +3,8 @@ import type { HeyChangeUpsert } from '@hey-research-lab/sdk';
 import type { AgentCapability } from '../capabilities';
 import { MACHINE_TEXT_VERSION, derivedText, externalText, heyText, isSafeUrl, type AgentText } from '../text';
 import { AGENT_FRESHNESS_VERSION } from '../freshness';
+import { HEY_OWN_TOKEN_DISCLOSURE, HEY_OWN_TOKEN_DISCLOSURE_CODE, type OwnProject } from '../disclosures';
+import type { AgentEvidenceKind } from '../evidence-kinds';
 import { recordTag, summaryIsSourceText } from '../records';
 import {
   AGENT_LIMITS,
@@ -11,6 +13,7 @@ import {
   type AgentBoundaries,
   type AgentChange,
   type AgentClaim,
+  type AgentDisclosure,
   type AgentEvidenceRef,
   type AgentFreshness,
   type AgentIntelligenceResponse,
@@ -37,6 +40,12 @@ export type AgentComposeContext = {
   disclaimer: string;
   selfUrl: string;
   query: AgentQuery;
+  /**
+   * Where HEY's own project is (round 4, 2026-09-30): its published slugs and
+   * `$HEY`'s contract, from the canonical `$HEY` configuration. Absent, no
+   * disclosure is added. It changes nothing else in the answer.
+   */
+  own?: OwnProject;
 };
 
 /** What HEY never returns, as machine codes (readiness §26): research only, never a trade. */
@@ -187,8 +196,52 @@ export type EnvelopeParts<C extends AgentCapability> = {
 };
 
 /** The whole answer around one capability's parts: boundaries, methodology, links, the receipt citation, bounds applied. */
+/**
+ * A claim's basis when its composer did not name one (round 4): cited records,
+ * nothing held, or one canonical read. A composer names the rest itself (a
+ * rule's output, a ledger count, a coverage state, a market reading).
+ */
+export function withEvidenceKind(claim: AgentClaim): AgentClaim {
+  if (claim.evidenceKind) return claim;
+  const kind: AgentEvidenceKind = claim.evidence.length > 0 ? 'evidence_record' : claim.status === 'UNKNOWN' ? 'not_held' : 'canonical_read';
+  return { ...claim, evidenceKind: kind };
+}
+
+/** Every project slug and contract an answer names, for the own-token disclosure. */
+function namedSubjects(subject: AgentSubject, data: unknown): { slugs: Set<string>; contracts: Set<string> } {
+  const slugs = new Set<string>();
+  const contracts = new Set<string>();
+  if (subject?.project) {
+    slugs.add(subject.project.slug);
+    if (subject.project.token) contracts.add(subject.project.token.address.toLowerCase());
+  }
+  for (const project of subject?.projects ?? []) slugs.add(project.slug);
+  if (subject?.contract) contracts.add(subject.contract.address.toLowerCase());
+  const payload = data as { items?: readonly { project?: { slug?: unknown } }[]; recordedProject?: { slug?: unknown } | null; projects?: readonly { slug?: unknown }[] } | null;
+  for (const item of payload?.items ?? []) if (typeof item.project?.slug === 'string') slugs.add(item.project.slug);
+  if (typeof payload?.recordedProject?.slug === 'string') slugs.add(payload.recordedProject.slug);
+  for (const project of payload?.projects ?? []) if (typeof project.slug === 'string') slugs.add(project.slug);
+  return { slugs, contracts };
+}
+
+/**
+ * The `$HEY` disclosure (round 4, 2026-09-30): when HEY's own project or
+ * token is anywhere in the answer, the answer says so, in the founder's words.
+ * Nothing else changes: no figure, order or tag.
+ */
+export function ownTokenDisclosures(ctx: AgentComposeContext, subject: AgentSubject, data: unknown): AgentDisclosure[] {
+  const own = ctx.own;
+  if (!own) return [];
+  const named = namedSubjects(subject, data);
+  const projects = own.slugs.filter((slug) => named.slugs.has(slug));
+  const contract = own.token !== null && named.contracts.has(own.token.address.toLowerCase());
+  if (projects.length === 0 && !contract) return [];
+  return [{ code: HEY_OWN_TOKEN_DISCLOSURE_CODE, statement: heyText(HEY_OWN_TOKEN_DISCLOSURE), projects: projects.slice(0, 8) }];
+}
+
 export function envelope<C extends AgentCapability>(ctx: AgentComposeContext, parts: EnvelopeParts<C>): AgentResponseOf<C> {
-  const claims = (parts.claims ?? []).slice(0, AGENT_LIMITS.claims);
+  const claims = (parts.claims ?? []).slice(0, AGENT_LIMITS.claims).map(withEvidenceKind);
+  const disclosures = ownTokenDisclosures(ctx, parts.subject, parts.data);
   const unknowns = (parts.unknowns ?? []).slice(0, AGENT_LIMITS.unknowns);
   const asOf = ctx.now.toISOString();
   const response = {
@@ -225,6 +278,7 @@ export function envelope<C extends AgentCapability>(ctx: AgentComposeContext, pa
         : null,
     boundaries: boundaries(ctx),
     ...(parts.error ? { error: parts.error } : {}),
+    ...(disclosures.length > 0 ? { disclosures } : {}),
     asOf,
   };
   return response as unknown as AgentResponseOf<C>;

@@ -25,24 +25,14 @@ export type GapFacts = {
   buildMomentum: number | undefined;
   usage: { state: string; reason: string; observedAt?: string } | null | undefined;
   ledger: { available: boolean; reason?: string };
-  /** The project's name and ticker, only to test whether they borrow a brand HEY holds no evidence of (2026-09-30). */
-  identity?: { name: string; symbol?: string | null };
+  /**
+   * The brand gap as the domain decides it (round 4, 2026-09-30): `brandGap` in
+   * `packages/domain/src/project-coverage/gaps.ts`, over the one matcher
+   * `robinhoodBrandMatch`. A name borrowing Robinhood's brand is a gap, never a
+   * sign of Robinhood's involvement. This package never matches a name itself.
+   */
+  brand?: { sentence: string; reason: string };
 };
-
-/**
- * A third party's brand in a project's own name or ticker (2026-09-30,
- * adversarial review): tokens named "Robinhood Official Dex" or "The Official
- * Robinhood's Mascot" are researched like any project, and an agent must not
- * read HEY's record as Robinhood's involvement. HEY holds no evidence of any
- * Robinhood-issued project, so the name alone is a gap, never a finding.
- */
-const BORROWED_BRANDS: readonly { brand: string; pattern: RegExp }[] = [{ brand: 'Robinhood', pattern: /robin\s*hood/i }];
-
-export function borrowedBrandOf(identity: { name: string; symbol?: string | null } | undefined): string | undefined {
-  if (!identity) return undefined;
-  const words = `${identity.name} ${identity.symbol ?? ''}`.normalize('NFKC');
-  return BORROWED_BRANDS.find((entry) => entry.pattern.test(words))?.brand;
-}
 
 const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   owner_has_not_published_contract: 'The verified owner has not published the token contract on the project’s own site or signed for it.',
@@ -71,9 +61,8 @@ export function projectUnknowns(input: { gaps: readonly CanonicalGap[]; dimensio
   if (facts.activityStatus === 'UNKNOWN') {
     push(agentUnknown({ category: 'UNKNOWN', dimension: 'activityStatus', statement: 'HEY does not measure this project’s building: it holds no source it can read building from, or the activity it reads is recorded under another page. This is a gap in HEY’s sources, not a finding about the team.', reason: 'activity_status_unknown', detailUrl: input.explainUrl('activity.status') }));
   }
-  const brand = borrowedBrandOf(facts.identity);
-  if (brand) {
-    push(agentUnknown({ category: 'NOT_VERIFIED', dimension: 'brandAffiliation', statement: `The project’s name or ticker uses ${brand}’s name. HEY holds no evidence that ${brand} is involved with it; HEY researches it like any other project.`, reason: 'name_uses_third_party_brand' }));
+  if (facts.brand) {
+    push(agentUnknown({ category: 'NOT_VERIFIED', dimension: 'brandAffiliation', statement: facts.brand.sentence, reason: facts.brand.reason }));
   }
   if (facts.tokenVerification?.status === 'MISMATCH') {
     // A known conflict, not an absence (2026-09-30): the project's own site names another contract, so this token is not shown to be its own.

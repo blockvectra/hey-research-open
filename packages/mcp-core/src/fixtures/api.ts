@@ -47,6 +47,7 @@ export const agentos: HeyProject = {
   researchLevel: 'VERIFIED_BUILDER',
   catalogStatus: 'VERIFIED_BUILDER',
   stillBuilding: true,
+  stillBuildingState: 'HELD',
   stillBuildingEvidence: { drawdownPercent: -62.4, shipsSinceDecline: 5 },
   lastShippedAt: '2026-09-24T10:00:00.000Z',
   primaryNarrative: { slug: 'ai-agents', name: 'AI Agents' },
@@ -64,7 +65,7 @@ export const projectsPage: HeyPage<HeyProject> = {
   nextOffset: 2,
   items: [
     agentos,
-    { ...agentos, slug: 'quiet-token', name: 'Quiet Token', symbol: 'QT', stillBuilding: false, stillBuildingEvidence: undefined, activityStatus: 'UNKNOWN', hasBuilderSource: false, lastShippedAt: undefined, marketCap: { usd: 9_000, source: 'geckoterminal' }, url: `${BASE}/project/quiet-token` },
+    { ...agentos, slug: 'quiet-token', name: 'Quiet Token', symbol: 'QT', stillBuilding: false, stillBuildingState: 'NOT_HELD', stillBuildingEvidence: undefined, activityStatus: 'UNKNOWN', hasBuilderSource: false, lastShippedAt: undefined, marketCap: { usd: 9_000, source: 'geckoterminal' }, url: `${BASE}/project/quiet-token` },
   ],
   disclaimer: DISCLAIMER,
 };
@@ -199,6 +200,7 @@ export const snapshot: HeyProjectSnapshot = {
     lastShippedAt: '2026-09-24T10:00:00.000Z',
     buildMomentum: 67.4,
     stillBuilding: true,
+    stillBuildingState: 'HELD',
     stillBuildingEvidence: { drawdownPercent: -62.4, shipsSinceDecline: 5 },
     velocity: { state: 'ACCELERATING', current: 9, previous: 4, windowDays: 30 },
     cadence: { state: 'INSUFFICIENT_RELEASES' },

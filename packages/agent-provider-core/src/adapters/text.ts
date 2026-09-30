@@ -18,7 +18,9 @@ function claimLine(claim: AgentClaim): string {
   const evidence = claim.evidence.length > 0 ? ` · evidence ${claim.evidence.map((ref) => ref.id).join(', ')}` : '';
   const context = claim.contextOnly ? ' · context only' : '';
   const reason = claim.reason ? ` · reason ${claim.reason}` : '';
-  return `- ${claim.status} ${claim.id}${value}: ${q(claim.statement)}${when}${observed} · freshness ${claim.freshness}${context}${reason}${evidence}`;
+  // What the claim rests on (round 4): printed where no id is cited, so a line never looks unsupported when it is a rule's output or a count.
+  const basis = claim.evidenceKind && claim.evidence.length === 0 ? ` · basis ${claim.evidenceKind.replace(/_/g, ' ')}` : '';
+  return `- ${claim.status} ${claim.id}${value}: ${q(claim.statement)}${when}${observed} · freshness ${claim.freshness}${context}${reason}${basis}${evidence}`;
 }
 
 function changeLine(change: AgentChange): string {
@@ -39,7 +41,7 @@ function dataLines(response: AgentIntelligenceResponse): string[] {
       const d = response.data;
       const lines = [
         `Identity: ${d.identity.slug} — ${q(d.identity.name)}${d.identity.symbol ? ` (${q(d.identity.symbol)})` : ''}; kind ${d.identity.projectKind}; research level ${d.identity.researchLevel}; first recorded by HEY ${day(d.identity.firstRecordedByHeyAt)}.`,
-        `Builder state: ${d.builderState.activityStatus}; last meaningful ship ${d.builderState.lastMeaningfulShipAt ? day(d.builderState.lastMeaningfulShipAt) : 'none recorded or not measured'}; meaningful events in 30 days ${d.builderState.meaningfulEvents30d ?? 'not measured'}; Build Momentum ${d.builderState.buildMomentum ?? 'not measured'}; Still Building ${d.builderState.stillBuilding ? 'yes' : 'no'}${d.builderState.scoringVersion ? ` (${d.builderState.scoringVersion})` : ''}.`,
+        `Builder state: ${d.builderState.activityStatus}; last meaningful ship ${d.builderState.lastMeaningfulShipAt ? day(d.builderState.lastMeaningfulShipAt) : 'none recorded or not measured'}; meaningful events in 30 days ${d.builderState.meaningfulEvents30d ?? 'not measured'}; Build Momentum ${d.builderState.buildMomentum ?? 'not measured'}; Still Building ${d.builderState.stillBuildingState ?? (d.builderState.stillBuilding ? 'HELD' : 'no')}${d.builderState.scoringVersion ? ` (${d.builderState.scoringVersion})` : ''}.`,
         `Contract identity: ${d.contractIdentity.token ? `token ${d.contractIdentity.token.address} on chain ${d.contractIdentity.token.chainId}, verification ${d.contractIdentity.token.verification ?? 'unknown'}${d.contractIdentity.token.verificationReason ? ` (${d.contractIdentity.token.verificationReason})` : ''}` : 'no token'}; owner verified ${d.contractIdentity.ownerVerified ? 'yes' : 'no'}.`,
       ];
       if (d.latestMeaningfulChange) lines.push('Latest meaningful change:', changeLine(d.latestMeaningfulChange));
@@ -70,7 +72,7 @@ function dataLines(response: AgentIntelligenceResponse): string[] {
         ...(d.inputs.length > 0 ? ['Inputs:', ...d.inputs.map((input) => `- ${input.name}: ${Array.isArray(input.value) ? input.value.join(', ') : String(input.value)}${input.source ? ` (${input.source})` : ''}${input.observedAt ? ` read ${day(input.observedAt)}` : ''}`)] : []),
         ...(d.lineage.length > 0 ? ['Lineage:', ...d.lineage.map((step) => `- ${step.step}: ${q(step.text)}`)] : []),
         `Status rests on current evidence: ${d.statusRestsOnCurrentEvidence === null ? 'unknown' : d.statusRestsOnCurrentEvidence ? 'yes' : 'no — due to be scored again'}.`,
-        `Build Momentum: ${d.buildMomentum.state} ${d.buildMomentum.value ?? d.buildMomentum.classification}. Still Building: ${d.stillBuilding.state} ${d.stillBuilding.classification}. ${q(d.stillBuilding.meaning)}`,
+        `Build Momentum: ${d.buildMomentum.state} ${d.buildMomentum.value ?? d.buildMomentum.classification}. Still Building: ${d.stillBuilding.state} ${d.stillBuilding.classification}${d.stillBuilding.stillBuildingState ? ` (${d.stillBuilding.stillBuildingState})` : ''}. ${q(d.stillBuilding.meaning)}`,
         `Never an input to this status: ${d.excludedContext.map((entry) => entry.item).join(', ')}.`,
         ...(d.unknownInputs.length > 0 ? [`UNKNOWN inputs: ${d.unknownInputs.join(', ')}.`] : []),
       ];
@@ -113,6 +115,8 @@ export function renderAgentResponseText(response: AgentIntelligenceResponse): st
     '',
     `Answer (${response.answerStatus}): ${q(response.answer)}`,
   ];
+  // HEY's own token (round 4): the disclosure right under the answer, in the founder's words.
+  for (const disclosure of response.disclosures ?? []) lines.push(`Disclosure: ${q(disclosure.statement)}${disclosure.projects.length > 0 ? ` (${disclosure.projects.join(', ')})` : ''}.`);
   if (response.error) lines.push(`Error ${response.error.code}: ${q(response.error.message)}${response.error.movedTo ? ` Moved to ${response.error.movedTo}.` : ''}`);
   const data = dataLines(response);
   if (data.length > 0) lines.push('', ...data);

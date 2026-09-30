@@ -64,6 +64,10 @@ export type HeyProject = {
   researchLevel: string;
   catalogStatus: string;
   stillBuilding: boolean;
+  /** Still Building as three states (2026-09-30, additive): `HELD`, `NOT_HELD`, or `NOT_MEASURED` (no score yet, or withheld — see `score.stillBuildingWithheld`). `stillBuilding` keeps its v1 meaning. */
+  stillBuildingState: HeyStillBuildingState;
+  /** `true` on `$HEY`, HEY's own token, researched by the same rules — no ranking bonus, no demotion (2026-09-30, additive). Absent on every other project. Print "HEY’s own token — researched by the same rules" beside it. */
+  heysOwnToken?: true;
   lastShippedAt?: string;
   primaryNarrative?: { slug: string; name: string };
   /** Canonical identity. Absent for a project without a token. */
@@ -110,7 +114,7 @@ export type HeyProject = {
    * Why `marketCap` is absent when HEY holds a reading it will not publish
    * (2026-09-28): the market's reason code or status, e.g.
    * `launch_pool_no_trades` or `readings_implausible`. Absent when HEY holds
-   * no reading at all.
+   * no reading at all. Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity) or `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries).
    */
   valuationWithheld?: string;
   /**
@@ -258,7 +262,7 @@ export type HeyProjectDetail = HeyProject & {
     marketCapUsd?: number;
     valuationKind?: HeyValuationKind;
     fdvUsd?: number;
-    /** Present when the market is not live and the valuation is withheld: the market's reason code (2026-09-26). */
+    /** Present when the valuation is withheld: the market's reason code when it is not live (2026-09-26). Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity) or `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries). `fdvUsd` is then absent too. */
     valuationWithheld?: string;
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply (2026-09-25). */
@@ -282,6 +286,8 @@ export type HeyProjectDetail = HeyProject & {
     /** Why `discoveryGap` is absent (2026-09-30, additive): `market_too_thin` and the other reasons. Absent beside a gap, or on a score from before the rule. */
     discoveryGapWithheld?: HeyDiscoveryGapWithheld;
     stillBuilding: boolean;
+    /** The same three states as the card's `stillBuildingState`, from this score (2026-09-30, additive). */
+    stillBuildingState: HeyStillBuildingState;
     /** Why Still Building was not measured (2026-09-30, additive), beside `stillBuilding: false`: `market_too_thin` and the other market reasons. Absent when it was measured, or on a score from before the rule. */
     stillBuildingWithheld?: HeyStillBuildingWithheld;
     calculatedAt: string;
@@ -386,6 +392,8 @@ export type HeyTokenMarket = {
     valuationKind?: HeyValuationKind;
     /** Fully diluted valuation from the same reading; equal to `marketCapUsd` when it stands in for one (2026-09-25). */
     fdvUsd?: number;
+    /** Why `marketCapUsd` and `fdvUsd` are absent although the reading carried them (round 4, 2026-09-30): `valuation_over_liquidity` or `unlisted_over_ceiling`, a valuation not plausible from the readings HEY has. */
+    valuationWithheld?: string;
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply rather than market depth (2026-09-25). */
     liquidityKind?: HeyLiquidityKind;
@@ -743,7 +751,15 @@ export type HeyDiscoveryGapWithheld =
  * launch curve, so there is no drawdown HEY measures. `stillBuilding` keeps
  * its v1 meaning: false whenever the badge is not held.
  */
-export type HeyStillBuildingWithheld = 'market_not_live' | 'token_not_the_projects' | 'market_too_thin';
+export type HeyStillBuildingWithheld = 'market_not_live' | 'token_not_the_projects' | 'market_too_thin' | 'valuation_not_plausible';
+
+/**
+ * Still Building as three states (2026-09-30), beside the v1 boolean:
+ * `HELD` (the badge is held), `NOT_HELD` (measured, not held) and
+ * `NOT_MEASURED` (no score yet, or the scorer withheld it with a
+ * `stillBuildingWithheld` reason). A nullable `stillBuilding` waits for `/api/v2`.
+ */
+export type HeyStillBuildingState = 'HELD' | 'NOT_HELD' | 'NOT_MEASURED';
 
 /** Which lockers HEY reads a pair lock from (2026-09-30): HoodLock only today. A new locker is a new value, never a new meaning of `pairLocked`. */
 export type HeyPairLockScope = 'hoodlock_only';

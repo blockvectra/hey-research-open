@@ -33,6 +33,13 @@ export type HeyAgentPrecision = 'EXACT' | 'DATE' | 'WEEK' | 'WINDOW' | 'OBSERVED
 export type HeyAgentFreshnessStatus = 'live' | 'recent' | 'daily' | 'weekly' | 'stale' | 'unknown';
 export type HeyAgentSourceType = 'hey_rule' | 'hey_record' | 'builder_source' | 'chain' | 'market_provider' | 'registry' | 'project_site';
 export type HeyAgentUnknownCategory = 'UNKNOWN' | 'NOT_MEASURED' | 'NOT_VERIFIED' | 'STALE' | 'INSUFFICIENT_EVIDENCE';
+/**
+ * What a claim rests on (round 4, 2026-09-30, additive). A typed evidence id
+ * is cited only where a canonical record exists; the rest say what they are.
+ */
+export type HeyAgentEvidenceKind = 'evidence_record' | 'rule_output' | 'ledger_count' | 'coverage_state' | 'market_reading' | 'usage_reading' | 'registry_record' | 'canonical_read' | 'not_held';
+/** Round 4 (2026-09-30, additive): what `stillBuilding: false` cannot say — measured and not met, or not measured. */
+export type HeyAgentStillBuildingState = 'HELD' | 'NOT_HELD' | 'NOT_MEASURED';
 export type HeyAgentDataFamily = 'builder_sources' | 'activity_score' | 'change_ledger' | 'market' | 'contracts' | 'locks' | 'usage' | 'peers' | 'protocol_economics';
 
 export type HeyAgentClaim = {
@@ -50,6 +57,8 @@ export type HeyAgentClaim = {
   explainUrl?: string;
   reason?: string;
   contextOnly?: true;
+  /** What the claim rests on (round 4, additive): present on every claim HEY composes. */
+  evidenceKind?: HeyAgentEvidenceKind;
 };
 
 export type HeyAgentUnknown = {
@@ -119,6 +128,8 @@ export type HeyAgentResearchData = {
     stillBuilding: boolean;
     /** Why Still Building was not measured (2026-09-30, additive), beside `stillBuilding: false`. */
     stillBuildingWithheld?: string;
+    /** Round 4 (2026-09-30, additive): HELD, NOT_HELD or NOT_MEASURED. */
+    stillBuildingState?: HeyAgentStillBuildingState;
     scoringVersion: string | null;
     explainUrl: string;
   };
@@ -184,7 +195,7 @@ export type HeyAgentBuilderStatusData = {
   unknownInputs: string[];
   statusRestsOnCurrentEvidence: boolean | null;
   buildMomentum: { value: number | null; state: HeyAgentClaimStatus; classification: string; explainUrl: string };
-  stillBuilding: { value: boolean | null; state: HeyAgentClaimStatus; classification: string; meaning: HeyAgentText; explainUrl: string };
+  stillBuilding: { value: boolean | null; state: HeyAgentClaimStatus; classification: string; stillBuildingState?: HeyAgentStillBuildingState; meaning: HeyAgentText; explainUrl: string };
   reason: HeyAgentText;
 };
 
@@ -261,6 +272,8 @@ type HeyAgentBase = {
   citation: { kind: 'hey_agent_answer'; capability: HeyAgentCapability; schemaVersion: '1'; url: string; asOf: string; project?: string; scoringVersion?: string } | null;
   boundaries: { notAdvice: true; notProvided: string[]; marketIsContextOnly: true; disclaimer: HeyAgentText };
   error?: { code: string; message: HeyAgentText; movedTo?: string };
+  /** Round 4 (2026-09-30, additive): `hey_own_token` when `$HEY`'s project is in the answer; it changes no figure, order or tag. */
+  disclosures?: { code: 'hey_own_token'; statement: HeyAgentText; projects: string[] }[];
   asOf: string;
 };
 

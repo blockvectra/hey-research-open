@@ -3,7 +3,7 @@
  * (2026-09-26). Each is read from HEY's own tables; none calls a provider.
  * Absent means HEY does not know; a withheld figure says it is withheld.
  */
-import type { HeyDiscoveryGapWithheld, HeyProject, HeyStillBuildingWithheld } from './projects';
+import type { HeyDiscoveryGapWithheld, HeyProject, HeyStillBuildingState, HeyStillBuildingWithheld } from './projects';
 import type { HeyPeerContext } from './graph';
 import type { HeyUsageSummary } from './usage';
 
@@ -369,6 +369,8 @@ export type HeyProjectSnapshot = {
     catalogStatus: string;
     primaryNarrative?: { slug: string; name: string };
     token?: { chainId: number; contractAddress: string };
+    /** `true` when this is `$HEY`, HEY's own token, researched by the same rules (2026-09-30, additive); absent otherwise. */
+    heysOwnToken?: true;
     websiteUrl?: string;
     /** When HEY first recorded the project: knowledge time. */
     firstRecordedByHeyAt: string;
@@ -384,6 +386,8 @@ export type HeyProjectSnapshot = {
     /** Absent when not measured, as on the detail route. */
     buildMomentum?: number;
     stillBuilding: boolean;
+    /** `HELD`, `NOT_HELD` or `NOT_MEASURED` (2026-09-30, additive), beside the unchanged boolean. */
+    stillBuildingState: HeyStillBuildingState;
     /** Why Still Building was not measured (2026-09-30, additive), beside `stillBuilding: false`; absent when measured or on an older score. */
     stillBuildingWithheld?: HeyStillBuildingWithheld;
     stillBuildingEvidence?: { drawdownPercent: number; shipsSinceDecline?: number };
@@ -397,7 +401,11 @@ export type HeyProjectSnapshot = {
   /** The card's market fields with the card's gates; absent for a project without a token. */
   market?: {
     marketCap?: NonNullable<HeyProject['marketCap']>;
-    /** Present when the market is not live and the valuation is withheld: the reason code. */
+    /**
+     * Present when the valuation is withheld: the market's reason code when it is not live, or the
+     * valuation gate's `valuation_over_liquidity` / `unlisted_over_ceiling` when the valuation is not
+     * plausible from the readings HEY has (round 4, 2026-09-30). The list's `valuationWithheld`.
+     */
     valuationWithheld?: string;
     liquidity?: NonNullable<HeyProject['liquidity']>;
     volume24h?: NonNullable<HeyProject['volume24h']>;

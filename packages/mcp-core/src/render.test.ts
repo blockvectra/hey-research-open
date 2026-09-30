@@ -56,6 +56,7 @@ const project = (over: Partial<HeyProject> = {}): HeyProject => ({
   researchLevel: 'VERIFIED_BUILDER',
   catalogStatus: 'VERIFIED_BUILDER',
   stillBuilding: false,
+  stillBuildingState: 'NOT_HELD',
   url: 'https://heyresearch.xyz/project/agentos',
   ...over,
 });
@@ -162,7 +163,7 @@ describe('find_projects', () => {
 
   it('accelerating: DERIVED, both windows, and an unwatched window is unknown — never "none"', () => {
     const text = renderAccelerating(fx.accelerating);
-    expect(text).toContain('DERIVED Faster — 5 meaningful events in 30 days vs 1 before');
+    expect(text).toContain('DERIVED «Faster» — 5 meaningful events in 30 days vs 1 before');
     expect(text).toContain('vs an earlier window HEY did not watch (unknown)');
     expect(text).not.toMatch(/\bnone\b/);
     expect(text).toContain('at most 100');
@@ -170,7 +171,7 @@ describe('find_projects', () => {
 
   it('builder-radar: ranks are DERIVED, price takes no part, and the offset reads on', () => {
     const text = renderBuilders(fx.builders, NOW);
-    expect(text).toContain('DERIVED #3 AgentOS ($AOS)');
+    expect(text).toContain('DERIVED #3 «AgentOS» («AOS»)');
     expect(text).toContain('Market cap, price and volume take no part in it.');
     expect(text).toContain('Showing 1 of 715. For the rest, call find_projects again with surface=builder-radar and offset=1.');
     // A ranking keeps the API's disclaimer (audit §45 #9).
@@ -189,7 +190,7 @@ describe('find_projects', () => {
 describe('lookup_token', () => {
   it('prints HEY’s words for the status, the evidence and whose contract it is', () => {
     const text = renderTokenLookup(fx.lookupPublished, NOW);
-    expect(text).toContain('# AgentOS ($AOS) — Shipping');
+    expect(text).toContain('# «AgentOS» («AOS») — Shipping');
     expect(text).not.toContain('SHIPPING');
     expect(text).toContain('FACT 8 ship records in the last 30 days');
     expect(text).toContain('DERIVED 4 meaningful ships in 30 days');
@@ -243,12 +244,16 @@ describe('get_project_snapshot', () => {
   });
 
   it('says Still Building was not measured on a thin market, never that it was not met (hbm-v19)', () => {
-    const thin = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, stillBuilding: false, stillBuildingWithheld: 'market_too_thin' } }, NOW);
-    expect(thin).toContain('- UNKNOWN Still Building: not measured — market too thin (market_too_thin)');
+    const thin = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, stillBuilding: false, stillBuildingWithheld: 'market_too_thin', stillBuildingState: 'NOT_MEASURED' } }, NOW);
+    expect(thin).toContain('- UNKNOWN Still Building: not measured — market too thin (market_too_thin; stillBuildingState NOT_MEASURED)');
     expect(thin).not.toContain('STILL BUILDING');
-    // Measured and not held: nothing is printed, as before.
-    const plain = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, stillBuilding: false } }, NOW);
-    expect(plain).not.toMatch(/Still Building/i);
+    // Measured and not held says so since round 4 (stillBuildingState), never as a finding about the team.
+    // The API's own state is the one the renderer prints (round 4): each shape carries the state the scorer gives it.
+    const plain = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, stillBuilding: false, stillBuildingState: 'NOT_HELD' } }, NOW);
+    expect(plain).toContain('- DERIVED Still Building: does not hold — measured, and not met (stillBuildingState NOT_HELD)');
+    // No score is not measured, never "not met".
+    const unscored = renderSnapshot({ ...fx.snapshot, scoringVersion: undefined, build: { ...fx.snapshot.build, stillBuilding: false, stillBuildingState: 'NOT_MEASURED' } } as typeof fx.snapshot, NOW);
+    expect(unscored).toContain('stillBuildingState NOT_MEASURED');
   });
 
   it('keeps knowledge time apart from an outside listing date', () => {
@@ -270,7 +275,7 @@ describe('get_project_snapshot', () => {
   });
 
   it('prints the latest changes at their precision, with ids, and where the rest are', () => {
-    expect(text).toContain('- EXACT 2026-09-24 10:00 UTC · build.release: Released v0.4 (id ship:2ac87a66-0000-0000-0000-000000000001)');
+    expect(text).toContain('- EXACT 2026-09-24 10:00 UTC · build.release: «Released v0.4» (id ship:2ac87a66-0000-0000-0000-000000000001)');
     expect(text).toContain('- WEEK week of 2026-09-14 · build.code_activity');
     expect(text).toContain('get_changes with project=agentos');
   });
@@ -324,8 +329,8 @@ describe('get_project_snapshot', () => {
 describe('get_changes', () => {
   it('prints each event’s time and precision, its evidence, a retraction by id alone, and the cursor', () => {
     const text = renderChanges(fx.changes);
-    expect(text).toContain('- FACT EXACT 2026-09-24 · build.release · AgentOS (agentos): Released v0.4');
-    expect(text).toContain('evidence: GitHub release — https://github.com/agentos/sdk/releases/tag/v0.4');
+    expect(text).toContain('- FACT EXACT 2026-09-24 · build.release · «AgentOS» (agentos): «Released v0.4»');
+    expect(text).toContain('evidence: «GitHub release» — https://github.com/agentos/sdk/releases/tag/v0.4');
     expect(text).toContain('- RETRACTED signal:0b0b0000-0000-0000-0000-000000000009 (revision 2');
     expect(text).toContain('Showing 2; more exist. Call get_changes again with before=YzEuMTIzNDU.');
     expect(text).toMatch(TAGGED);
@@ -372,8 +377,8 @@ describe('get_changes', () => {
 describe('get_project_timeline', () => {
   it('prints precision in words, shown of total and the before cursor', () => {
     const text = renderTimeline(fx.timeline);
-    expect(text).toContain('- FACT EXACT 2026-09-01 10:00 UTC · release · v1.2 · counts as building — https://github.com/equifold/core/releases/tag/v1.2');
-    expect(text).toContain('- FACT WEEK week of 2026-08-24 · code activity · 12 commits');
+    expect(text).toContain('- FACT EXACT 2026-09-01 10:00 UTC · release · «v1.2» · counts as building — https://github.com/equifold/core/releases/tag/v1.2');
+    expect(text).toContain('- FACT WEEK week of 2026-08-24 · code activity · «12 commits»');
     expect(text).toContain('- FACT SCHEDULED scheduled 2026-10-01 00:00 UTC · unlock');
     expect(text).toContain('Showing 3 of 412. For older entries, call get_project_timeline again with before=T2.');
     expect(renderTimeline(fx.timeline, 1)).toContain('Showing 1 of 412. Call get_project_timeline again with limit=1');
@@ -389,7 +394,7 @@ describe('get_project_timeline', () => {
         { id: 'token-verification', kind: 'verification', at: '2026-09-18T00:00:00.000Z', precision: 'OBSERVED', title: 'Token verified', countsAsBuilding: false },
       ],
     });
-    expect(text).toContain('- DERIVED OBSERVED HEY saw it 2026-09-20 · resumed · Back to shipping');
+    expect(text).toContain('- DERIVED OBSERVED HEY saw it 2026-09-20 · resumed · «Back to shipping»');
     expect(text).toContain('- DERIVED WINDOW window ending 2026-09-19 · market integrity');
     expect(text).toContain('- FACT OBSERVED HEY saw it 2026-09-18 · verification');
     expect(text).not.toContain('Each entry is a FACT');
@@ -461,7 +466,7 @@ describe('explain_fact', () => {
 describe('get_evidence', () => {
   it('prints the claim, its precision, when HEY knew, the source URL and the backing', () => {
     const text = renderEvidence(fx.evidence);
-    expect(text).toContain('FACT GITHUB_RELEASE (build): Released v0.4');
+    expect(text).toContain('FACT GITHUB_RELEASE (build): «Released v0.4»');
     expect(text).toContain('When: 2026-09-24 10:00 UTC (EXACT); HEY first knew 2026-09-24 11:00 UTC');
     expect(text).toContain('https://github.com/agentos/sdk/releases/tag/v0.4; backing: publicly verified; counts toward activity status');
   });
@@ -630,7 +635,7 @@ describe('compare_projects', () => {
 describe('ask_hey', () => {
   it('keeps each line’s tag and source', () => {
     const text = renderAskAnswer(fx.ask);
-    expect(text).toContain('FACT 2026-09-24 · v0.4 (source: https://github.com/agentos/sdk/releases/tag/v0.4)');
+    expect(text).toContain('FACT «2026-09-24 · v0.4» (source: https://github.com/agentos/sdk/releases/tag/v0.4)');
     expect(text).toContain('UNKNOWN Release cadence');
   });
 });
@@ -670,7 +675,7 @@ describe('chain_overview', () => {
 
   it('unlocks: SCHEDULED with proof and id, shown of total, HoodLock only', () => {
     const text = renderUnlocks(fx.unlocks);
-    expect(text).toContain('SCHEDULED 2026-10-01 00:00 UTC · AgentOS · lock #17 (lock:4663:17) · 1,000 tokens (10% of recorded supply) — proof https://hoodlock.tech/proof/lock/17');
+    expect(text).toContain('SCHEDULED 2026-10-01 00:00 UTC · «AgentOS» · lock #17 (lock:4663:17) · 1,000 tokens (10% of recorded supply) — proof https://hoodlock.tech/proof/lock/17');
     expect(text).toContain('Showing 1 of 3.');
     expect(text).toContain('HoodLock only');
     expect(renderUnlocks({ ...fx.unlocks, items: [], total: 0, truncated: false })).toContain('this is not "no lock anywhere"');

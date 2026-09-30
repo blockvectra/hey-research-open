@@ -5,7 +5,7 @@ import type { AgentClaim, AgentCompareCompleteness, AgentCompareProject, AgentRe
 import { derivedText, externalText, heyText } from '../text';
 import { doNotConclude } from '../unknowns';
 import { countOf, WORD_MEANINGFUL_EVENT } from '../words';
-import { envelope, type AgentComposeContext } from './common';
+import { envelope, evidenceRef, looksLikeEvidenceId, type AgentComposeContext } from './common';
 
 /**
  * compare_builders (2026-09-30): two to four projects' building records side
@@ -25,6 +25,13 @@ export type CompareInput = {
   peers: Readonly<Record<string, HeyPeerContext | null>>;
   /** When each project was last scored, by slug: the freshness of every figure here. */
   scoredAt: Readonly<Record<string, string | null>>;
+  /**
+   * The explain engine's evidence for each project's activity status, by slug
+   * (round 4, 2026-09-30): the typed ids `/api/projects/{slug}/explain?fact=activity.status`
+   * cites — never a list HEY assembles here. Absent, the claim cites none.
+   */
+  activityEvidence?: Readonly<Record<string, readonly string[]>>;
+  isEvidenceId?: (id: string) => boolean;
 };
 
 export const EXCLUDED_FROM_COMPARISON = [
@@ -61,8 +68,10 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
   const cohorts = projects.map((project) => (project.peer?.state === 'COMPUTED' ? project.peer.cohort : undefined));
   const sameCohort = projects.length < 2 || cohorts.some((cohort) => !cohort) ? null : new Set(cohorts).size === 1;
 
+  const isEvidenceId = input.isEvidenceId ?? looksLikeEvidenceId;
   const claims: AgentClaim[] = projects.flatMap((project): AgentClaim[] => {
     const observedAt = input.scoredAt[project.slug] ?? null;
+    const activityEvidence = project.activityStatus === 'UNKNOWN' ? [] : (input.activityEvidence?.[project.slug] ?? []).filter(isEvidenceId).slice(0, 12).map((id) => evidenceRef(ctx.baseUrl, id));
     const fresh = familyFreshness('activity_score', { observedAt, now: ctx.now }).freshnessStatus;
     const explainUrl = project.explainUrl;
     return [
@@ -77,8 +86,9 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
         occurredAt: null,
         precision: null,
         freshness: fresh,
-        evidence: [],
+        evidence: activityEvidence,
         explainUrl,
+        evidenceKind: project.activityStatus === 'UNKNOWN' ? 'not_held' : 'rule_output',
       },
       project.meaningfulEvents30d === null
         ? { id: `compare.${project.slug}.meaningful_events_30d`, dimension: 'build', statement: derivedText(`${project.slug}: meaningful events in 30 days are not measured.`), status: 'UNKNOWN', value: null, source: null, observedAt, occurredAt: null, precision: 'WINDOW', freshness: fresh, evidence: [], explainUrl, reason: 'activity_not_measured' }
@@ -95,6 +105,7 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
             freshness: fresh,
             evidence: [],
             explainUrl,
+            evidenceKind: 'rule_output',
           },
       project.lastMeaningfulShipAt
         ? { id: `compare.${project.slug}.last_meaningful_ship`, dimension: 'build', statement: derivedText(`${project.slug}: newest meaningful ship dated ${project.lastMeaningfulShipAt.slice(0, 10)}.`), status: 'FACT', value: project.lastMeaningfulShipAt, source: { name: 'builder sources', type: 'builder_source' }, observedAt, occurredAt: project.lastMeaningfulShipAt, precision: null, freshness: fresh, evidence: [], explainUrl }

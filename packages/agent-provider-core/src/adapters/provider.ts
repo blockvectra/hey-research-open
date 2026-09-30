@@ -1,6 +1,6 @@
 import type { AgentCapabilityRequest, ParsedAgentRequest } from '../request';
 import type { AgentIntelligenceResponse } from '../schema';
-import { quoteForTransport } from '../text';
+import { quoteForTransport, type AgentText } from '../text';
 
 /**
  * The provider boundary (2026-09-30, readiness §6).
@@ -56,8 +56,20 @@ export function restStatusOf(response: Pick<AgentIntelligenceResponse, 'status'>
 export const A2A_CONTRACT_OPTION = 'agent-intelligence-v1' as const;
 
 export type A2aAgentParts = {
-  parts: [{ text: string; mediaType: 'text/plain' }, { data: AgentIntelligenceResponse; mediaType: 'application/json' }];
-  metadata: { contract: typeof A2A_CONTRACT_OPTION; capability: AgentCapabilityRequest['capability']; status: AgentIntelligenceResponse['status']; canonicalUrl: string; evidenceIds: string[]; notAdvice: true };
+  parts: [
+    { text: string; mediaType: 'text/plain'; metadata: { contentOrigin: AgentText['contentOrigin'] } },
+    { data: AgentIntelligenceResponse; mediaType: 'application/json'; metadata: { contentOrigin: 'agent_contract'; schema: AgentIntelligenceResponse['schema'] } },
+  ];
+  metadata: {
+    contract: typeof A2A_CONTRACT_OPTION;
+    capability: AgentCapabilityRequest['capability'];
+    status: AgentIntelligenceResponse['status'];
+    canonicalUrl: string;
+    evidenceIds: string[];
+    notAdvice: true;
+    /** Round 4 (additive): the answer's disclosures, when it has any. */
+    disclosures?: { code: string; statement: string }[];
+  };
 };
 
 /**
@@ -67,8 +79,13 @@ export type A2aAgentParts = {
 export function toA2aParts(response: AgentIntelligenceResponse): A2aAgentParts {
   return {
     parts: [
-      { text: `${quoteForTransport(response.answer)} (${response.answerStatus}; as of ${response.asOf}; not investment advice.)`, mediaType: 'text/plain' },
-      { data: response, mediaType: 'application/json' },
+      {
+        // HEY's own token (round 4): the disclosure travels with the answer sentence.
+        text: `${quoteForTransport(response.answer)} (${response.answerStatus}; as of ${response.asOf}; not investment advice.)${(response.disclosures ?? []).map((disclosure) => ` Disclosure: ${quoteForTransport(disclosure.statement)}.`).join('')}`,
+        mediaType: 'text/plain',
+        metadata: { contentOrigin: response.answer.contentOrigin },
+      },
+      { data: response, mediaType: 'application/json', metadata: { contentOrigin: 'agent_contract', schema: response.schema } },
     ],
     metadata: {
       contract: A2A_CONTRACT_OPTION,
@@ -77,6 +94,7 @@ export function toA2aParts(response: AgentIntelligenceResponse): A2aAgentParts {
       canonicalUrl: response.links.self,
       evidenceIds: response.evidence.map((ref) => ref.id),
       notAdvice: true,
+      ...(response.disclosures ? { disclosures: response.disclosures.map((disclosure) => ({ code: disclosure.code, statement: disclosure.statement.text })) } : {}),
     },
   };
 }

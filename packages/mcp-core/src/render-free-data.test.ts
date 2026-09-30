@@ -39,7 +39,7 @@ const economics: HeyProtocolEconomics = {
 describe('get_project_snapshot: protocol economics', () => {
   it('tags each metric in its own state: a measured zero is zero, not tracked is a fact about the registry, unread is unknown', () => {
     const text = economicsLines(economics, { state: 'MEASURED' }).join('\n');
-    expect(text).toContain('- FACT DefiLlama lists Rips DEX (Dexs), matched by declared token: TVL $1.25M on 2026-09-26');
+    expect(text).toContain('- FACT DefiLlama lists «Rips DEX» («Dexs»), matched by declared token: TVL $1.25M on 2026-09-26');
     expect(text).toContain('FACT fees 24h zero, as measured; FACT revenue 24h: not tracked by the registry; UNKNOWN DEX volume 24h: not read yet (for 2026-09-26)');
     expect(text).toContain('FACT the registry links 1 audit report and a methodology — links, never verdicts');
     expect(text).toContain('never reaches activity status, Build Momentum, the Discovery Gap or the Radar');
@@ -84,7 +84,7 @@ describe('get_project_snapshot: developer footprint', () => {
   it('prints the four lines in their coverage states, and a package index reading as that and no more', () => {
     const text = footprintLines(fx.snapshot.developerFootprint!).join('\n');
     expect(text).toContain('- FACT official repositories: 2; metadata read for 2 (MEASURED, repository_metadata_read)');
-    expect(text).toContain('- FACT newest production deployment 2026-09-20 (environment "Production", read 2026-09-26) — a dated record of an environment, not building');
+    expect(text).toContain('- FACT newest production deployment 2026-09-20 (environment «Production», read 2026-09-26) — a dated record of an environment, not building');
     expect(text).toContain('a reading of that index only, not "no package"');
     expect(text).toContain('- FACT package advisories: NOT_APPLICABLE');
   });

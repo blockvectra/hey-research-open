@@ -25,7 +25,9 @@ import type {
   HeyStillBuildingWithheld,
 } from '@hey-research-lab/sdk';
 
-import { STILL_BUILDING_MEANING, TAG_LEGEND, activityTag, atPrecision, liquidityWords, money, recordTag, shownOf, sourceWords, stillBuildingEvidence, tokenMarketWords, valuationWord } from './render';
+import { quoteExternal, stillBuildingStateOf, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
+
+import { activityTag, atPrecision, composedWords, derivedWords, liquidityWords, money, quotedName, recordTag, shownOf, STILL_BUILDING_MEANING, stillBuildingEvidence, summaryWords, TAG_LEGEND, tokenMarketWords, valuationWord } from './render';
 
 /**
  * The machine-layer reads as text (2026-09-26): snapshot, coverage, explain,
@@ -65,6 +67,7 @@ export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<HeyStillBuildingWith
   market_not_live: GAP_WITHHELD_WORDS.market_not_live,
   token_not_the_projects: GAP_WITHHELD_WORDS.token_not_the_projects,
   market_too_thin: GAP_WITHHELD_WORDS.market_too_thin,
+  valuation_not_plausible: 'Not measured — valuation not plausible',
 };
 
 /** A coverage state as the tag an agent should read it with: measured is a fact about HEY's record, anything else is a gap. */
@@ -157,14 +160,16 @@ function mustNotConclude(dimensions: Record<HeyCoverageDimension, HeyCoverageEnt
  * restated — the MCP says no more than the API does. A server that predates
  * the field prints nothing here.
  */
-export function summaryLines(summary: HeyResearchSummary | undefined): string[] {
+export function summaryLines(summary: HeyResearchSummary | undefined, sourceTitles: readonly string[] = []): string[] {
   if (!summary || summary.lines.length === 0) return [];
   const out = ["## Research summary (HEY's answer first; the sections below are its evidence)"];
   for (const line of summary.lines) {
     const stale = line.freshness === 'stale' ? ' (stale reading)' : '';
     const reason = line.tag === 'UNKNOWN' && line.reason ? ` [${reasonWords(line.reason)}]` : '';
     const evidence = line.evidence.length > 0 ? ` Evidence: ${line.evidence.map((entry) => entry.id).join(', ')}.` : '';
-    out.push(`- ${line.tag} ${line.label}: ${line.text}${stale}${reason}${evidence}`);
+    // A line that repeats a ship's title carries a source's words and is quoted whole, as the agent contract types it (round 4); every other line is HEY's.
+    const quotesSource = sourceTitles.some((title) => title.length > 0 && line.text.includes(title));
+    out.push(`- ${line.tag} ${line.label}: ${quotesSource ? composedWords(line.text, 'research_summary_quoting_source') : derivedWords(line.text)}${stale}${reason}${evidence}`);
   }
   out.push('  Each line has a detailUrl and, for its evidence ids, a receiptUrl on the snapshot; get_evidence id=<id> reads one.', '');
   return out;
@@ -174,12 +179,12 @@ export function summaryLines(summary: HeyResearchSummary | undefined): string[] 
 export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   const i = s.identity;
   const b = s.build;
-  const lines: string[] = [`# ${i.name}${i.symbol ? ` ($${i.symbol})` : ''} — snapshot as of ${s.asOf.slice(0, 16).replace('T', ' ')} UTC`, i.url, ''];
+  const lines: string[] = [`# ${quotedName(i.name, i.symbol)} — snapshot as of ${s.asOf.slice(0, 16).replace('T', ' ')} UTC`, i.url, ''];
 
-  lines.push(...summaryLines(s.summary));
+  lines.push(...summaryLines(s.summary, s.latestChanges.available ? s.latestChanges.items.flatMap((item) => (item.op === 'upsert' && summaryIsSourceText(item.id, item.type) ? [item.summary] : [])) : []));
 
   lines.push('## Identity');
-  lines.push(`- DERIVED research level: ${pretty(i.researchLevel)}; catalogue: ${pretty(i.catalogStatus)}; kind: ${pretty(i.projectKind)}${i.primaryNarrative ? `; narrative: ${i.primaryNarrative.name}` : ''}`);
+  lines.push(`- DERIVED research level: ${pretty(i.researchLevel)}; catalogue: ${pretty(i.catalogStatus)}; kind: ${pretty(i.projectKind)}${i.primaryNarrative ? `; narrative: ${quoteExternal(i.primaryNarrative.name, 'narrative')}` : ''}`);
   lines.push(`- FACT first recorded by HEY ${i.firstRecordedByHeyAt.slice(0, 10)} (HEY's knowledge time)${i.externalListedAt ? `; listed by ${i.externalListedSource ?? 'an outside registry'} ${i.externalListedAt.slice(0, 10)} (their date, not HEY's)` : ''}`);
   lines.push(i.token ? `- FACT token: chain ${i.token.chainId}, contract ${i.token.contractAddress}` : '- FACT no token recorded — this is a project page, not a token.');
 
@@ -203,12 +208,18 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     );
   } else lines.push('- UNKNOWN build velocity');
   lines.push(b.cadence?.medianIntervalDays !== undefined ? `- DERIVED release cadence: a release day every ${b.cadence.medianIntervalDays} days (median)` : '- UNKNOWN release cadence: fewer than three release days');
+  // Round 4 (2026-09-30): the three states `stillBuilding: false` cannot tell apart, from the API's own field.
+  const stillState = stillBuildingStateOf({ apiState: b.stillBuildingState });
   if (b.stillBuilding) {
     const evidence = stillBuildingEvidence(b);
-    lines.push(`- DERIVED STILL BUILDING${evidence ? `: ${evidence}` : ''}. ${STILL_BUILDING_MEANING}`);
+    lines.push(`- DERIVED STILL BUILDING${evidence ? `: ${evidence}` : ''}. ${STILL_BUILDING_MEANING} (stillBuildingState ${stillState})`);
   } else if (b.stillBuildingWithheld) {
     // Not measured, never "not met" (hbm-v19): the market is not one HEY measures a drawdown on.
-    lines.push(`- UNKNOWN Still Building: ${STILL_BUILDING_WITHHELD_WORDS[b.stillBuildingWithheld].replace(/^Not measured/, 'not measured')} (${b.stillBuildingWithheld})`);
+    lines.push(`- UNKNOWN Still Building: ${STILL_BUILDING_WITHHELD_WORDS[b.stillBuildingWithheld].replace(/^Not measured/, 'not measured')} (${b.stillBuildingWithheld}; stillBuildingState ${stillState})`);
+  } else if (stillState === 'NOT_MEASURED') {
+    lines.push('- UNKNOWN Still Building: not measured — HEY has not scored this project (stillBuildingState NOT_MEASURED)');
+  } else {
+    lines.push('- DERIVED Still Building: does not hold — measured, and not met (stillBuildingState NOT_HELD)');
   }
 
   lines.push('', '## Market (context, never a ranking input)');
@@ -217,7 +228,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   else {
     if (m.tokenMarket) lines.push(`- DERIVED token market: ${tokenMarketWords(m.tokenMarket.status)}${m.tokenMarket.reason ? ` (${pretty(m.tokenMarket.reason)})` : ''}. A reading of the market, not of the team.`);
     if (m.marketCap) lines.push(`- FACT ${valuationWord(m.marketCap.kind)} ${money(m.marketCap.usd)} (${m.marketCap.source}${m.marketCap.observedAt ? `, ${m.marketCap.observedAt.slice(0, 10)}` : ''})`);
-    else if (m.valuationWithheld) lines.push(`- DERIVED valuation withheld: the market is not live (${pretty(m.valuationWithheld)}). HEY holds a figure and does not publish it.`);
+    else if (m.valuationWithheld) lines.push(`- DERIVED valuation withheld: ${valuationWithheldClause(m.valuationWithheld)}. HEY holds a figure and does not publish it.`);
     else lines.push('- UNKNOWN valuation: no fresh reading.');
     lines.push(m.liquidity ? `- FACT ${liquidityWords(m.liquidity, now)}` : '- UNKNOWN liquidity: no reading.');
     if (m.volume24h) lines.push(`- FACT 24h volume ${money(m.volume24h.usd)}${m.volume24h.source ? ` (${m.volume24h.source})` : ''}`);
@@ -284,7 +295,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     if (s.latestChanges.items.length === 0) lines.push('- FACT no public change recorded yet.');
     for (const c of s.latestChanges.items) {
       if (c.op === 'retract') lines.push(`- RETRACTED ${c.id}`);
-      else lines.push(`- ${c.precision} ${atPrecision(c.occurredAt, c.precision, c.detectedAt)} · ${c.type}: ${sourceWords(c.summary)} (id ${c.id})`);
+      else lines.push(`- ${c.precision} ${atPrecision(c.occurredAt, c.precision, c.detectedAt)} · ${c.type}: ${summaryWords(c.id, c.summary, c.type)} (id ${c.id})`);
     }
     lines.push(`  More: get_changes with project=${i.slug}, or ${s.latestChanges.url}`);
   } else lines.push(`- UNKNOWN changes: ${s.latestChanges.reason} — ${s.latestChanges.url}`);
@@ -332,7 +343,7 @@ export function economicsLines(e: HeyProtocolEconomics | undefined, coverage: He
   }
   const lines: string[] = [];
   for (const p of e.protocols) {
-    lines.push(`- FACT DefiLlama lists ${p.protocolName}${p.category ? ` (${p.category})` : ''}, matched by ${pretty(p.matchedBy)}: TVL ${money(p.tvlUsd)} on ${p.tvlDay}`);
+    lines.push(`- FACT DefiLlama lists ${quoteExternal(p.protocolName, 'defillama')}${p.category ? ` (${quoteExternal(p.category, 'defillama')})` : ''}, matched by ${pretty(p.matchedBy)}: TVL ${money(p.tvlUsd)} on ${p.tvlDay}`);
     const metrics = (Object.keys(METRIC_LABEL) as (keyof typeof METRIC_LABEL)[]).map((key) => metricWords(METRIC_LABEL[key], p[key]));
     lines.push(`  ${metrics.join('; ')}${p.economicsDay ? ` (for ${p.economicsDay})` : ''}`);
     if (p.auditLinks.length > 0 || p.methodologyUrl) lines.push(`  FACT the registry links ${p.auditLinks.length} audit report${p.auditLinks.length === 1 ? '' : 's'}${p.methodologyUrl ? ' and a methodology' : ''} — links, never verdicts`);
@@ -356,13 +367,13 @@ export function securityLines(c: HeySecurityContext): string[] {
   if (a.state === 'MEASURED') {
     lines.push(`- FACT ${a.items.length} audit report link${a.items.length === 1 ? '' : 's'} found (read from ${indexes(a.readFrom)}):`);
     for (const item of a.items.slice(0, 5)) {
-      lines.push(`  - ${item.auditor ? `${item.auditor.name}${item.auditor.basis === 'URL_PATH' ? ' (named in the link only)' : ''}, ` : ''}${AUDIT_AUTHORITY_WORDS[item.authority]}: ${item.url} [${item.id}]`);
+      lines.push(`  - ${item.auditor ? `${quoteExternal(item.auditor.name, 'auditor_link')}${item.auditor.basis === 'URL_PATH' ? ' (named in the link only)' : ''}, ` : ''}${AUDIT_AUTHORITY_WORDS[item.authority]}: ${item.url} [${item.id}]`);
     }
     if (a.items.length > 5) lines.push(`  (showing 5 of ${a.items.length}; the full list is in the snapshot's security.audits)`);
   } else if (a.state === 'NONE_FOUND') lines.push(`- FACT no audit link found on ${indexes(a.readFrom)} (read ${a.readAt.slice(0, 10)}) — a reading of those only`);
   else lines.push(`- ${a.state === 'NOT_APPLICABLE' ? 'FACT' : 'UNKNOWN'} audits: ${pretty(a.state)} (${pretty(a.reason)})`);
   const b = c.bugBounty;
-  if (b.state === 'MEASURED') for (const item of b.items.slice(0, 3)) lines.push(`- FACT bug bounty ${item.platform ? `on ${item.platform}` : "page on the project's site"}: ${item.url} [${item.id}]`);
+  if (b.state === 'MEASURED') for (const item of b.items.slice(0, 3)) lines.push(`- FACT bug bounty ${item.platform ? `on ${quoteExternal(item.platform, 'bounty_platform')}` : "page on the project's site"}: ${item.url} [${item.id}]`);
   else if (b.state === 'NONE_FOUND') lines.push(`- FACT no bug-bounty link found on ${indexes(b.readFrom)} — a reading of those only`);
   else lines.push(`- UNKNOWN bug bounty: ${pretty(b.state)} (${pretty(b.reason)})`);
   const t = c.securityTxt;
@@ -372,11 +383,11 @@ export function securityLines(c: HeySecurityContext): string[] {
   const v = c.advisories;
   if (v.state === 'MEASURED') {
     lines.push(`- FACT ${v.items.length} open OSV advisor${v.items.length === 1 ? 'y' : 'ies'} about the published versions of ${v.packagesRead} package${v.packagesRead === 1 ? '' : 's'} HEY reads${v.stale ? ' (reading stale)' : ''}:`);
-    for (const item of v.items.slice(0, 5)) lines.push(`  - ${item.advisoryId} on ${item.packageName}@${item.version}${item.fixedVersions.length > 0 ? `, fixed in ${item.fixedVersions.join(', ')}` : ''}: ${item.url}`);
+    for (const item of v.items.slice(0, 5)) lines.push(`  - ${item.advisoryId} on ${quoteExternal(`${item.packageName}@${item.version}`, 'package_registry')}${item.fixedVersions.length > 0 ? `, fixed in ${item.fixedVersions.join(', ')}` : ''}: ${item.url}`);
   } else if (v.state === 'NONE_FOUND') lines.push(`- FACT no open OSV advisory for the published versions of the ${v.packagesRead} package${v.packagesRead === 1 ? '' : 's'} HEY reads${v.readAt ? ` (read ${v.readAt.slice(0, 10)})` : ''} — a reading of OSV, not a statement about the code`);
   else lines.push(`- ${v.state === 'NOT_APPLICABLE' ? 'FACT' : 'UNKNOWN'} advisories: ${pretty(v.state)} (${pretty(v.reason)})`);
   const r = c.repositoryChecks;
-  if (r.state === 'MEASURED') for (const repo of r.repositories.slice(0, 3)) lines.push(`- FACT OpenSSF Scorecard for ${repo.repo}: ${repo.checks.length} checks as published${repo.date ? ` (${repo.date.slice(0, 10)})` : ''}, never summed`);
+  if (r.state === 'MEASURED') for (const repo of r.repositories.slice(0, 3)) lines.push(`- FACT OpenSSF Scorecard for ${quoteExternal(repo.repo, 'git_host')}: ${repo.checks.length} checks as published${repo.date ? ` (${repo.date.slice(0, 10)})` : ''}, never summed`);
   else if (r.state === 'NONE_FOUND') lines.push(`- FACT no Scorecard published for the ${r.repositoriesRead} official repositor${r.repositoriesRead === 1 ? 'y' : 'ies'} HEY asked about`);
   else lines.push(`- ${r.state === 'NOT_APPLICABLE' ? 'FACT' : 'UNKNOWN'} repository checks: ${pretty(r.state)} (${pretty(r.reason)})`);
   lines.push(`- UNKNOWN incidents: HEY reads no incident or postmortem source.`);
@@ -396,7 +407,7 @@ export function footprintLines(f: HeyDeveloperFootprint): string[] {
   const d = f.productionDeployment;
   const deployment =
     d.state === 'MEASURED'
-      ? `- FACT newest production deployment ${d.at.slice(0, 10)} (environment "${d.environment}"${read(d.readAt)}) — a dated record of an environment, not building`
+      ? `- FACT newest production deployment ${d.at.slice(0, 10)} (environment ${quoteExternal(d.environment, 'github_deployment')}${read(d.readAt)}) — a dated record of an environment, not building`
       : d.state === 'NONE_FOUND'
         ? `- FACT no production deployment recorded on GitHub${read(d.readAt)} (other hosts are not read)`
         : d.state === 'NOT_APPLICABLE'
@@ -417,7 +428,7 @@ export function footprintLines(f: HeyDeveloperFootprint): string[] {
 
 /** `GET /api/projects/{slug}/coverage` as text: states, never a score. */
 export function renderCoverage(c: HeyProjectCoverage): string {
-  const lines: string[] = [`# ${c.project.name} — what HEY knows and does not (computed ${c.computedAt.slice(0, 16).replace('T', ' ')} UTC)`, c.project.url, ''];
+  const lines: string[] = [`# ${quotedName(c.project.name)} — what HEY knows and does not (computed ${c.computedAt.slice(0, 16).replace('T', ' ')} UTC)`, c.project.url, ''];
   for (const [dimension, entry] of Object.entries(c.dimensions) as [HeyCoverageDimension, HeyCoverageEntry][]) lines.push(coverageLine(dimension, entry));
   const gaps = mustNotConclude(c.dimensions);
   lines.push('', gaps.length ? `Do not conclude anything from: ${gaps.join(', ')}. A missing figure there is unknown, never zero.` : 'Every dimension is measured or does not apply.');
@@ -432,7 +443,7 @@ const inputValue = (value: unknown): string => (value === null ? 'null (not held
 
 /** `GET /api/projects/{slug}/explain?fact=` as text: the engine's state, never a stronger one. */
 export function renderExplained(e: HeyExplainedFact): string {
-  const lines: string[] = [`# Why HEY shows ${e.fact} for ${e.project.name}`, e.project.url, ''];
+  const lines: string[] = [`# Why HEY shows ${e.fact} for ${quotedName(e.project.name)}`, e.project.url, ''];
   lines.push(`${e.state} ${e.fact}: ${inputValue(e.value)} — ${e.classification}`);
   lines.push(`Rule: ${e.canonicalRule.id} (${e.canonicalRule.version}): ${e.canonicalRule.text}`);
   const provenance = [e.source ? `source ${e.source}` : 'no single source', e.observedAt ? `observed ${e.observedAt.slice(0, 16).replace('T', ' ')} UTC` : undefined, e.freshness ? `${e.freshness.state} (stale after ${e.freshness.staleAfterHours} h)` : undefined].filter(Boolean);
@@ -446,17 +457,17 @@ export function renderExplained(e: HeyExplainedFact): string {
 }
 
 export function renderExplainIndex(index: HeyExplainIndex): string {
-  return [`# Facts HEY can explain for ${index.project.name}`, index.project.url, '', ...index.facts.map((f) => `- ${f.fact}: ${f.description}`), '', 'Call explain_fact again with one of these as `fact`.', index.disclaimer].join('\n');
+  return [`# Facts HEY can explain for ${quotedName(index.project.name)}`, index.project.url, '', ...index.facts.map((f) => `- ${f.fact}: ${f.description}`), '', 'Call explain_fact again with one of these as `fact`.', index.disclaimer].join('\n');
 }
 
 /** `GET /api/evidence/{id}` as text. A withdrawn receipt names nothing it may not. */
 export function renderEvidence(r: HeyEvidenceReceipt): string {
   if (r.withdrawn) {
-    return [`# ${r.id} — withdrawn`, `HEY no longer makes this claim (${pretty(r.withdrawalReason)}). Do not cite it.${r.project ? ` Project: ${r.project.name} — ${r.project.url}` : ''}`, '', r.disclaimer].join('\n');
+    return [`# ${r.id} — withdrawn`, `HEY no longer makes this claim (${pretty(r.withdrawalReason)}). Do not cite it.${r.project ? ` Project: ${quotedName(r.project.name)} — ${r.project.url}` : ''}`, '', r.disclaimer].join('\n');
   }
-  const lines: string[] = [`# Evidence ${r.id}`, `${r.project.name} — ${r.project.url}`, ''];
+  const lines: string[] = [`# Evidence ${r.id}`, `${quotedName(r.project.name)} — ${r.project.url}`, ''];
   // A status or market-state move and a signal are rules HEY applied: DERIVED, as explain_fact says (audit §45 #8).
-  lines.push(`${recordTag(r.id)} ${r.claimType} (${r.domain}): ${sourceWords(r.summary)}`);
+  lines.push(`${recordTag(r.id)} ${r.claimType} (${r.domain}): ${summaryWords(r.id, r.summary)}`);
   lines.push(`When: ${atPrecision(r.publishedAt, r.precision, r.detectedAt)} (${r.precision}); HEY first knew ${r.detectedAt.slice(0, 16).replace('T', ' ')} UTC; recorded ${r.recordedAt.slice(0, 10)}.`);
   lines.push(`Source: ${r.sourceType}${r.sourceUrl ? ` — ${r.sourceUrl}` : ' (no public URL; HEY\'s own observation)'}${r.verification ? `; backing: ${pretty(r.verification)}` : ''}${r.countsAsBuilding ? '; counts toward activity status' : ''}.`);
   if (r.sources && r.sources.length > 0) lines.push('', 'Evidence rows:', ...r.sources.map((row) => `- ${row.sourceType}: ${row.sourceUrl} (observed ${row.observedAt.slice(0, 10)})`));
@@ -493,15 +504,15 @@ function deployerWords(d: NonNullable<HeyContract['deployer']>): string {
 
 function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
   const lines: string[] = [];
-  lines.push(`${c.name ? `${c.name} — ` : ''}chain ${c.chainId}, ${c.address}${c.role ? ` (${c.role})` : ''}${c.watched ? '' : ' — listed, not watched: HEY has not read this contract yet'}`);
-  lines.push(c.associatedProject ? `- FACT project: ${c.associatedProject.name} — ${c.associatedProject.url}` : '- UNKNOWN project: no single published project claims this contract (none does, or more than one does equally).');
+  lines.push(`${c.name ? `${quoteExternal(c.name, 'contract_explorer')} — ` : ''}chain ${c.chainId}, ${c.address}${c.role ? ` (${c.role})` : ''}${c.watched ? '' : ' — listed, not watched: HEY has not read this contract yet'}`);
+  lines.push(c.associatedProject ? `- FACT project: ${quotedName(c.associatedProject.name)} — ${c.associatedProject.url}` : '- UNKNOWN project: no single published project claims this contract (none does, or more than one does equally).');
   if (c.creation) lines.push(`- FACT created ${c.creation.at ? atPrecision(c.creation.at, c.creation.precision) : 'at an unread time'}${c.creation.tx ? ` in ${c.creation.tx}` : ''}${c.creation.block ? `, block ${c.creation.block}` : ''}`);
   if (c.deployer) lines.push(`- FACT deployed by ${c.deployer.address}${deployerWords(c.deployer)}`);
   if (c.factory) lines.push(`- FACT created through factory ${c.factory}`);
   const src = c.verifiedSource;
   lines.push(
     src.state === 'MEASURED'
-      ? `- FACT verified source: ${src.verified ? 'yes' : 'no'}${src.compiler ? `; compiler ${src.compiler}` : ''}${src.contractName ? `; name ${src.contractName}` : ''}${src.checkedAt ? ` (checked ${src.checkedAt.slice(0, 10)})` : ''}${src.method ? `; ${VERIFICATION_METHOD_WORDS[src.method]}${src.match ? ` (${src.match.toLowerCase()} match)` : ''}` : ''}`
+      ? `- FACT verified source: ${src.verified ? 'yes' : 'no'}${src.compiler ? `; compiler ${quoteExternal(src.compiler, 'contract_explorer')}` : ''}${src.contractName ? `; name ${quoteExternal(src.contractName, 'contract_explorer')}` : ''}${src.checkedAt ? ` (checked ${src.checkedAt.slice(0, 10)})` : ''}${src.method ? `; ${VERIFICATION_METHOD_WORDS[src.method]}${src.match ? ` (${src.match.toLowerCase()} match)` : ''}` : ''}`
       : `- UNKNOWN verified source: ${pretty(src.state)}`,
   );
   if (src.authorship) lines.push(`- DERIVED whose code: ${AUTHORSHIP_WORDS[src.authorship.kind]} (${pretty(src.authorship.reason)})`);
@@ -575,7 +586,7 @@ export function renderProjectContracts(p: HeyProjectContracts, limit = 10): stri
   const shown = p.items.slice(0, limit);
   const blocks = shown.map((c) => contractLines(c).join('\n'));
   return [
-    `# ${p.project.name} — contracts on chain ${p.chainId}`,
+    `# ${quotedName(p.project.name)} — contracts on chain ${p.chainId}`,
     p.project.url,
     '',
     blocks.join('\n\n') || 'No contract is registered for this project.',
@@ -594,7 +605,7 @@ function end<T>(label: string, e: HeyDiffEnd<T>, format: (value: T) => string): 
 
 /** `GET /api/projects/{slug}/diff` as text: then and now from persisted points, counts on named clocks. Never a cause. */
 export function renderDiff(d: HeyDiff): string {
-  const lines: string[] = [`# ${d.project.name} — what changed between ${d.from} and ${d.to}`, d.project.url, ''];
+  const lines: string[] = [`# ${quotedName(d.project.name)} — what changed between ${d.from} and ${d.to}`, d.project.url, ''];
   lines.push('## Build (counts on the date each item was published)');
   if (d.build.releasesAdded === null || d.build.meaningfulShips === null) {
     lines.push(`- UNKNOWN releases added and meaningful ships: ${d.build.countsReason ?? 'HEY does not read building for this project, so no count here is a measured zero.'}`);
@@ -636,7 +647,7 @@ export function renderBuildMarket(page: HeyBuildMarket): string {
   const shown = page.items.slice(0, MAP_ROWS);
   return [
     '# Build Momentum beside market attention (a map, not a ranking)',
-    ...shown.map((p) => `- ${p.name}${p.symbol ? ` ($${p.symbol})` : ''}: DERIVED Build Momentum ${p.buildMomentum}; DERIVED market-attention percentile ${p.marketAttentionPercentile} (context) — ${p.url}`),
+    ...shown.map((p) => `- ${quotedName(p.name, p.symbol)}: DERIVED Build Momentum ${p.buildMomentum}; DERIVED market-attention percentile ${p.marketAttentionPercentile} (context) — ${p.url}`),
     '',
     shownOf(shown.length, page.items.length, 'The rest are in GET /api/chain/build-market.'),
     `Method: ${page.method}`,
@@ -658,13 +669,13 @@ export function peerContextLines(p: HeyPeerContext | undefined): string[] {
   if (p.state === 'NO_COHORT' || !p.cohort) return [`- NOT APPLICABLE peer context (${p.reason ?? 'no_cohort'}): no comparable group of the same type, so nothing is compared.`];
   // A run the daily job has not replaced says so, with its date (2026-09-28): an older context never passes for today's.
   const stale = p.freshness?.state === 'STALE' ? ` STALE: not recomputed in ${p.freshness.staleAfterHours} hours; as of ${p.freshness.asOf.slice(0, 10)}.` : '';
-  const lines = [`- DERIVED cohort: ${p.cohort.label} (${p.rulesVersion}; a median from ${p.minimums.median} measured projects, a percentile from ${p.minimums.percentile}; ${p.computedAt ? `computed ${p.computedAt.slice(0, 10)}` : 'not dated'}).${stale}`];
+  const lines = [`- DERIVED cohort: ${quoteExternal(p.cohort.label, 'narrative')} (${p.rulesVersion}; a median from ${p.minimums.median} measured projects, a percentile from ${p.minimums.percentile}; ${p.computedAt ? `computed ${p.computedAt.slice(0, 10)}` : 'not dated'}).${stale}`];
   for (const d of p.dimensions) {
     if (d.state !== 'MEASURED') continue;
-    lines.push(`- ${d.median === null ? 'UNKNOWN' : 'DERIVED'} ${d.line}`);
+    lines.push(`- ${d.median === null ? 'UNKNOWN' : 'DERIVED'} ${derivedWords(d.line)}`);
   }
   const recomputing = p.dimensions.filter((d) => d.state !== 'MEASURED' && d.reason === 'recomputing_after_scoring_change');
-  for (const d of recomputing) lines.push(`- UNKNOWN ${d.line}`);
+  for (const d of recomputing) lines.push(`- UNKNOWN ${derivedWords(d.line)}`);
   const unmeasured = p.dimensions.filter((d) => d.state !== 'MEASURED' && !recomputing.includes(d)).map((d) => d.label);
   if (unmeasured.length > 0) lines.push(`- UNKNOWN not measured for this project, so not compared: ${unmeasured.join(', ')}.`);
   lines.push(`  Method: ${p.methodology}`);

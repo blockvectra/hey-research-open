@@ -140,18 +140,51 @@ export function discoveryGapWithheldReason(value: unknown): DiscoveryGapWithheld
  * is never read as "not met". The words are the Discovery Gap's for the same
  * market: one sentence per market, whichever badge it withholds.
  */
-export const STILL_BUILDING_WITHHELD_REASONS = ['market_not_live', 'token_not_the_projects', 'market_too_thin'] as const;
+/*
+ * `valuation_not_plausible` (hbm-v20, 2026-09-30): the valuation gate withheld
+ * the current valuation (`valuation-plausibility.ts`), so there is no current
+ * value to measure a drawdown against — not measured, never "not met".
+ */
+export const STILL_BUILDING_WITHHELD_REASONS = ['market_not_live', 'token_not_the_projects', 'market_too_thin', 'valuation_not_plausible'] as const;
 export type StillBuildingWithheldReason = (typeof STILL_BUILDING_WITHHELD_REASONS)[number];
 
 export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<StillBuildingWithheldReason, string>> = {
   market_not_live: DISCOVERY_GAP_WITHHELD_WORDS.market_not_live,
   token_not_the_projects: DISCOVERY_GAP_WITHHELD_WORDS.token_not_the_projects,
   market_too_thin: DISCOVERY_GAP_WITHHELD_WORDS.market_too_thin,
+  valuation_not_plausible: 'Not measured — valuation not plausible',
 };
 
 /** A stored reason read back: one of the list, or undefined for anything else (a row scored before hbm-v19). */
 export function stillBuildingWithheldReason(value: unknown): StillBuildingWithheldReason | undefined {
   return typeof value === 'string' && (STILL_BUILDING_WITHHELD_REASONS as readonly string[]).includes(value) ? (value as StillBuildingWithheldReason) : undefined;
+}
+
+/**
+ * Still Building as one of three states (founder decision, round 4,
+ * 2026-09-30), sent beside the v1 boolean wherever it appears:
+ *
+ * - `HELD` — the badge is held (`stillBuilding: true`);
+ * - `NOT_HELD` — HEY measured it and the badge is not held;
+ * - `NOT_MEASURED` — HEY did not measure it: no score yet, or the scorer
+ *   persisted a reason (`stillBuildingWithheld`, hbm-v19) beside the false.
+ *
+ * `stillBuilding` keeps its v1 meaning (false whenever the badge is not held);
+ * making it nullable is deferred to a future `/api/v2`. A score written before
+ * hbm-v19 carries no reason and reads `NOT_HELD`, as its boolean always did.
+ */
+export const STILL_BUILDING_STATES = ['HELD', 'NOT_HELD', 'NOT_MEASURED'] as const;
+export type StillBuildingState = (typeof STILL_BUILDING_STATES)[number];
+
+/**
+ * The state from what the scorer persisted: the badge (`undefined`/`null`
+ * when no score row exists) and the score's components.
+ */
+export function stillBuildingState(stillBuilding: boolean | null | undefined, components: unknown): StillBuildingState {
+  if (stillBuilding === true) return 'HELD';
+  if (stillBuilding === null || stillBuilding === undefined) return 'NOT_MEASURED';
+  const record = typeof components === 'object' && components !== null ? (components as Record<string, unknown>) : {};
+  return stillBuildingWithheldReason(record['stillBuildingWithheld']) ? 'NOT_MEASURED' : 'NOT_HELD';
 }
 
 const ACTIVE_STATUSES: readonly ActivityStatus[] = ['SHIPPING', 'ACTIVE', 'RESUMED'];

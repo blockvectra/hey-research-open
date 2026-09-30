@@ -71,6 +71,7 @@ export function composeUnknowns(ctx: AgentComposeContext, input: UnknownsInput):
       freshness: 'live',
       evidence: [],
       explainUrl: `${api}/coverage`,
+      evidenceKind: 'coverage_state',
     },
   ];
 

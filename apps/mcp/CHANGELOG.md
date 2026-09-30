@@ -6,6 +6,14 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+### Changed (round 4, 2026-09-30)
+
+- **Typed output.** Every tool returns `structuredContent` and declares an `outputSchema`: `research_answer` the AgentIntelligenceResponse v1 itself, every other tool the public API object it rendered in a `hey.mcp-api-answer` wrapper. The text is unchanged.
+- **Twelve listed tools.** `lookup_token`, `compare_projects` and `get_project_coverage` are folded into `find_projects` and `research_answer` and no longer listed; they stay callable, answering as before plus a deprecation line, until 2026-12-31. The list with output schemas stays under 19,179 bytes.
+- **`HEY_MCP_PROFILE=research`** serves the research profile: builder intelligence only, no market-move, Under the Radar or valuation tool.
+- **Every source's words are quoted.** Project names, tickers, narratives, launchpads, contract names, release titles and a caller's question are printed `«…»`, bounded and folded, through the agent contract's one helper; an answer that quotes one says what `«…»` means.
+- **Still Building's state** (`HELD`, `NOT_HELD`, `NOT_MEASURED`) is printed in the snapshot, and an answer that names `$HEY`'s contract (where the host passes it) opens with "HEY's own token — researched by the same rules".
+
 ### Added (agent contract, 2026-09-30)
 
 - `research_answer`, a fifteenth tool: HEY's agent contract (AgentIntelligenceResponse v1) for `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders` or `unknowns`, rendered from `GET /api/agent/{capability}` — the answer first, claims tagged FACT, DERIVED or UNKNOWN, unknowns with what not to conclude, freshness per data family and evidence ids. One composable tool, not six.

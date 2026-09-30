@@ -8,7 +8,9 @@ import { HeyClient } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
 import { MAX_OUTPUT_BYTES, UNDER_THE_RADAR_RULE, capOutput, createHeyMcpServer, marketIntegrityFromEnv, type HeyMcpCallEvent, type HeyMcpOptions } from './server';
-import { HEY_MCP_GATED_TOOLS, HEY_MCP_TOOLS } from './tools';
+import { AGENT_CAPABILITIES } from '@hey/agent-provider-core';
+
+import { HEY_MCP_GATED_TOOLS, HEY_MCP_TOOL_LIST_BUDGET, HEY_MCP_TOOLS } from './tools';
 
 /**
  * The tools as an assistant sees them (2026-09-05; the 14-tool set since
@@ -77,19 +79,20 @@ describe('the HEY MCP server', () => {
     requested = [];
   });
 
-  it('offers exactly the fifteen tools in the catalogue, each read-only, titled and annotated', async () => {
+  it('offers exactly the twelve tools in the catalogue, each read-only, titled and annotated', async () => {
     const client = await connect(fixtures);
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual(HEY_MCP_TOOLS.map((tool) => tool.name).sort());
-    // Fourteen until 2026-09-30; research_answer carries the agent contract.
-    expect(tools).toHaveLength(15);
+    // Fifteen until round 4 (2026-09-30): lookup_token, compare_projects and get_project_coverage were folded, and stay callable.
+    expect(tools).toHaveLength(12);
     for (const tool of tools) {
       expect(tool.title, tool.name).toBeTruthy();
       expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
       expect(tool.annotations?.openWorldHint, tool.name).toBe(true);
     }
-    // The whole list costs a model less than the old 22-tool list's 19,179 bytes.
-    expect(JSON.stringify(tools).length).toBeLessThan(19_179);
+    // The whole list, output schemas included, costs a model less than the old 22-tool list's 19,179 bytes (round 4: per profile, `HEY_MCP_TOOL_LIST_BUDGET`).
+    expect(HEY_MCP_TOOL_LIST_BUDGET.full).toBe(19_179);
+    expect(JSON.stringify(tools).length).toBeLessThan(HEY_MCP_TOOL_LIST_BUDGET.full);
     // No tool promises a valuation, a recommendation or a price ranking.
     const descriptions = tools.map((tool) => tool.description ?? '').join(' ').toLowerCase();
     for (const forbidden of ['undervalued', 'price target', 'predict', 'you should buy', 'invest in']) expect(descriptions).not.toContain(forbidden);
@@ -113,7 +116,7 @@ describe('the HEY MCP server', () => {
     expect((await (await connect(fixtures)).listTools()).tools.map((tool) => tool.name)).not.toContain('market_integrity');
     const names = (await (await connect(fixtures, { marketIntegrity: true })).listTools()).tools.map((tool) => tool.name);
     expect(names).toContain(HEY_MCP_GATED_TOOLS[0].name);
-    expect(names).toHaveLength(16);
+    expect(names).toHaveLength(13);
     expect(marketIntegrityFromEnv(undefined)).toBe(false);
     expect(marketIntegrityFromEnv('internal')).toBe(false);
     expect(marketIntegrityFromEnv('terminal')).toBe(false);
@@ -146,7 +149,7 @@ describe('the HEY MCP server', () => {
     ['find_projects', { surface: 'shipping-in-silence' }, '/api/chain/silence', /40th market-attention percentile/],
     ['find_projects', { surface: 'accelerating' }, '/api/chain/accelerating', /Shipping faster/],
     ['find_projects', { surface: 'builder-radar', radar: 'most-improved' }, '/api/builders', /Builder Radar/],
-    ['find_projects', { query: '0xcab100000000000000000000000000000000cb07' }, '/api/token/4663/0xcab100000000000000000000000000000000cb07', /AgentOS \(\$AOS\) — Shipping/],
+    ['find_projects', { query: '0xcab100000000000000000000000000000000cb07' }, '/api/token/4663/0xcab100000000000000000000000000000000cb07', /«AgentOS» \(«AOS»\) — Shipping/],
     ['lookup_token', { address: '0xcab100000000000000000000000000000000cb07' }, '/api/token/4663/0xcab100000000000000000000000000000000cb07', /ship records/],
     ['get_project_snapshot', { slug: 'agentos' }, '/api/projects/agentos/snapshot', /snapshot as of/],
     ['get_changes', { project: 'agentos' }, '/api/changes', /What changed/],
@@ -159,7 +162,7 @@ describe('the HEY MCP server', () => {
     ['get_contract', { slug: 'agentos' }, '/api/projects/agentos/contracts', /contracts on chain 4663/],
     ['project_diff', { slug: 'agentos', from: '2026-09-01', to: '2026-09-25' }, '/api/projects/agentos/diff', /never a cause/],
     ['compare_projects', { slugs: ['agentos', 'quiet-token'] }, '/api/compare', /No winner|no winner/],
-    ['ask_hey', { slug: 'agentos', question: 'what shipped?' }, '/api/projects/agentos/ask', /Ask HEY about AgentOS/],
+    ['ask_hey', { slug: 'agentos', question: 'what shipped?' }, '/api/projects/agentos/ask', /Ask HEY about «AgentOS»/],
     ['chain_overview', {}, '/api/chain', /day by day/],
     ['chain_overview', { view: 'this-week' }, '/api/this-week', /This week on Robinhood Chain/],
     ['chain_overview', { view: 'weekly-report', week: '2026-W38' }, '/api/reports/weekly/2026-W38', /2026-W38/],
@@ -311,7 +314,8 @@ describe('the HEY MCP server', () => {
       ['monitor_project', { slug: 'agentos' }],
     ] as const) {
       const body = ((await client.getPrompt({ name, arguments: args })).messages[0]!.content as { text: string }).text;
-      for (const called of body.match(/\b[a-z]+(?:_[a-z]+)+\b/g)?.filter((word) => /^(get|find|explain|compare|lookup|ask|project|chain)_/.test(word)) ?? []) expect(names.has(called), `${name} names ${called}`).toBe(true);
+      // A capability research_answer takes (compare_builders) is an argument, not a tool.
+      for (const called of body.match(/\b[a-z]+(?:_[a-z]+)+\b/g)?.filter((word) => /^(get|find|explain|compare|lookup|ask|project|chain|research)_/.test(word) && !(AGENT_CAPABILITIES as readonly string[]).includes(word)) ?? []) expect(names.has(called), `${name} names ${called}`).toBe(true);
       expect(body).not.toMatch(/\b(buy|sell|pump|price target|recommend(?:ation)?s? to)\b/i);
     }
     const usage = ((await client.getPrompt({ name: 'compare_project_usage', arguments: { slugs: 'agentos,stockfi' } })).messages[0]!.content as { text: string }).text;
@@ -343,13 +347,16 @@ describe('the free-data wave on existing tools, not new ones (2026-09-27)', () =
   const fixtures = vi.fn(async (input: string) => respond(routeFixture(new URL(input).pathname)));
 
   it('extends get_project_snapshot, get_contract and get_project_coverage, and adds no tool per provider', async () => {
-    const { tools } = await (await connect(fixtures)).listTools();
-    expect(tools).toHaveLength(15);
+    const client = await connect(fixtures);
+    const { tools } = await client.listTools();
+    expect(tools).toHaveLength(12);
     expect(tools.map((tool) => tool.name).join(' ')).not.toMatch(/defillama|dexscreener|sourcify|osv|deps|package|footprint|promotion/i);
     const described = (name: string) => tools.find((tool) => tool.name === name)!.description ?? '';
     expect(described('get_project_snapshot')).toMatch(/Context blocks, never building: paid promotion .*DefiLlama protocol economics .*developer footprint/);
     expect(described('get_contract')).toMatch(/whose code it is .*Sourcify.*signature candidate — a guess, never a name/);
-    expect(described('get_project_coverage')).toMatch(/protocol economics.*official docs.*published packages and package advisories/);
+    // get_project_coverage is folded into research_answer (round 4) and still answers, with every dimension.
+    expect(described('research_answer')).toMatch(/unknowns \(every coverage state\)/);
+    expect(textOf(await client.callTool({ name: 'get_project_coverage', arguments: { slug: 'agentos' } }))).toMatch(/what HEY knows and does not/);
     expect(described('get_evidence')).toContain('method:, sourcechange:');
   });
 

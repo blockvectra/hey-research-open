@@ -51,7 +51,7 @@ export type BenchQuestionResult = {
   answer: string | null;
   schema: 'valid' | 'invalid' | 'not_applicable';
   /** FACT/DERIVED claims; those with a typed evidence id; those traceable at all; the ids cited; the claims with no path to their basis. */
-  evidence: { claims: number; withEvidenceId: number; traceable: number; ids: string[]; untraceable: string[] };
+  evidence: { claims: number; withEvidenceId: number; traceable: number; ids: string[]; untraceable: string[]; withoutEvidenceId?: string[] };
   checks: BenchCheck[];
   pass: boolean;
 };
@@ -150,9 +150,11 @@ export function readObservation(call: BenchCall, observation: BenchObservation):
     }
     case 'mcp': {
       if (record?.error) return { served: { capability: null, outcome: 'rpc_error' }, envelope: null, rawEnvelope: null, text: null };
-      const result = record?.result as { content?: { text?: string }[]; isError?: boolean } | undefined;
+      const result = record?.result as { content?: { text?: string }[]; isError?: boolean; structuredContent?: unknown } | undefined;
       const text = result?.content?.map((part) => part.text ?? '').join('\n') ?? null;
       if (result?.isError) return { served: { capability: null, outcome: 'tool_error' }, envelope: null, rawEnvelope: null, text };
+      // Typed output (round 4): research_answer's structuredContent is the contract itself, judged like the REST answer; a server without it is read from the text.
+      if (isEnvelope(result?.structuredContent)) return { served: { capability: String(result.structuredContent.capability), outcome: outcomeOf(result.structuredContent.status) }, envelope: asEnvelope(result.structuredContent), rawEnvelope: result.structuredContent, text };
       const header = text ? /^# HEY ([a-z_]+) — /m.exec(text) : null;
       const status = text ? /· status ([a-z_]+)/.exec(text) : null;
       return { served: { capability: header?.[1] ?? null, outcome: outcomeOf(status?.[1]) }, envelope: null, rawEnvelope: null, text };
@@ -191,13 +193,20 @@ function envelopeInvariants(checks: BenchCheck[], envelope: AgentIntelligenceRes
   let traceable = 0;
   let claims = 0;
   const untraceable: string[] = [];
+  const withoutEvidenceId: string[] = [];
   for (const claim of envelope.claims) {
     if (claim.status === 'UNKNOWN') continue;
     claims += 1;
     if (claim.evidence.length > 0) withEvidenceId += 1;
+    else withoutEvidenceId.push(claim.id);
     if (claim.evidence.length > 0 || claim.explainUrl || (claim.source !== null && claim.observedAt !== null)) traceable += 1;
     else untraceable.push(claim.id);
   }
+  // Round 4: every claim names what it rests on; a cited-record claim cites one, and nothing held is UNKNOWN.
+  const unnamed = envelope.claims.filter((claim) => !claim.evidenceKind).map((claim) => claim.id);
+  check(checks, 'evidence', 'every claim names its basis (evidenceKind)', unnamed.length === 0, unnamed.slice(0, 5).join(', '));
+  const inconsistent = envelope.claims.filter((claim) => (claim.evidenceKind === 'evidence_record' && claim.evidence.length === 0) || (claim.evidenceKind === 'not_held' && claim.status !== 'UNKNOWN')).map((claim) => claim.id);
+  check(checks, 'evidence', 'evidenceKind agrees with the claim', inconsistent.length === 0, inconsistent.slice(0, 5).join(', '));
   const listed = new Set(envelope.evidence.map((ref) => ref.id));
   const unlisted = envelope.claims.flatMap((claim) => claim.evidence.map((ref) => ref.id)).filter((id) => !listed.has(id));
   check(checks, 'evidence', 'every cited id is in the answer’s evidence list', unlisted.length === 0, unlisted.slice(0, 5).join(', '));
@@ -309,7 +318,7 @@ function envelopeInvariants(checks: BenchCheck[], envelope: AgentIntelligenceRes
       }
     }
   }
-  return { claims, withEvidenceId, traceable, ids: [...listed], untraceable };
+  return { claims, withEvidenceId, traceable, ids: [...listed], untraceable, withoutEvidenceId };
 }
 
 /** Words on a text transport (MCP, the A2A text part) are held to the same boundary as the JSON. */

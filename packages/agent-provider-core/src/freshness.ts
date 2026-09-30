@@ -24,12 +24,22 @@ import { heyText, type AgentText } from './text';
  *   guessed time.
  *
  * The cadences restate the schedules in `apps/worker` and the tier table in
- * the domain (`refresh/tier.ts`); the staleness limits restate
- * `FRESHNESS_THRESHOLDS` and each family's own limit. A parity test in the
+ * the domain (`refresh/tier.ts`); the staleness limits restate the domain's
+ * `staleAfterHoursFor` and each family's own limit. A parity test in the
  * web app holds these numbers to those constants, so the contract cannot
  * promise a schedule production does not run.
+ *
+ * v2 (2026-09-30, readiness audit F5): a limit is at least `AGENT_STALE_MARGIN`
+ * (1.5) × the cadence the subject is read on. In v1 the COLD cadences equalled
+ * the limits — market 24 h against 24 h, builder sources 72 h against 72 h,
+ * contracts 7 days against 7 days — so a reading on schedule read `stale`
+ * just before its refresh. A tiered family's limit now follows the subject's
+ * tier (`staleAfterHoursByTier`); without a tier it is the slowest tier's.
  */
-export const AGENT_FRESHNESS_VERSION = 'agent-freshness-v1' as const;
+export const AGENT_FRESHNESS_VERSION = 'agent-freshness-v2' as const;
+
+/** A limit is at least this many cadences: on schedule is never stale, one missed refresh is. */
+export const AGENT_STALE_MARGIN = 1.5;
 
 export const AGENT_FRESHNESS_STATUSES = ['live', 'recent', 'daily', 'weekly', 'stale', 'unknown'] as const;
 export type AgentFreshnessStatus = (typeof AGENT_FRESHNESS_STATUSES)[number];
@@ -43,7 +53,10 @@ export type FamilySchedule = {
   job: string;
   /** Minutes between refreshes: one number, one per refresh tier, or a range when the job works through batches. */
   cadence: number | Readonly<Record<RefreshTier, number>> | { readonly fastest: number; readonly slowest: number };
+  /** The limit when the subject's tier is not known: the slowest cadence's. */
   staleAfterHours: number;
+  /** A tiered family's limit per tier: the family's floor, lifted to `AGENT_STALE_MARGIN` × that tier's cadence. */
+  staleAfterHoursByTier?: Readonly<Record<RefreshTier, number>>;
   basis: string;
 };
 
@@ -55,12 +68,27 @@ export const MARKET_CADENCE_MINUTES: Readonly<Record<RefreshTier, number>> = { H
 /** Builder-source refresh per tier: HOT 1 h, WARM 6 h, COOL 24 h, COLD 72 h (`SOURCE_REFRESH_INTERVAL_MS`). */
 export const SOURCE_CADENCE_MINUTES: Readonly<Record<RefreshTier, number>> = { HOT: HOUR, WARM: 6 * HOUR, COOL: DAY, COLD: 3 * DAY };
 
+/** A floor lifted to `AGENT_STALE_MARGIN` × each tier's cadence, in hours: the domain's `staleAfterHoursFor`, restated. */
+const byTier = (floorHours: number, cadence: Readonly<Record<RefreshTier, number>>): Readonly<Record<RefreshTier, number>> => ({
+  HOT: Math.max(floorHours, (cadence.HOT * AGENT_STALE_MARGIN) / HOUR),
+  WARM: Math.max(floorHours, (cadence.WARM * AGENT_STALE_MARGIN) / HOUR),
+  COOL: Math.max(floorHours, (cadence.COOL * AGENT_STALE_MARGIN) / HOUR),
+  COLD: Math.max(floorHours, (cadence.COLD * AGENT_STALE_MARGIN) / HOUR),
+});
+/** Market: 24 h on HOT, WARM and COOL; 36 h on COLD (a 24 h cadence). */
+export const MARKET_STALE_HOURS_BY_TIER = byTier(24, MARKET_CADENCE_MINUTES);
+/** Builder sources: 72 h on HOT, WARM and COOL; 108 h on COLD (a 72 h cadence). */
+export const SOURCE_STALE_HOURS_BY_TIER = byTier(72, SOURCE_CADENCE_MINUTES);
+/** Contracts: each is re-read within 7 days, so stale after 10.5 days. */
+const CONTRACT_SLOWEST_MINUTES = 7 * DAY;
+
 export const FAMILY_SCHEDULES: Readonly<Record<AgentDataFamily, FamilySchedule>> = {
   builder_sources: {
     job: 'REFRESH_GITHUB',
     cadence: SOURCE_CADENCE_MINUTES,
-    staleAfterHours: 72,
-    basis: 'Repositories, release feeds and changelogs are re-read by refresh tier (HOT hourly, WARM every 6 hours, COOL daily, COLD every 3 days); the tier follows the activity status and the last meaningful ship. A failing source backs off.',
+    staleAfterHours: SOURCE_STALE_HOURS_BY_TIER.COLD,
+    staleAfterHoursByTier: SOURCE_STALE_HOURS_BY_TIER,
+    basis: 'Repositories, release feeds and changelogs are re-read by refresh tier (HOT hourly, WARM every 6 hours, COOL daily, COLD every 3 days); the tier follows the activity status and the last meaningful ship. A failing source backs off. A reading is stale after 72 hours, or one and a half cadences of its tier where that is longer (108 hours on COLD).',
   },
   activity_score: {
     job: 'RECALCULATE_SCORES',
@@ -77,14 +105,15 @@ export const FAMILY_SCHEDULES: Readonly<Record<AgentDataFamily, FamilySchedule>>
   market: {
     job: 'REFRESH_MARKET_BATCH',
     cadence: MARKET_CADENCE_MINUTES,
-    staleAfterHours: 24,
-    basis: 'Market readings are refreshed by tier (HOT every 10 minutes, WARM hourly, COOL every 6 hours, COLD daily); a token priced only by the paced fallback waits at least 2 hours, and one with no reading backs off up to 14 days.',
+    staleAfterHours: MARKET_STALE_HOURS_BY_TIER.COLD,
+    staleAfterHoursByTier: MARKET_STALE_HOURS_BY_TIER,
+    basis: 'Market readings are refreshed by tier (HOT every 10 minutes, WARM hourly, COOL every 6 hours, COLD daily); a token priced only by the paced fallback waits at least 2 hours, and one with no reading backs off up to 14 days. A reading is stale after 24 hours, or one and a half cadences of its tier where that is longer (36 hours on COLD).',
   },
   contracts: {
     job: 'CONTRACT_ABI_WATCH',
-    cadence: { fastest: HOUR, slowest: 7 * DAY },
-    staleAfterHours: 7 * 24,
-    basis: 'The contract upgrade and interface watches run hourly over batches of watched contracts; how soon one contract is read again depends on the batch, within its 7-day limit.',
+    cadence: { fastest: HOUR, slowest: CONTRACT_SLOWEST_MINUTES },
+    staleAfterHours: Math.max(7 * 24, (CONTRACT_SLOWEST_MINUTES * AGENT_STALE_MARGIN) / HOUR),
+    basis: 'The contract upgrade and interface watches run hourly over batches of watched contracts; how soon one contract is read again depends on the batch, within 7 days. A reading is stale after one and a half of those.',
   },
   locks: {
     job: 'SYNC_HOODLOCK',
@@ -149,7 +178,7 @@ export type AgentFreshnessEntry = {
  */
 export function familyFreshness(family: AgentDataFamily, input: { observedAt: string | Date | null | undefined; dataAsOf?: string | Date | null; now: Date; tier?: RefreshTier; staleAfterHours?: number }): AgentFreshnessEntry {
   const schedule = FAMILY_SCHEDULES[family];
-  const staleAfterHours = input.staleAfterHours ?? schedule.staleAfterHours;
+  const staleAfterHours = input.staleAfterHours ?? (input.tier && schedule.staleAfterHoursByTier ? schedule.staleAfterHoursByTier[input.tier] : schedule.staleAfterHours);
   const toIso = (value: string | Date | null | undefined): string | null => {
     if (!value) return null;
     const date = typeof value === 'string' ? new Date(value) : value;

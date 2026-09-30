@@ -251,9 +251,12 @@ describe('what HEY does not know, said fairly (builder and compliance review)', 
   });
 
   it('a name that borrows Robinhood’s brand is a gap, never a sign of Robinhood’s involvement', () => {
-    const unknowns = projectUnknowns({ ...base, facts: { ...facts, identity: { name: 'Robinhood Official Dex', symbol: 'RHD' } } });
+    // The domain's one matcher decides the gap (brandGap over robinhoodBrandMatch); the contract restates it (round 4).
+    const brand = { sentence: 'Its name or ticker uses Robinhood’s brand. HEY holds no evidence that Robinhood is involved with it; it is researched like any other project.', reason: 'name_uses_third_party_brand' };
+    const unknowns = projectUnknowns({ ...base, facts: { ...facts, brand } });
     expect(unknowns.find((unknown) => unknown.dimension === 'brandAffiliation')).toMatchObject({ category: 'NOT_VERIFIED', reason: 'name_uses_third_party_brand' });
-    expect(projectUnknowns({ ...base, facts: { ...facts, identity: { name: 'HoodLock', symbol: 'LOCK' } } }).map((unknown) => unknown.dimension)).not.toContain('brandAffiliation');
+    expect(unknowns.find((unknown) => unknown.dimension === 'brandAffiliation')!.statement.text).toBe(brand.sentence);
+    expect(projectUnknowns({ ...base, facts }).map((unknown) => unknown.dimension)).not.toContain('brandAffiliation');
   });
 
   it('a mismatched token is named among the unknowns and in the builder status answer', () => {

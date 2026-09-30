@@ -6,6 +6,53 @@ record.
 
 ## Unreleased (2026-09-30)
 
+- **Valuation plausibility (scoring `hbm-v20`).** A valuation — market cap or FDV — that is at
+  least 10,000× the liquidity measured in the same reading, or above $10B on a Robinhood Chain
+  token that no listing HEY reads carries (HEY reads CoinGecko), is not plausible from the
+  readings HEY has. It is never printed, never FACT, and never an input anywhere a valuation is
+  used: cards, pages, the Terminal, search, the API, the snapshot, the agent contract, the MCP,
+  market-cap sorts, filters and counts, the Discovery Gap's market percentile, Still Building's
+  drawdown and its tracked high. It reads "Not plausible" with its reason; the API's
+  `valuationWithheld` gains `valuation_over_liquidity` and `unlisted_over_ceiling`, additively, and
+  the comparison and the market detail's `current` now carry `valuationWithheld` too. The
+  comparison, the detail and the list share one gate, `publishedValuation`.
+- **Freshness margins.** A staleness limit is at least 1.5× the cadence the subject is read on,
+  never below its old floor: a COLD market is stale after 36 h instead of 24 h, COLD builder
+  sources after 108 h instead of 72 h, contracts after 252 h instead of 168 h. The agent freshness
+  contract is `agent-freshness-v2`, with per-tier limits (`staleAfterHoursByTier`).
+
+- **Your data and error reports.** Readers can download everything HEY holds about their account
+  as one JSON file (never a secret or another account's data) and delete the account themselves;
+  what must stay for the treasury's accounts, a closed vote, the public record or the audit trail
+  is kept with nothing linking it to them. Every project page has "Report an error on this page":
+  a reason and up to 500 characters, reviewed by a moderator against the page's sources, never an
+  input to a status, score or ranking. The Privacy and Terms pages say how each works.
+
+- **`$HEY` disclosure, Robinhood-branded names and `stillBuildingState` (round 4).** `$HEY`'s card
+  and page say "HEY’s own token — researched by the same rules", and the API adds
+  `heysOwnToken: true` to its card, detail, snapshot identity, Builder Radar row and this-week row
+  (SDK and OpenAPI `HeysOwnToken`); it is set after a list is ordered and moves nothing. A project
+  whose name or ticker borrows Robinhood's brand ("robinhood" anywhere, "hood" as a word — never
+  "neighborhood" or "HoodLock") is held off the homepage, Under the Radar, the featured spots and
+  the Builder Radar until HEY verifies a builder, and a name claiming Robinhood's authority
+  ("official", "team", "labs", "foundation", "inc" beside the brand) stays held even then; its page
+  stays open with a NOT_VERIFIED brand gap. HEY's own project is no longer pinned first on the
+  homepage rotation or the default card order.
+  Every `stillBuilding` gains `stillBuildingState`: `HELD`, `NOT_HELD` or `NOT_MEASURED` (SDK
+  `HeyStillBuildingState`, OpenAPI `StillBuildingState`), beside the unchanged boolean.
+
+- **Agent contract, MCP and A2A, round 4.** Every agent claim names what it rests on
+  (`evidenceKind`) and cites a typed evidence id wherever a canonical record exists — the explain
+  engine's ids for activity status, Build Momentum and Still Building, the ledger's events for a
+  30-day count — never an invented one. Every MCP tool returns typed `structuredContent` with an
+  `outputSchema`; `lookup_token`, `compare_projects` and `get_project_coverage` are folded into
+  `find_projects` and `research_answer` and stay callable until 2026-12-31. A research profile at
+  `/mcp/research` serves builder intelligence only (no market-move, Under the Radar or valuation
+  tool). The older MCP renderers and A2A's default path quote every source's words as data.
+  `stillBuildingState` (`HELD`, `NOT_HELD`, `NOT_MEASURED`) sits beside `stillBuilding`, and an
+  answer naming `$HEY` says "HEY's own token — researched by the same rules". OpenAPI gained
+  nineteen public reads.
+
 - **Partner keys and version identification.** A platform partner can hold its own key
   (`heyp_…`): the same public data as no key, with its own quota and per-minute limit, only the route
   groups it was granted (`research`, `changes`, `contracts`, `partner_cards`, `mcp`, `a2a`), rotation

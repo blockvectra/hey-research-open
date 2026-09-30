@@ -127,6 +127,8 @@ export const MODERATION_REASONS = [
   'CONFLICTING_CONTRACT',
   'INAPPROPRIATE',
   'OTHER',
+  /** A signed-in reader's report of an error on a project page (2026-09-30, `moderation/corrections.ts`). */
+  'DATA_CORRECTION',
 ] as const;
 
 export type ModerationReason = (typeof MODERATION_REASONS)[number];

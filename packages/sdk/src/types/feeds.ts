@@ -77,6 +77,8 @@ export type HeyThisWeekProject = {
   slug: string;
   name: string;
   symbol?: string;
+  /** `true` on `$HEY`, HEY's own token, researched by the same rules (2026-09-30, additive); absent otherwise. */
+  heysOwnToken?: true;
   activityStatus: string;
   /** Market context only, and only when HEY has a fresh reading of a live market. `valuationKind` says which measure it is (2026-09-25). */
   marketCapUsd?: number;

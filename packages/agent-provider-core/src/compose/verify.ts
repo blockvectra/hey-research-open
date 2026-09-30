@@ -144,6 +144,7 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
       precision: null,
       freshness: recorded?.role === 'token' && input.tokenVerifiedAt ? familyFreshness('contracts', { observedAt: input.tokenVerifiedAt, now: ctx.now }).freshnessStatus : 'unknown',
       evidence,
+      evidenceKind: claimStatus === 'UNKNOWN' ? 'not_held' : 'registry_record',
       ...(recorded && recorded.role === 'token' ? { explainUrl: `${ctx.baseUrl}/api/projects/${recorded.slug}/explain?fact=token.verification` } : {}),
       reason: reasonCode,
     },
@@ -173,6 +174,7 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
       freshness: observed ? familyFreshness('contracts', { observedAt: observed, now: ctx.now }).freshnessStatus : 'unknown',
       evidence: recorded.role === 'followup' ? evidence.filter((ref) => ref.id === input.contract?.creation?.evidenceId) : [],
       explainUrl: recordUrl,
+      evidenceKind: 'registry_record',
       reason: `recorded_as_${recorded.role ?? 'project_contract'}`,
     });
   }

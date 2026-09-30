@@ -9,6 +9,7 @@
     ".": "./src/index.ts",
     "./valuation-kind": "./src/valuation-kind.ts",
     "./valuation-display": "./src/valuation-display.ts",
+    "./valuation-plausibility": "./src/valuation-plausibility.ts",
     "./calendar": "./src/calendar.ts",
     "./market-status-words": "./src/market-status-words.ts"
   },

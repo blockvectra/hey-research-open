@@ -8,6 +8,8 @@
  */
 export * from './capabilities';
 export * from './schema';
+export * from './evidence-kinds';
+export * from './disclosures';
 export * from './text';
 export * from './words';
 export * from './freshness';

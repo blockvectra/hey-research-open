@@ -12,7 +12,7 @@ import {
   staleReadingAge,
   tickerLabel,
 } from './format';
-import { valuationDisplay, valuationDisplayLabel, VALUATION_HIDDEN_HELP, VALUATION_HIDDEN_WORDS } from '@hey/scoring/valuation-display';
+import { valuationDisplay, valuationDisplayLabel, valuationHiddenSentence, VALUATION_HIDDEN_WORDS } from '@hey/scoring/valuation-display';
 import { ProjectLogo } from './project-logo';
 import { cardShipPhrase } from './ship-phrase';
 import { ActivityChip, activityPresentation, type ActivityStatusValue, unknownActivityReason, StillBuildingBadge, TokenVerificationChip } from './status';
@@ -62,6 +62,8 @@ export type ProjectCardData = {
   /** The tracked token's market state (2026-09-11); a dead pool shows "No active market" instead of a cap. */
   tokenMarketStatus?: string;
   tokenMarketReason?: string;
+  /** The valuation gate's reason when the reading's valuation is not plausible (round 4, 2026-09-30); the card then prints "Not plausible". */
+  valuationImplausible?: string;
   /** Which provider the reading came from; shown as a title, never as layout. */
   marketCapSource?: string;
   /** When the reading was taken: a figure older than a day says its age beside it (2026-09-28). */
@@ -148,6 +150,7 @@ export function ProjectCard({
   now,
   showStillBuilding = false,
   marketLens = false,
+  disclosure,
   className,
 }: {
   project: ProjectCardData;
@@ -167,6 +170,13 @@ export function ProjectCard({
    * it. Off on Home, Radar and the Builders view (docs/PROJECT_CARD_V7.md §8).
    */
   marketLens?: boolean;
+  /**
+   * One line of disclosure under the identity (round 4, 2026-09-30): on
+   * `$HEY`'s own card, "HEY’s own token — researched by the same rules". The
+   * words come from the caller (`HEYS_OWN_TOKEN_DISCLOSURE` in the domain);
+   * the card only prints them, and they change nothing else on it.
+   */
+  disclosure?: string;
   className?: string;
 }) {
   const marketSource = formatMarketSource(project.marketCapSource);
@@ -184,6 +194,7 @@ export function ProjectCard({
     fdvUsd: project.fdvUsd,
     marketStatus: project.tokenMarketStatus,
     marketReason: project.tokenMarketReason,
+    valuationImplausible: project.valuationImplausible,
   });
   const staleAge = valuation.shown ? staleReadingAge(project.marketCapObservedAt, now) : undefined;
   const hasToken = Boolean(project.token);
@@ -315,6 +326,11 @@ export function ProjectCard({
           {identityParts.length > 0 ? (
             <p className="mt-1 truncate text-[13px] leading-5 text-hey-secondary">
               {identityParts.map((part, index) => (index === 0 ? part : [<span key={`sep-${index}`} aria-hidden="true"> · </span>, part]))}
+            </p>
+          ) : null}
+          {disclosure ? (
+            <p className="mt-1 text-[12.5px] leading-5 text-hey-secondary [overflow-wrap:anywhere]" data-testid="heys-own-token">
+              {disclosure}
             </p>
           ) : null}
         </div>
@@ -461,7 +477,7 @@ export function ProjectCard({
                   ) : null}
                 </span>
               ) : (
-                <span className="text-hey-muted" data-valuation-state={valuation.state} title={VALUATION_HIDDEN_HELP[valuation.state]}>
+                <span className="text-hey-muted" data-valuation-state={valuation.state} title={valuationHiddenSentence(valuation)}>
                   {VALUATION_HIDDEN_WORDS[valuation.state]}
                 </span>
               )}

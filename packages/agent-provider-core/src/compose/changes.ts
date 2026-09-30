@@ -119,6 +119,7 @@ function composeWindow(ctx: AgentComposeContext, input: WhatChangedInput, items:
             precision: 'WINDOW',
             freshness: ledgerFresh.freshnessStatus,
             evidence: items.filter((item) => item.countsAsBuilding).flatMap((item) => item.evidence).slice(0, 12),
+            evidenceKind: 'ledger_count',
           },
         ]
       : [];
@@ -134,6 +135,7 @@ function composeWindow(ctx: AgentComposeContext, input: WhatChangedInput, items:
     precision: 'WINDOW' as const,
     freshness: ledgerFresh.freshnessStatus,
     evidence: items.filter((item) => item.type === row.type).flatMap((item) => item.evidence).slice(0, 12),
+    evidenceKind: 'ledger_count' as const,
     // Market, market-integrity and usage events are context, never building (2026-09-30: not only `market.*`).
     ...(isContextChange({ domain: row.type.split('.')[0] ?? '', type: row.type }) ? { contextOnly: true as const } : {}),
   }));

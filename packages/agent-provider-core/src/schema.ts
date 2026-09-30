@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import { AGENT_CAPABILITIES } from './capabilities';
+import { HEY_OWN_TOKEN_DISCLOSURE_CODE, STILL_BUILDING_STATES } from './disclosures';
+import { AGENT_EVIDENCE_KINDS } from './evidence-kinds';
 import { AGENT_DATA_FAMILIES, AGENT_FRESHNESS_STATUSES } from './freshness';
 import { AGENT_UNKNOWN_CATEGORIES } from './unknowns';
 
@@ -111,6 +113,14 @@ export const agentClaimSchema = z
     reason: code.optional(),
     /** Market or usage context: never a builder judgement, never an input to one. */
     contextOnly: z.literal(true).optional(),
+    /**
+     * What the claim rests on (2026-09-30, round 4, additive): a published
+     * record (`evidence_record`, with typed ids), a rule's output, a ledger
+     * count, a coverage state, a market or usage reading, HEY's own registry,
+     * one canonical read, or nothing held. Present on every claim HEY
+     * composes; a claim with no evidence id says here what it is instead.
+     */
+    evidenceKind: z.enum(AGENT_EVIDENCE_KINDS).optional(),
   })
   .strict();
 
@@ -213,6 +223,8 @@ const researchData = z
         stillBuilding: z.boolean(),
         /** Why Still Building was not measured (2026-09-30, additive): beside `stillBuilding: false`, as the API sends it. */
         stillBuildingWithheld: code.optional(),
+        /** Round 4 (2026-09-30, additive): HELD, NOT_HELD (measured, not met) or NOT_MEASURED — what `stillBuilding: false` cannot say. */
+        stillBuildingState: z.enum(STILL_BUILDING_STATES).optional(),
         scoringVersion: code.nullable(),
         explainUrl: url,
       })
@@ -297,7 +309,17 @@ const builderStatusData = z
     unknownInputs: z.array(code).max(20),
     statusRestsOnCurrentEvidence: z.boolean().nullable(),
     buildMomentum: z.object({ value: z.number().nullable(), state: agentClaimStatusSchema, classification: code, explainUrl: url }).strict(),
-    stillBuilding: z.object({ value: z.boolean().nullable(), state: agentClaimStatusSchema, classification: code, meaning: agentTextSchema, explainUrl: url }).strict(),
+    stillBuilding: z
+      .object({
+        value: z.boolean().nullable(),
+        state: agentClaimStatusSchema,
+        classification: code,
+        /** Round 4 (2026-09-30, additive): HELD, NOT_HELD or NOT_MEASURED. */
+        stillBuildingState: z.enum(STILL_BUILDING_STATES).optional(),
+        meaning: agentTextSchema,
+        explainUrl: url,
+      })
+      .strict(),
     reason: agentTextSchema,
   })
   .strict();
@@ -406,6 +428,20 @@ const citation = z
 
 const errorSchema = z.object({ code, message: agentTextSchema, movedTo: slug.optional() }).strict();
 
+/**
+ * A disclosure about the answer's own subject (2026-09-30, round 4,
+ * additive): `hey_own_token` when `$HEY`'s project is in the answer. It
+ * changes no figure, order or tag: HEY researches its own project by the
+ * same rules as any other.
+ */
+export const agentDisclosureSchema = z
+  .object({
+    code: z.enum([HEY_OWN_TOKEN_DISCLOSURE_CODE]),
+    statement: agentTextSchema,
+    projects: z.array(slug).max(8),
+  })
+  .strict();
+
 const base = {
   schema: z.literal(AGENT_SCHEMA),
   schemaVersion: z.literal(AGENT_SCHEMA_VERSION),
@@ -445,6 +481,8 @@ const base = {
   citation: citation.nullable(),
   boundaries,
   error: errorSchema.optional(),
+  /** Round 4 (2026-09-30, additive): present only when a disclosure applies. */
+  disclosures: z.array(agentDisclosureSchema).max(4).optional(),
   asOf: iso,
 };
 
@@ -461,6 +499,7 @@ export const agentIntelligenceResponseSchema = z.discriminatedUnion('capability'
 ]);
 
 export type AgentEvidenceRef = z.infer<typeof agentEvidenceRefSchema>;
+export type AgentDisclosure = z.infer<typeof agentDisclosureSchema>;
 export type AgentClaimStatus = z.infer<typeof agentClaimStatusSchema>;
 export type AgentPrecision = z.infer<typeof agentPrecisionSchema>;
 export type AgentSourceType = z.infer<typeof agentSourceTypeSchema>;

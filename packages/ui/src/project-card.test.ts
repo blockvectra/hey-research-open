@@ -470,3 +470,21 @@ describe('ProjectCard — builder line and latest signal (public IA pass, 2026-0
     expect(html).not.toContain('>Activity unknown<');
   });
 });
+
+describe('the $HEY disclosure line (round 4, 2026-09-30)', () => {
+  const DISCLOSURE = 'HEY’s own token — researched by the same rules';
+
+  it('prints the words it is given, once, under the identity', () => {
+    const html = renderToStaticMarkup(createElement(ProjectCard, { project: tokenBacked, disclosure: DISCLOSURE }));
+    expect(html.match(/data-testid="heys-own-token"/g)).toHaveLength(1);
+    expect(html).toContain(DISCLOSURE);
+    expect(html.indexOf('data-testid="heys-own-token"')).toBeLessThan(html.indexOf('data-testid="card-builder"'));
+  });
+
+  it('prints nothing without it, and changes nothing else on the card', () => {
+    const plain = render(tokenBacked);
+    expect(plain).not.toContain('heys-own-token');
+    const marked = renderToStaticMarkup(createElement(ProjectCard, { project: tokenBacked, disclosure: DISCLOSURE }));
+    expect(marked.replace(/<p class="[^"]*" data-testid="heys-own-token">[^<]*<\/p>/, '')).toBe(plain);
+  });
+});
