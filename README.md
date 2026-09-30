@@ -256,8 +256,11 @@ evidence behind it.
 [![HEY Research Lab on HEY](https://heyresearch.xyz/badge/hey-research-lab.svg)](https://heyresearch.xyz/project/hey-research-lab)
 
 ```markdown
-[![My project on HEY](https://heyresearch.xyz/badge/<slug>.svg)](https://heyresearch.xyz/project/<slug>)
+[![My project on HEY](https://heyresearch.xyz/badge/<slug>.svg)](https://heyresearch.xyz/project/<slug>?utm_source=badge&utm_medium=readme)
 ```
+
+The link's `utm_source=badge` lets HEY count a click from your README as the badge's, as a number
+and nothing more.
 
 `?theme=dark` and `?style=pill` are the other two looks. [docs/BADGES.md on the site](https://heyresearch.xyz/docs/badges).
 

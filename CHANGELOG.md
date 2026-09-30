@@ -6,6 +6,14 @@ record.
 
 ## Unreleased (2026-09-30)
 
+- **Distribution: counted honestly, labelled where it leaves.** HEY's console gains one page for
+  how its research travels, composed from the reads it already had, with no new tracking: every
+  figure says what it counts, an unmeasured one reads "—" with its reason, and HEY's own traffic
+  and crawlers are counted apart. The badge snippet now links with `utm_source=badge`, and project
+  shares carry `utm_medium=share`. Security review fixes: a Telegram link token seen in a group is
+  burnt, bot links stay on HEY's origin, embed impressions count once per address, widget and host,
+  and the beacon and the Uniswap quote read capped bodies. No public package changed.
+
 - **Worker reliability.** A worker claims only the job types it has a handler for (`claimJobs`
   takes `types`), so a row enqueued by a newer build waits for one that can run it instead of
   failing. The GeckoTerminal OHLCV adapter merges a bucket the provider lists twice into one bar
@@ -63,6 +71,13 @@ record.
   allowance still answers `429` with the reset date once spent, and HEY's operators now see the
   account as exhausted (with a warning from 80 %) instead of learning it from the caller. MCP
   protocol refusals (4xx) are no longer counted as HEY errors in HEY's own health figures.
+
+- **Market data kept to the providers' real limits.** HEY now asks GeckoTerminal at most five times
+  a minute, twelve seconds apart, across every job together, and one refusal pauses every job that
+  reads it rather than only the one that heard it; HEY had been drawing a refusal on nearly one
+  request in five. The Terminal's 15m and 1H charts cover more tokens (up to 180, those readers
+  watch or open first) on a slower cadence for the rest. The chain-wide traded-token discovery reads
+  one hour, or one day, at a time so each window is read to its end. `packages/sources`: no change.
 
 - **Telegram bot adapter.** `packages/sources` has `telegram-bot.ts`, the Telegram Bot API as an
   outbound channel. It handles `sendMessage`, `editMessageText`, `deleteMessage`, `setWebhook`,

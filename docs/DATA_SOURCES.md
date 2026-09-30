@@ -29,7 +29,7 @@ depends on a live API.
 | --- | --- | --- | --- |
 | `dexscreener` | Primary market context | 5 min | Deepest-liquidity pair wins; figures are never merged across pairs |
 | `geckoterminal` | Fallback market context | 5 min | Same normalized shape as DEX Screener |
-| `geckoterminal-ohlcv` (hour, minute) | 1h and 15m candles for the Terminal chart, a bounded token set (2026-09-29) | 15 min | Per-pool OHLC with per-bar volume; only bars that traded are listed, so a missing bar stays missing; own key `geckoterminal-intraday` 1,440/day inside the provider's 6,000; context only |
+| `geckoterminal-ohlcv` (hour, minute) | 1h and 15m candles for the Terminal chart, a bounded token set (2026-09-29) | 15 min | Per-pool OHLC with per-bar volume; only bars that traded are listed, so a missing bar stays missing; own key `geckoterminal-intraday` 1,440/day inside the provider's 7,000; context only |
 | `blockscout` | Contract metadata, verification, deployment evidence | 1 h | Holder endpoints are deliberately not implemented |
 | `rpc-contract` | `eth_getCode` existence check | 1 h | Lightweight verification only; HEY runs no node |
 | `github-repo` | Repository activity window | 30 min | Stars are display context, never a score input |
