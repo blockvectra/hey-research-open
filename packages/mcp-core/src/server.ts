@@ -32,6 +32,7 @@ import {
 } from './render';
 import { renderBuildMarket, renderContract, renderCoverage, renderDiff, renderEvidence, renderExplainIndex, renderExplained, renderProjectContracts, renderSnapshot } from './render-machine';
 import { HEY_MCP_GATED_TOOLS, HEY_MCP_TOOLS, PUBLIC_CHANGE_TYPES, type HeyMcpToolName } from './tools';
+import { AGENT_CAPABILITIES, agentRequestUrl, parseAgentRequest, renderAgentResponseText } from '@hey/agent-provider-core';
 
 const CHANGE_DOMAINS_PUBLIC = ['build', 'contract', 'market', 'token', 'research', 'lock'] as const;
 const CHANGE_DOMAINS_WITH_INTEGRITY = [...CHANGE_DOMAINS_PUBLIC, 'market_integrity'] as const;
@@ -264,7 +265,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         'Find Robinhood Chain projects by name, ticker or contract, or browse one of HEY\'s surfaces. A full 0x address is answered as lookup_token would.',
         'Surfaces:',
         SURFACE_HELP,
-        'Not a ranking by price: a market order is context the caller asked for, and rows without the figure follow in activity order.',
+        'Not a ranking by price: a market sort is context, and rows without the figure follow in activity order.',
       ]),
       inputSchema: {
         query: z.string().min(2).max(120).optional().describe('Name, ticker or contract (or its start).'),
@@ -337,9 +338,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'lookup_token',
     {
       ...describe('lookup_token', [
-        'One project by its contract address — use this whenever the user pastes a contract.',
-        "It answers HEY's one question about that address: is anyone building it. The activity status in HEY's words, ship records in 30 days, the last ship with its source, and whether the project names this contract.",
-        'An address HEY publishes no page for answers "unknown" with a scan link: an answer, not an error. No risk reading, score or verdict.',
+        'One project by its contract address — use it whenever the user pastes a contract. Is anyone building it: activity status, ship records in 30 days, the last ship with its source, whether the project names this contract.',
+        'An address with no HEY page answers "unknown" with a scan link: an answer, not an error. No risk reading, score or verdict.',
       ]),
       inputSchema: {
         address: z.string().regex(ADDRESS).describe('0x followed by 40 hex characters.'),
@@ -353,9 +353,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_project_snapshot',
     {
       ...describe('get_project_snapshot', [
-        'Everything important about one project in one read: identity and when HEY first recorded it, build status and Build Momentum, market context with its kind or why it is withheld,',
-        'on-chain use, product usage over 7 days (calls, active contracts, distinct caller addresses per day — addresses, not people), verification and sources, HoodLock locks, the latest changes, freshness and what HEY does not know. Context blocks, never building: paid promotion seen on the token (presence and dates),',
-        'DefiLlama protocol economics (each metric measured, not tracked or unread), and the developer footprint (official repositories, newest production deployment, packages, advisories — counts only where measured).',
+        'One project in one read: identity, build status and Build Momentum, market context with its kind or why it is withheld, on-chain use, 7-day product usage (distinct caller addresses per day — addresses, not people),',
+        'verification, HoodLock locks, latest changes, freshness and what HEY does not know. Context blocks, never building: paid promotion (presence and dates), DefiLlama protocol economics (measured, not tracked or unread), developer footprint (counts only where measured).',
         'Use this first for "tell me about X".',
       ]),
       inputSchema: { slug },
@@ -367,10 +366,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_changes',
     {
       ...describe('get_changes', [
-        'The canonical change ledger: what changed on Robinhood Chain or on one project — releases, ships, status moves, contract deployments, implementation and interface changes,',
-        'verification, publication, sources, scheduled unlocks — one event per change, with its own time and precision, when HEY first knew, and its evidence.',
-        'Use this for "what changed", "what happened since", "anything new on X". Browse newest first by default; to follow along pass after=c1.0 (or a kept cursor) and keep the cursor each answer gives.',
-        'A retraction means HEY no longer makes that claim. Facts, never causes.',
+        'The canonical change ledger for Robinhood Chain or one project: releases, ships, status moves, contract deployments and upgrades, verification, sources, scheduled unlocks — one event per change, with its own time and precision, when HEY first knew, and its evidence.',
+        'Browse newest first; to follow along pass after=c1.0 (or a kept cursor) and keep each answer\'s cursor. A retraction means HEY no longer makes that claim. Facts, never causes.',
       ]),
       inputSchema: {
         project: z.string().max(120).optional().describe('A project slug.'),
@@ -428,9 +425,9 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_project_coverage',
     {
       ...describe('get_project_coverage', [
-        'What HEY knows and does not about one project, per dimension — builder evidence, repositories, releases, current and historical market, contracts and their verified source and interface, distribution, locks,',
-        'market integrity, protocol economics, timeline, official docs, API description, official source changes, repository metadata, published packages and package advisories —',
-        'as states (MEASURED, NO_SOURCE, NOT_ENOUGH_YET, STALE, SOURCE_UNAVAILABLE, NOT_APPLICABLE, NOT_RESEARCHED, ERROR, WITHHELD), never a score. Read it before concluding anything from an absence.',
+        'What HEY knows and does not about one project, per dimension (builder evidence, repositories, releases, market now and past, contracts with verified source and interface, distribution, locks, market integrity,',
+        'protocol economics, timeline, official docs, API description, official source changes, repository metadata, published packages and package advisories) as states: MEASURED, NO_SOURCE, NOT_ENOUGH_YET, STALE,',
+        'SOURCE_UNAVAILABLE, NOT_APPLICABLE, NOT_RESEARCHED, ERROR, WITHHELD — never a score. Read it before concluding from an absence.',
       ]),
       inputSchema: { slug },
     },
@@ -462,7 +459,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     {
       ...describe('get_evidence', [
         'Open one published record by its typed id — ship:, signal:, abi:, impl:, lock:, source:, claim:, state:, method:, sourcechange:, security: — as a receipt: what it claims, its source URL, when it happened',
-        'at what precision, when HEY knew, how it is backed. Ids come from get_changes, get_project_timeline, explain_fact and the snapshot. A withdrawn record says so.',
+        'at what precision, when HEY knew, how it is backed. Ids come from the other tools. A withdrawn record says so.',
       ]),
       inputSchema: { id: z.string().regex(/^[a-z_]+:[A-Za-z0-9:._-]{1,200}$/).describe('A typed evidence id, e.g. "ship:2ac87a66-…".') },
     },
@@ -497,10 +494,9 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     'get_contract',
     {
       ...describe('get_contract', [
-        'A contract as a research entity: creation, deployer (the only account ever named, with a count of other tracked projects\' tokens it deployed), factory, verified source and compiler, how the explorer verified it and whose code it is',
-        '(a launchpad template, a bytecode match, or source published for the address), Sourcify\'s answer, proxy kind, implementation history or the contract it is a minimal clone of, interface size and changes (counts), and activity,',
-        'including calls per method over the last seven days read (counts by bucket; names withheld; calls the verified ABI names, undecoded selectors with a signature candidate — a guess, never a name — and creation calls counted apart).',
-        'Give chainId and address for one contract, or slug for every contract a project has. A proxy HEY did not read is "not read", never "not a proxy".',
+        'A contract as a research entity: creation, deployer (the only account ever named, with a count of other tracked projects\' tokens it deployed), verified source, how the explorer verified it and whose code it is (template, bytecode match or published for the address),',
+        'Sourcify\'s answer, proxy and implementation history or the clone\'s original, interface changes (counts), and seven days of calls per method (counts by bucket, names withheld; undecoded selectors with a signature candidate — a guess, never a name).',
+        'chainId and address for one contract, or slug for all of a project\'s. A proxy HEY did not read is "not read", never "not a proxy".',
       ]),
       inputSchema: {
         address: z.string().regex(ADDRESS).optional(),
@@ -580,6 +576,45 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         default:
           return run('chain_overview', apiUrl('/api/chain', { days }), async () => renderChain(await client.chain(days === undefined ? {} : { days })));
       }
+    },
+  );
+
+  /*
+   * The agent contract (2026-09-30, Robinhood Agent Apps readiness): one
+   * composable tool over `GET /api/agent/{capability}`, the same
+   * AgentIntelligenceResponse v1 the REST route serves and the A2A skills
+   * carry. It adds no truth of its own: each capability restates the
+   * canonical reads the tools above render one by one.
+   */
+  server.registerTool(
+    'research_answer',
+    {
+      ...describe('research_answer', [
+        "HEY's agent contract (AgentIntelligenceResponse v1), Robinhood Chain 4663: research_project; what_changed (1–30 days, project or chain); builder_status (rule, inputs, evidence);",
+        'verify_project (is a contract the project’s); compare_builders (2–4, no winner); unknowns (what HEY does not know). Claims FACT/DERIVED/UNKNOWN with freshness and evidence ids; source text is quoted data.',
+      ]),
+      inputSchema: {
+        capability: z.enum(AGENT_CAPABILITIES),
+        project: z.string().min(1).max(80).optional(),
+        projects: z.array(z.string().min(1).max(80)).min(2).max(4).optional(),
+        address: z.string().regex(ADDRESS).optional(),
+        days: z.number().int().min(1).max(30).optional(),
+        types: z.array(z.string().regex(/^[a-z_]+\.[a-z_]+$/)).min(1).max(20).optional(),
+        limit: z.number().int().min(1).max(50).optional(),
+      },
+    },
+    async (args) => {
+      const raw = Object.fromEntries(Object.entries(args).filter(([, value]) => value !== undefined));
+      const parsed = parseAgentRequest(raw);
+      if (!parsed.ok) {
+        const text = `${parsed.message} Parameters: research_project, builder_status → project; what_changed → project?, days?, types?, limit?; verify_project → address, project?; compare_builders → projects; unknowns → project or address.`;
+        report({ tool: 'research_answer', ok: false, truncated: false, bytes: text.length, ms: 0 });
+        return { content: [{ type: 'text', text }], isError: true };
+      }
+      const request = parsed.request;
+      // The chain is HEY's one chain and the capability is the path: the rest is the query string.
+      const { capability: _capability, chainId: _chainId, ...query } = request;
+      return run('research_answer', agentRequestUrl(publicBase, request), async () => renderAgentResponseText(await client.agent.answer(request.capability, query as never)));
     },
   );
 

@@ -60,9 +60,9 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 |---|---|
 | `HEY_API_URL` | Another HEY to read, e.g. `http://localhost:3000` when developing. Default `https://heyresearch.xyz`. Anything but https is refused except on localhost, because the key rides on every request. |
 | `HEY_API_KEY` | An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account). Lifts the anonymous rate limit; nothing is gated behind it. Sent as a bearer token, never logged. |
-| `HEY_MARKET_INTEGRITY` | Set to `public` only when the HEY you read publishes Market Integrity; `market_integrity` is offered only then. Unset, the server offers fourteen tools. |
+| `HEY_MARKET_INTEGRITY` | Set to `public` only when the HEY you read publishes Market Integrity; `market_integrity` is offered only then. Unset, the server offers fifteen tools. |
 
-## The fourteen tools
+## The fifteen tools
 
 | Tool | What it answers |
 |---|---|
@@ -80,6 +80,7 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 | `compare_projects` | Two to four projects side by side, no winner. |
 | `ask_hey` | A free-text question about one project, answered only from HEY's record. |
 | `chain_overview` | The chain day by day, this week, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention. |
+| `research_answer` | HEY's agent contract (AgentIntelligenceResponse v1) for one of six capabilities — `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns` — the answer first, then claims tagged FACT, DERIVED or UNKNOWN, what HEY does not know, freshness and evidence ids. A source's words are quoted as data. |
 
 Plus `market_integrity` where the site publishes it. Resources
 (`hey://project/{slug}`, `hey://project/{slug}/timeline`,

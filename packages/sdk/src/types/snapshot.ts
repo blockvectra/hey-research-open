@@ -3,7 +3,7 @@
  * (2026-09-26). Each is read from HEY's own tables; none calls a provider.
  * Absent means HEY does not know; a withheld figure says it is withheld.
  */
-import type { HeyDiscoveryGapWithheld, HeyProject } from './projects';
+import type { HeyDiscoveryGapWithheld, HeyProject, HeyStillBuildingWithheld } from './projects';
 import type { HeyPeerContext } from './graph';
 import type { HeyUsageSummary } from './usage';
 
@@ -190,6 +190,8 @@ export type HeySnapshotChange =
       summary: string;
       evidence: { id: string; url?: string; label: string }[];
       source: string;
+      /** Present and true only for an event that counts toward activity status (2026-09-30, additive). */
+      countsAsBuilding?: true;
     }
   | { id: string; revision: number; op: 'retract'; recordedAt: string };
 
@@ -382,6 +384,8 @@ export type HeyProjectSnapshot = {
     /** Absent when not measured, as on the detail route. */
     buildMomentum?: number;
     stillBuilding: boolean;
+    /** Why Still Building was not measured (2026-09-30, additive), beside `stillBuilding: false`; absent when measured or on an older score. */
+    stillBuildingWithheld?: HeyStillBuildingWithheld;
     stillBuildingEvidence?: { drawdownPercent: number; shipsSinceDecline?: number };
     discoveryGap?: number;
     /** Why `discoveryGap` is absent (2026-09-30, additive); absent beside a gap or on an older score. */

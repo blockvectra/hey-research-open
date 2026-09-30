@@ -1,0 +1,24 @@
+{
+  "name": "@hey/agent-provider-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "HEY Research's agent-facing contract (AgentIntelligenceResponse v1): six bounded research capabilities composed from the canonical public API objects, the freshness contract, machine-safe text, and thin transport adapters (REST, MCP, A2A). The future Robinhood Agent Apps adapter is an interface only, pending an official provider specification.",
+  "type": "module",
+  "sideEffects": false,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hey-research-lab/sdk": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "typescript": "^5.7.2"
+  }
+}

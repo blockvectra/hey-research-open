@@ -77,11 +77,12 @@ describe('the HEY MCP server', () => {
     requested = [];
   });
 
-  it('offers exactly the fourteen tools in the catalogue, each read-only, titled and annotated', async () => {
+  it('offers exactly the fifteen tools in the catalogue, each read-only, titled and annotated', async () => {
     const client = await connect(fixtures);
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual(HEY_MCP_TOOLS.map((tool) => tool.name).sort());
-    expect(tools).toHaveLength(14);
+    // Fourteen until 2026-09-30; research_answer carries the agent contract.
+    expect(tools).toHaveLength(15);
     for (const tool of tools) {
       expect(tool.title, tool.name).toBeTruthy();
       expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
@@ -112,7 +113,7 @@ describe('the HEY MCP server', () => {
     expect((await (await connect(fixtures)).listTools()).tools.map((tool) => tool.name)).not.toContain('market_integrity');
     const names = (await (await connect(fixtures, { marketIntegrity: true })).listTools()).tools.map((tool) => tool.name);
     expect(names).toContain(HEY_MCP_GATED_TOOLS[0].name);
-    expect(names).toHaveLength(15);
+    expect(names).toHaveLength(16);
     expect(marketIntegrityFromEnv(undefined)).toBe(false);
     expect(marketIntegrityFromEnv('internal')).toBe(false);
     expect(marketIntegrityFromEnv('terminal')).toBe(false);
@@ -343,7 +344,7 @@ describe('the free-data wave on existing tools, not new ones (2026-09-27)', () =
 
   it('extends get_project_snapshot, get_contract and get_project_coverage, and adds no tool per provider', async () => {
     const { tools } = await (await connect(fixtures)).listTools();
-    expect(tools).toHaveLength(14);
+    expect(tools).toHaveLength(15);
     expect(tools.map((tool) => tool.name).join(' ')).not.toMatch(/defillama|dexscreener|sourcify|osv|deps|package|footprint|promotion/i);
     const described = (name: string) => tools.find((tool) => tool.name === name)!.description ?? '';
     expect(described('get_project_snapshot')).toMatch(/Context blocks, never building: paid promotion .*DefiLlama protocol economics .*developer footprint/);

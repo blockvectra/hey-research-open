@@ -41,8 +41,9 @@ describe('Discovery Gap on thin markets', () => {
   });
 
   it('is a methodology change with its own version', () => {
-    expect(SCORING_VERSION).toBe('hbm-v18');
+    expect(SCORING_VERSIONS).toContain('hbm-v18');
     expect(SCORING_VERSIONS).toContain('hbm-v17');
+    expect(SCORING_VERSIONS.indexOf(SCORING_VERSION)).toBeGreaterThanOrEqual(SCORING_VERSIONS.indexOf('hbm-v18'));
     // The token market vocabulary is untouched by it: the rule reads the status, never a reason of its own.
     expect(TOKEN_MARKET_REASONS).not.toContain('market_too_thin');
   });

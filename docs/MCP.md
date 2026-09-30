@@ -2,7 +2,7 @@
 
 HEY answers one question: **which projects on Robinhood Chain are still building, what have
 they shipped, and which of them is nobody looking at?** That is the shape of a question
-someone asks an assistant, so HEY is an MCP server — fourteen tools an assistant can call
+someone asks an assistant, so HEY is an MCP server — fifteen tools an assistant can call
 while answering, hosted at `https://heyresearch.xyz/mcp` or run beside the assistant.
 
 It holds no database and no credentials of its own: every tool reads the same
@@ -75,18 +75,17 @@ anything else must be https, because the key rides on every request). Set `HEY_A
 read with your key's allowance; the server never prints the key. Start it with
 `HEY_MARKET_INTEGRITY=public` only where the site publishes Market Integrity.
 
-## The fourteen tools
+## The fifteen tools
 
 One tool per real question. The twenty-two tools before 2026-09-26 were replaced, not
-aliased: nothing was published and the MCP had been called once.
+aliased: nothing was published and the MCP had been called once. The fifteenth,
+`research_answer` (2026-09-30), carries HEY's agent contract.
 
 | Tool | The question it answers | Replaces |
 |---|---|---|
 | `find_projects` | "What is *AgentOS*?" · "What is still being built?" · "Who is building quietly?" · "Who is shipping faster?" · "Top builders on Pons?" — a name, ticker or contract, or one of HEY's surfaces with the catalogue's filters. A pasted `0x…` address is answered as `lookup_token` would. | `search_projects`, `list_projects`, `shipping_in_silence`, `builder_comebacks`, `accelerating_builders`, `list_builders` |
 | `lookup_token` | "Is anyone building this token?" — activity status in HEY's words, ship records and meaningful ships in 30 days, the last ship with its source, whether the project names the contract. On `MISMATCH` (the project's own site names another contract) it says the activity does not apply to this token and gives no link to the project (2026-09-27). | — |
-| `get_project_snapshot` | "Tell me about X." — identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. Since 2026-09-27 three context blocks, never building: paid promotion seen on the token (presence and dates, never an amount), DefiLlama protocol economics (each metric measured, not tracked or unread — a measured zero says so), and the developer footprint (official repositories, newest production deployment, packages, advisories; a count only where measured). Since 2026-09-28 a **Usage** section, its own dimension and never building: active and watched contracts and calls in 7 days (the ERC-20 surface apart), distinct caller addresses on the newest and busiest day — a count per day, "addresses, not people", and UNKNOWN across the window because days cannot be added — events or why they are unknown, method facts by id, most-called buckets without names; a project outside the method watch is UNKNOWN, never zero. No new tool: the daily series is `GET /api/projects/{slug}/usage`. Since 2026-09-28 a **Security context (evidence, never a verdict)** section: audit report links with where each is published (on the auditor's own site, claimed by the project, listed by DefiLlama only) and its `security:` evidence id, bug-bounty programs, a published security.txt, OSV advisories about the published packages ("no open advisory" is a reading of OSV, not a statement about the code), Scorecard checks never summed, and incidents UNKNOWN. No score, no "safe"; an audit shows an audit took place. | `get_project`, `project_intelligence` |
-| `get_project_snapshot` | "Tell me about X." — identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. Since 2026-09-27 three context blocks, never building: paid promotion seen on the token (presence and dates, never an amount), DefiLlama protocol economics (each metric measured, not tracked or unread — a measured zero says so), and the developer footprint (official repositories, newest production deployment, packages, advisories; a count only where measured). Since 2026-09-28 a **Usage** section, its own dimension and never building: active and watched contracts and calls in 7 days (the ERC-20 surface apart), distinct caller addresses on the newest and busiest day — a count per day, "addresses, not people", and UNKNOWN across the window because days cannot be added — events or why they are unknown, method facts by id, most-called buckets without names; a project outside the method watch is UNKNOWN, never zero. No new tool: the daily series is `GET /api/projects/{slug}/usage`. Since 2026-09-28 also a **Peer context** section (`peers-v1`): the cohort, then each measured figure's own line as the API words it — DERIVED where the cohort cleared its minimum, UNKNOWN ("not enough comparable projects") where it did not — never one combined number; a project with no comparable type is NOT APPLICABLE. Relationships are not in the snapshot: `GET /api/projects/{slug}/relationships`. | `get_project`, `project_intelligence` |
-| `get_project_snapshot` | "Tell me about X." — opening since 2026-09-28 on the Research Summary: one tagged line (FACT, DERIVED, UNKNOWN) each for build, product usage, market, contracts, fundamentals, security context, the latest change and what HEY does not know, printed as the API serves them with their evidence ids and reasons, never restated; then identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. Since 2026-09-27 three context blocks, never building: paid promotion seen on the token (presence and dates, never an amount), DefiLlama protocol economics (each metric measured, not tracked or unread — a measured zero says so), and the developer footprint (official repositories, newest production deployment, packages, advisories; a count only where measured). | `get_project`, `project_intelligence` |
+| `get_project_snapshot` | "Tell me about X." — opening since 2026-09-28 on the Research Summary: one tagged line (FACT, DERIVED, UNKNOWN) each for build, product usage, market, contracts, fundamentals, security context, the latest change and what HEY does not know, printed as the API serves them with their evidence ids and reasons, never restated; then identity and when HEY first recorded it, build status and Build Momentum, market context with its valuation kind or why it is withheld, on-chain use, verification and sources, HoodLock locks, the latest changes, freshness, and what HEY does not know. Context blocks, never building (2026-09-27): paid promotion seen on the token (presence and dates, never an amount), DefiLlama protocol economics (each metric measured, not tracked or unread — a measured zero says so), and the developer footprint (official repositories, newest production deployment, packages, advisories; a count only where measured). **Usage** (2026-09-28), its own dimension and never building: active and watched contracts and calls in 7 days (the ERC-20 surface apart), distinct caller addresses on the newest and busiest day — a count per day, "addresses, not people", and UNKNOWN across the window because days cannot be added; a project outside the method watch is UNKNOWN, never zero; the daily series is `GET /api/projects/{slug}/usage`. **Security context (evidence, never a verdict)** (2026-09-28): audit report links with where each is published and its `security:` evidence id, bug-bounty programs, a published security.txt, OSV advisories about the published packages, Scorecard checks never summed, incidents UNKNOWN. **Peer context** (`peers-v1`): the cohort, then each measured figure's own line — DERIVED where the cohort cleared its minimum, UNKNOWN ("not enough comparable projects") where it did not — never one combined number. Relationships are not in the snapshot: `GET /api/projects/{slug}/relationships`. | `get_project`, `project_intelligence` |
 | `get_changes` | "What changed?" · "Anything new on X since Monday?" — the change ledger, one event per change, with its own time, precision, when HEY knew and its evidence; browse or sync with a cursor. | `list_ships`, `list_signals`, `contract_changes` |
 | `get_project_timeline` | "Show me X's history." — every kind of evidence on one axis, paged with a cursor. | `project_timeline` |
 | `get_project_coverage` | "What does HEY not know about X?" — a state per dimension, never a score. Reason codes an agent could misread carry words (2026-09-27): `none_found_in_package_index` is a reading of that index only, not "no package"; `not_tracked_by_registry` is the registry's silence, not a zero; a template token's verified source is not project-authored code. | — |
@@ -98,8 +97,9 @@ aliased: nothing was published and the MCP had been called once.
 | `compare_projects` | "Compare A and B." — two to four projects, tagged lines, no winner. | — |
 | `ask_hey` | A free-text question about one project (English or Malay), answered only from HEY's record. Since 2026-09-27 also the free-data questions: its public API, code hosts (GitLab answered honestly), functions that became active, what DefiLlama tracks, packages, advisories, docs changes and HEY's gaps — each line citing its evidence receipt where it restates a ledger event. | — |
 | `chain_overview` | "How active is Robinhood Chain?" — day by day, this week's rollup, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention. | `chain_activity`, `this_week`, `weekly_report`, `upcoming_unlocks` |
+| `research_answer` | The agent contract (2026-09-30): one bounded answer, AgentIntelligenceResponse v1, for `capability` = `research_project` (HEY's current view of one project), `what_changed` (the ledger over 1–30 days for a project or the chain, with the window's true total), `builder_status` (the status, its rule and version, inputs, lineage, evidence ids and what the rule never reads), `verify_project` (VERIFIED, UNVERIFIED, CONTRACT_MISMATCH or UNKNOWN attribution of a contract, with reasons), `compare_builders` (2–4 projects' building records over 30 days, no winner) or `unknowns` (every gap as UNKNOWN, NOT_MEASURED, NOT_VERIFIED, STALE or INSUFFICIENT_EVIDENCE, each with what not to conclude). The answer first, then tagged claims, unknowns, freshness per data family and evidence ids; a source's words are quoted as data. Reads `GET /api/agent/{capability}`, the same JSON REST serves and A2A carries. | — |
 
-`market_integrity` is a fifteenth, offered only where the site publishes Market Integrity. It
+`market_integrity` is a sixteenth, offered only where the site publishes Market Integrity. It
 lists every event HEY stands behind with its id, its time as precisely as HEY knows it, and its
 words with the reading dates and sources; there, `get_changes` also accepts the
 `market_integrity` domain and the `market_integrity.event` type (2026-09-27).
@@ -108,7 +108,9 @@ words with the reading dates and sources; there, `get_changes` also accepts the
 ### `find_projects` surfaces, one definition each
 
 - `building-with-token` — verified shipping, active or resumed, with a token whose market is live.
-- `still-building` — verified activity continuing through a market drawdown HEY tracked.
+- `still-building` — verified activity continuing through a market drawdown HEY tracked, on an
+  active market that is more than a launch curve; on a thinner one Still Building is not
+  measured (`stillBuildingWithheld: "market_too_thin"`, hbm-v19).
 - `under-the-radar` — **eligible under HEY's Under the Radar rule** (status shipping, active
   or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one
   of them a ship rather than a commit summary; a fresh reading of an active market, not a thin
@@ -183,6 +185,11 @@ the site.
 - **Carries the source**, and ends with a `resource_link` to the JSON it was rendered from.
 - **Is capped at 24 KB**, cut on a line, with how many lines were cut and where the whole
   answer is.
+- **Quotes a source's words as data** (2026-09-30): a release title, a ship summary or a
+  project's name is folded onto one line with control, invisible and template characters and
+  tags removed, and text that reads like an instruction to a model ("ignore previous
+  instructions", "you are now…") is kept and marked as a source's words, never as HEY's. In
+  `research_answer` every such string is `«…» (source title's words, quoted as data)`.
 - **Fails as an error**, never as an empty answer: an unreachable HEY, a rate limit (with how
   long to wait) or a missing slug comes back as `isError` with a sentence.
 
@@ -233,9 +240,11 @@ And never:
 | HTTP client for the public API | `packages/sdk` (`@hey-research-lab/sdk`) |
 | Renderer tests, one per tool, on API-typed fixtures | `packages/mcp-core/src/render.test.ts`, `src/fixtures/api.ts` |
 | Server tests over a real MCP client | `packages/mcp-core/src/server.test.ts` |
+| The agent contract behind `research_answer` (schema, composers, freshness, machine-safe text, adapters) | `packages/agent-provider-core` (`@hey/agent-provider-core`) |
+| `research_answer` on API-typed fixtures | `packages/mcp-core/src/agent-contract.test.ts` |
 
 The server tests drive it through an actual `Client` over the in-memory transport: the tool
-list (exactly fourteen, fifteen with the flag, every one titled and read-only, under the old
+list (exactly fifteen, sixteen with the flag, every one titled and read-only, under the old
 list's size), every tool end to end on its fixture, the resources, the prompts, and every
 failure.
 

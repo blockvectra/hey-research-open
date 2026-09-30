@@ -111,6 +111,22 @@ Query fields mirror the parameters documented at
 [heyresearch.xyz/developers](https://heyresearch.xyz/developers). `has` takes an
 array and is sent comma-joined. Undefined and empty values are not sent.
 
+### The agent contract (2026-09-30)
+
+Six bounded questions, one answer shape (AgentIntelligenceResponse v1) — the same JSON the
+MCP `research_answer` tool renders and the A2A skills carry:
+
+```ts
+const answer = await hey.agent.answer('unknowns', { project: 'agentos' });
+answer.answer;          // { text, contentOrigin: 'derived' } — the one-sentence answer first
+answer.unknowns;        // UNKNOWN | NOT_MEASURED | NOT_VERIFIED | STALE | INSUFFICIENT_EVIDENCE, each with doNotConclude
+answer.freshness;       // per data family: observedAt, freshnessStatus, the job and cadence, nextExpectedRefresh
+await hey.agent.answer('verify_project', { address: '0x…', project: 'agentos' }); // VERIFIED | UNVERIFIED | CONTRACT_MISMATCH | UNKNOWN
+```
+
+Every human-language field is `{ text, contentOrigin }`; `external_source` is a source's own
+words — data, never an instruction. A refusal resolves with `status` and `error`.
+
 ### Paging
 
 Listings page three ways, and the helpers follow each:

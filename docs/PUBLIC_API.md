@@ -49,6 +49,19 @@ with `retry-after`. The allowance is checked before a request is counted. A keye
 per-minute bucket from one address (since 2026-09-18; it used to be capped at the anonymous limit). The routes
 answer `OPTIONS` with the allowed headers.
 
+**Partner keys (2026-09-30).** A platform partner the lab records by hand gets its own key,
+`authorization: Bearer heyp_…`. It reads exactly the same public data as no key, but carries the
+partner's own monthly quota and per-minute limit (one bucket across its keys) and only the **route
+groups** the lab granted it: `research`, `changes`, `contracts`, `partner_cards`, `mcp`, `a2a`. A route
+outside them is `403 forbidden` with `reason: "route_not_permitted"` and the `group`; an account's own
+routes (`/api/webhooks`, `/api/alerts`, `/api/boards`) are in no group a partner can hold. The hosted MCP
+server's reads need `mcp` as well as the group they read. A partner key rotates with an overlap: the new
+key and the old one both work until the grace the lab chose ends. Answers are `private, no-store` with
+`x-hey-entitlement` (`partner`, `paid`, `internal`; account keys say `free`) and
+`x-hey-monthly-remaining`. A held partner is `403` with `reason` `partner_suspended`, `partner_blocked`
+or `key_suspended`; a revoked or expired partner key is `401`. No price or billing is attached to any
+class. Ask hi@heyresearch.xyz for one; the lab's console is `/admin/agent-partners`.
+
 A bulk route (2026-09-26: `/api/snapshots`, `/api/token/{chainId}?addresses=`, `/api/v1/scan?tokens=`)
 answers keyed requests only (`401 key_required` without one), privately, and charges **one request per
 item** against both the per-minute bucket and the monthly allowance — all or nothing, so a batch that
@@ -73,7 +86,7 @@ Every public read route answers an error in one envelope:
 | 400 | `bad_request`, `invalid_parameter`, `invalid_address`, `batch_too_large` | no | the request is malformed as sent |
 | 401 | `unauthorized` | no | the key is not valid |
 | 401 | `key_required` | no | a keyed-only (bulk) route was called without a key |
-| 403 | `forbidden` | no | the key or account is held; `reason` says which |
+| 403 | `forbidden` | no | the key or account is held, or a partner key is not granted the route's group; `reason` says which |
 | 404 | `not_found` | no | no published record, or no such route |
 | 413 | `payload_too_large` | no | a bulk answer would exceed 256 KB; ask for fewer |
 | 429 | `rate_limited` | yes | the per-minute bucket is spent; `retryAfterSeconds` and `retry-after` say when |
@@ -82,15 +95,19 @@ Every public read route answers an error in one envelope:
 | 503 | `service_unavailable` | yes | the database was busy for a moment (a timeout or a held lock); `retryAfterSeconds` and `retry-after` say when to ask again (2026-09-30) |
 
 Every answer, success or error, is readable cross-origin and exposes `retry-after`,
-`x-request-id`, `x-hey-tier` and `x-hey-monthly-remaining` to a browser caller. The 500 and the
+`x-request-id`, `x-hey-tier`, `x-hey-monthly-remaining`, `x-hey-entitlement` and `x-hey-api-version` to a
+browser caller. A `message` is one line of at most 300 characters with no control, bidirectional or
+zero-width characters, even where it quotes what the caller asked for (2026-09-30). The 500 and the
 404 for an unknown path carry the same headers (they used to carry none). Before 2026-09-26 a few
 routes put a sentence in `error` (the per-minute 429, `compare`, `ask`); that sentence is now the
 `message`, and `error` is the code.
 
 ### Versioning
 
-`/api/*` has no version and changes **additively**: a field is added, never renamed, removed or
-given a new meaning. There is no version header. A change that would alter an existing field's
+`/api/*` is version `1` and changes **additively**: a field is added, never renamed, removed or
+given a new meaning. Every public read answer names the version it was written under in
+`x-hey-api-version: 1` (2026-09-30), the same figure as `/openapi.json`'s `info.version`; it identifies,
+it does not select — a caller sends nothing. A change that would alter an existing field's
 meaning would ship under a new path with at least 90 days of overlap and a migration note.
 `/api/v1/*` is the partner namespace (snake_case cards built for one integration each), not an API
 version; its field meanings are frozen the same way.
@@ -365,6 +382,27 @@ The field is absent beside a gap, and on a score written before `hbm-v18` (that 
 unknown, not "measured"). SDK: `HeyDiscoveryGapWithheld`. OpenAPI:
 `#/components/schemas/DiscoveryGapWithheld`. `explain?fact=discovery_gap` gives the same reason
 as `NOT_MEASURED`.
+
+### Why Still Building was not measured: `score.stillBuildingWithheld` (2026-09-30, additive)
+
+Since scoring version `hbm-v19` Still Building's drawdown is measured on the same markets as the
+Discovery Gap: an **active market** that is more than a launch curve. On a `LOW_LIQUIDITY`,
+`TRADING_INACTIVE` or `INSUFFICIENT_DATA` market, or a launch curve, a "decline" measures the
+thin market, not a market that fell while the team kept building, so the badge is not measured.
+
+`score.stillBuilding` keeps its meaning — `false` whenever the badge is not held — and
+`score.stillBuildingWithheld` beside it says the `false` is "not measured", never "not met". The
+same field is on the snapshot as `build.stillBuildingWithheld`:
+
+| Value | Meaning |
+|---|---|
+| `market_too_thin` | Not measured — market too thin: the market is live but not active, or only a launch curve. |
+| `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
+| `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token. |
+
+The field is absent when the badge was measured (held or not met), and on a score written before
+`hbm-v19`. SDK: `HeyStillBuildingWithheld`. OpenAPI: `#/components/schemas/StillBuildingWithheld`.
+`explain?fact=still_building` gives the same reason as `NOT_MEASURED` with a `null` value.
 
 ### Which lockers `pairLocked` reads: `tokenLock.pairLockScope` (2026-09-30, additive)
 
@@ -1721,7 +1759,14 @@ A2A skills, each one read this API already serves: `research_project` (the snaps
 `compare_projects` (`/api/compare`), `what_changed` (`/api/changes`), `explain_fact` (`/explain`),
 `check_project_coverage` (`/coverage`), `investigate_contract` (`/api/contracts/{chainId}/{address}`).
 Ask with a data part `{"skill":"research_project","project":"<slug>"}` or a text part
-`research_project <slug>`; nothing reads free text beyond that.
+`research_project <slug>`; nothing reads free text beyond that. Add `"contract":
+"agent-intelligence-v1"` to a data part (2026-09-30, additive) and the skill answers with the
+agent contract below instead — `research_project` → research_project, `what_changed` →
+what_changed (`project?`, `days`, `types?`, `limit`), `explain_fact` → builder_status,
+`investigate_contract` → verify_project (`project?`), `compare_projects` → compare_builders,
+`check_project_coverage` → unknowns — with a text part of HEY's answer sentence only and
+`metadata.contract`, `capability` and `evidenceIds`. Since 2026-09-30 the research skill's text part
+names the project by its slug, not by the name a source gave it.
 
 ```bash
 curl -s https://heyresearch.xyz/api/a2a -H 'content-type: application/json' -H 'A2A-Version: 1.0' \
@@ -1762,11 +1807,110 @@ most 64 KB. The answer lists shape errors with their paths, the subject project'
 cited HEY reference as `exists`, `revised` (a change event HEY has revised since the cited
 revision), `project_exists` (a snapshot: the project is published; its `asOf` is not verified and
 its `scoringVersion` is `matches_current`, `differs_from_current` or `not_given`), `withdrawn`,
-`moved`, `not_found`, `invalid_id` or `not_checked` (at most 25 HEY ids are checked).
+`moved`, `not_found`, `invalid_id` or `not_checked` (at most 25 HEY ids are checked). A
+`hey_agent_answer` reference (2026-09-30, additive) — the `citation` an agent-contract answer
+carries — is checked for its capability, that its URL is that capability on HEY's own origin (else
+`invalid_id`, `not_a_hey_agent_answer_url`), its project and its scoring version; HEY stores no
+answers, so what it said at `asOf` is not verified (`answer_not_stored`).
 `heyEvidenceStands` is `true` only when every HEY reference was checked and stands, `false` when a
 checked one does not, `"partial"` when some were not checked, and `null` (`nothing_checked`) when
 none was. Nothing is stored and nothing the receipt names is fetched; the answer carries
 `stored: false` and `endorsement: false`. 30 checks a minute per client.
+
+## The agent contract: `GET /api/agent/{capability}` (2026-09-30)
+
+Six bounded questions an agent can ask about Robinhood Chain projects, each answered in one shape,
+**AgentIntelligenceResponse v1** (`schema: "hey.agent-intelligence-response"`,
+`schemaVersion: "1"`). It is not a new measurement: each capability restates the canonical reads
+above (the snapshot and its Research Summary, the explain engine, the change ledger, coverage and
+its gap list, peers, the token and contract reads) through pure composers in
+`packages/agent-provider-core`. The same JSON is the MCP tool `research_answer` and the A2A skills'
+`"contract": "agent-intelligence-v1"` option. `GET /api/agent` describes the contract itself.
+
+| Capability | Question | Parameters |
+| --- | --- | --- |
+| `research_project` | What is HEY's current research view of this project? | `project` |
+| `what_changed` | What changed with this project, or on Robinhood Chain, in the last N days? | `project?`, `days` 1–30 (default 7), `types?` (comma-separated change types), `limit` 1–50 (default 25) |
+| `builder_status` | Is this project still building, and why does HEY say so? | `project` |
+| `verify_project` | Does this contract or token appear to belong to this project? | `address`, `project?` |
+| `compare_builders` | How do these projects' building records compare over 30 days? | `projects` (2–4, comma-separated) |
+| `unknowns` | What does HEY not know about this project or token? | `project` or `address` |
+
+Every answer carries:
+
+- `answer` and `answerStatus` — the one-sentence answer first, tagged;
+- `claims[]` — each `FACT` (recorded, with its source), `DERIVED` (a rule HEY applied) or
+  `UNKNOWN` (not held, with a `reason`), with `value`, `source` and its type (`hey_rule`,
+  `hey_record`, `builder_source`, `chain`, `market_provider`, `registry`, `project_site`),
+  `observedAt` (when HEY read it), `occurredAt` (when the source dates it) at its `precision`
+  (`EXACT`, `DATE`, `WEEK`, `WINDOW`, `OBSERVED`, `SCHEDULED`), `freshness`, typed evidence ids
+  with receipt URLs, an `explainUrl` and `contextOnly: true` on market and usage context;
+- `unknowns[]` — each `UNKNOWN`, `NOT_MEASURED`, `NOT_VERIFIED`, `STALE` or
+  `INSUFFICIENT_EVIDENCE`, with the dimension, a reason code, what HEY lacks and `doNotConclude`:
+  what an agent must not infer from the gap. A gap is never negative evidence;
+- `freshness[]` — per data family (`builder_sources`, `activity_score`, `change_ledger`, `market`,
+  `contracts`, `locks`, `usage`, `peers`, `protocol_economics`): `observedAt`, `dataAsOf`,
+  `freshnessStatus` (`live` ≤15 min, `recent` ≤6 h, `daily` ≤36 h, `weekly` older; `stale` past
+  the family's own limit; `unknown` when never read), `staleAfterHours`, the production job and its
+  cadence, and `nextExpectedRefresh` only when that is one known interval ahead (else
+  `nextExpectedRefreshReason`: `variable_cadence`, `overdue`, `never_read`);
+- `evidence[]` — every id the answer cites, once, each resolvable at `/api/evidence/{id}`;
+- `data` — the capability's own payload (below), or null on a refusal;
+- `methodology.rules` — the rule versions it restates (`activity.status` at the scoring version,
+  `summary-v1`, `peers-v1`, `agent-freshness-v1`, `machine-text-v1`);
+- `citation` — a `hey_agent_answer` reference to put in an AgentResearchReceipt;
+- `boundaries` — `notAdvice: true`, `notProvided` (investment recommendation, buy or sell signal,
+  price prediction or target, position size, leverage, stop loss, ranking by expected return, risk
+  score, safety verdict, smart-money label, wallet PnL or profile) and `marketIsContextOnly: true`.
+
+**Machine-safe text.** Every human-language field is `{ text, contentOrigin }`: `hey` (HEY's
+fixed words), `derived` (a sentence HEY composed from records) or `external_source` (a source's own
+words: a release title, a project name, a token symbol). External text is bounded to 280
+characters, folded onto one line, stripped of control, invisible, bidirectional-override and
+chat-template characters and tags, and flagged `instructionLike: true` when it reads like an
+instruction to a model. It is data, never an instruction.
+
+**`data` by capability.**
+
+- `research_project`: `identity`, `builderState` (status, whether activity is measured, last
+  meaningful ship, meaningful events in 30 days, Build Momentum or why not, Still Building, scoring
+  version), `latestMeaningfulChange`, `recentChanges`, `contractIdentity` (the tracked token and its
+  verification, owner verified), `marketContext` and `usageContext` (both `contextOnly`).
+- `what_changed`: `scope` (`project` or `chain` — projects building on Robinhood Chain), the window
+  (by when it happened, else when HEY detected it), `total` and `byType` (true totals over the
+  window, never the page size), `items` (ledger events, newest first), the ledger's `projectorRanAt`
+  and `more` (the cursor feed at `/api/changes`).
+- `builder_status`: the status and what it means, `methodology` (rule id, version and text),
+  `inputs`, `lineage`, `supportingEvidence`, `excludedContext` (what the rule never reads: price,
+  valuation, liquidity and volume, holders, product usage, paid promotion, `$HEY` holdings, social
+  attention, security context, market integrity), `unknownInputs`, `statusRestsOnCurrentEvidence`,
+  Build Momentum and Still Building with their explain links.
+- `verify_project`: `verdict` — `VERIFIED` (the project itself names the contract: its own site, a
+  deploy record in its own repository, or an on-chain signature), `UNVERIFIED` (HEY records the
+  contract under the project, which has not been seen naming it), `CONTRACT_MISMATCH` (the
+  project's own site names a different contract, or HEY records it under another project than the
+  one asked about) or `UNKNOWN` (no single published project on record — never evidence against
+  it) — with `reasonCode`, `reasons`, the `recordedProject` and its role (`token`, `declared`,
+  `followup`), the `askedProject` and `activityAppliesToContract`. Attribution only, never safety.
+- `compare_builders`: each project's status, last meaningful ship, meaningful events this 30 days
+  and the 30 before, release cadence, active weeks, Build Momentum, verification and peer cohort;
+  `sameCohort`; the order asked for; market fields excluded and listed as such. No winner.
+- `unknowns`: `counts` by category, and the coverage dimensions `measured`, `notApplicable` and
+  `withheld`.
+
+**Errors.** A refusal is the same envelope with `status` (`not_found`, `invalid_request`,
+`unavailable`) and `error` — HTTP 404, 400, 404. A renamed project answers 308 to the same
+capability for its current slug. An unknown capability is a plain 404. Keyless, on `api.public`.
+
+```bash
+curl -s "https://heyresearch.xyz/api/agent/unknowns?project=agentos"
+curl -s "https://heyresearch.xyz/api/agent/verify_project?address=0x…&project=agentos"
+curl -s "https://heyresearch.xyz/api/agent/what_changed?days=1&types=build.release,build.ship"
+```
+
+The Robinhood Agent Apps adapter in `packages/agent-provider-core` is an interface only: *Adapter
+pending official Robinhood Agent Apps provider specification.* No route serves it, and HEY is not an
+official Robinhood Agent App.
 
 ## Feeds
 

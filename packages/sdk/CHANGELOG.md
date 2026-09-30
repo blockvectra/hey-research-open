@@ -6,6 +6,11 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (agent contract, 2026-09-30)
+
+- `client.agent.answer(capability, query)` for `GET /api/agent/{capability}` → `HeyAgentResponse` (AgentIntelligenceResponse v1): `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns`. A refusal's envelope (400, 404) resolves with `status` and `error` instead of throwing; a rate limit or an unreachable HEY still throws. `client.agent.capabilities()` for `GET /api/agent`. Types: `HeyAgentCapability`, `HeyAgentText` (with `contentOrigin`), `HeyAgentClaim`, `HeyAgentUnknown`, `HeyAgentFreshness`, `HeyAgentChange` and each capability's data.
+- `HeySnapshotChange.countsAsBuilding?: true` (additive): the ledger's own flag on the snapshot's latest changes.
+
 ### Added (partner card, 2026-09-30)
 
 - `HeyBuilderCard` gains the partner card fields, all additive: `verified_builder`, `latest_meaningful_ship` (`HeyPartnerShip`, with its `ship:` evidence id), `meaningful_ships_30d` (null, never 0, when HEY did not measure building), `latest_change` (`HeyPartnerChange`) with `latest_change_state` (`recorded`, `none_recorded`, `unavailable`), `latest_signal` (`HeyPartnerSignal`), `market_status` (context only), `badge_url` and `project_link`. No existing field changes meaning.

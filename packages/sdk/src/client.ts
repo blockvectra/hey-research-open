@@ -42,6 +42,7 @@ import type {
   HeyWeeklyReport,
 } from './types/misc';
 import type { HeyTokenProfile } from './types/hey';
+import type { HeyAgentCapability, HeyAgentCatalogue, HeyAgentQuery, HeyAgentResponseOf } from './types/agent';
 import type { HeyEvidenceReceipt, HeyExplainedFact, HeyExplainFact, HeyExplainIndex, HeyProjectCoverage, HeyProjectSnapshot } from './types/snapshot';
 import type { HeyProjectUsage } from './types/usage';
 import type { HeyProjectRelationships } from './types/graph';
@@ -460,6 +461,33 @@ export class HeyClient {
     /** `GET /api/contracts/{chainId}/{address}` (2026-09-26): one contract as a research entity — counts, proxy, source, interface, activity. */
     get: (chainId: number, address: string): Promise<HeyContract> =>
       this.get(`/api/contracts/${encodeURIComponent(String(chainId))}/${encodeURIComponent(address)}`),
+  };
+
+  /* ------------------------------------------------------ the agent contract */
+
+  readonly agent = {
+    /** `GET /api/agent` (2026-09-30): the agent contract described by itself — six capabilities, their parameters, schema, freshness contract and boundaries. */
+    capabilities: (): Promise<HeyAgentCatalogue> => this.get('/api/agent'),
+    /**
+     * `GET /api/agent/{capability}` (2026-09-30): one AgentIntelligenceResponse
+     * v1. Every answer is the contract's envelope, a refusal included: a 400 or
+     * 404 whose body is the envelope resolves with it (`status` and `error` say
+     * why) instead of throwing; a rate limit or an unreachable HEY still throws.
+     */
+    answer: async <C extends HeyAgentCapability>(capability: C, query: HeyAgentQuery[C]): Promise<HeyAgentResponseOf<C>> => {
+      const params: QueryParams = {};
+      for (const [key, value] of Object.entries(query as Record<string, unknown>)) {
+        if (value === undefined) continue;
+        params[key] = Array.isArray(value) ? (value as string[]).join(',') : (value as string | number);
+      }
+      try {
+        return await this.get<HeyAgentResponseOf<C>>(`/api/agent/${encodeURIComponent(capability)}`, params);
+      } catch (error) {
+        const body = error instanceof HeyApiError && error.body && typeof error.body === 'object' ? (error.body as { schema?: unknown }) : undefined;
+        if (body?.schema === 'hey.agent-intelligence-response') return body as HeyAgentResponseOf<C>;
+        throw error;
+      }
+    },
   };
 
   readonly snapshots = {

@@ -12,6 +12,7 @@
     "docs/SOURCE_REGISTRY.md",
     "docs/WEBHOOKS.md",
     ":(glob)docs/screenshots/*.png",
+    "packages/agent-provider-core",
     "packages/config",
     "packages/mcp-core",
     "packages/scoring",
@@ -52,7 +53,7 @@
     "vitest"
   ],
   "dbTypesFrom": "packages/db/src/schema/enums.ts",
-  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see.",
+  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see. HEY's own API keys (2026-09-30): an account key `hey_` and a partner key `heyp_`, each 43 url-safe characters; a digit is required so a long snake_case identifier such as a foreign-key name is not taken for one.",
   "forbidden": [
     "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY",
     "ghp_[A-Za-z0-9]{20,}",
@@ -61,6 +62,7 @@
     "npm_[A-Za-z0-9]{30,}",
     "(?<![A-Za-z0-9_-])re_[A-Za-z0-9_-]{20,}",
     "\\d{8,10}:AA[\\w-]{30,}",
+    "(?<![A-Za-z0-9_-])heyp?_(?=[A-Za-z0-9_-]{0,42}[0-9])[A-Za-z0-9_-]{43}(?![A-Za-z0-9_-])",
     "\\\\nMII[A-Za-z0-9+/]{40,}",
     "postgres(ql)?://(?!hey:hey@)(?![^\\s'\"]*(change|replace|example|password|<))[^\\s'\"]*:[^\\s'\"@]+@(?!localhost)"
   ]

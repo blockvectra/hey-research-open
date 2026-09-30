@@ -6,6 +6,14 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (agent contract, 2026-09-30)
+
+- `research_answer`, a fifteenth tool: HEY's agent contract (AgentIntelligenceResponse v1) for `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders` or `unknowns`, rendered from `GET /api/agent/{capability}` — the answer first, claims tagged FACT, DERIVED or UNKNOWN, unknowns with what not to conclude, freshness per data family and evidence ids. One composable tool, not six.
+
+### Changed (machine-safe text, 2026-09-30)
+
+- A source's words — a release title, a ship summary, a project name — are folded onto one line with control, invisible and template characters and tags removed before any tool prints them, and text that reads like an instruction to a model is kept and marked as a source's words. Seven tool descriptions are shorter, with the same meaning.
+
 ### Added
 
 - Four prompts: `what_changed_today`, `compare_project_usage`, `explain_project_evidence` and `monitor_project` — workflows over the existing tools, no new tool.

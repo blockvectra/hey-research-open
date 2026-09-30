@@ -6,6 +6,33 @@ record.
 
 ## Unreleased (2026-09-30)
 
+- **Partner keys and version identification.** A platform partner can hold its own key
+  (`heyp_…`): the same public data as no key, with its own quota and per-minute limit, only the route
+  groups it was granted (`research`, `changes`, `contracts`, `partner_cards`, `mcp`, `a2a`), rotation
+  with an overlap, and private answers carrying `x-hey-entitlement`. A partner key never reaches an
+  account's webhooks, alerts or boards. Every public read answer names `x-hey-api-version: 1`. Error
+  messages are one line of at most 300 characters. New guard tests hold every MCP tool, A2A skill,
+  OpenAPI operation and REST route free of trading instructions and return rankings, and every machine
+  input free of personal or portfolio fields.
+
+- **The agent contract.** Six bounded capabilities — `research_project`, `what_changed`,
+  `builder_status`, `verify_project`, `compare_builders`, `unknowns` — answered in one
+  transport-neutral shape, AgentIntelligenceResponse v1 (`packages/agent-provider-core`): the
+  answer first, claims tagged FACT, DERIVED or UNKNOWN with source, precision, freshness and
+  evidence ids, unknowns with what not to conclude, and a freshness contract restating the
+  production schedules. On REST (`/api/agent/{capability}`), the SDK (`client.agent.answer`), MCP
+  (`research_answer`, the fifteenth tool) and A2A (the six skills' `agent-intelligence-v1`
+  option). Every text field says whose words it holds; a source's words are bounded, folded and
+  flagged when they read like an instruction, and the MCP renderers quote them as data. Receipts
+  can cite an answer (`hey_agent_answer`). A Robinhood Agent Apps adapter exists only as an
+  interface, pending an official provider specification.
+
+- **Still Building on thin markets (scoring `hbm-v19`).** Still Building's drawdown is measured
+  only on an active market that is more than a launch curve, the markets a Discovery Gap is
+  measured on (`STILL_BUILDING.requireMeasuredMarket`). Elsewhere the badge is not held and reads
+  "not measured — market too thin": `stillBuilding` keeps its meaning and the additive
+  `stillBuildingWithheld` says why (SDK `HeyStillBuildingWithheld`, OpenAPI
+  `StillBuildingWithheld`); the MCP prints it as UNKNOWN.
 - **Data integrity.** The Bitquery holders adapter keeps the balances when the provider fails
   only a concentration figure (it errors on `gini` over an empty set), with a saved fixture of that
   reply. Market Integrity re-evaluates rows still on an earlier rules version in paced batches and

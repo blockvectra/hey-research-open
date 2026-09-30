@@ -2,7 +2,8 @@ import type { HeyChangeType } from '@hey-research-lab/sdk';
 
 /**
  * The tool set, as data (2026-09-26): fourteen tools, and one more only where
- * the site publishes Market Integrity.
+ * the site publishes Market Integrity. Fifteen since 2026-09-30: `research_answer`
+ * carries the agent contract (`@hey/agent-provider-core`).
  *
  * One list read by everything that names the tools — the server's
  * registrations are checked against it, `/developers`, `llms.txt` and the
@@ -114,6 +115,13 @@ export const HEY_MCP_TOOLS = [
     title: 'Ask HEY',
     summary: 'A free-text question about one project, answered only from HEY’s record, every line tagged with its source.',
     routes: ['/api/projects/{slug}/ask'],
+    replaces: [],
+  },
+  {
+    name: 'research_answer',
+    title: 'Agent research answer',
+    summary: 'One bounded answer in HEY’s agent contract (AgentIntelligenceResponse v1) for one of six questions: research a project, what changed, builder status with its evidence, whether a contract belongs to a project, a builder comparison, and what HEY does not know.',
+    routes: ['/api/agent/{capability}'],
     replaces: [],
   },
   {

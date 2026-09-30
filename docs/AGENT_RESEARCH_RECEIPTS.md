@@ -33,7 +33,7 @@ conclusion. A receipt is never a HEY signal and never an instruction to anyone e
 | `sourceSystems[]` | Where the evidence came from: HEY, another system, or several. |
 | `signature` | Optional detached signature by the agent. HEY does not verify it. |
 
-Evidence references are one of five kinds:
+Evidence references are one of six kinds:
 
 - `hey_evidence` — a HEY typed evidence id (`ship:`, `signal:`, `abi:`, `impl:`, `lock:`, `source:`,
   `claim:`, `state:`, `narrative:`, `method:`, `sourcechange:`), resolvable at `/api/evidence/{id}`;
@@ -41,7 +41,15 @@ Evidence references are one of five kinds:
 - `hey_snapshot` — a project snapshot as read: the slug, its `asOf`, the `scoringVersion`;
 - `market_observation` — a market reading: its provider and the time the provider observed it, and
   which figure (`marketCap`, `fdv`, `price`, `liquidity`, `volume24h`) — never a price target;
-- `external` — any other public `https://` URL and when the agent read it. HEY never fetches it.
+- `external` — any other public `https://` URL and when the agent read it. HEY never fetches it;
+- `hey_agent_answer` (2026-09-30, additive to v1) — one answer of HEY's agent contract
+  (AgentIntelligenceResponse v1) as read: `capability`, `schemaVersion: "1"`, the answer's `url`
+  (its `links.self`), `asOf`, and for a project answer `project` and `scoringVersion`. Every answer
+  carries this object as its `citation`, ready to paste.
+
+An unknown may carry `category` (2026-09-30, additive): HEY's own unknown category — `UNKNOWN`,
+`NOT_MEASURED`, `NOT_VERIFIED`, `STALE` or `INSUFFICIENT_EVIDENCE` — when it restates one of
+HEY's.
 
 Unknown top-level fields are refused, so there is no place to put a private chain-of-thought.
 
@@ -83,6 +91,10 @@ subject project is published, and, for each cited HEY reference, one of:
   `matches_current`, `differs_from_current` or `not_given`.
 - `withdrawn` (with HEY's reason), `moved`, `not_found`, `invalid_id`, or `not_checked` (another
   chain, a non-HEY reference, or past the limit of 25 HEY ids per receipt).
+- For a `hey_agent_answer`: `project_exists` (or `exists` without a project) with
+  `reason: "answer_not_stored"` — HEY keeps no answers, so what one said at `asOf` is never
+  verified — and the scoring version compared as for a snapshot. A URL that is not that capability
+  on HEY's own origin is `invalid_id` (`not_a_hey_agent_answer_url`).
 
 `heyEvidenceStands` (2026-09-28 review repair; it used to be true for a receipt HEY checked nothing
 in) is:
@@ -162,6 +174,23 @@ agent's own, under its stated mandate.
   "sourceSystems": [{ "name": "HEY Research Lab", "url": "https://heyresearch.xyz", "apiVersion": "1" }]
 }
 ```
+
+## Citing an agent-contract answer (2026-09-30)
+
+A Robinhood agent, or any agent, that asks HEY `GET /api/agent/research_project?project=hoodlock`
+receives a `citation` in the answer. Put it where the claim it supports is (one claim, not a
+whole receipt):
+
+```jsonc
+{ "statement": "HEY lists the activity status as SHIPPING under its published rule.", "kind": "DERIVED",
+  "evidence": [{ "kind": "hey_agent_answer", "capability": "research_project", "schemaVersion": "1",
+                 "url": "https://heyresearch.xyz/api/agent/research_project?project=hoodlock",
+                 "asOf": "2026-09-30T12:00:00.000Z", "project": "hoodlock", "scoringVersion": "hbm-v18" }] }
+```
+
+The answer's own claims carry typed HEY evidence ids too; citing those as `hey_evidence` lets the
+validator check each record stands. v1 stays v1: both additions are optional, and every receipt
+valid before is valid now.
 
 ## What was deliberately not built
 

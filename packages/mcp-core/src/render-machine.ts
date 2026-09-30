@@ -22,9 +22,10 @@ import type {
   HeySourceFreshness,
   HeyPeerContext,
   HeyUsageSummary,
+  HeyStillBuildingWithheld,
 } from '@hey-research-lab/sdk';
 
-import { STILL_BUILDING_MEANING, TAG_LEGEND, activityTag, atPrecision, liquidityWords, money, recordTag, shownOf, stillBuildingEvidence, tokenMarketWords, valuationWord } from './render';
+import { STILL_BUILDING_MEANING, TAG_LEGEND, activityTag, atPrecision, liquidityWords, money, recordTag, shownOf, sourceWords, stillBuildingEvidence, tokenMarketWords, valuationWord } from './render';
 
 /**
  * The machine-layer reads as text (2026-09-26): snapshot, coverage, explain,
@@ -52,6 +53,18 @@ export const GAP_WITHHELD_WORDS: Readonly<Record<HeyDiscoveryGapWithheld, string
   market_too_thin: 'Not measured — market too thin',
   no_market_reading: 'Not measured — no current market reading',
   no_build_momentum: 'Not measured — no building recorded',
+};
+
+/**
+ * Why Still Building was not measured, in the scoring package's words
+ * (hbm-v19, 2026-09-30): the Discovery Gap's words for the same market.
+ * `apps/web/src/app/mcp/definitions.test.ts` holds it to
+ * `STILL_BUILDING_WITHHELD_WORDS`.
+ */
+export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<HeyStillBuildingWithheld, string>> = {
+  market_not_live: GAP_WITHHELD_WORDS.market_not_live,
+  token_not_the_projects: GAP_WITHHELD_WORDS.token_not_the_projects,
+  market_too_thin: GAP_WITHHELD_WORDS.market_too_thin,
 };
 
 /** A coverage state as the tag an agent should read it with: measured is a fact about HEY's record, anything else is a gap. */
@@ -193,6 +206,9 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   if (b.stillBuilding) {
     const evidence = stillBuildingEvidence(b);
     lines.push(`- DERIVED STILL BUILDING${evidence ? `: ${evidence}` : ''}. ${STILL_BUILDING_MEANING}`);
+  } else if (b.stillBuildingWithheld) {
+    // Not measured, never "not met" (hbm-v19): the market is not one HEY measures a drawdown on.
+    lines.push(`- UNKNOWN Still Building: ${STILL_BUILDING_WITHHELD_WORDS[b.stillBuildingWithheld].replace(/^Not measured/, 'not measured')} (${b.stillBuildingWithheld})`);
   }
 
   lines.push('', '## Market (context, never a ranking input)');
@@ -268,7 +284,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     if (s.latestChanges.items.length === 0) lines.push('- FACT no public change recorded yet.');
     for (const c of s.latestChanges.items) {
       if (c.op === 'retract') lines.push(`- RETRACTED ${c.id}`);
-      else lines.push(`- ${c.precision} ${atPrecision(c.occurredAt, c.precision, c.detectedAt)} · ${c.type}: ${c.summary} (id ${c.id})`);
+      else lines.push(`- ${c.precision} ${atPrecision(c.occurredAt, c.precision, c.detectedAt)} · ${c.type}: ${sourceWords(c.summary)} (id ${c.id})`);
     }
     lines.push(`  More: get_changes with project=${i.slug}, or ${s.latestChanges.url}`);
   } else lines.push(`- UNKNOWN changes: ${s.latestChanges.reason} — ${s.latestChanges.url}`);
@@ -440,7 +456,7 @@ export function renderEvidence(r: HeyEvidenceReceipt): string {
   }
   const lines: string[] = [`# Evidence ${r.id}`, `${r.project.name} — ${r.project.url}`, ''];
   // A status or market-state move and a signal are rules HEY applied: DERIVED, as explain_fact says (audit §45 #8).
-  lines.push(`${recordTag(r.id)} ${r.claimType} (${r.domain}): ${r.summary}`);
+  lines.push(`${recordTag(r.id)} ${r.claimType} (${r.domain}): ${sourceWords(r.summary)}`);
   lines.push(`When: ${atPrecision(r.publishedAt, r.precision, r.detectedAt)} (${r.precision}); HEY first knew ${r.detectedAt.slice(0, 16).replace('T', ' ')} UTC; recorded ${r.recordedAt.slice(0, 10)}.`);
   lines.push(`Source: ${r.sourceType}${r.sourceUrl ? ` — ${r.sourceUrl}` : ' (no public URL; HEY\'s own observation)'}${r.verification ? `; backing: ${pretty(r.verification)}` : ''}${r.countsAsBuilding ? '; counts toward activity status' : ''}.`);
   if (r.sources && r.sources.length > 0) lines.push('', 'Evidence rows:', ...r.sources.map((row) => `- ${row.sourceType}: ${row.sourceUrl} (observed ${row.observedAt.slice(0, 10)})`));

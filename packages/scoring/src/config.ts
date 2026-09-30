@@ -141,6 +141,17 @@ export const STILL_BUILDING = {
    * ruling rested on commit summaries alone: work, not yet a ship.
    */
   requireShipBeyondCommits: true,
+  /**
+   * The drawdown is measured only on the markets a Discovery Gap is measured
+   * on (hbm-v19, founder delegation, 2026-09-30): an active market that is
+   * more than a launch curve (`DISCOVERY_GAP`). A LOW_LIQUIDITY,
+   * TRADING_INACTIVE or INSUFFICIENT_DATA reading, or a launch curve, is the
+   * same unreliable market the gap was withdrawn from, so a "decline" on it
+   * is not a drawdown HEY can stand behind. Such a project is not Still
+   * Building and the badge reads "not measured — market too thin", never "not
+   * met". The market status only withholds the badge; it never awards it.
+   */
+  requireMeasuredMarket: true,
 } as const;
 
 /** PRD V4 section 12.1. Thresholds are configuration, never hardcoded in UI. */

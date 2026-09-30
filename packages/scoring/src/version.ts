@@ -172,7 +172,20 @@
  * unchanged. On production on the day: 9 gaps and 5 Under the Radar badges
  * withdrawn (see docs/FOUNDER_DECISIONS_2026_09_30.md).
  */
-export const SCORING_VERSION = 'hbm-v18' as const;
+/*
+ * hbm-v19 (2026-09-30, founder delegation "Still Building on thin markets"):
+ * no weight, threshold or Build Momentum figure changes. Still Building's
+ * drawdown is measured only on the markets hbm-v18 measures a Discovery Gap on
+ * (`STILL_BUILDING.requireMeasuredMarket`): a project whose tracked token's
+ * market status is not ACTIVE_MARKET, or whose only market is its launch
+ * curve, is not Still Building, with `components.stillBuildingWithheld:
+ * 'market_too_thin'` ("not measured — market too thin"). The existing
+ * withholds on a dead market and on a token that is not the project's carry
+ * their reason the same way (`market_not_live`, `token_not_the_projects`).
+ * Nothing else about the badge, and nothing about the gap, Under the Radar or
+ * the population, changes.
+ */
+export const SCORING_VERSION = 'hbm-v19' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

@@ -242,6 +242,15 @@ describe('get_project_snapshot', () => {
     expect(thin).not.toMatch(/Discovery Gap:? 0\b/);
   });
 
+  it('says Still Building was not measured on a thin market, never that it was not met (hbm-v19)', () => {
+    const thin = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, stillBuilding: false, stillBuildingWithheld: 'market_too_thin' } }, NOW);
+    expect(thin).toContain('- UNKNOWN Still Building: not measured — market too thin (market_too_thin)');
+    expect(thin).not.toContain('STILL BUILDING');
+    // Measured and not held: nothing is printed, as before.
+    const plain = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, stillBuilding: false } }, NOW);
+    expect(plain).not.toMatch(/Still Building/i);
+  });
+
   it('keeps knowledge time apart from an outside listing date', () => {
     expect(text).toContain('FACT first recorded by HEY 2026-06-01 (HEY\'s knowledge time); listed by defillama 2022-10-19 (their date, not HEY\'s)');
   });

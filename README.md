@@ -71,7 +71,8 @@ This is the published half of HEY: the parts that stand on their own and are saf
 | [`packages/sources`](packages/sources) | Every public-data adapter HEY reads — GitHub, Blockscout, Sourcify (verification and its signature database), DEX Screener, GeckoTerminal, CoinGecko, launchpads, feeds, npm, deps.dev, OSV — each with saved fixtures and contract tests, plus the Telegram Bot API adapter HEY's alert bot sends through. The tests fail on a real network call. All of them go through one fetch guard (private-address and DNS-rebinding checks, redirect and credential rules, size, time and content-type limits) and bounded HTML and XML parsers, tested against hostile pages and feeds. |
 | [`packages/scoring`](packages/scoring) | Activity status, Build Momentum, Still Building and Under the Radar, deterministic and versioned. They read no price and no balance, and that is tested. |
 | [`packages/sdk`](packages/sdk) | `@hey-research-lab/sdk`, the typed client over the public API. No dependencies, ESM and CJS, Node 18 or a browser. |
-| [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: fourteen read-only tools, each answer tagged FACT, DERIVED or UNKNOWN. |
+| [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: fifteen read-only tools, each answer tagged FACT, DERIVED or UNKNOWN. |
+| [`packages/agent-provider-core`](packages/agent-provider-core) | The agent contract, AgentIntelligenceResponse v1: six bounded capabilities composed from the public API's own objects, the freshness contract, machine-safe text (`contentOrigin`), and thin REST, MCP and A2A adapters. The Robinhood Agent Apps adapter is an interface only, pending an official provider specification. |
 | [`apps/mcp`](apps/mcp) | `@hey-research-lab/mcp`, the stdio entry point that bundles them. Node 20. The same tools are hosted at `https://heyresearch.xyz/mcp`. |
 | [`packages/config`](packages/config) | Environment schema and chain constants. |
 | [`packages/ui`](packages/ui) | The presentation components — cards, chips, status, formatting, and the Terminal's candle chart (15m, 1H, 4H and 1D, with a code lane of commits, merged pull requests and exact-time releases), whose builder-event callouts are laid out from each event's time alone (`terminal-chart-annotations.ts`): never a price, never a cause. |
@@ -100,7 +101,9 @@ pnpm --filter @hey-research-lab/mcp build        # apps/mcp/dist/index.js
 
 ## Use the API
 
-No key needed for the read API. 120 requests a minute anonymously, more with a key.
+No key needed for the read API. 120 requests a minute anonymously, more with a key. Every answer names its
+version in `x-hey-api-version`. A platform partner can ask for a partner key with its own quota and
+route permissions; it reads the same public research, never anyone's account data (2026-09-30).
 
 **One address, one line** — the call a trading bot makes:
 
@@ -219,9 +222,12 @@ From the domain alone, with no JavaScript and no cookies:
 | `https://heyresearch.xyz/api/hey/profile` | `$HEY` as research data: each utility LIVE, PLANNED, RETIRED or UNKNOWN |
 | `https://heyresearch.xyz/developers/agents` | The guide (Markdown at `/developers/agents.md`) |
 
+| `https://heyresearch.xyz/api/agent` | The agent contract: `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns` — the same answer on REST, MCP (`research_answer`) and A2A |
+
 An agent that forms a thesis can record it as an
 [AgentResearchReceipt](docs/AGENT_RESEARCH_RECEIPTS.md) — neutral, for any project, checked but
 never stored or endorsed by HEY. HEY gives no trade instructions and runs no agents of its own.
+HEY is not an official Robinhood Agent App.
 
 ## Sharing a record
 
@@ -325,7 +331,8 @@ stops at 85% of the plan's share; a backfill reads only while a third of the day
 - **Absent means unknown.** A figure HEY has not measured is omitted, never published as zero.
   A Discovery Gap is measured only on an active market (2026-09-30). On a thin market or a launch
   curve it reads "not measured — market too thin", and the API says why
-  (`discoveryGapWithheld`).
+  (`discoveryGapWithheld`). Still Building is measured on the same markets only: elsewhere it is
+  "not measured", never "not met" (`stillBuildingWithheld`, scoring `hbm-v19`).
 - **A site two projects declare is neither's.** Its host is read the same way everywhere (a query
   string or a port does not make a second site), and a platform's page — a launchpad listing every
   token it launched — never counts as a token's own site, even when it prints the contract.

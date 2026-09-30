@@ -132,6 +132,28 @@ export function discoveryGapWithheldReason(value: unknown): DiscoveryGapWithheld
   return typeof value === 'string' && (DISCOVERY_GAP_WITHHELD_REASONS as readonly string[]).includes(value) ? (value as DiscoveryGapWithheldReason) : undefined;
 }
 
+/**
+ * Why Still Building was not measured (hbm-v19, 2026-09-30): the market it
+ * would be measured on is not one HEY measures a drawdown on. Persisted beside
+ * the badge as `components.stillBuildingWithheld` and sent by the API as
+ * `stillBuildingWithheld`, beside `stillBuilding: false`, so "not measured"
+ * is never read as "not met". The words are the Discovery Gap's for the same
+ * market: one sentence per market, whichever badge it withholds.
+ */
+export const STILL_BUILDING_WITHHELD_REASONS = ['market_not_live', 'token_not_the_projects', 'market_too_thin'] as const;
+export type StillBuildingWithheldReason = (typeof STILL_BUILDING_WITHHELD_REASONS)[number];
+
+export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<StillBuildingWithheldReason, string>> = {
+  market_not_live: DISCOVERY_GAP_WITHHELD_WORDS.market_not_live,
+  token_not_the_projects: DISCOVERY_GAP_WITHHELD_WORDS.token_not_the_projects,
+  market_too_thin: DISCOVERY_GAP_WITHHELD_WORDS.market_too_thin,
+};
+
+/** A stored reason read back: one of the list, or undefined for anything else (a row scored before hbm-v19). */
+export function stillBuildingWithheldReason(value: unknown): StillBuildingWithheldReason | undefined {
+  return typeof value === 'string' && (STILL_BUILDING_WITHHELD_REASONS as readonly string[]).includes(value) ? (value as StillBuildingWithheldReason) : undefined;
+}
+
 const ACTIVE_STATUSES: readonly ActivityStatus[] = ['SHIPPING', 'ACTIVE', 'RESUMED'];
 
 export type EligibilityInput = {

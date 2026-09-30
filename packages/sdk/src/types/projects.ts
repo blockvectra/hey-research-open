@@ -282,6 +282,8 @@ export type HeyProjectDetail = HeyProject & {
     /** Why `discoveryGap` is absent (2026-09-30, additive): `market_too_thin` and the other reasons. Absent beside a gap, or on a score from before the rule. */
     discoveryGapWithheld?: HeyDiscoveryGapWithheld;
     stillBuilding: boolean;
+    /** Why Still Building was not measured (2026-09-30, additive), beside `stillBuilding: false`: `market_too_thin` and the other market reasons. Absent when it was measured, or on a score from before the rule. */
+    stillBuildingWithheld?: HeyStillBuildingWithheld;
     calculatedAt: string;
     /** The algorithm version the figures were produced by. */
     scoringVersion: string;
@@ -733,6 +735,15 @@ export type HeyDiscoveryGapWithheld =
   | 'market_too_thin'
   | 'no_market_reading'
   | 'no_build_momentum';
+
+/**
+ * Why Still Building was not measured (2026-09-30), sent beside
+ * `stillBuilding: false` so "not measured" is never read as "not met".
+ * `market_too_thin`: the tracked token's market is not active or is only a
+ * launch curve, so there is no drawdown HEY measures. `stillBuilding` keeps
+ * its v1 meaning: false whenever the badge is not held.
+ */
+export type HeyStillBuildingWithheld = 'market_not_live' | 'token_not_the_projects' | 'market_too_thin';
 
 /** Which lockers HEY reads a pair lock from (2026-09-30): HoodLock only today. A new locker is a new value, never a new meaning of `pairLocked`. */
 export type HeyPairLockScope = 'hoodlock_only';
