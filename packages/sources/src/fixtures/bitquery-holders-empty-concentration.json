@@ -1,0 +1,19 @@
+{
+  "data": {
+    "EVM": {
+      "top": [
+        { "Holder": { "Address": "0xcccccccccccccccccccccccccccccccccccccccc" }, "Balance": { "Amount": "812345.25", "FirstChangeTime": "2026-09-20T00:00:00Z", "LastChangeTime": "2026-09-29T00:00:00Z", "UpdateCount": "40" } },
+        { "Holder": { "Address": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }, "Balance": { "Amount": "0", "FirstChangeTime": null, "LastChangeTime": null, "UpdateCount": null } },
+        { "Holder": { "Address": "0xdddddddddddddddddddddddddddddddddddddddd" }, "Balance": { "Amount": "0", "FirstChangeTime": null, "LastChangeTime": null, "UpdateCount": null } }
+      ],
+      "total": [{ "gini": null, "holders": "0", "median": 0, "nakamoto": 1 }]
+    }
+  },
+  "errors": [
+    {
+      "message": "interface conversion: interface {} is nil, not json.Number",
+      "locations": [{ "line": 1, "column": 292 }],
+      "path": ["EVM", "total", 0, "gini"]
+    }
+  ]
+}

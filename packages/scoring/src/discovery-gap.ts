@@ -99,6 +99,39 @@ export function discoveryGapScore(
   return Math.round((hbmPercentile - marketPercentile) * 10) / 10;
 }
 
+/**
+ * Why a project has no Discovery Gap (hbm-v18, 2026-09-30; which markets are
+ * measured is the market side's rule, `discoveryGapMarketMeasurable` in
+ * `token-market.ts`), persisted beside
+ * the gap as `components.discoveryGapWithheld` and sent by the API as
+ * `discoveryGapWithheld`: a missing gap is "not measured, because …", never
+ * a zero. In the order the rebuild tests them.
+ */
+export const DISCOVERY_GAP_WITHHELD_REASONS = [
+  'no_token',
+  'market_not_live',
+  'token_not_the_projects',
+  'market_too_thin',
+  'no_market_reading',
+  'no_build_momentum',
+] as const;
+export type DiscoveryGapWithheldReason = (typeof DISCOVERY_GAP_WITHHELD_REASONS)[number];
+
+/** Each reason in words, for every surface that prints a missing gap (the Terminal, the MCP, the explain engine). */
+export const DISCOVERY_GAP_WITHHELD_WORDS: Readonly<Record<DiscoveryGapWithheldReason, string>> = {
+  no_token: 'Not measured — no tracked token',
+  market_not_live: 'Not measured — no live market',
+  token_not_the_projects: 'Not measured — the token is not tied to the project',
+  market_too_thin: 'Not measured — market too thin',
+  no_market_reading: 'Not measured — no current market reading',
+  no_build_momentum: 'Not measured — no building recorded',
+};
+
+/** A stored reason read back: one of the list, or undefined for anything else (a row scored before hbm-v18). */
+export function discoveryGapWithheldReason(value: unknown): DiscoveryGapWithheldReason | undefined {
+  return typeof value === 'string' && (DISCOVERY_GAP_WITHHELD_REASONS as readonly string[]).includes(value) ? (value as DiscoveryGapWithheldReason) : undefined;
+}
+
 const ACTIVE_STATUSES: readonly ActivityStatus[] = ['SHIPPING', 'ACTIVE', 'RESUMED'];
 
 export type EligibilityInput = {

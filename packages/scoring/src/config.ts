@@ -150,6 +150,22 @@ export const MARKET_BANDS = {
   MID: 10_000_000,
 } as const;
 
+/**
+ * Which markets a Discovery Gap is measured on (hbm-v18, founder decision,
+ * 2026-09-30). Only an active market: a token whose status is LOW_LIQUIDITY,
+ * TRADING_INACTIVE or INSUFFICIENT_DATA, or whose only market is its launch
+ * curve, sits near the floor of the market-attention percentile, so its gap
+ * measured the thinness of the market rather than the building — 4 Under the
+ * Radar projects and 7 gaps sat on such markets on 2026-09-30, and one gap
+ * rested on a launch-curve valuation. Such a project gets no gap and no Under
+ * the Radar ("not measured — market too thin"), never a zero. The population
+ * the others are compared against is unchanged.
+ */
+export const DISCOVERY_GAP = {
+  measuredMarketStatuses: ['ACTIVE_MARKET'],
+  unmeasuredLaunchStages: ['CURVE'],
+} as const;
+
 /** Discovery Gap component weights (PRD V4 section 13.1). */
 export const MARKET_CONTEXT_WEIGHTS = {
   marketCapOrFdv: 0.5,

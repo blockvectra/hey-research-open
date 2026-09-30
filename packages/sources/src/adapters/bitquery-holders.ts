@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, bitqueryAnswerError } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, BITQUERY_POINTS, bitqueryAnswerError, withBitqueryPoints } from './bitquery';
 
 /**
  * Token distribution: who holds a token, and which of them move it between
@@ -91,8 +91,37 @@ const responseSchema = z.object({
         .nullish(),
     })
     .nullish(),
-  errors: z.array(z.object({ message: z.string() })).nullish(),
+  errors: z.array(z.object({ message: z.string(), path: z.array(z.union([z.string(), z.number()])).nullish() })).nullish(),
 });
+
+type HoldersResponse = z.infer<typeof responseSchema>;
+type ConcentrationField = 'gini' | 'nakamoto' | 'median';
+const CONCENTRATION_FIELDS: readonly ConcentrationField[] = ['gini', 'nakamoto', 'median'];
+
+/**
+ * The concentration figures an answer failed to compute (2026-09-30), or
+ * null when an error reaches anything else.
+ *
+ * The provider computes `gini` over the filtered set, and when that set is
+ * empty — every non-zero balance in its window is a pool, a locker, a burn or
+ * the token itself — it fails the field with a Go type error ("interface
+ * conversion: interface {} is nil, not json.Number") at path
+ * `EVM.total.0.gini` and still returns everything else. Eleven production
+ * tokens were refused whole on 2026-09-30 for that one field, and the map
+ * they did have went stale. An error on a concentration figure costs that
+ * figure, never the balances; an error anywhere else is still the whole
+ * answer's.
+ */
+export function failedConcentrationFields(errors: HoldersResponse['errors']): Set<ConcentrationField> | null {
+  const failed = new Set<ConcentrationField>();
+  for (const error of errors ?? []) {
+    const path = error.path ?? [];
+    const field = path[3];
+    if (path[0] !== 'EVM' || path[1] !== 'total' || typeof field !== 'string' || !(CONCENTRATION_FIELDS as readonly string[]).includes(field)) return null;
+    failed.add(field as ConcentrationField);
+  }
+  return failed;
+}
 
 export type BitqueryHoldersInput = {
   /** The token contract, lower-cased by the adapter. */
@@ -172,7 +201,10 @@ const when = (value: string | null | undefined): Date | undefined => {
  * Rows to a map. A zero or negative balance is dropped: the cube keeps a row
  * for an address that has emptied itself, and that is not a holder.
  */
-export function normalizeBitqueryHolders(data: NonNullable<NonNullable<z.infer<typeof responseSchema>['data']>['EVM']>): BitqueryHolders {
+export function normalizeBitqueryHolders(
+  data: NonNullable<NonNullable<z.infer<typeof responseSchema>['data']>['EVM']>,
+  failed: ReadonlySet<ConcentrationField> = new Set(),
+): BitqueryHolders {
   const holders: BitqueryHolder[] = [];
   const ranked = new Set<string>();
   for (const row of data.top ?? []) {
@@ -200,9 +232,18 @@ export function normalizeBitqueryHolders(data: NonNullable<NonNullable<z.infer<t
     const parsed = toNumber(value);
     return parsed !== undefined && Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
   };
-  const gini = ratio(data.total?.[0]?.gini);
-  const nakamoto = whole(data.total?.[0]?.nakamoto);
-  const median = ratio(data.total?.[0]?.median);
+  /*
+   * A figure over an empty set is no figure (2026-09-30): when the provider
+   * counts zero holders outside the excluded addresses, it still answers
+   * `nakamoto: 1` and `median: 0` — one hand holding half of nothing. The
+   * figures are kept only when the set they describe was not measured empty,
+   * and a field the provider failed is absent, never a number.
+   */
+  const measuredEmpty = data.total?.[0]?.holders !== undefined && data.total?.[0]?.holders !== null && total === 0;
+  const figure = <T>(field: ConcentrationField, read: () => T): T | undefined => (measuredEmpty || failed.has(field) ? undefined : read());
+  const gini = figure('gini', () => ratio(data.total?.[0]?.gini));
+  const nakamoto = figure('nakamoto', () => whole(data.total?.[0]?.nakamoto)) ?? 0;
+  const median = figure('median', () => ratio(data.total?.[0]?.median));
   return {
     holders,
     ...(total > 0 ? { holdersTotal: total } : {}),
@@ -218,7 +259,7 @@ export function createBitqueryHoldersAdapter(): SourceAdapter<BitqueryHoldersInp
     canHandle: (input) => ADDRESS.test(input.token) && input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryHolders>> {
       const top = Math.max(1, Math.min(BITQUERY_HOLDERS_TOP_N, input.top ?? BITQUERY_HOLDERS_TOP_N));
-      return performSourceFetch(
+      return withBitqueryPoints(await performSourceFetch(
         ctx,
         {
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
@@ -242,11 +283,14 @@ export function createBitqueryHoldersAdapter(): SourceAdapter<BitqueryHoldersInp
           parse: (body) => JSON.parse(body),
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (response) => {
-            if (response.errors?.length) throw bitqueryAnswerError(response.errors);
-            return normalizeBitqueryHolders(response.data?.EVM ?? {});
+            if (!response.errors?.length) return normalizeBitqueryHolders(response.data?.EVM ?? {});
+            // Only a concentration figure may fail without failing the read, and only with the balances present.
+            const failed = failedConcentrationFields(response.errors);
+            if (!failed || !response.data?.EVM?.top) throw bitqueryAnswerError(response.errors);
+            return normalizeBitqueryHolders(response.data.EVM, failed);
           },
         },
-      );
+      ), 2 * BITQUERY_POINTS.perRealtimeCube);
     },
   };
 }

@@ -340,6 +340,41 @@ The rule is on `/methodology`.
 A slug that is not published answers `404` with `{ "error": "not_found" }`. It looks
 identical to a slug that never existed, which is what the pages do too.
 
+### Why a Discovery Gap is absent: `score.discoveryGapWithheld` (2026-09-30, additive)
+
+Since scoring version `hbm-v18` a Discovery Gap is measured only on an **active market**. A
+project whose token's market status is `LOW_LIQUIDITY`, `TRADING_INACTIVE` or
+`INSUFFICIENT_DATA`, or whose only market is its launch curve, has no `score.discoveryGap` and
+is never Under the Radar. A thin market's attention percentile sits near the floor, so its gap
+would measure the thinness, not the building. The project stays in the population the others
+are compared against, so no other project's gap moves.
+
+When the gap is absent, `score.discoveryGapWithheld` says why. The same field is on the
+snapshot as `build.discoveryGapWithheld`, and the reason is never a zero:
+
+| Value | Meaning |
+|---|---|
+| `market_too_thin` | Not measured — market too thin: the market is live but not active, or only a launch curve. |
+| `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
+| `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token. |
+| `no_token` | Not measured — the project has no tracked token. |
+| `no_market_reading` | Not measured — HEY holds no current market reading to place it. |
+| `no_build_momentum` | Not measured — HEY has recorded no building to compare. |
+
+The field is absent beside a gap, and on a score written before `hbm-v18` (that absence is
+unknown, not "measured"). SDK: `HeyDiscoveryGapWithheld`. OpenAPI:
+`#/components/schemas/DiscoveryGapWithheld`. `explain?fact=discovery_gap` gives the same reason
+as `NOT_MEASURED`.
+
+### Which lockers `pairLocked` reads: `tokenLock.pairLockScope` (2026-09-30, additive)
+
+`tokenLock.pairLocked` keeps its v1 meaning: HEY found a pair holding this token locked. HEY
+reads one locker, HoodLock, so a `false` is a reading of HoodLock, not of every locker.
+`tokenLock.pairLockScope` says so on every `tokenLock`: on the listing, the dossier and the
+snapshot's `locks`. Today it is always `"hoodlock_only"`. If HEY reads another locker, that will
+be a new value here, never a new meaning of `pairLocked`. `tokenLock` itself is still absent
+when HEY found no lock. SDK: `HeyPairLockScope`. OpenAPI: `#/components/schemas/TokenLock`.
+
 ### When HEY first recorded it, and the outside date (2026-09-26)
 
 - **`firstRecordedByHeyAt`** — when HEY first recorded the project: its row, or an earlier

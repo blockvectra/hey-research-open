@@ -493,14 +493,25 @@ export const LAUNCH_FACTORIES: readonly LaunchFactoryConfig[] = [
   },
 
   /**
-   * Bankr on Robinhood Chain: tokens paired with tokenized stocks. The launch
-   * event carries the token twice in the topics, the paired stock third, and
-   * only the ticker in the data (word 5); the name is read from the contract.
+   * Long.xyz on Robinhood Chain: tokens paired with tokenized stocks. The
+   * launch event carries the token twice in the topics, the paired stock
+   * third, and only the ticker in the data (word 5); the name is read from
+   * the contract.
+   *
+   * Relabelled 2026-09-30 (coordinator, under founder delegation). This entry
+   * was labelled Bankr after GeckoTerminal's venue name; the contract's own
+   * verified source says otherwise: Sourcify holds an exact match for
+   * `src/LongLauncher.sol:LongLauncher` at this address, and the second
+   * emitter of the same event is a proxy onto `LongLaunchFactory` (below).
+   * Bankr's own docs name no launcher on Robinhood Chain — they describe
+   * Doppler launches, which HEY reads as an unlabelled intake
+   * (`DOPPLER_AIRLOCK`, dex-pools.ts). The id stays `BANKR`: it keys this
+   * factory's scan position and every record it wrote; it is not a label.
    */
   {
     id: 'BANKR',
-    name: 'Bankr',
-    launchpad: 'bankr',
+    name: 'Long.xyz',
+    launchpad: 'long',
     chainId: 4663,
     factoryAddress: '0x22e99278308b393ea1260859b181ad7e78f5eeed',
     startBlock: 8_658_000,
@@ -509,8 +520,29 @@ export const LAUNCH_FACTORIES: readonly LaunchFactoryConfig[] = [
     eventStrings: { symbol: 5 },
     enabled: true,
     verification:
-      'the contract JOHNDOG (0x64bcf4aa…, GeckoTerminal dex bankr-robinhood) was launched through (tx 0x6773a589…): it emits this topic with the token in topics[1] and "JOHNDOG" in data word 5; 17,629 such logs from block 8,658,626 to 53.15M on 2026-09-03 (lower bound: some windows were rate-limited)',
-    sourceUrl: 'https://bankr.bot/',
+      'Sourcify exact match for src/LongLauncher.sol:LongLauncher at this address (read 2026-09-30); the contract JOHNDOG (0x64bcf4aa…) was launched through it (tx 0x6773a589…): it emits this topic with the token in topics[1] and "JOHNDOG" in data word 5; 17,629 such logs from block 8,658,626 to 53.15M on 2026-09-03 (lower bound: some windows were rate-limited); no launch in the last 20,000 blocks on 2026-09-30, after the factory below took over',
+    sourceUrl: 'https://long.xyz/',
+  },
+  /**
+   * Long.xyz's newer token factory (2026-09-30): a proxy whose implementation
+   * `0x7b7b87fd…73d9` is a Sourcify exact match for
+   * `src/LongLaunchFactory.sol:LongLaunchFactory`. The same event and layout
+   * as the launcher above, which it replaced from block 56.2M.
+   */
+  {
+    id: 'LONG_FACTORY',
+    name: 'Long.xyz',
+    launchpad: 'long',
+    chainId: 4663,
+    factoryAddress: '0x1Eef016F22A943abC7DD11422EDeE9D235942104',
+    startBlock: 56_220_000,
+    eventTopic0: '0xadc6f1f726f7c710f77ec06adc75f3bb964e5be19581b072c67f7b9b4039267b',
+    tokenTopicIndex: 1,
+    eventStrings: { symbol: 5 },
+    enabled: true,
+    verification:
+      'a 163-byte ERC-1967 proxy onto 0x7b7b87fd1fb05864cd572c7306038552286c73d9, a Sourcify exact match for src/LongLaunchFactory.sol:LongLaunchFactory (read 2026-09-30); first launch at block 56,227,839 (tx 0xc91cf3dc…) carries SPOOK (0x5ed20e6c…1e18) in topics[1], which answers symbol(); nothing in the 100,000 blocks before; 34,534 launches, 32,430 not in HEY (census 2026-09-30)',
+    sourceUrl: 'https://long.xyz/',
   },
 
   /**
@@ -588,6 +620,149 @@ export const LAUNCH_FACTORIES: readonly LaunchFactoryConfig[] = [
     verification:
       'the contract the launch of doginhood (0xFDdaC5e0…7777, DEX Screener dexId flapsh) was sent to (tx 0x1b0b178e…, block 52,846,989): it emits this topic with the token in data word 3 and "DUCKYY" / "DUCKYY" / a CID in words 4–6 on a sampled launch; 79,505 such logs between blocks 30M and 44M and 10,477 between 44M and 53.13M on 2026-09-03; the first launch is at block 4,227,932 (census 2026-09-05, see FLAP_START_BLOCK)',
     sourceUrl: 'https://flap.sh/',
+  },
+
+  /*
+   * Launchpads added 2026-09-30 (founder decision D8: one verified factory at
+   * a time). Each was found through HEY's own deployer census
+   * (`contract_deployers.factory`), a creation-transaction trace of pool-only
+   * tokens, or the launchpad's published docs or bundle, and each was checked
+   * on chain 4663 twice, independently: the contract has code, its topic was
+   * read from a live log, the log at the first launch block decodes to a token
+   * that answers `symbol()`, and nothing emits the topic in the 200,000 blocks
+   * before it. Launch counts and "unknown to HEY" are the whole-chain census
+   * to block ~76.2M on 2026-09-30, matched against `token_candidates` and
+   * `token_candidate_archive`.
+   */
+  {
+    id: 'LETSCASH',
+    name: 'letscash.fun',
+    launchpad: 'letscash',
+    chainId: 4663,
+    factoryAddress: '0x5bd1Fbe78a78fe8236fa00CF48fbEBA74ae34661',
+    startBlock: 6_160_000,
+    eventTopic0: '0x17091df68f499cf4e20dcfc5d42f064dd22359e785b77691c4c4ed0322608897',
+    tokenTopicIndex: 1,
+    enabled: true,
+    verification:
+      'the letscash.fun bundle names this address as LAUNCHPAD_FACTORY and this topic as TOKEN_LAUNCHED_TOPIC; a 176-byte proxy; first launch at block 6,160,467 (tx 0x0b638ab3…) carries funcat (0x6e17153e…) in topics[1], which answers symbol(); 11,359 launches, 10,926 not in HEY (census 2026-09-30); samples funcat, TV, DOGE',
+    sourceUrl: 'https://letscash.fun/',
+  },
+  {
+    id: 'TRENCH',
+    name: 'trench.today',
+    launchpad: 'trench',
+    chainId: 4663,
+    factoryAddress: '0x77dC6f6361b7b99456FC3761ce5b7ddA80d83f9d',
+    startBlock: 5_800_000,
+    eventTopic0: '0xe2eb7016a2fc7f0aec441cc8bc9a7ecd75d29d94478782bab1cfa9c5b0dbdf1b',
+    tokenTopicIndex: 3,
+    eventStrings: { name: 1, symbol: 2, metadataUri: 4 },
+    enabled: true,
+    verification:
+      'Bitquery\'s trench.today API doc names this address; a 758-byte proxy; first launch at block 5,801,338 (tx 0xdb57da55…) carries tte (0x8eeecc75…) in topics[3], and data words 1/2/4 decode to "tte" / "tte" / an IPFS URL, matching the token\'s own name() and symbol() ("chingchangchong"/"CCC" on another sample); 76,203 launches, 72,505 not in HEY (census 2026-09-30)',
+    sourceUrl: 'https://docs.bitquery.io/docs/blockchain/robinhood/trench-today-api/',
+  },
+  {
+    id: 'KLIK',
+    name: 'Klik',
+    launchpad: 'klik',
+    chainId: 4663,
+    factoryAddress: '0x16cF6788B762EE8969744586eD16fc5705140dd7',
+    startBlock: 4_090_000,
+    // ERC20TokenCreated(address): the token is not indexed.
+    eventTopic0: '0x60122e78030aba0a2e4a67adb3e52b411343cc51778f919095d3fe394090c1b2',
+    tokenTopicIndex: 'data',
+    tokenDataWord: 0,
+    enabled: true,
+    verification:
+      'the klik.finance bundle\'s per-chain launcher map lists this address for 4663 (and Bitquery\'s meme-coin-launches doc names it); 22,343 bytes of code; first launch at block 4,096,718 (tx 0x3052442c…) carries HOOD (0x6966aa52…) in data word 0, which answers symbol(); 6,599 launches, 6,569 not in HEY (census 2026-09-30); samples HOOD, KLIKERS, STARLINK',
+    sourceUrl: 'https://klik.finance/',
+  },
+  {
+    id: 'BAGS',
+    name: 'Bags',
+    launchpad: 'bags',
+    chainId: 4663,
+    factoryAddress: '0xe8Cc4431adF8b5A847C113EF0c6af9043219Cb37',
+    startBlock: 8_240_000,
+    eventTopic0: '0x643b3b606052cbadac2f906ad0b462da99eda2a1d4f824d315d7f6edd3e4cced',
+    tokenTopicIndex: 1,
+    eventStrings: { name: 3, symbol: 4, metadataUri: 5 },
+    enabled: true,
+    verification:
+      'docs.bags.fm lists this address as BagsFactory on Robinhood Chain; a 130-byte proxy; first launch at block 8,240,408 (tx 0xac70e6c7…) carries TEST (0x9ec49402…) in topics[1], and data words 3/4/5 decode to "TEST" / "TEST" / an IPFS URL ("Tung Tung Tung Sahur"/"TRIPLET" on another sample, matching the token); 4,424 launches, 4,375 not in HEY (census 2026-09-30)',
+    sourceUrl: 'https://docs.bags.fm/robinhood/overview',
+  },
+  {
+    id: 'FLAUNCH',
+    name: 'Flaunch',
+    launchpad: 'flaunch',
+    chainId: 4663,
+    factoryAddress: '0x5Cf8e499C7c466C7E2cf127BDF129F57151E65Dc',
+    startBlock: 14_470_000,
+    // PoolCreated(bytes32, address memecoin, …): the token is data word 0; its name and ticker sit inside a nested tuple and are read from the token.
+    eventTopic0: '0x88f75d7341103964abd68b657439ace486e110bfda589da9374fe9d69213c7c8',
+    tokenTopicIndex: 'data',
+    tokenDataWord: 0,
+    enabled: true,
+    verification:
+      'flayerlabs/flaunch-sdk src/addresses.ts lists this address as the Robinhood FlaunchPositionManager; 23,524 bytes of code; first launch at block 14,472,014 (tx 0xf3468778…) carries TEST (0x0674ff0d…) in data word 0, which answers symbol(); 5,336 launches, 5,329 not in HEY (census 2026-09-30); samples TEST, SENTIENT, JACK',
+    sourceUrl: 'https://github.com/flayerlabs/flaunch-sdk',
+  },
+  {
+    id: 'LAUNCHHOOD_V3',
+    name: 'LaunchHood',
+    launchpad: 'launchhood',
+    version: 'v3',
+    chainId: 4663,
+    factoryAddress: '0x62B33A039D289CBDa50EbeB72Fe4261449E61Bcf',
+    startBlock: 8_480_000,
+    eventTopic0: '0x4c27a723e73ca0ea76ef533aa6dfb2c623e2d3592d518fed4636ac3116c8f1c4',
+    tokenTopicIndex: 1,
+    eventStrings: { name: 2, symbol: 3, metadataUri: 4 },
+    enabled: true,
+    verification:
+      'the launchhood.com bundle names this address LaunchHoodV3Factory; 15,739 bytes of code; first launch at block 8,482,947 (tx 0x30b19f9b…) carries Bison (0x5625b33d…) in topics[1], and data words 2/3/4 decode to "The Charging Bison" / "Bison" / ipfs://…; 4,170 launches, 21 not in HEY and 4,146 held with no launchpad (census 2026-09-30) — it adds attribution more than tokens',
+    sourceUrl: 'https://launchhood.com/',
+  },
+  {
+    id: 'APESTORE',
+    name: 'ape.store',
+    launchpad: 'apestore',
+    chainId: 4663,
+    factoryAddress: '0x6e4910ea5A04376032F6564da9a9E4E88B7a87C1',
+    startBlock: 4_770_000,
+    // CreateToken(address indexed token, uint256).
+    eventTopic0: '0xb378e89b40ac5bbe0e2241b596fbe1adc3cf1fb7c982aa1b4560165cf264ee93',
+    tokenTopicIndex: 1,
+    enabled: true,
+    verification:
+      'Bitquery\'s meme-coin-launches doc names this address, and ape.store\'s own token API answers for BRUNO (0x0973…85da), the token this factory\'s log carries at block 50,056,769; 12,528 bytes of code; first launch at block 4,772,664 (tx 0xc52f35a6…) carries test2 (0x0adaf7a8…) in topics[1], which answers symbol(); 4,267 launches, 83 not in HEY and 4,076 held with no launchpad (census 2026-09-30)',
+    sourceUrl: 'https://ape.store/',
+  },
+  /**
+   * Uniswap's LiquidityLauncher v3.0.0 (2026-09-30, coordinator under founder
+   * delegation): its own label, never folded into Pools. Uniswap's docs list
+   * v3.0.0 at this CREATE2 address on every chain it supports, and its SDK
+   * notes that Robinhood Chain was redeployed on 2026-08-05 to the v3.2.0
+   * launcher HEY scans as `POOLS_TRADE`. The launches here are Uniswap's
+   * launcher's, called by frontends other than the Pools app too.
+   */
+  {
+    id: 'UNISWAP_LAUNCHER_V3_0',
+    name: 'Uniswap Liquidity Launcher',
+    launchpad: 'uniswap-launcher',
+    version: 'v3.0.0',
+    chainId: 4663,
+    factoryAddress: '0x00004c4ccc709Ef590F7C81102C0689F0263D4e9',
+    startBlock: 4_720_000,
+    eventTopic0: '0x2e2b3f61b70d2d131b2a807371103cc98d51adcaa5e9a8f9c32658ad8426e74e',
+    tokenTopicIndex: 1,
+    enabled: true,
+    verification:
+      'Uniswap/docs content/liquidity/liquidity-launchpad/deployments.mdx lists LiquidityLauncher v3.0.0 at this address (commit 3a310354…), and @uniswap/liquidity-launcher-sdk src/addresses.ts names it LIQUIDITY_LAUNCHER; 3,747 bytes of code; the same launch event as POOLS_TRADE; first launch at block 4,727,385 (tx 0x45cd374b…) carries CCAH (0x8dbe1088…) in topics[1], which answers symbol(); nothing in the 100,000 blocks before; 8,684 launches, 8,471 not in HEY (census 2026-09-30)',
+    sourceUrl: 'https://developers.uniswap.org/docs/liquidity/liquidity-launchpad/deployments',
   },
 ];
 

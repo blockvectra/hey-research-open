@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SourceAdapter } from '../adapter';
-import { createBlockscoutAdapter } from './blockscout';
 import { createExplorerContractAdapter } from './blockscout-contract';
 import { createDexscreenerAdapter } from './dexscreener';
+import { createContractSourceAdapter } from './explorer-etherscan';
 import { createFeedAdapter } from './feed';
 import { createGeckoterminalAdapter } from './geckoterminal';
 import { createGithubReleasesAdapter, createGithubRepoAdapter } from './github';
@@ -17,7 +17,7 @@ import { createWebsiteAdapter } from './website';
 const ADAPTERS: SourceAdapter<any, unknown>[] = [
   createDexscreenerAdapter(),
   createGeckoterminalAdapter(),
-  createBlockscoutAdapter(),
+  createContractSourceAdapter(),
   createRpcContractAdapter(),
   createGithubRepoAdapter(),
   createGithubReleasesAdapter(),
@@ -61,7 +61,7 @@ describe('SourceAdapter contract', () => {
     );
     expect(createWebsiteAdapter().canHandle({ url: 'javascript:alert(1)' })).toBe(false);
     expect(
-      createBlockscoutAdapter().canHandle({ baseUrl: 'https://x.example', address: '0x1' }),
+      createContractSourceAdapter().canHandle({ baseUrl: 'https://x.example', address: '0x1' }),
     ).toBe(false);
   });
 });

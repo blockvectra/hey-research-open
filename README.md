@@ -164,7 +164,9 @@ contract's deployer, its pools and 1% depth, and a supply-concentration summary 
 A **Research Desk** is a reader's published board of projects: `GET /api/desks` lists them by last
 change (never by popularity), and `GET /api/desks/{slug}` answers its projects, the curator's
 self-declared handle and its facts over its window — projects, shipped, development spikes,
-contract changes — with `null` and a reason for anything HEY cannot state (2026-09-30).
+contract changes — with `null` and a reason for anything HEY cannot state (2026-09-30). Any
+signed-in account may curate and publish one; readers can report a desk, and HEY's moderators can
+take one down.
 
 `/api/projects/{slug}/relationships` lists what a project is connected to and why HEY thinks so —
 every edge with its standing and evidence, never an account and never a "partnership" — and the
@@ -248,6 +250,13 @@ Uniswap. Market activity never affects HEY's builder research. See
 https://heyresearch.xyz/integrations/uniswap. Uniswap is a trademark of Uniswap Labs; HEY Research
 Lab is not affiliated with or endorsed by Uniswap Labs.
 
+## Terms and privacy
+
+What HEY records about a reader, what it never stores and for how long:
+https://heyresearch.xyz/privacy. The terms of using the site, the API and the MCP server — research,
+not advice; no trade execution; keys, allowances and limits; and Uniswap Labs' own terms for
+quotes: https://heyresearch.xyz/terms.
+
 ## The badge
 
 Any project HEY tracks can embed its own status. It updates itself, and it links back to the
@@ -287,9 +296,20 @@ own Uniswap V2 and V3 factories, so every token that was launched or given a poo
 record. A token is not a project: a record becomes a public page only through the quality gate.
 To find the builder behind a token, HEY asks GitHub which repositories name the token's contract
 and links one only by a corroborating tie — the token itself declared the repository and it names
-the contract back, or the repository's homepage is the token's own site. Explore's "With a token"
-view says how many token contracts HEY knows, how many reached a page and how many of those carry
-the builder's repository; for the rest, the builder is not found yet.
+the contract back, or the repository's homepage is the token's own site. It also reads the deploy
+records in each project's own official repository — a Foundry broadcast, a hardhat-deploy network
+or a deployments file for chain 4663 — and a record that names a token HEY holds ties that token
+to the project (a fork, a token list, a mock or a reference to someone else's asset never counts).
+Explore's "With a token" view says how many token contracts HEY knows, how many reached a page and
+how many of those carry the builder's repository, and how that repository is tied to the token;
+for the rest, the builder is not found yet.
+
+Decoded trades name what the factories miss. Two lanes read every token traded on the chain over
+a rolling 120 days — a UTC day at a time at twenty distinct traders, and a UTC hour at a time at
+two for a known launchpad's venue — and keep a ledger of the days and hours read to the end, so a
+settled one is never asked again. A slice the provider's ten-page ceiling cuts short is halved
+until it finishes. Bitquery meters in points, so each request books its measured cost and the day
+stops at 85% of the plan's share; a backfill reads only while a third of the day's points remain.
 
 ## Rules that do not move
 
@@ -303,6 +323,14 @@ the builder's repository; for the rest, the builder is not found yet.
   token's market page. An address there is a point on a chart of one supply — never a person, never
   scored, never ranked across tokens, never an input to any status or score.
 - **Absent means unknown.** A figure HEY has not measured is omitted, never published as zero.
+  A Discovery Gap is measured only on an active market (2026-09-30). On a thin market or a launch
+  curve it reads "not measured — market too thin", and the API says why
+  (`discoveryGapWithheld`).
+- **A site two projects declare is neither's.** Its host is read the same way everywhere (a query
+  string or a port does not make a second site), and a platform's page — a launchpad listing every
+  token it launched — never counts as a token's own site, even when it prints the contract.
+- **A rolling tag is not a release.** A GitHub release cut from `latest*`, `nightly*`,
+  `*-debug`, `edge`, `canary`, `dev` or `snapshot` is kept as context, never counted as a ship.
 - **A day is a UTC day.** Every daily figure and window keys a UTC calendar day, whatever the
   clock of the machine that computed it.
 - **Security is evidence, never a verdict.** An audit shows an audit took place; it is not a

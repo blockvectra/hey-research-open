@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_FULL_DATASET, BITQUERY_NETWORK, bitqueryAnswerError, type BitqueryDataset } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_FULL_DATASET, BITQUERY_NETWORK, BITQUERY_POINTS, bitqueryAnswerError, withBitqueryPoints, type BitqueryDataset } from './bitquery';
 
 /**
  * Who deployed a contract, read from the chain's own calls (2026-09-15).
@@ -143,7 +143,7 @@ export function createBitqueryDeploymentAdapter(): SourceAdapter<
     canHandle: (input) => ADDRESS.test(input.address) && input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryDeployment | undefined>> {
       const wanted = input.address.toLowerCase();
-      return performSourceFetch(
+      return withBitqueryPoints(await performSourceFetch(
         ctx,
         {
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
@@ -165,7 +165,7 @@ export function createBitqueryDeploymentAdapter(): SourceAdapter<
             return normalizeBitqueryDeployment(response.data?.EVM?.Calls, wanted);
           },
         },
-      );
+      ), (input.dataset ?? BITQUERY_FULL_DATASET) === 'realtime' ? BITQUERY_POINTS.perRealtimeCube : BITQUERY_POINTS.deployment);
     },
   };
 }

@@ -2,7 +2,8 @@ import type { ZodType } from 'zod';
 
 import { errorResult, resolveNow, type SourceContext, type SourceResult } from '../adapter';
 import { SourceError } from '../errors';
-import { httpRequest, type HttpRequest, type HttpResponse } from './client';
+import { type HttpRequest, type HttpResponse } from './client';
+import { requestWithRpcFailover } from './rpc-failover';
 
 export type PerformOptions<TRaw, TOut> = {
   /** Runtime validation of the external payload (CLAUDE.md rule 15). */
@@ -25,7 +26,8 @@ export async function performSourceFetch<TRaw, TOut>(
   options: PerformOptions<TRaw, TOut>,
 ): Promise<SourceResult<TOut>> {
   try {
-    const outcome = await httpRequest(request, ctx);
+    // A refused JSON-RPC read moves to the fallback node when one is configured (2026-09-30).
+    const { outcome, url: answeredBy, attempts } = await requestWithRpcFailover(request, ctx);
 
     if (outcome.kind === 'not_modified') {
       // Unchanged upstream: callers keep cached data and skip downstream work.
@@ -64,10 +66,11 @@ export async function performSourceFetch<TRaw, TOut>(
     return {
       data: options.normalize(validated.data, response),
       fetchedAt: resolveNow(ctx),
-      sourceUrl: response.url ?? request.url,
+      // The node that answered, which is the fallback when the primary refused.
+      sourceUrl: response.url ?? answeredBy,
       cacheTtlSeconds: options.cacheTtlSeconds,
       status: 'fresh',
-      attempts: response.attempts,
+      attempts,
       ...(response.etag === undefined ? {} : { etag: response.etag }),
       ...(response.lastModified === undefined ? {} : { lastModified: response.lastModified }),
     };

@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, bitqueryAnswerError } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, BITQUERY_POINTS, bitqueryAnswerError, withBitqueryPoints } from './bitquery';
 
 /**
  * How many contracts each of a set of deployers created in a window
@@ -91,7 +91,7 @@ export function createBitqueryCreationsAdapter(): SourceAdapter<BitqueryCreation
       input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryCreationCounts>> {
       const senders = [...new Set(input.senders.map((sender) => sender.toLowerCase()))];
-      return performSourceFetch(
+      return withBitqueryPoints(await performSourceFetch(
         ctx,
         {
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
@@ -109,7 +109,7 @@ export function createBitqueryCreationsAdapter(): SourceAdapter<BitqueryCreation
             return normalizeBitqueryCreations(response.data?.EVM?.Calls, senders);
           },
         },
-      );
+      ), BITQUERY_POINTS.creations);
     },
   };
 }

@@ -4,6 +4,7 @@ import { type SourceAdapter, type SourceContext, type SourceResult } from '../ad
 import { decodeEntities, sanitizeText } from '../html';
 import { performSourceFetch } from '../http/perform';
 import { parseBoundedXml } from '../xml';
+import { isHtmlPage, parseChangelogPage } from './changelog-page';
 import { hashContent } from './website';
 
 /**
@@ -12,7 +13,15 @@ import { hashContent } from './website';
  * Entries become candidate ShipEvents in M4; this adapter only normalizes them.
  * Conditional requests plus a content hash mean an unchanged feed does no work.
  */
-export type FeedInput = { url: string };
+export type FeedInput = {
+  url: string;
+  /**
+   * The source is a CHANGELOG page (2026-09-30): an HTML answer is read for
+   * its dated release headings (`changelog-page.ts`) instead of as XML. Off
+   * for every other caller, so a site's HTML page is never mistaken for a feed.
+   */
+  changelogPage?: boolean;
+};
 
 export type FeedEntry = {
   /** Stable id for dedupe: the feed's own guid/id, else the entry link. */
@@ -177,13 +186,16 @@ export function createFeedAdapter(): SourceAdapter<FeedInput, FeedResult> {
           maxBytes: MAX_FEED_BYTES,
         },
         {
-          schema: z.object({ body: z.string(), document: z.record(z.unknown()) }),
-          parse: (body) => ({ body, document: parseBoundedXml(body, MAX_FEED_BYTES) }),
+          schema: z.object({ body: z.string(), document: z.record(z.unknown()), page: z.boolean() }),
+          parse: (body) =>
+            input.changelogPage === true && isHtmlPage(body)
+              ? { body, document: {}, page: true }
+              : { body, document: parseBoundedXml(body, MAX_FEED_BYTES), page: false },
           cacheTtlSeconds: CACHE_TTL_SECONDS,
-          normalize: ({ body, document }, response): FeedResult => ({
-            ...normalizeEntries(document, response.url ?? input.url),
-            contentHash: hashContent(body),
-          }),
+          normalize: ({ body, document, page }, response): FeedResult =>
+            page
+              ? { entries: parseChangelogPage(body, response.url ?? input.url), contentHash: hashContent(body) }
+              : { ...normalizeEntries(document, response.url ?? input.url), contentHash: hashContent(body) },
         },
       );
     },

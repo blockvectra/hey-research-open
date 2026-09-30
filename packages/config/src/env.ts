@@ -1019,21 +1019,18 @@ export function isSearchConsoleConfigured(env: ServerEnv): boolean {
 }
 
 /**
- * Where explorer reads go (2026-09-12): the PRO API with the chain and key
- * when a key is configured, else the instance itself; undefined when neither
- * is configured. Explorer links for people always use `chain.blockscoutBaseUrl`.
+ * Where explorer reads go (2026-09-12; keyed only since 2026-09-30): the PRO
+ * API with the chain and key, and nowhere without a key. The instance itself
+ * is no longer read — its CDN challenges non-browser clients, and the founder
+ * ruled on 2026-09-30 that HEY does not rely on an agent string getting past
+ * it — so without `RH_BLOCKSCOUT_API_KEY` every explorer read is "not read".
+ * Explorer links for people always use `chain.blockscoutBaseUrl`.
  */
 export function explorerApiFor(chain: {
   chainId: number;
   blockscoutBaseUrl?: string | undefined;
   blockscoutApiKey?: string | undefined;
-}): { baseUrl: string; chainId?: number; apiKey?: string } | undefined {
-  if (chain.blockscoutApiKey)
-    return {
-      baseUrl: 'https://api.blockscout.com',
-      chainId: chain.chainId,
-      apiKey: chain.blockscoutApiKey,
-    };
-  if (chain.blockscoutBaseUrl) return { baseUrl: chain.blockscoutBaseUrl };
-  return undefined;
+}): { baseUrl: string; chainId: number; apiKey: string } | undefined {
+  if (!chain.blockscoutApiKey) return undefined;
+  return { baseUrl: 'https://api.blockscout.com', chainId: chain.chainId, apiKey: chain.blockscoutApiKey };
 }

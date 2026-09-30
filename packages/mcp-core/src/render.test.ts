@@ -236,6 +236,12 @@ describe('get_project_snapshot', () => {
     expect(text).not.toMatch(/market cap|\$0\b/);
   });
 
+  it('says why a Discovery Gap is not measured when the API says so, never a zero (hbm-v18)', () => {
+    const thin = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, discoveryGapWithheld: 'market_too_thin' } }, NOW);
+    expect(thin).toContain('- UNKNOWN Discovery Gap: not measured — market too thin (market_too_thin)');
+    expect(thin).not.toMatch(/Discovery Gap:? 0\b/);
+  });
+
   it('keeps knowledge time apart from an outside listing date', () => {
     expect(text).toContain('FACT first recorded by HEY 2026-06-01 (HEY\'s knowledge time); listed by defillama 2022-10-19 (their date, not HEY\'s)');
   });

@@ -1,0 +1,25 @@
+{
+  "address": "0x5E8c1A3b7D9f2C4e6A8b0D2F4a6C8e0B2d4F6a81",
+  "abi": [
+    { "inputs": [], "name": "symbol", "outputs": [{ "internalType": "string", "name": "", "type": "string" }], "stateMutability": "view", "type": "function" }
+  ],
+  "transactionHash": "0x3c5e7a9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c",
+  "receipt": {
+    "to": null,
+    "from": "0x1111111111111111111111111111111111111111",
+    "contractAddress": "0x5E8c1A3b7D9f2C4e6A8b0D2F4a6C8e0B2d4F6a81",
+    "transactionIndex": 1,
+    "gasUsed": "1234567",
+    "blockHash": "0x0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9",
+    "transactionHash": "0x3c5e7a9b1d3f5a7c9e1b3d5f7a9c1e3b5d7f9a1c3e5b7d9f1a3c5e7b9d1f3a5c",
+    "logs": [],
+    "blockNumber": 71234567,
+    "status": 1,
+    "byzantium": true
+  },
+  "args": ["Rig", "RIG"],
+  "numDeployments": 1,
+  "solcInputHash": "f00dfeed",
+  "bytecode": "0x6080",
+  "deployedBytecode": "0x6080"
+}

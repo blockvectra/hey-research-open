@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
-import { explorerApiUrl, redactResultUrl, type ExplorerApi } from '../http/explorer-api';
+import { explorerApiUrl, explorerNotKeyed, isKeyedExplorerApi, redactResultUrl, type ExplorerApi } from '../http/explorer-api';
 import { performSourceFetch } from '../http/perform';
 
 /**
@@ -64,9 +64,11 @@ export function createContractCreationAdapter(): SourceAdapter<ContractCreationI
   return {
     name: 'blockscout',
     canHandle(input) {
-      return Boolean(input.baseUrl) && input.addresses.length > 0 && input.addresses.length <= 5 && input.addresses.every((a) => ADDRESS.test(a));
+      return isKeyedExplorerApi(input) && input.addresses.length > 0 && input.addresses.length <= 5 && input.addresses.every((a) => ADDRESS.test(a));
     },
     async fetch(input, ctx: SourceContext): Promise<SourceResult<ContractCreation[]>> {
+      // Keyed only (2026-09-30): the instance is never read, and no request leaves without the key.
+      if (!isKeyedExplorerApi(input)) return explorerNotKeyed(ctx);
       const url = explorerApiUrl(input, '/v2/api', { module: 'contract', action: 'getcontractcreation', contractaddresses: input.addresses.join(',') });
       const result = await performSourceFetch(
         ctx,
@@ -136,9 +138,11 @@ export function createAddressTxListAdapter(): SourceAdapter<AddressTxListInput, 
   return {
     name: 'blockscout',
     canHandle(input) {
-      return Boolean(input.baseUrl) && ADDRESS.test(input.address);
+      return isKeyedExplorerApi(input) && ADDRESS.test(input.address);
     },
     async fetch(input, ctx: SourceContext): Promise<SourceResult<AddressTx[]>> {
+      // Keyed only (2026-09-30): the instance is never read, and no request leaves without the key.
+      if (!isKeyedExplorerApi(input)) return explorerNotKeyed(ctx);
       const url = explorerApiUrl(input, '/v2/api', {
         module: 'account',
         action: 'txlist',
@@ -282,9 +286,11 @@ export function createContractSourceAdapter(): SourceAdapter<ContractSourceInput
   return {
     name: 'blockscout',
     canHandle(input) {
-      return Boolean(input.baseUrl) && ADDRESS.test(input.address);
+      return isKeyedExplorerApi(input) && ADDRESS.test(input.address);
     },
     async fetch(input, ctx: SourceContext): Promise<SourceResult<ContractSource>> {
+      // Keyed only (2026-09-30): the instance is never read, and no request leaves without the key.
+      if (!isKeyedExplorerApi(input)) return explorerNotKeyed(ctx);
       const url = explorerApiUrl(input, '/v2/api', { module: 'contract', action: 'getsourcecode', address: input.address });
       const result = await performSourceFetch(
         ctx,

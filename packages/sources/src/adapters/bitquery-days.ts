@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_DEFAULT_DATASET, BITQUERY_NETWORK, bitqueryAnswerError, type BitqueryDataset } from './bitquery';
+import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_DEFAULT_DATASET, BITQUERY_NETWORK, BITQUERY_POINTS, bitqueryAnswerError, withBitqueryPoints, type BitqueryDataset } from './bitquery';
 
 /**
  * Bitquery, by the day (2026-09-13): the rows HEY's own daily index is built
@@ -408,7 +408,7 @@ export function createBitqueryTradeDaysAdapter(): SourceAdapter<BitqueryTradeDay
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryTokenDay[]>> {
       const addresses = [...new Set(input.addresses.map((address) => address.toLowerCase()))];
       const window = input.till ? { since: input.since.toISOString(), till: input.till.toISOString() } : { since: input.since.toISOString() };
-      return performSourceFetch(ctx, post(input, tradeDaysQuery(input.dataset, Boolean(input.till)), { addresses, ...window }), {
+      return withBitqueryPoints(await performSourceFetch(ctx, post(input, tradeDaysQuery(input.dataset, Boolean(input.till)), { addresses, ...window }), {
         schema: tradeDaysResponseSchema,
         parse: (body) => JSON.parse(body),
         cacheTtlSeconds: CACHE_TTL_SECONDS,
@@ -420,7 +420,7 @@ export function createBitqueryTradeDaysAdapter(): SourceAdapter<BitqueryTradeDay
               response.data?.EVM?.breadth ?? [],
             );
         },
-      });
+      }), (input.dataset ?? BITQUERY_DEFAULT_DATASET) === 'realtime' ? 3 * BITQUERY_POINTS.perRealtimeCube : 3 * BITQUERY_POINTS.archiveCube);
     },
   };
 }
@@ -431,7 +431,7 @@ export function createBitqueryChainDaysAdapter(): SourceAdapter<BitqueryChainDay
     canHandle: (input) => input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryChainDay[]>> {
       const quotes = [...(input.quoteAssets ?? ROBINHOOD_QUOTE_ASSETS)];
-      return performSourceFetch(ctx, post(input, chainDaysQuery(), { since: input.since.toISOString(), quotes }), {
+      return withBitqueryPoints(await performSourceFetch(ctx, post(input, chainDaysQuery(), { since: input.since.toISOString(), quotes }), {
         schema: chainDaysResponseSchema,
         parse: (body) => JSON.parse(body),
         cacheTtlSeconds: CACHE_TTL_SECONDS,
@@ -439,7 +439,7 @@ export function createBitqueryChainDaysAdapter(): SourceAdapter<BitqueryChainDay
           if (response.errors?.length) throw bitqueryAnswerError(response.errors);
           return normalizeBitqueryChainDays(response.data?.EVM ?? {});
         },
-      });
+      }), 4 * BITQUERY_POINTS.perRealtimeCube);
     },
   };
 }

@@ -84,7 +84,16 @@ export type HeyProject = {
    * the nearest unlock date and `nextUnlockPct` the share of total supply
    * that opens that day (2026-09-25).
    */
-  tokenLock?: { supplyPct?: number; until?: string; nextUnlockAt?: string; nextUnlockPct?: number; pairLocked: boolean };
+  tokenLock?: {
+    supplyPct?: number;
+    until?: string;
+    nextUnlockAt?: string;
+    nextUnlockPct?: number;
+    /** v1 meaning, unchanged: a pair holding this token is locked at the lockers `pairLockScope` names. */
+    pairLocked: boolean;
+    /** Which lockers HEY reads for `pairLocked` (2026-09-30, additive): `hoodlock_only`. A false is a reading of HoodLock, not of every locker. */
+    pairLockScope: HeyPairLockScope;
+  };
   priceChange24hPct?: number;
   /** Whether HEY holds a repository, org, changelog or feed to read building from; false explains an UNKNOWN status. */
   hasBuilderSource?: boolean;
@@ -270,6 +279,8 @@ export type HeyProjectDetail = HeyProject & {
   score?: {
     buildMomentum?: number;
     discoveryGap?: number;
+    /** Why `discoveryGap` is absent (2026-09-30, additive): `market_too_thin` and the other reasons. Absent beside a gap, or on a score from before the rule. */
+    discoveryGapWithheld?: HeyDiscoveryGapWithheld;
     stillBuilding: boolean;
     calculatedAt: string;
     /** The algorithm version the figures were produced by. */
@@ -708,3 +719,20 @@ export type HeyShipsQuery = {
   limit?: number;
   offset?: number;
 };
+
+/**
+ * Why a project has no Discovery Gap (2026-09-30): it is not measured, and
+ * this says why — never a zero. `market_too_thin`: the tracked token's market
+ * is not active (low liquidity, no trades, insufficient data) or is only a
+ * launch curve, so a gap would measure the thin market, not the building.
+ */
+export type HeyDiscoveryGapWithheld =
+  | 'no_token'
+  | 'market_not_live'
+  | 'token_not_the_projects'
+  | 'market_too_thin'
+  | 'no_market_reading'
+  | 'no_build_momentum';
+
+/** Which lockers HEY reads a pair lock from (2026-09-30): HoodLock only today. A new locker is a new value, never a new meaning of `pairLocked`. */
+export type HeyPairLockScope = 'hoodlock_only';

@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, bitqueryAnswerError, type BitqueryDataset } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, BITQUERY_POINTS, bitqueryAnswerError, withBitqueryPoints, type BitqueryDataset } from './bitquery';
 
 /**
  * Calls per method, per contract, per UTC day (founder decision F9, 2026-09-27).
@@ -164,7 +164,7 @@ export function createBitqueryMethodDaysAdapter(): SourceAdapter<BitqueryMethodD
       input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryMethodDaysRead>> {
       const addresses = [...new Set(input.addresses.map((address) => address.toLowerCase()))];
-      return performSourceFetch(
+      return withBitqueryPoints(await performSourceFetch(
         ctx,
         {
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
@@ -186,7 +186,7 @@ export function createBitqueryMethodDaysAdapter(): SourceAdapter<BitqueryMethodD
             return { rows: normalizeBitqueryMethodDays(raw, addresses), truncated: raw.length >= BITQUERY_METHOD_ROW_LIMIT };
           },
         },
-      );
+      ), input.dataset === 'realtime' ? BITQUERY_POINTS.perRealtimeCube : BITQUERY_POINTS.archiveCube);
     },
   };
 }

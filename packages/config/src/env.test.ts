@@ -279,7 +279,8 @@ describe('$HEY canonical token config (M13)', () => {
 
 describe('explorer API routing (Blockscout PRO, 2026-09-12)', () => {
   it('reads the instance without a key and the PRO API with chain and key', () => {
-    expect(explorerApiFor({ chainId: 4663, blockscoutBaseUrl: 'https://robinhoodchain.blockscout.com' })).toEqual({ baseUrl: 'https://robinhoodchain.blockscout.com' });
+    // Keyed only since 2026-09-30: without a key the instance is not read at all, never keyless.
+    expect(explorerApiFor({ chainId: 4663, blockscoutBaseUrl: 'https://robinhoodchain.blockscout.com' })).toBeUndefined();
     expect(explorerApiFor({ chainId: 4663, blockscoutBaseUrl: 'https://robinhoodchain.blockscout.com', blockscoutApiKey: 'proapi_k' })).toEqual({ baseUrl: 'https://api.blockscout.com', chainId: 4663, apiKey: 'proapi_k' });
     expect(explorerApiFor({ chainId: 4663 })).toBeUndefined();
   });

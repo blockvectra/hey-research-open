@@ -1,0 +1,16 @@
+{
+  "chainId": 4663,
+  "network": "robinhood",
+  "deployedAt": "2026-09-12T10:00:00Z",
+  "contracts": {
+    "RamenToken": {
+      "address": "0x9F1b3D5f7A9c1E3b5D7f9A1c3E5b7D9f1A3c5E71",
+      "txHash": "0x1f3e5d7c9b1a3f5e7d9c1b3a5f7e9d1c3b5a7f9e1d3c5b7a9f1e3d5c7b9a1f3e"
+    },
+    "RamenPad": "0xa1c3e5b7d9f1a3c5e7b9d1f3a5c7e9b1d3f5a7c2",
+    "currency0": "0x0000000000000000000000000000000000000000",
+    "quote": "0x7777777777777777777777777777777777777777",
+    "usdg": "0x6666666666666666666666666666666666666666",
+    "SwapRouter02": "0x5555555555555555555555555555555555555555"
+  }
+}

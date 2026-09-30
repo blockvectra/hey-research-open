@@ -96,7 +96,7 @@ const VIEWS = ['shipping-in-silence', 'accelerating', 'builder-radar'] as const;
  * all three to the scoring constants.
  */
 export const UNDER_THE_RADAR_RULE =
-  'status shipping, active or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of a live market for the project\'s own token';
+  'status shipping, active or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of an active market, not a thin one or only a launch curve, for the project\'s own token';
 
 /**
  * One definition per surface (2026-09-26, M2 G1/G2), in the domain's words.

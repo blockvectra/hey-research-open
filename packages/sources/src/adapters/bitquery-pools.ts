@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, bitqueryAnswerError } from './bitquery';
+import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, BITQUERY_POINTS, bitqueryAnswerError, withBitqueryPoints } from './bitquery';
 
 /**
  * A token's pools, and how much of it can actually be sold (2026-09-15).
@@ -275,7 +275,7 @@ export function createBitqueryPoolsAdapter(): SourceAdapter<BitqueryPoolsInput, 
       input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryTokenPools[]>> {
       const addresses = [...new Set(input.addresses.map((address) => address.toLowerCase()))];
-      return performSourceFetch(
+      return withBitqueryPoints(await performSourceFetch(
         ctx,
         {
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
@@ -293,7 +293,7 @@ export function createBitqueryPoolsAdapter(): SourceAdapter<BitqueryPoolsInput, 
             return normalizeBitqueryPools(response.data?.EVM ?? {}, addresses);
           },
         },
-      );
+      ), 2 * BITQUERY_POINTS.perRealtimeCube);
     },
   };
 }

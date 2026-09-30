@@ -112,4 +112,52 @@ describe('bitquery holders, through the schema', () => {
     expect(result.status).toBe('error');
     expect(result.errorCode).toBe('INVALID_RESPONSE');
   });
+
+  /*
+   * Production, 2026-09-30: eleven tokens were refused whole because the
+   * provider failed one field. When every non-zero balance in its window is an
+   * excluded address, `gini` over the empty remainder errors at
+   * EVM.total.0.gini and the rest of the answer still arrives. The fixture is
+   * that reply's shape, with the addresses replaced.
+   */
+  it('keeps the balances when only a concentration figure over an empty set fails', async () => {
+    const stub = stubFetch(json(readFixture('bitquery-holders-empty-concentration.json')));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('fresh');
+    expect(result.data?.holders.map((holder) => holder.address)).toEqual([C]);
+    // Zero holders outside the exclusions: no count, and no "one hand holds half" of nothing.
+    expect(result.data).not.toHaveProperty('holdersTotal');
+    expect(result.data).not.toHaveProperty('gini');
+    expect(result.data).not.toHaveProperty('nakamotoHalf');
+    expect(result.data).not.toHaveProperty('medianBalance');
+  });
+
+  it('still refuses the whole answer when an error reaches the balances', async () => {
+    const body = JSON.parse(readFixture('bitquery-holders-empty-concentration.json')) as { errors: { path: (string | number)[] }[] };
+    body.errors[0]!.path = ['EVM', 'top', 0, 'Balance'];
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('error');
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
+  });
+
+  it('still refuses an error that names no path', async () => {
+    const body = JSON.parse(readFixture('bitquery-holders-empty-concentration.json')) as { errors: { path?: unknown }[] };
+    delete body.errors[0]!.path;
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('error');
+  });
+
+  it('drops only the failed figure when the set is not empty', () => {
+    const out = normalizeBitqueryHolders(
+      { top: [{ Holder: { Address: A }, Balance: { Amount: '5' } }], total: [{ holders: '12', gini: null, nakamoto: '3', median: '2' }] },
+      new Set(['gini']),
+    );
+    expect(out).toMatchObject({ holdersTotal: 12, nakamotoHalf: 3, medianBalance: 2 });
+    expect(out).not.toHaveProperty('gini');
+  });
 });

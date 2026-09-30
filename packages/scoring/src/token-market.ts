@@ -8,6 +8,8 @@
  * of scoring, and the words are observations: "liquidity no longer detected"
  * is a fact HEY saw, "rugged" is a verdict HEY does not make.
  */
+import { DISCOVERY_GAP } from './config';
+
 export type TokenMarketStatusValue =
   | 'ACTIVE_MARKET'
   | 'LOW_LIQUIDITY'
@@ -20,6 +22,16 @@ export type TokenMarketStatusValue =
 export const TOKEN_MARKET = {
   /** Below this, liquidity is "low". */
   lowLiquidityUsd: 5_000,
+  /**
+   * … and a market already read as low leaves it only at this or more
+   * (2026-09-30, founder decision: a 20% band). One threshold made the
+   * status flap on a pool hovering at $5K: in the seven days to 2026-09-30,
+   * 152 of 613 announced market-status changes reversed within a day, 41 of
+   * them into or out of LOW_LIQUIDITY. Entering is unchanged; only the way
+   * out is higher, and only from LOW_LIQUIDITY — every other status keeps
+   * its own rule (`previousStatus` on the evidence).
+   */
+  lowLiquidityExitUsd: 6_000,
   /** At or below this, liquidity is treated as none: dust left behind after a pool was drained. */
   dustLiquidityUsd: 100,
   /** "Removed" needs a real prior market: the tracked peak must have reached this. */
@@ -130,8 +142,13 @@ export const TOKEN_MARKET = {
  * token-market-2026-09-27: a removal needs a measured drain (`DrainEvidence`)
  * and a market held on two readings (`heldLiquidityUsd`); an unconfirmed fall
  * to dust reads `removal_unconfirmed`, one to a small pool `LOW_LIQUIDITY`.
+ *
+ * token-market-2026-09-30: LOW_LIQUIDITY has a band (founder decision). A
+ * token enters below `lowLiquidityUsd` ($5,000) as before, and one already
+ * LOW_LIQUIDITY leaves only at `lowLiquidityExitUsd` ($6,000) or more; in
+ * between it stays, reason `liquidity_below_exit_threshold`.
  */
-export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-09-27' as const;
+export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-09-30' as const;
 
 /**
  * A drain HEY measured in one series of readings (2026-09-27). The sweep's SQL
@@ -216,6 +233,13 @@ export type TokenMarketEvidence = {
   heldLiquidityUsd?: number;
   /** A drain HEY measured (`DrainEvidence`); absent when none is confirmed. */
   drain?: DrainEvidence;
+  /**
+   * The status HEY published before this reading (2026-09-30): the band's
+   * memory. Only LOW_LIQUIDITY reads it — a token already low stays low
+   * until liquidity reaches `lowLiquidityExitUsd`. Absent: judged as a first
+   * reading, on the entry line alone.
+   */
+  previousStatus?: TokenMarketStatusValue;
 };
 
 /**
@@ -364,7 +388,14 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
       : undefined;
   const heldElsewhere = other !== undefined && other > latest.liquidityUsd;
   const liquidity = heldElsewhere ? other : latest.liquidityUsd;
-  if (heldElsewhere && latest.liquidityUsd < TOKEN_MARKET.lowLiquidityUsd && liquidity >= TOKEN_MARKET.lowLiquidityUsd) {
+  /*
+   * The line a market must reach to be more than low (2026-09-30): the entry
+   * line, or — for a token HEY already reads as LOW_LIQUIDITY — the higher
+   * exit line, so a pool hovering at the threshold does not flap. The rescue
+   * by another pool is held to it too; nothing else reads it.
+   */
+  const lowLine = evidence.previousStatus === 'LOW_LIQUIDITY' ? TOKEN_MARKET.lowLiquidityExitUsd : TOKEN_MARKET.lowLiquidityUsd;
+  if (heldElsewhere && latest.liquidityUsd < TOKEN_MARKET.lowLiquidityUsd && liquidity >= lowLine) {
     // The reading's own pool is thin or empty; another pool holds the market, and its volume counts too.
     const otherVolume = evidence.otherPools?.volume24hUsd;
     const pooled = otherVolume === undefined ? volume : volume === undefined ? otherVolume : Math.max(volume, otherVolume);
@@ -420,6 +451,10 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
   if (liquidity < TOKEN_MARKET.lowLiquidityUsd) {
     return { status: 'LOW_LIQUIDITY', reason: 'liquidity_below_threshold' };
   }
+  if (liquidity < lowLine) {
+    // Already low, and not yet back at the exit line: the band holds it (2026-09-30).
+    return { status: 'LOW_LIQUIDITY', reason: 'liquidity_below_exit_threshold' };
+  }
   if (volume !== undefined && volume <= TOKEN_MARKET.inactiveVolumeUsd) {
     return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
   }
@@ -438,6 +473,21 @@ export function marketIsLive(status: TokenMarketStatusValue | null | undefined, 
   if (!status) return true; // no token: nothing to be dead
   if ((DEAD_MARKET_STATUSES as readonly string[]).includes(status)) return false;
   return !(reason && (DEAD_MARKET_REASONS as readonly string[]).includes(reason));
+}
+
+/**
+ * Whether a token's market is one a Discovery Gap is measured on (hbm-v18,
+ * founder decision, 2026-09-30): an active market that is more than a launch
+ * curve (`DISCOVERY_GAP` in `config.ts`). Stricter than `marketIsLive`: a live
+ * market that is thin — low liquidity, no trades, unsettled readings — stays
+ * in the population the others are ranked against, but its own gap would
+ * measure the thinness, not the building. Like `marketIsLive`, the cohort
+ * rebuild reads it only to withhold, never to award, and activity status and
+ * Build Momentum never read it.
+ */
+export function discoveryGapMarketMeasurable(status: TokenMarketStatusValue | string | null | undefined, launchStage: string | null | undefined): boolean {
+  if (!status || !(DISCOVERY_GAP.measuredMarketStatuses as readonly string[]).includes(status)) return false;
+  return !(launchStage && (DISCOVERY_GAP.unmeasuredLaunchStages as readonly string[]).includes(launchStage));
 }
 
 /**
@@ -487,6 +537,7 @@ export const TOKEN_MARKET_REASONS = [
   'no_liquidity',
   'liquidity_far_below_peak',
   'liquidity_below_threshold',
+  'liquidity_below_exit_threshold',
   'liquidity_and_volume',
 ] as const;
 

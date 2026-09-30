@@ -1,74 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createBlockscoutAdapter } from './blockscout';
 import { createBlockscoutVerifiedAdapter } from './blockscout-verified';
-import { createRpcContractAdapter } from './rpc';
+import { createRpcContractAdapter, minimalProxyTarget } from './rpc';
 
 const ADDRESS = '0xAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAaAa';
-
-describe('Blockscout adapter', () => {
-  const adapter = createBlockscoutAdapter();
-  const input = { baseUrl: 'https://scout.robinhoodchain.example', address: ADDRESS };
-
-  it('normalizes contract evidence from a fixture', async () => {
-    const stub = stubFetch({ status: 200, body: readFixture('blockscout-address.json') });
-    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
-
-    expect(result.data).toMatchObject({
-      isContract: true,
-      isVerified: true,
-      contractName: 'AgentOSToken',
-      token: { symbol: 'AOS', decimals: 18, type: 'ERC-20' },
-    });
-  });
-
-  it('captures proxy implementations for upgrade evidence (live v2 says address_hash)', async () => {
-    const stub = stubFetch({ status: 200, body: readFixture('blockscout-address.json') });
-    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
-
-    expect(readFixture('blockscout-address.json')).toContain('"address_hash"');
-    expect(result.data?.implementationAddresses).toEqual([
-      '0x8888888888888888888888888888888888888888',
-    ]);
-  });
-
-  it('still reads an older instance that names the implementation `address` (round-8, 2026-09-18)', async () => {
-    const legacy = JSON.parse(readFixture('blockscout-address.json')) as Record<string, unknown>;
-    legacy.implementations = [{ address: '0x7777777777777777777777777777777777777777', name: 'Old' }, { name: 'nameless' }];
-    const stub = stubFetch({ status: 200, body: JSON.stringify(legacy) });
-    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
-
-    expect(result.data?.implementationAddresses).toEqual(['0x7777777777777777777777777777777777777777']);
-  });
-
-  it('never requests a holders endpoint', async () => {
-    const stub = stubFetch({ status: 200, body: readFixture('blockscout-address.json') });
-    await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
-
-    /*
-     * Product rule 1 is enforced by the loop below, and a loop over an empty
-     * list enforces nothing (round 9, 2026-09-19). An adapter that stopped
-     * fetching — or a stub that was never handed to it — would have passed
-     * this test while the rule went unchecked, so the requests are asserted
-     * to exist before they are inspected.
-     */
-    expect(stub.requests.length).toBeGreaterThan(0);
-    for (const request of stub.requests) {
-      expect(request.url.toLowerCase()).not.toContain('holder');
-      expect(request.url.toLowerCase()).not.toContain('token-transfers');
-    }
-  });
-
-  it('builds an explorer link for the evidence trail', async () => {
-    const stub = stubFetch({ status: 200, body: readFixture('blockscout-address.json') });
-    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
-
-    expect(result.data?.explorerUrl).toBe(
-      `https://scout.robinhoodchain.example/address/${ADDRESS}`,
-    );
-  });
-});
 
 describe('RPC contract adapter', () => {
   const adapter = createRpcContractAdapter();
@@ -80,6 +16,17 @@ describe('RPC contract adapter', () => {
 
     expect(result.data?.isContract).toBe(true);
     expect(result.data?.bytecodeSize).toBeGreaterThan(0);
+  });
+
+  it('reads an EIP-1167 clone\'s implementation from the clone\'s own bytecode, and nothing from other code', async () => {
+    const clone = '0x363d3d373d3d3d363d73581f7b996e6d3e436c537989157c9cb36421419b5af43d82803e903d91602b57fd5bf3';
+    const stub = stubFetch({ status: 200, body: JSON.stringify({ jsonrpc: '2.0', id: 1, result: clone }) });
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.data).toMatchObject({ isContract: true, bytecodeSize: 45, minimalProxyTarget: '0x581f7b996e6d3e436c537989157c9cb36421419b' });
+    expect(minimalProxyTarget(`${clone}00`)).toBeUndefined();
+    expect(minimalProxyTarget('0x6080604052')).toBeUndefined();
+    const plain = await adapter.fetch(input, testContext({ fetchImpl: stubFetch({ status: 200, body: readFixture('rpc-getcode.json') }).fetchImpl }));
+    expect(plain.data).not.toHaveProperty('minimalProxyTarget');
   });
 
   it('treats an empty code response as a non-contract address', async () => {
@@ -108,20 +55,6 @@ describe('RPC contract adapter', () => {
     expect(stub.requests[0]?.init?.method).toBe('POST');
     const headers = stub.requests[0]?.init?.headers as Record<string, string>;
     expect(headers['if-none-match']).toBeUndefined();
-  });
-});
-
-
-describe('blockscout PRO API routing (2026-09-12)', () => {
-  it('sends chain_id and the key as query parameters and never echoes the key back', async () => {
-    const stub = stubFetch({ status: 200, body: readFixture('blockscout-address.json') });
-    const result = await createBlockscoutAdapter().fetch(
-      { baseUrl: 'https://api.blockscout.com', address: '0x1111111111111111111111111111111111111111', chainId: 4663, apiKey: 'proapi_secret' },
-      testContext({ fetchImpl: stub.fetchImpl }),
-    );
-    expect(stub.requests[0]?.url).toBe('https://api.blockscout.com/api/v2/addresses/0x1111111111111111111111111111111111111111?chain_id=4663&apikey=proapi_secret');
-    expect(JSON.stringify(result)).not.toContain('proapi_secret');
-    expect(result.sourceUrl).toContain('apikey=REDACTED');
   });
 });
 

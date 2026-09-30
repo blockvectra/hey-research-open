@@ -35,7 +35,15 @@ export type GithubFileInput = {
   path?: string;
   baseUrl?: string;
   token?: string;
+  /**
+   * A larger cap for a file HEY parses rather than reads as prose (a Foundry
+   * broadcast carries every receipt), never above `GITHUB_RECORD_MAX_BYTES`.
+   */
+  maxBytes?: number;
 };
+
+/** The ceiling a caller may raise one file's cap to. */
+export const GITHUB_RECORD_MAX_BYTES = 2 * 1024 * 1024;
 
 export type GithubFileContent = {
   path: string;
@@ -64,7 +72,11 @@ export function createGithubFileAdapter(): SourceAdapter<GithubFileInput, Github
 
       return performSourceFetch(
         ctx,
-        { url, headers: rawHeaders(input.token), maxBytes: GITHUB_FILE_MAX_BYTES },
+        {
+          url,
+          headers: rawHeaders(input.token),
+          maxBytes: Math.min(Math.max(input.maxBytes ?? GITHUB_FILE_MAX_BYTES, 1), GITHUB_RECORD_MAX_BYTES),
+        },
         {
           // Raw media type: the body is the file, not a JSON envelope.
           schema: z.string(),
@@ -167,6 +179,78 @@ export function createGithubOwnerReposAdapter(): SourceAdapter<GithubOwnerReposI
                 ...opt('stars', item.stargazers_count),
                 ...opt('sizeKb', item.size),
               })),
+          }),
+        },
+      );
+    },
+  };
+}
+
+/**
+ * Every path in a repository, in one read (founder decision D1, 2026-09-30).
+ *
+ * Deploy records sit in known places — `broadcast/<Script>/<chainId>/`,
+ * `deployments/<network>/`, `ignition/deployments/chain-<id>/`, a
+ * `deployments*.json` — often below a `contracts/` or `packages/…` folder, so
+ * listing directories one at a time would cost a request per level. The
+ * recursive tree of the default branch answers every path at once; GitHub
+ * truncates very large trees and says so, and HEY keeps that flag rather than
+ * reading a partial tree as the whole repository.
+ */
+export const GITHUB_TREE_MAX_BYTES = 4 * 1024 * 1024;
+
+const treeSchema = z.object({
+  sha: z.string(),
+  truncated: z.boolean().optional(),
+  tree: z
+    .array(
+      z.object({
+        path: z.string(),
+        type: z.string(),
+        size: z.number().int().nonnegative().optional(),
+      }),
+    )
+    .max(200_000),
+});
+
+export type GithubTree = {
+  /** Blob paths only: a submodule (`commit`) is someone else's repository, a `tree` is only a folder. */
+  files: { path: string; size?: number }[];
+  truncated: boolean;
+};
+
+export type GithubTreeInput = { owner: string; repo: string; baseUrl?: string; token?: string };
+
+export function createGithubTreeAdapter(): SourceAdapter<GithubTreeInput, GithubTree> {
+  return {
+    name: 'github-tree',
+
+    canHandle(input) {
+      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
+    },
+
+    fetch(input, ctx: SourceContext): Promise<SourceResult<GithubTree>> {
+      const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
+      return performSourceFetch(
+        ctx,
+        {
+          url: `${base}/repos/${input.owner}/${input.repo}/git/trees/HEAD?recursive=1`,
+          headers: {
+            accept: 'application/vnd.github+json',
+            'x-github-api-version': '2022-11-28',
+            ...(input.token ? { authorization: `Bearer ${input.token}` } : {}),
+          },
+          maxBytes: GITHUB_TREE_MAX_BYTES,
+        },
+        {
+          schema: treeSchema,
+          parse: (body) => JSON.parse(body) as unknown,
+          cacheTtlSeconds: CACHE_TTL_SECONDS,
+          normalize: (raw): GithubTree => ({
+            files: raw.tree
+              .filter((entry) => entry.type === 'blob')
+              .map((entry) => ({ path: entry.path, ...opt('size', entry.size) })),
+            truncated: raw.truncated === true,
           }),
         },
       );

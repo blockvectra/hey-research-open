@@ -1,10 +1,9 @@
 import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
-import { explorerApiUrl, redactResultUrl, type ExplorerApi } from '../http/explorer-api';
+import { explorerApiUrl, explorerNotKeyed, isKeyedExplorerApi, redactResultUrl, type ExplorerApi } from '../http/explorer-api';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { BLOCKSCOUT_USER_AGENT } from './blockscout-verified';
 import { abiSignatures, type ContractSource } from './explorer-etherscan';
 import { sameOrigin } from './sourcify';
 
@@ -160,15 +159,17 @@ export function createExplorerContractAdapter(): SourceAdapter<ExplorerContractI
   return {
     name: 'blockscout-contract',
     canHandle(input) {
-      return /^https:\/\//.test(input.baseUrl) && ADDRESS.test(input.address);
+      return isKeyedExplorerApi(input) && ADDRESS.test(input.address);
     },
     async fetch(input, ctx: SourceContext): Promise<SourceResult<ExplorerContractDetail>> {
+      // Keyed only (2026-09-30): the instance is never read, and no request leaves without the key.
+      if (!isKeyedExplorerApi(input)) return explorerNotKeyed(ctx);
       const url = explorerApiUrl(input, `/api/v2/smart-contracts/${input.address.toLowerCase()}`);
       const result = await performSourceFetch(
         ctx,
         {
           url,
-          headers: { accept: 'application/json', 'user-agent': BLOCKSCOUT_USER_AGENT },
+          headers: { accept: 'application/json' },
           allowedContentTypes: ['application/json'],
           maxBytes: MAX_BYTES,
         },

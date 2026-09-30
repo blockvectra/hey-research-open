@@ -10,6 +10,7 @@ import type {
   HeyCoverageState,
   HeyDiff,
   HeyDiffEnd,
+  HeyDiscoveryGapWithheld,
   HeyEvidenceReceipt,
   HeyExplainedFact,
   HeyExplainIndex,
@@ -37,6 +38,21 @@ import { STILL_BUILDING_MEANING, TAG_LEGEND, activityTag, atPrecision, liquidity
  */
 
 const pretty = (value: string): string => value.toLowerCase().replace(/_/g, ' ');
+
+/**
+ * Why a Discovery Gap is absent, in the scoring package's words (hbm-v18,
+ * 2026-09-30). The MCP ships without `@hey/scoring`, so this is a literal;
+ * `apps/web/src/app/mcp/definitions.test.ts` holds it to
+ * `DISCOVERY_GAP_WITHHELD_WORDS`.
+ */
+export const GAP_WITHHELD_WORDS: Readonly<Record<HeyDiscoveryGapWithheld, string>> = {
+  no_token: 'Not measured — no tracked token',
+  market_not_live: 'Not measured — no live market',
+  token_not_the_projects: 'Not measured — the token is not tied to the project',
+  market_too_thin: 'Not measured — market too thin',
+  no_market_reading: 'Not measured — no current market reading',
+  no_build_momentum: 'Not measured — no building recorded',
+};
 
 /** A coverage state as the tag an agent should read it with: measured is a fact about HEY's record, anything else is a gap. */
 function coverageTag(state: HeyCoverageState): 'FACT' | 'UNKNOWN' {
@@ -159,7 +175,13 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   else if (b.activityMeasured === false) lines.push(`- UNKNOWN activity (${pretty(b.activityStatus)}): HEY holds no builder source it can read, so no count here is a measured zero.`);
   else lines.push(`- ${activityTag(b.activityStatus)} activity status: ${pretty(b.activityStatus)}${b.lastShippedAt ? `; last meaningful ship ${b.lastShippedAt.slice(0, 10)}` : ''}`);
   lines.push(b.buildMomentum === undefined ? '- UNKNOWN Build Momentum: not measured' : `- DERIVED Build Momentum ${b.buildMomentum}${s.scoringVersion ? ` (${s.scoringVersion})` : ''}`);
-  lines.push(b.discoveryGap === undefined ? '- UNKNOWN Discovery Gap: not measured' : `- DERIVED Discovery Gap ${b.discoveryGap}`);
+  lines.push(
+    b.discoveryGap !== undefined
+      ? `- DERIVED Discovery Gap ${b.discoveryGap}`
+      : b.discoveryGapWithheld
+        ? `- UNKNOWN Discovery Gap: ${GAP_WITHHELD_WORDS[b.discoveryGapWithheld].replace(/^Not measured/, 'not measured')} (${b.discoveryGapWithheld})`
+        : '- UNKNOWN Discovery Gap: not measured',
+  );
   if (b.velocity) {
     lines.push(
       b.velocity.current === null

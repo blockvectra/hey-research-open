@@ -92,6 +92,40 @@ describe('launch factory registry', () => {
     expect(enabledFactories(1)).toEqual([]);
   });
 
+  it('carries the launchpads added on 2026-09-30 (D8), each with its first launch and a named source', () => {
+    const added: Record<string, { launchpad: string; firstLaunch: number }> = {
+      LETSCASH: { launchpad: 'letscash', firstLaunch: 6_160_467 },
+      TRENCH: { launchpad: 'trench', firstLaunch: 5_801_338 },
+      KLIK: { launchpad: 'klik', firstLaunch: 4_096_718 },
+      BAGS: { launchpad: 'bags', firstLaunch: 8_240_408 },
+      FLAUNCH: { launchpad: 'flaunch', firstLaunch: 14_472_014 },
+      LAUNCHHOOD_V3: { launchpad: 'launchhood', firstLaunch: 8_482_947 },
+      APESTORE: { launchpad: 'apestore', firstLaunch: 4_772_664 },
+    };
+    for (const [id, expected] of Object.entries(added)) {
+      const factory = factoryById(id);
+      expect(factory?.enabled, id).toBe(true);
+      expect(factory?.launchpad, id).toBe(expected.launchpad);
+      // Scanning starts at or just below the first launch: nothing before it is skipped, little after it is wasted.
+      expect(factory!.startBlock, id).toBeLessThanOrEqual(expected.firstLaunch);
+      expect(expected.firstLaunch - factory!.startBlock, id).toBeLessThan(20_000);
+      expect(factory!.verification, id).toMatch(/census 2026-09-30/);
+    }
+    // Doppler's Airlock is a protocol, not a launchpad: it is an unlabelled intake (dex-pools.ts), never a label.
+    expect(LAUNCH_FACTORIES.some((factory) => factory.factoryAddress.toLowerCase() === '0xeb7c034704ef8dcd2d32324c1545f62fb4ad0862')).toBe(false);
+  });
+
+  it('labels only what a verified source names (coordinator rulings, 2026-09-30)', () => {
+    // Both LaunchCreated emitters are Long.xyz's contracts by their Sourcify-verified source; Bankr names no launcher here.
+    expect(factoryById('BANKR')).toMatchObject({ launchpad: 'long', name: 'Long.xyz', factoryAddress: '0x22e99278308b393ea1260859b181ad7e78f5eeed' });
+    expect(factoryById('LONG_FACTORY')).toMatchObject({ launchpad: 'long', eventTopic0: factoryById('BANKR')!.eventTopic0 });
+    expect(LAUNCH_FACTORIES.some((factory) => factory.launchpad === 'bankr')).toBe(false);
+    // Uniswap's v3.0.0 launcher has its own label, never Pools.
+    expect(factoryById('UNISWAP_LAUNCHER_V3_0')).toMatchObject({ launchpad: 'uniswap-launcher', name: 'Uniswap Liquidity Launcher', factoryAddress: '0x00004c4ccc709Ef590F7C81102C0689F0263D4e9' });
+    expect(factoryById('UNISWAP_LAUNCHER_V3_0')!.eventTopic0).toBe(factoryById('POOLS_TRADE')!.eventTopic0);
+    expect(factoryById('POOLS_TRADE')!.launchpad).toBe('poolstrade');
+  });
+
   it('reads the Pons V2 topic from the chain, not from the published declaration', () => {
     expect(factoryById('PONS_V2')?.eventTopic0).toBe(
       '0x8d4aad4953d0ca700d468f3753aa14432d1b35b43ec6409f051fb6aa43a89607',

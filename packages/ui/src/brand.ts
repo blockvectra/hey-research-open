@@ -10,6 +10,8 @@ export const BRAND = {
   /** HEY's own X account (2026-09-11); the footer links it and the project page reads it as an official source. */
   xUrl: 'https://x.com/HeyResearch',
   name: 'HEY Research Lab',
+  /** The one contact inbox the site names: account questions, API refusals, the Terms and the Privacy page. */
+  contactEmail: 'hi@heyresearch.xyz',
   shortName: 'HEY',
   tokenTicker: 'HEY',
   chainName: 'Robinhood Chain',

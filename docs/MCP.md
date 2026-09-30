@@ -111,9 +111,10 @@ words with the reading dates and sources; there, `get_changes` also accepts the
 - `still-building` — verified activity continuing through a market drawdown HEY tracked.
 - `under-the-radar` — **eligible under HEY's Under the Radar rule** (status shipping, active
   or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one
-  of them a ship rather than a commit summary; a fresh reading of a live market for the
-  project's own token) **and a positive Discovery Gap**: the market-attention percentile is
-  below the build percentile. A
+  of them a ship rather than a commit summary; a fresh reading of an active market, not a thin
+  one or only a launch curve, for the project's own token) **and a positive Discovery Gap**: the
+  market-attention percentile is below the build percentile. A token whose market is not
+  active has no Discovery Gap at all (`discoveryGapWithheld: "market_too_thin"`, hbm-v18). A
   positive gap alone is not enough (`explain_fact` calls that one `POSITIVE`). It does not bound
   attention itself; an eligible project at the 90th attention percentile can be Under the Radar
   if it builds at the 99th.

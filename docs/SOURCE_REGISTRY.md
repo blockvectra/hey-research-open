@@ -54,7 +54,7 @@ reader can see where a rule is decided, not as links to follow here.
 | Cache policy | Contract existence is immutable once true — cached indefinitely |
 | Reliability | **Authoritative.** Canonical source for chain identity and token symbol |
 | Verified | `eth_chainId` → `0x1237` (4663). Confirms the configured chain id |
-| Fallback | `RH_RPC_FALLBACK_URL` if configured; otherwise chain verification returns `UNKNOWN` and the candidate is not promoted |
+| Fallback | `RH_RPC_FALLBACK_URL` if configured (it must answer `eth_chainId` 4663 before it is read, 2026-09-30); otherwise chain verification returns `UNKNOWN` and the candidate is not promoted |
 
 Never used to index the chain from genesis (PRD V4 public-data rule 9, CLAUDE.md cost rule 2).
 
@@ -102,7 +102,13 @@ is JSON, scanned for absolute URLs otherwise, and ignored when it is neither —
 guessed. Job: `DISCOVER_LISTINGS`, source id `HOODDEV`, `discovered_via = 'hooddev'`,
 `launchpad = 'hooddev'`.
 
-### Robinhood Chain Blockscout — smart-contract record (2026-09-27)
+### Robinhood Chain Blockscout — smart-contract record (2026-09-27, retired 2026-09-30)
+
+**Not read since 2026-09-30.** The founder ruled that HEY does not rely on an agent string getting
+past the instance's bot filter; the ABI watch reads `getsourcecode` on the keyed PRO API instead,
+and what only this record said (verification method, full or partial, `verified_at`, proxy type) is
+kept as last read and otherwise not read (`ABI_WATCH_NOT_READ`). A new EIP-1167 clone is read from
+the chain's bytecode. The table below is the record as it was used.
 
 | | |
 | --- | --- |
@@ -127,11 +133,27 @@ guessed. Job: `DISCOVER_LISTINGS`, source id `HOODDEV`, `discovered_via = 'hoodd
 | Verified | 2026-09-04: 914,828 verified contracts; the newest 400 spanned 16 minutes (`PonsV2LauncherToken` 289, `Token` 33, `PonsV2BondingCurve` 12, `LunchTokenPlain` 7, `BeaconProxy` 6, ~45 distinct one-off names). `GET /api/v2/smart-contracts` → 200 with `Mozilla/5.0 (compatible; HEYResearchBot/0.1; +https://heyresearch.xyz)`, 403 with the bare `HEYResearchBot/0.1 (+https://…)` string |
 | Fallback | Skipped when `RH_BLOCKSCOUT_BASE_URL` is unset; Sourcify's daily list still marks candidates verified |
 
-**On the agent string.** The explorer's CDN refuses any `User-Agent` that does not begin
+**On the agent string (history; retired 2026-09-30).** The explorer's CDN refuses any `User-Agent` that does not begin
 with `Mozilla/5.0`, including HEY's own descriptive one. The adapter sends the
 `Mozilla/5.0 (compatible; <bot>; +<contact>)` form every public crawler uses: it still
 names HEY and a contact URL, so the operator can identify and limit the traffic, and it
 is not an attempt to pass as a browser. Nothing else about the request changed.
+
+**Measured again 2026-09-30, from HEY's server.** With the bare agent string (or curl's default,
+or a Chrome-like string) every `/api/v2/*` route and the Etherscan-style `/api` answer `403`,
+`cf-mitigated: challenge`; with the `compatible` form above they answer `200`. The instance's
+Cloudflare belongs to Blockscout, so nothing on HEY's own Cloudflare (which fronts
+`heyresearch.xyz` only) changes it. The route Blockscout publishes for servers is its keyed PRO
+API (`RH_BLOCKSCOUT_API_KEY`): for chain 4663 it serves the Etherscan-style
+`https://api.blockscout.com/v2/api?module=…&chain_id=4663` — `getsourcecode`, `getabi`,
+`listcontracts`, `getcontractcreation`, `getToken`, `tokensupply` all answer, five a second and
+about 100,000 credits a day (`x-credits-remaining`) — while its REST `/api/v2/*` paths answer
+"Network not supported". Since the founder's ruling that day every explorer read goes there and nowhere else: the
+verified listing (`listcontracts`), the ABI watch (`getsourcecode`), the deployer watch, the claim
+creator lookup and the scan. Without the key they are not read; the key and chain are never put
+on a URL for any other host. Etherscan's
+V2 API lists chain 4663 too (`https://api.etherscan.io/v2/api?chainid=4663`, a free key);
+Routescan answers "chain not supported".
 
 What the verified list becomes (`packages/domain/src/ecosystem/ingest-verified.ts`):
 a candidate HEY already holds by address is marked `chain_verification = VERIFIED`; a
@@ -241,11 +263,20 @@ verification record, launch counts and the one-off backfill commands are in
 | **Robinlaunch** | 9 bonding factories (V4–V12) + 5 direct + boost, from its bundle | `0x463df9e0…` / `0x88401197…` | `topics[2]` | name, symbol, `ipfs://` metadata | ~75 |
 | **PAIR** (pair.fund) | `0x8660A7F019C7943b0b0A91B8E39AFf3b6DB6Ae62` | `0x82a616e6…` | `topics[1]` | metadata URL only — identity from the `pairfund` adapter | 1,474 |
 | **Clanker** v4 | `0xD3f2cC1731b7Fd17f28798835C2E02f0a1839A94` | `0x9299d1d1…` | `topics[1]` | image, name, symbol, JSON metadata (description, socials) | 14,898 |
-| **Bankr** | `0x22e99278308b393ea1260859b181ad7e78f5eeed` | `0xadc6f1f7…` | `topics[1]` | symbol (name from the token) | ≥17,629 |
+| **Long.xyz** (registry id `BANKR`; labelled Bankr until 2026-09-30 — Sourcify: `LongLauncher`) | `0x22e99278308b393ea1260859b181ad7e78f5eeed` | `0xadc6f1f7…` | `topics[1]` | symbol (name from the token) | ≥17,629 |
+| **Long.xyz** factory (`LONG_FACTORY`, 2026-09-30 — proxy onto Sourcify `LongLaunchFactory`) | `0x1Eef016F22A943abC7DD11422EDeE9D235942104` | `0xadc6f1f7…` | `topics[1]` | symbol | 34,534 (from block 56.2M) |
+| **Uniswap Liquidity Launcher** v3.0.0 (`UNISWAP_LAUNCHER_V3_0`, 2026-09-30) | `0x00004c4ccc709Ef590F7C81102C0689F0263D4e9` | `0x2e2b3f61…` (as Pools) | `topics[1]` | none | 8,684 |
 | **EasyA Kickstart** | `0x519fd71f5df8242fb8bccaa346ea5b20c336273e` | `0x7b3d31f5…` | `topics[1]` | name, symbol, `ipfs://` image | 227 |
 | **Hoodit** | `0xd9ec2db5f3d1b236843925949fe5bd8a3836fccb` | Pons V1 `0xdb51ea9a…` | `topics[1]` | none | 21,443 (blocks 61k–6.72M, dormant since) |
 | **Robinpad** | 8 factories from its bundle (`RH4663`) | 5 creation topics | `topics[1]` | none | ~141 |
 | **Flap** (flap.sh) | `0x26605f322f7ff986f381bb9a6e3f5dab0beaeb09` | `0x504e7f36…` | data word 3 | name, symbol, IPFS CID | ~90,000 since before block 30M |
+| **letscash.fun** (added 2026-09-30, D8) | `0x5bd1Fbe78a78fe8236fa00CF48fbEBA74ae34661` | `0x17091df6…` | `topics[1]` | none | 11,359 (census 2026-09-30) |
+| **trench.today** (2026-09-30) | `0x77dC6f6361b7b99456FC3761ce5b7ddA80d83f9d` | `0xe2eb7016…` | `topics[3]` | name, symbol, metadata URI | 76,203 |
+| **Klik** (2026-09-30) | `0x16cF6788B762EE8969744586eD16fc5705140dd7` | `0x60122e78…` | data word 0 | none | 6,599 |
+| **Bags** (2026-09-30) | `0xe8Cc4431adF8b5A847C113EF0c6af9043219Cb37` | `0x643b3b60…` | `topics[1]` | name, symbol, metadata URI | 4,424 |
+| **Flaunch** (2026-09-30) | `0x5Cf8e499C7c466C7E2cf127BDF129F57151E65Dc` | `0x88f75d73…` | data word 0 | none (nested tuple) | 5,336 |
+| **LaunchHood** v3 (2026-09-30) | `0x62B33A039D289CBDa50EbeB72Fe4261449E61Bcf` | `0x4c27a723…` | `topics[1]` | name, symbol, metadata URI | 4,170 |
+| **ape.store** (2026-09-30) | `0x6e4910ea5A04376032F6564da9a9E4E88B7a87C1` | `0xb378e89b…` | `topics[1]` | none | 4,267 |
 
 **DEX pool factories (coverage audit, 2026-09-30).** Not launchpads — a pool is where a token
 trades, not where it was launched — but the one complete, free list of every token that was ever
@@ -258,6 +289,8 @@ intake table are recorded (as DEX discovery, discovered value = the factory id, 
 | --- | --- | --- | --- | --- |
 | Uniswap V2 | `0x8bceaa40b9acdfaedf85adf4ff01f5ad6517937f` | `PairCreated` `0x0d3648bd…` | `topics[1]`, `topics[2]` | 73,709 pairs · 73,435 tokens · 15,071 not in HEY |
 | Uniswap V3 | `0x1f7d7550b1b028f7571e69a784071f0205fd2efa` | `PoolCreated` `0x783cca1c…` | `topics[1]`, `topics[2]` | 437,791 pools · 435,070 tokens · 91,225 not in HEY |
+| Uniswap v4 PoolManager (2026-09-30) | `0x8366a39cc670b4001a1121b8f6a443a643e40951` | `Initialize` `0xdd466e67…` | `topics[2]`, `topics[3]` | first pool at block 9,505; about a third of new v4 pool tokens unknown to HEY in a sample |
+| Doppler Airlock (2026-09-30, a launch protocol read as unlabelled intake) | `0xeb7c034704ef8dcd2d32324c1545f62fb4ad0862` | `Create` `0x68ff1cfc…` | data word 0 | 187,183 launches · 152,191 not in HEY |
 
 Token ↔ repository discovery (`SEARCH_TOKEN_REPOS`, budget `github-code-search`, authority
 `token_repo_link`) is described in `docs/COVERAGE_AUDIT_2026_09_30.md`.
@@ -549,6 +582,17 @@ discovery: `packages/domain/src/builders/discover-code.ts`; candidates carry
 | Purpose | Re-judge weak candidates from their README, `package.json`, `foundry.toml`, `hardhat.config.*` (`REJUDGE_BUILDER_CANDIDATES`, hourly, ≤ 100 candidates, ≤ 5 files each, budget `github-contents` 3,000/day); sweep the accounts behind the chain's launchpads and SDKs (`madeonsol`, `nirholas`, the founder’s former account, `ponsdotdev`, `hooddev`; daily in `DISCOVER_ECOSYSTEM`, ≤ 3 pages each) |
 | Verified | 2026-09-04: `/repos/nirholas/robinhood-chain-sdk/readme` raw → 200, 7,780 bytes; `/users/madeonsol` is an Organization with 18 public repositories, the founder’s former account a User with 21; `pair-fund` / `pairfund` → 404 (pair.fund publishes no GitHub account) |
 | Reliability | A file naming the chain id or the RPC host is a deployment marker at the same strength as a description naming it; a bare `4663` in a file is **not** (port, issue, line count). A README describing a brokerage bot settles the candidate as REJECTED with the reason recorded; anything else stays PENDING and is not read again for 30 days |
+
+#### Deploy records in official repositories (founder D1, 2026-09-30)
+
+| | |
+| --- | --- |
+| Endpoints | `GET /repos/{o}/{r}/git/trees/HEAD?recursive=1` (≤ 4 MB; GitHub's `truncated` flag kept); `GET /repos/{o}/{r}/contents/{path}` raw (≤ 2 MB for a record file); `GET /repos/{o}/{r}` once, only when a record names a token HEY holds (fork/template check) |
+| Purpose | Which token contracts an official, counted repository's own deploy records name on chain 4663 (`readRepoDeployRecords` inside `SEARCH_TOKEN_REPOS`, hourly, ≤ 48 `github-contents` reads a run, each repository read again after 30 days; `repo_deploy_record_reads`) |
+| Records | Foundry `broadcast/<Script>/4663/run-latest.json` (CREATE/CREATE2 and created contracts only); hardhat-deploy `deployments/<net>/*.json` where `<net>/.chainId` is 4663 and the record carries its transaction; Ignition `ignition/deployments/chain-4663/deployed_addresses.json`; `deployments*.json` naming the chain. Parsed with Zod (`packages/sources/src/adapters/deploy-records.ts`, fixtures `foundry-broadcast-run-latest.json`, `hardhat-deploy-token.json`, `deployments-robinhood.json`, `github-tree-deploy-records.json`) |
+| Never | vendored, dependency, test, example or dry-run paths; token-list repositories; forks and templates; quote assets and stock tokens; mocks; keys that refer to an asset or venue |
+| Authority | `github_deploy_record` (OFFICIAL_SELF): ties a token to its project and verifies it (`deploy_record_in_own_repo`); never a source row, a ship or a score |
+| Verified | 2026-09-30 probe over all 2,232 official repositories: 260 hold a chain-4663 record file, 132 name a contract on the chain, 29 name a token HEY holds (~146 ties) |
 
 ### npm registry (2026-09-05)
 

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ACTIVITY,
   CONSISTENCY,
+  DISCOVERY_GAP,
   EVENT_BASE_WEIGHTS,
   HBM_WEIGHTS,
   MARKET_CONTEXT_WEIGHTS,
@@ -40,6 +41,7 @@ const RULES_DIGEST = createHash('sha256')
       UNDER_THE_RADAR,
       VERIFICATION_WEIGHTS,
       COMMIT_SUBSTANCE_VERSION,
+      DISCOVERY_GAP,
     }),
   )
   .digest('hex')
@@ -64,8 +66,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v17',
-      rules: '89e70465410ba035',
+      version: 'hbm-v18',
+      rules: '7b42dd198d35fcde',
     });
   });
 });

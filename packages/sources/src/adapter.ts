@@ -39,6 +39,12 @@ export type SourceResult<T> = {
    * and on a failure that never got a status (a timeout, a network error).
    */
   httpStatus?: number;
+  /**
+   * What the request cost in the provider's own unit, for a provider that
+   * meters in something other than requests (2026-09-30): Bitquery points.
+   * Absent when the provider meters in requests, or no request left.
+   */
+  meteredUnits?: number;
 };
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -78,6 +84,12 @@ export type SourceContext = {
    * (`enforceUrlSafety: true`). Injected in tests so no test resolves a name.
    */
   lookupImpl?: AddressLookup;
+  /**
+   * A second chain node (2026-09-30, `http/rpc-failover.ts`): a JSON-RPC POST
+   * to `primaryUrl` that the node refused is asked once of `url`, after that
+   * node has answered `eth_chainId` with `chainId`.
+   */
+  rpcFallback?: { primaryUrl: string; url: string; chainId: number } | undefined;
 };
 
 export interface SourceAdapter<TInput, TOutput> {

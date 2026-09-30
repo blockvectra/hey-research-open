@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
+import { resolveNow, type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { SourceError } from '../errors';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
@@ -75,6 +75,53 @@ export const BITQUERY_BATCH_SIZE = 100;
  * sweep does not spend the whole allowance in its first ten seconds.
  */
 export const BITQUERY_SPACING_MS = 1_000;
+
+/**
+ * What one request costs on the plan's meter (measured 2026-09-30 with the
+ * provider's `utilities.metrics` by query id; HEY's domain books these under
+ * `bitquery-points`). A realtime query costs five points for each cube in the
+ * document, whatever it returns; a combined (archive) query is charged by what
+ * it reads, so each figure is the highest measured, rounded up.
+ */
+export const BITQUERY_POINTS = {
+  /** Realtime: five points a cube. */
+  perRealtimeCube: 5,
+  /** Combined contract surface for one scan (measured 183). */
+  surface: 200,
+  /** Combined upgrade events for a batch of a hundred contracts (measured 277). */
+  upgrades: 300,
+  /** Combined contract creations by a batch of senders (measured 26). */
+  creations: 30,
+  /** One contract's creating call (measured 9.5). */
+  deployment: 10,
+  /** A cube read from the archive that has not been measured yet (method and trade-day backfills): twice the old average. */
+  archiveCube: 40,
+} as const;
+
+/**
+ * One discovery page on `combined`, by the span of its slice and how old it
+ * is (measured per page, 2026-09-30):
+ *
+ *   an hour   up to 14 days old 7–9     older 12–19
+ *   a day     up to 10 days old 12–19   older 23–38
+ *   a week    53–124
+ *
+ * The figure is the highest measured for its bracket, rounded up, so the
+ * meter errs toward spending less than the plan allows, never more.
+ */
+export function bitqueryDiscoveryPagePoints(since: Date, till: Date, now: Date = till): number {
+  const hours = (till.getTime() - since.getTime()) / 3_600_000;
+  const ageDays = Math.max(0, (now.getTime() - till.getTime()) / 86_400_000);
+  if (hours <= 1) return ageDays <= 14 ? 10 : 20;
+  if (hours <= 6) return 25;
+  if (hours <= 24) return ageDays <= 10 ? 20 : 40;
+  return Math.ceil(20 * (hours / 24));
+}
+
+/** The result with its cost on the provider's meter; a request retried once costs twice. */
+export function withBitqueryPoints<T>(result: SourceResult<T>, points: number): SourceResult<T> {
+  return { ...result, meteredUnits: points * (result.attempts ?? 1) };
+}
 
 /** The day's trades are what the status reads; a reading an hour old is fine. */
 const CACHE_TTL_SECONDS = 60 * 60;
@@ -317,7 +364,7 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
       input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryTokenTrades[]>> {
       const addresses = [...new Set(input.addresses.map((address) => address.toLowerCase()))];
-      return performSourceFetch(
+      return withBitqueryPoints(await performSourceFetch(
         ctx,
         {
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
@@ -342,7 +389,7 @@ export function createBitqueryTradesAdapter(): SourceAdapter<BitqueryTradesInput
             return readBitqueryTrades(raw.data?.EVM?.week ?? [], input.since);
           },
         },
-      );
+      ), BITQUERY_POINTS.perRealtimeCube);
     },
   };
 }
@@ -485,7 +532,7 @@ export function createBitqueryDiscoveryAdapter(): SourceAdapter<BitqueryDiscover
     name: 'bitquery-discovery',
     canHandle: (input) => input.count > 0 && input.count <= 1000 && input.offset >= 0 && input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryTradedToken[]>> {
-      return performSourceFetch(
+      return withBitqueryPoints(await performSourceFetch(
         ctx,
         {
           url: input.baseUrl ?? BITQUERY_DEFAULT_BASE_URL,
@@ -513,7 +560,7 @@ export function createBitqueryDiscoveryAdapter(): SourceAdapter<BitqueryDiscover
             return normalizeBitqueryTradedTokens(raw.data?.EVM?.DEXTradeByTokens ?? []);
           },
         },
-      );
+      ), (input.dataset ?? BITQUERY_FULL_DATASET) === 'realtime' ? BITQUERY_POINTS.perRealtimeCube : bitqueryDiscoveryPagePoints(input.since, input.till, resolveNow(ctx)));
     },
   };
 }

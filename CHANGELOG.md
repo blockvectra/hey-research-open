@@ -6,6 +6,88 @@ record.
 
 ## Unreleased (2026-09-30)
 
+- **Data integrity.** The Bitquery holders adapter keeps the balances when the provider fails
+  only a concentration figure (it errors on `gini` over an empty set), with a saved fixture of that
+  reply. Market Integrity re-evaluates rows still on an earlier rules version in paced batches and
+  writes no events for projects that are not published. The quality gate, the harvester and token
+  verification read a declared site's host with one expression (a query string, port or fragment
+  no longer makes a second host), and a platform's page never rescues a shared host by naming the
+  token. The duplicate-page sweep flags a relaunch family that shares one name even when more than
+  two hidden records declare its site. The treasury-balance freshness check reads critical at
+  48 h.
+
+- **Terms and Privacy pages.** `/terms` and `/privacy` state what HEY does, from the code: research,
+  not advice; no custody of a reader's keys and no trade execution; the cookies and browser storage
+  it writes; first-party analytics that record nothing under Do Not Track or Global Privacy Control;
+  a `$HEY` holder check that keeps the decision, never the balance; retention periods; and every
+  service that receives data. Both reference Uniswap Labs' Terms of Service and Privacy Policy for
+  quotes. Linked from the footer, the quote notice, the sitemap and `llms.txt`; the OpenAPI document
+  names `/terms` as `info.termsOfService`.
+
+- **Deploy records tie a token to its builder.** HEY reads the deploy records in each project's
+  own official repository (Foundry broadcasts, hardhat-deploy networks and deployments files for
+  chain 4663) through its GitHub contents budget, parses them with Zod, and ties a named token to
+  the project: a tokenless builder adopts its own launch record when its records name exactly one,
+  and the token reads "A deploy record in the project's own repository names this contract". The
+  daily token count splits the builder-repository ties by kind, and Explore's line names them.
+  Harvester: a paced hourly sweep registers the qualifying docs, feeds, changelog pages and OpenAPI
+  descriptions a site read left behind; a changelog page's dated entries become ships only through
+  the existing ship rules. Seven more launchpads are scanned on Robinhood Chain (letscash.fun,
+  trench.today, Klik, Bags, Flaunch, LaunchHood and ape.store), each factory verified on chain.
+  A launchpad label now comes only from a verified source: the factory labelled Bankr is Long.xyz's
+  by its verified contract and is relabelled, Uniswap's v3.0.0 launcher has its own label, and
+  Doppler's Airlock and Uniswap v4 pools are read as unlabelled intake that a launch record takes over.
+
+- **Research Desks for every signed-in account.** Any signed-in account may curate a desk from its
+  account page and publish it; a desk still shows public data only. Signed-in readers can report a
+  desk (a reason from a fixed list, never free text), and HEY's moderators can take one down, which
+  answers 404 at once and holds the address. `GET /api/desks` and `GET /api/desks/{slug}` are
+  unchanged. A page view now counts once the page has been visible for a second; a client-side
+  navigation is a view of its own, referred by HEY. The public-leak scan runs in CI as well as
+  before every sync.
+
+- **Market and scoring decisions.** Five founder decisions:
+  - **LOW_LIQUIDITY band.** A token enters LOW_LIQUIDITY below $5,000 and leaves only at $6,000
+    or more (`lowLiquidityExitUsd`, rules `token-market-2026-09-30`). Inside the band the reason
+    is `liquidity_below_exit_threshold`.
+  - **Scoring `hbm-v18`.** A token whose market is not `ACTIVE_MARKET`, or is only a launch
+    curve, has no Discovery Gap and no Under the Radar. The API sends
+    `score.discoveryGapWithheld: "market_too_thin"` (and `build.discoveryGapWithheld` on the
+    snapshot) instead of a figure. Every other missing gap says why too. No weight or threshold
+    moves.
+  - **Rolling tags.** A GitHub release cut from a rolling tag (`latest*`, `nightly*`,
+    `*-debug`, `edge`, `canary`, `dev`, `snapshot`) is kept as context, never a release ship.
+  - **Narrative dating.** A narrative HEY assigned is `OBSERVED` in the change ledger. The
+    events already written are revised, keeping their first origin.
+  - **`pairLockScope`.** `tokenLock.pairLockScope: "hoodlock_only"` goes beside `pairLocked`,
+    whose meaning is unchanged.
+
+  The SDK and OpenAPI type both new fields.
+
+- **Bitquery points and complete trade discovery.** Every Bitquery adapter states what its request
+  costs on the plan's meter (`meteredUnits` on the source result: five points a realtime cube, and
+  the measured cost of each archive read, by slice span and age for a discovery page), so a caller
+  can book points rather than requests. The trade-discovery lanes keep a ledger of the UTC days
+  and hours they have read to the end, halve a slice the ten-page ceiling cuts short, and read a
+  rolling 120 days — a settled unit is never asked again. A Bitquery request is declined once the
+  day has spent 85% of the plan's share. Every explorer read goes through Blockscout's keyed API
+  and never the instance: the adapters refuse any other host without a request, the key and chain
+  travel only to Blockscout's own origin, and a new minimal clone is recognised from the chain's
+  bytecode (`minimalProxyTarget`). The RPC fallback proves its chain id before it answers, and every
+  adapter's refused JSON-RPC read moves to it (`requestWithRpcFailover`).
+
+- **Database load.** The quality gate asks only for the website hosts and X handles of the
+  projects it evaluates (two expression indexes) and plans without JIT, and the daily sweep writes
+  its verdicts in batches of up to 500 rather than one statement per project; its verdicts are
+  unchanged, checked against the previous query on 2,191 production projects. One gate bug is
+  fixed: an X link that names no account made every project's own X handle uncounted; now it
+  counts (106 hidden records qualify, none leaves the catalogue). The HEY Signal feed
+  reads signals in its own order and stops at its page, and the homepage no longer counts a total
+  it never shows. The search keys parse each host, token and name once. The health capture is
+  claimed right after payment verification. A migration may no longer rewrite rows of a table it
+  also alters (the unit suite fails), and the deployment guide says how to split one. No public
+  package or API field changed.
+
 - **RPC refusals and start minutes.** A launch or pool scan the shared RPC refused part-way (a
   429, a 403 challenge, a 5xx, a dropped connection) is `PARTIAL` with its reason and its resume
   block held, not `DEGRADED`, and counts as a success only when it read new blocks. The hood.fun

@@ -158,7 +158,21 @@
  * longer meaningful. The classifier version is part of the rules digest from
  * this version on: a classifier change forces a scoring version.
  */
-export const SCORING_VERSION = 'hbm-v17' as const;
+/*
+ * hbm-v18 (2026-09-30, founder decision "Discovery Gap on thin markets"): no
+ * weight, threshold or Build Momentum figure changes. A project whose tracked
+ * token's market status is not ACTIVE_MARKET — LOW_LIQUIDITY,
+ * TRADING_INACTIVE, INSUFFICIENT_DATA — or whose only market is its launch
+ * curve (`DISCOVERY_GAP`) gets no Discovery Gap and no Under the Radar: its
+ * attention percentile sits near the floor, so the gap measured the thinness
+ * of the market, not the building. The gap is null with
+ * `components.discoveryGapWithheld: 'market_too_thin'`, never zero; every
+ * other null gap carries its reason too. The population the others are
+ * ranked against, their percentiles and gaps, and Still Building are
+ * unchanged. On production on the day: 9 gaps and 5 Under the Radar badges
+ * withdrawn (see docs/FOUNDER_DECISIONS_2026_09_30.md).
+ */
+export const SCORING_VERSION = 'hbm-v18' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];
