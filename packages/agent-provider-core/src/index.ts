@@ -9,6 +9,7 @@
 export * from './capabilities';
 export * from './schema';
 export * from './text';
+export * from './words';
 export * from './freshness';
 export * from './unknowns';
 export * from './records';

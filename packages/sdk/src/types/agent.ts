@@ -87,6 +87,8 @@ export type HeyAgentChange = {
   summary: HeyAgentText;
   status: HeyAgentClaimStatus;
   countsAsBuilding: boolean;
+  /** A ship's verification state (2026-09-30, additive): SELF_REPORTED stays distinct from verified. */
+  verification?: string;
   project: { slug: string; url: string };
   evidence: HeyAgentEvidenceRef[];
   source: string;
@@ -132,6 +134,8 @@ export type HeyAgentResearchData = {
     valuation: { usd: number; kind: 'marketCap' | 'fdv' | 'unspecified'; source: string; observedAt: string | null } | null;
     valuationWithheld: string | null;
     liquidityUsd: number | null;
+    /** The API's qualifier on the liquidity figure (2026-09-30, additive): `launch_inventory` is a launch pool's supply, not a market's depth. */
+    liquidityKind?: string;
     volume24hUsd: number | null;
     tokenMarketStatus: string | null;
     url: string;
@@ -155,10 +159,13 @@ export type HeyAgentWhatChangedData = {
   types: string[] | null;
   /** Every standing event in the window: a true total, never the page size. */
   total: number;
+  /** How many of `total` count toward activity status (2026-09-30, additive); the rest are context. */
+  countsAsBuilding?: number;
   byType: { type: string; count: number }[];
   shown: number;
   items: HeyAgentChange[];
-  ledger: { projectorRanAt: string | null; newestRecordedAt: string | null; collectionStart: string | null };
+  /** `transitionsFrom` (2026-09-30, additive): when the ledger began recording status moves and reclassifications. */
+  ledger: { projectorRanAt: string | null; newestRecordedAt: string | null; collectionStart: string | null; transitionsFrom?: string | null };
   more: string;
 };
 
@@ -217,6 +224,8 @@ export type HeyAgentCompareData = {
   windowDays: 30;
   projects: HeyAgentCompareProject[];
   missing: string[];
+  /** Whether a comparison happened (2026-09-30, additive): `not_compared` comes with `status: not_found` and `error.code: too_few_projects_found`. */
+  completeness?: 'complete' | 'partial' | 'not_compared';
   ignored: string[];
   sameCohort: boolean | null;
   order: 'as_requested';
@@ -236,7 +245,7 @@ type HeyAgentBase = {
   schema: 'hey.agent-intelligence-response';
   schemaVersion: '1';
   status: 'ok' | 'not_found' | 'moved' | 'invalid_request' | 'unavailable';
-  query: { chainId: number; project?: string; projects?: string[]; address?: string; days?: number; types?: string[]; limit?: number };
+  query: { chainId: number; project?: string; projects?: string[]; address?: string; days?: number; types?: string[]; limit?: number; building?: 'only' };
   chain: { chainId: number; name: string };
   subject: { kind: 'project' | 'contract' | 'projects' | 'chain'; project?: HeyAgentSubjectProject; projects?: HeyAgentSubjectProject[]; contract?: { chainId: number; address: string } } | null;
   /** The one-sentence answer, first. */
@@ -268,7 +277,7 @@ export type HeyAgentResponseOf<C extends HeyAgentCapability> = Extract<HeyAgentR
 /** The parameters each capability takes; the server refuses any other. */
 export type HeyAgentQuery = {
   research_project: { project: string };
-  what_changed: { project?: string; days?: number; types?: readonly string[]; limit?: number };
+  what_changed: { project?: string; days?: number; types?: readonly string[]; limit?: number; building?: 'only' };
   builder_status: { project: string };
   verify_project: { address: string; project?: string };
   compare_builders: { projects: readonly string[] };

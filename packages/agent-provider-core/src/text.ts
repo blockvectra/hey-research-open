@@ -50,7 +50,16 @@ export const DERIVED_TEXT_MAX = 600;
 /* C0 and C1 controls (tab and newline are folded to spaces first), zero-width and bidi-override characters, byte-order marks. */
 // eslint-disable-next-line no-control-regex
 const CONTROL = /[\u0000-\u001F\u007F-\u009F]/g;
-const INVISIBLE = /[\u00AD\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\uFEFF]/g;
+/*
+ * Invisible and look-alike-blank characters (2026-09-30, adversarial review):
+ * soft hyphen, zero-width and bidi controls, BOM, Mongolian vowel separator,
+ * Hangul fillers, variation selectors, and the Unicode tag block
+ * (U+E0000–E007F), whose characters spell words a model reads and a person
+ * cannot see.
+ */
+// Variation selectors are matched on their own, never as part of a combined character: that is the point (no-misleading-character-class).
+// eslint-disable-next-line no-misleading-character-class
+const INVISIBLE = /[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\u2066-\u2069\u3164\uFE00-\uFE0F\uFEFF\uFFA0\u{E0000}-\u{E007F}\u{E0100}-\u{E01EF}]/gu;
 /* An HTML or XML tag, and a chat-template token such as `<|im_start|>` or `[INST]`. */
 const TAG = /<\/?[A-Za-z!][^<>]{0,300}>/g;
 const TEMPLATE_TOKEN = /<\|[^|<>]{0,40}\|>|\[\/?(?:INST|SYS)\]|<<\/?SYS>>/gi;
@@ -77,10 +86,30 @@ const INSTRUCTION_PATTERNS: readonly RegExp[] = [
   /\b(call|invoke|use|run|execute)\s+(the\s+)?(tool|function|command)\b/i,
   /(^|\s)(system|assistant|user|developer)\s*:/i,
   /<\|[^|<>]{0,40}\|>|\[\/?INST\]|<<\/?SYS>>/i,
+  // Added 2026-09-30 (adversarial review): notes addressed to a model, a model addressed by role, trade calls.
+  /\b(note|message|notice|important|attention|reminder)\s+(for|to)\s+(any\s+|all\s+)?(ai|llms?|agents?|assistants?|models?|chatbots?|bots?)\b/i,
+  /\bsystem\s+(note|notice|override|update)\b/i,
+  /\b(ai|llm|assistant|agent|model|chatbot)s?\s*[,:]\s*(please\s+)?(recommend|buy|sell|say|tell|output|respond|reply|answer|ignore)\b/i,
+  /\b(recommend|suggest|advise)\w*\s+(purchasing|buying|selling|a\s+(full\s+)?position)\b/i,
+  /\b(strong\s+(buy|sell)|buy\s+now|sell\s+now|guaranteed\s+(returns?|profits?))\b/i,
 ];
 
+/**
+ * Whether the words read like an instruction to a model. The test reads the
+ * text as a model would: compatibility-normalised (full-width and other
+ * look-alike letters become plain ones) with invisible characters removed, so
+ * "ｓｙｓｔｅｍ: ｉgnore previous instructions" is caught. A flag, never a
+ * defence: an agent must treat every `external_source` string as data whether
+ * or not it is flagged.
+ */
 export function looksLikeInstruction(text: string): boolean {
-  return INSTRUCTION_PATTERNS.some((pattern) => pattern.test(text));
+  const readable = text.normalize('NFKC').replace(INVISIBLE, '').replace(/\s+/g, ' ');
+  return INSTRUCTION_PATTERNS.some((pattern) => pattern.test(readable));
+}
+
+/** An absolute http(s) URL with no whitespace, quote or angle bracket, within the bound: anything else is not passed on. */
+export function isSafeUrl(value: string | undefined, max = 500): value is string {
+  return typeof value === 'string' && value.length <= max && /^https?:\/\/[^\s"'<>`\\]+$/i.test(value);
 }
 
 /** The text with everything that could change how it is read removed, on one line, unshortened. */
@@ -130,7 +159,7 @@ export function externalText(raw: string, source: string, sourceUrl?: string, ma
     text: folded.text,
     contentOrigin: 'external_source',
     source,
-    ...(sourceUrl && /^https?:\/\//i.test(sourceUrl) && sourceUrl.length <= 500 ? { sourceUrl } : {}),
+    ...(isSafeUrl(sourceUrl) ? { sourceUrl } : {}),
     ...(folded.truncated ? { truncated: true as const } : {}),
     ...(instruction || looksLikeInstruction(folded.text) ? { instructionLike: true as const } : {}),
   };

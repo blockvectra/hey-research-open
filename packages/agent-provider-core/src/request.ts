@@ -24,6 +24,8 @@ export const agentRequestSchema = z.discriminatedUnion('capability', [
       days: z.number().int().min(1).max(30).default(7),
       types: z.array(changeType).min(1).max(20).optional(),
       limit: z.number().int().min(1).max(AGENT_LIMITS.changes).default(AGENT_LIMITS.changesDefault),
+      /** `only` (2026-09-30, additive): events that count toward activity status, by the ledger's own `countsAsBuilding` flag. */
+      building: z.literal('only').optional(),
       chainId,
     })
     .strict(),
@@ -60,8 +62,32 @@ export function parseAgentRequest(raw: unknown): ParsedAgentRequest {
     return { ok: true, request: parsed.data };
   }
   const issue = parsed.error.issues[0];
-  return { ok: false, code: 'invalid_request', message: `${issue?.path.join('.') || capability}: ${issue?.message ?? 'invalid'}.` };
+  /*
+   * Never the caller's own words (2026-09-30, adversarial review): a refusal
+   * is read back to an agent as HEY's answer, so an unknown parameter's name
+   * — which a crafted URL can make any sentence — is not repeated. The
+   * message names what the capability does take; the other issues name only
+   * HEY's own field names.
+   */
+  if (!issue || issue.code === 'unrecognized_keys') {
+    return { ok: false, code: 'invalid_request', message: `${capability}: an unknown parameter. It takes ${takes(capability as AgentCapability)}.` };
+  }
+  const field = issue.path.filter((part): part is string | number => typeof part === 'string' || typeof part === 'number').map(String);
+  const known = field.length > 0 && KNOWN_PARAMS.has(field[0]!) ? field.join('.') : capability;
+  return { ok: false, code: 'invalid_request', message: `${known}: ${issue.message}.` };
 }
+
+const KNOWN_PARAMS: ReadonlySet<string> = new Set(['capability', 'project', 'projects', 'address', 'days', 'types', 'limit', 'building', 'chainId']);
+
+const TAKES: Readonly<Record<AgentCapability, string>> = {
+  research_project: 'project and chainId',
+  what_changed: 'project, days, types, limit, building and chainId',
+  builder_status: 'project and chainId',
+  verify_project: 'address, project and chainId',
+  compare_builders: 'projects and chainId',
+  unknowns: 'project or address, and chainId',
+};
+const takes = (capability: AgentCapability): string => TAKES[capability];
 
 const LIST = /[\s,]+/;
 
@@ -74,7 +100,7 @@ const LIST = /[\s,]+/;
 export function agentRequestFromQuery(capability: string, params: URLSearchParams): ParsedAgentRequest {
   const raw: Record<string, unknown> = { capability };
   for (const [key, value] of params.entries()) {
-    if (key in raw) return { ok: false, code: 'invalid_request', message: `${key}: give it once.` };
+    if (key in raw) return { ok: false, code: 'invalid_request', message: KNOWN_PARAMS.has(key) ? `${key}: give it once.` : 'A parameter was given twice: give each once.' };
     if (key === 'projects' || key === 'types') raw[key] = value.split(LIST).filter(Boolean).slice(0, 24);
     else if (key === 'days' || key === 'limit' || key === 'chainId') raw[key] = /^\d{1,6}$/.test(value) ? Number(value) : value;
     else raw[key] = value;
@@ -92,6 +118,7 @@ export function queryEcho(request: AgentCapabilityRequest, chainId: number) {
     ...('days' in request ? { days: request.days } : {}),
     ...('types' in request && request.types ? { types: request.types } : {}),
     ...('limit' in request ? { limit: request.limit } : {}),
+    ...('building' in request && request.building ? { building: request.building } : {}),
   };
 }
 
@@ -104,6 +131,7 @@ export function agentRequestUrl(baseUrl: string, request: AgentCapabilityRequest
   if ('days' in request) params.set('days', String(request.days));
   if ('types' in request && request.types) params.set('types', request.types.join(','));
   if ('limit' in request) params.set('limit', String(request.limit));
+  if ('building' in request && request.building) params.set('building', request.building);
   const query = params.toString();
   return `${baseUrl}/api/agent/${request.capability}${query ? `?${query}` : ''}`;
 }

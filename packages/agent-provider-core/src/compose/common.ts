@@ -1,7 +1,7 @@
 import type { HeyChangeUpsert } from '@hey-research-lab/sdk';
 
 import type { AgentCapability } from '../capabilities';
-import { MACHINE_TEXT_VERSION, derivedText, externalText, heyText, type AgentText } from '../text';
+import { MACHINE_TEXT_VERSION, derivedText, externalText, heyText, isSafeUrl, type AgentText } from '../text';
 import { AGENT_FRESHNESS_VERSION } from '../freshness';
 import { recordTag, summaryIsSourceText } from '../records';
 import {
@@ -65,7 +65,7 @@ export const receiptUrl = (baseUrl: string, id: string): string => `${baseUrl}/a
 /** A typed evidence id with its receipt URL. `sourceUrl` is the record's own public URL, carried as data. */
 export function evidenceRef(baseUrl: string, id: string, sourceUrl?: string): AgentEvidenceRef {
   const absolute = sourceUrl && sourceUrl.startsWith('/') ? `${baseUrl}${sourceUrl}` : sourceUrl;
-  return { id, receiptUrl: receiptUrl(baseUrl, id), ...(absolute && /^https?:\/\/\S{1,600}$/.test(absolute) ? { sourceUrl: absolute } : {}) };
+  return { id, receiptUrl: receiptUrl(baseUrl, id), ...(isSafeUrl(absolute, 600) ? { sourceUrl: absolute } : {}) };
 }
 
 /** Evidence refs from a change event's evidence list: typed ids only, once each, bounded. */
@@ -100,12 +100,16 @@ export type ChangeLike = Pick<HeyChangeUpsert, 'id' | 'revision' | 'occurredAt' 
   domain: string;
   precision: string;
   countsAsBuilding?: true;
+  /** The ledger's plain facts beside the summary; a ship's `verification` is read from them. */
+  facts?: Record<string, string | number | boolean>;
 };
 
 /** One ledger event as the agent contract carries it: its summary typed by whose words it holds, its tag by the record rule. */
 export function agentChange(event: ChangeLike, project: { slug: string; url: string }, baseUrl: string, isEvidenceId: (id: string) => boolean = looksLikeEvidenceId): AgentChange {
   const firstUrl = event.evidence.find((entry) => entry.url)?.url;
-  const summary: AgentText = summaryIsSourceText(event.id) ? externalText(event.summary, 'source_title', firstUrl) : derivedText(event.summary);
+  const summary: AgentText = summaryIsSourceText(event.id, event.type) ? externalText(event.summary, 'source_title', firstUrl) : derivedText(event.summary);
+  // A ship's verification state (2026-09-30, product rule 10): self-reported and verified stay visibly distinct.
+  const verification = typeof event.facts?.verification === 'string' && /^[A-Z_]{1,40}$/.test(event.facts.verification) ? event.facts.verification : undefined;
   return {
     id: event.id,
     revision: event.revision,
@@ -118,11 +122,17 @@ export function agentChange(event: ChangeLike, project: { slug: string; url: str
     summary,
     status: recordTag(event.id),
     countsAsBuilding: event.countsAsBuilding === true,
+    ...(verification ? { verification } : {}),
     project: { slug: project.slug, url: project.url },
     evidence: changeEvidence(baseUrl, event.evidence, isEvidenceId),
     source: event.source.slice(0, 120),
   };
 }
+
+/** Change domains and types whose events are context, never building (2026-09-30): market readings, market integrity, product usage. */
+const CONTEXT_DOMAINS: ReadonlySet<string> = new Set(['market', 'market_integrity']);
+const CONTEXT_TYPES: ReadonlySet<string> = new Set(['contract.usage_changed', 'contract.method_first_observed', 'contract.method_resumed']);
+export const isContextChange = (change: { domain: string; type: string }): boolean => CONTEXT_DOMAINS.has(change.domain) || CONTEXT_TYPES.has(change.type);
 
 /** The source type a ledger domain's record comes from. */
 export function sourceTypeOfDomain(domain: string, id: string): AgentSourceType {

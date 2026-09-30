@@ -4,6 +4,7 @@ import { familyFreshness, SNAPSHOT_SOURCE_FAMILY, type RefreshTier } from '../fr
 import { AGENT_UNKNOWN_CATEGORIES, doNotConclude, type AgentUnknownCategory } from '../unknowns';
 import type { AgentClaim, AgentFreshness, AgentResponseOf } from '../schema';
 import { derivedText, externalText, heyText } from '../text';
+import { countOf, WORD_THING } from '../words';
 import { envelope, type AgentComposeContext } from './common';
 import { coverageBuckets, projectUnknowns, type CanonicalGap, type GapFacts } from './gaps';
 
@@ -77,7 +78,7 @@ export function composeUnknowns(ctx: AgentComposeContext, input: UnknownsInput):
   const answer =
     unknowns.length === 0
       ? derivedText(`HEY lists no gap for ${project.slug}: every applicable dimension is measured and current. Measured is not the same as complete; each figure keeps its own source and date.`)
-      : derivedText(`HEY does not know ${unknowns.length} thing${unknowns.length === 1 ? '' : 's'} about ${project.slug} (${summary}). None of them is evidence against the project; each says what not to conclude.`);
+      : derivedText(`HEY does not know ${countOf(unknowns.length, WORD_THING)} about ${project.slug} (${summary}). None of them is evidence for or against the project; each says what not to conclude.`);
 
   return envelope(ctx, {
     capability: 'unknowns',

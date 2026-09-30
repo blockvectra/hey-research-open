@@ -1,6 +1,6 @@
 import type { HeyExplainedFact } from '@hey-research-lab/sdk';
 
-import { ageBucket, familyFreshness } from '../freshness';
+import { ageBucket, familyFreshness, type RefreshTier } from '../freshness';
 import type { AgentClaim, AgentEvidenceRef, AgentResponseOf, AgentUnknown } from '../schema';
 import { derivedText, externalText, heyText } from '../text';
 import { envelope, evidenceRef, looksLikeEvidenceId, type AgentComposeContext } from './common';
@@ -24,6 +24,15 @@ export type BuilderStatusInput = {
   stillBuilding: HeyExplainedFact;
   /** Gaps that bear on the status (builder sources, repositories, releases), from the canonical gap list. */
   unknowns?: AgentUnknown[];
+  /**
+   * When HEY last read the project's builder sources, as the project's
+   * coverage states it (2026-09-30, additive): the readings the status rests
+   * on, so "when will HEY look again?" has an answer beside the score's own
+   * time. Absent, the answer states the score's freshness only, as before.
+   */
+  builderSources?: { observedAt: string | null; staleAfterHours: number; tier?: RefreshTier };
+  /** The tracked token's verification (2026-09-30): a MISMATCH says the building does not apply to that token. */
+  tokenVerification?: { status: 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH'; reason?: string } | null;
   isEvidenceId?: (id: string) => boolean;
 };
 
@@ -51,7 +60,7 @@ const STATUS_WORDS: Readonly<Record<string, string>> = {
   QUIET: 'Quiet: the newest meaningful building event is older than the active window, on a source HEY can read.',
   DORMANT: 'Dormant: nothing meaningful for longer than the quiet window, on a source HEY can read.',
   RESUMED: 'Resumed: building activity again after a long gap.',
-  UNKNOWN: 'Unknown: HEY cannot say whether anyone is building.',
+  UNKNOWN: 'Unknown: HEY does not measure this project’s building. A gap in HEY’s sources, not a finding that nobody builds.',
 };
 
 const FRESH_TO_BUCKET = (fact: HeyExplainedFact, now: Date): AgentClaim['freshness'] => {
@@ -101,10 +110,12 @@ export function composeBuilderStatus(ctx: AgentComposeContext, input: BuilderSta
     factClaim(ctx, 'status.still_building', stillBuilding, `${api}?fact=still_building`, isEvidenceId),
   ];
 
+  // The tracked token's standing, when the project's own site names another contract (2026-09-30): the status is the project's, never that token's.
+  const tokenClause = input.tokenVerification?.status === 'MISMATCH' ? ' The token HEY tracks for it is not the one its own site names, so this building does not apply to that token.' : '';
   const answer =
     activity.state === 'UNKNOWN'
-      ? derivedText(`HEY cannot say whether ${project.slug} is building: ${activity.reason}`)
-      : derivedText(`${project.slug}: ${status} under HEY's activity rule (${version}). ${activity.reason} This is a record of development, not a view on the token.`);
+      ? derivedText(`${project.slug}: HEY does not measure its building. ${activity.reason} This is a gap in HEY's sources, not a finding about the team.${tokenClause}`)
+      : derivedText(`${project.slug}: ${status} under HEY's activity rule (${version}). ${activity.reason}${tokenClause} This is a record of development, not a view on the token.`);
 
   return envelope(ctx, {
     capability: 'builder_status',
@@ -114,7 +125,12 @@ export function composeBuilderStatus(ctx: AgentComposeContext, input: BuilderSta
     answerStatus: activity.state,
     claims,
     unknowns: input.unknowns ?? [],
-    freshness: [freshness],
+    freshness: [
+      freshness,
+      ...(input.builderSources
+        ? [familyFreshness('builder_sources', { observedAt: input.builderSources.observedAt, now: ctx.now, staleAfterHours: input.builderSources.staleAfterHours, ...(input.builderSources.tier ? { tier: input.builderSources.tier } : {}) })]
+        : []),
+    ],
     dataEvidence: supportingEvidence,
     data: {
       status,

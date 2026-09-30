@@ -16,7 +16,7 @@ export type AgentCapability = (typeof AGENT_CAPABILITIES)[number];
 export const isAgentCapability = (value: string): value is AgentCapability => (AGENT_CAPABILITIES as readonly string[]).includes(value);
 
 export type AgentCapabilityParam = {
-  name: 'project' | 'projects' | 'address' | 'days' | 'types' | 'limit' | 'chainId';
+  name: 'project' | 'projects' | 'address' | 'days' | 'types' | 'limit' | 'building' | 'chainId';
   required: boolean;
   description: string;
 };
@@ -52,12 +52,13 @@ export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabi
   what_changed: {
     id: 'what_changed',
     question: 'What changed with this project, or on Robinhood Chain, in the last N days?',
-    returns: 'Canonical change-ledger events in the window, newest first, with the true total by type, each event with its own time, precision, when HEY knew and its evidence.',
+    returns: 'Canonical change-ledger events in the window, newest first, with the true total by type and how many count as building (led by those), each event with its own time, precision, when HEY knew and its evidence.',
     params: [
       { name: 'project', required: false, description: 'A project slug; omit for the whole chain (projects building on Robinhood Chain).' },
       { name: 'days', required: false, description: '1–30; default 7. The window is on when the event happened, or when HEY detected it where no source dates it.' },
       { name: 'types', required: false, description: 'Change types to keep, comma-separated (build.release, build.ship, build.resumed …).' },
       { name: 'limit', required: false, description: '1–50 events shown; default 25. The total is always the whole window.' },
+      { name: 'building', required: false, description: '"only": events that count toward activity status (the ledger’s countsAsBuilding), leaving out market readings and HEY’s own records.' },
       CHAIN,
     ],
     canonicalReads: ['/api/changes'],
@@ -89,7 +90,7 @@ export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabi
   compare_builders: {
     id: 'compare_builders',
     question: "How do these projects' building records compare over 30 days?",
-    returns: 'Two to four projects side by side on factual builder metrics (status, last meaningful ship, meaningful events this 30 days and the 30 before, release cadence, active weeks, Build Momentum, verification) with each one’s peer cohort; no winner, no order but the one asked.',
+    returns: 'Two to four projects side by side on factual builder metrics (status, last meaningful ship, meaningful events this 30 days and the 30 before, release cadence, active weeks, Build Momentum, verification) with each one’s peer cohort; no winner, no order but the one asked. Fewer than two found is not_found (too_few_projects_found); a comparison with one missing says partial.',
     params: [{ name: 'projects', required: true, description: 'Two to four project slugs, comma-separated.' }, CHAIN],
     canonicalReads: ['/api/compare', '/api/projects/{slug}/snapshot (peer context)'],
     a2aSkill: 'compare_projects',

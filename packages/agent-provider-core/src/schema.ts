@@ -170,6 +170,13 @@ const change = z
     summary: agentTextSchema,
     status: agentClaimStatusSchema,
     countsAsBuilding: z.boolean(),
+    /**
+     * A ship's verification state as HEY records it (2026-09-30, additive):
+     * `SELF_REPORTED` (the project told HEY), `SOURCE_LINKED`,
+     * `PUBLICLY_VERIFIED`, `ADMIN_VERIFIED`, `DISPUTED`. Self-reported and
+     * verified stay visibly distinct (product rule 10). Absent on other events.
+     */
+    verification: code.optional(),
     project: z.object({ slug, url }).strict(),
     evidence: z.array(agentEvidenceRefSchema).max(AGENT_LIMITS.evidencePerClaim),
     source: z.string().max(120),
@@ -227,6 +234,8 @@ const researchData = z
         valuation: z.object({ usd: z.number(), kind: z.enum(['marketCap', 'fdv', 'unspecified']), source: z.string().max(80), observedAt: iso.nullable() }).strict().nullable(),
         valuationWithheld: code.nullable(),
         liquidityUsd: z.number().nullable(),
+        /** The API's qualifier on the liquidity figure (2026-09-30, additive): `launch_inventory` is a launch pool's supply, not a market's depth. */
+        liquidityKind: code.optional(),
         volume24hUsd: z.number().nullable(),
         tokenMarketStatus: code.nullable(),
         url,
@@ -257,10 +266,17 @@ const whatChangedData = z
     types: z.array(code).max(40).nullable(),
     /** Every standing event in the window, counted by the same filter the page reads: a true total, never the page size. */
     total: z.number().int().min(0),
+    /**
+     * How many of `total` count toward activity status, by the ledger's own
+     * `countsAsBuilding` flag (2026-09-30, additive): the rest are context —
+     * market readings, HEY's own records. Equal to `total` under `building=only`.
+     */
+    countsAsBuilding: z.number().int().min(0).optional(),
     byType: z.array(z.object({ type: code, count: z.number().int().min(0) }).strict()).max(40),
     shown: z.number().int().min(0),
     items: z.array(change).max(AGENT_LIMITS.changes),
-    ledger: z.object({ projectorRanAt: iso.nullable(), newestRecordedAt: iso.nullable(), collectionStart: iso.nullable() }).strict(),
+    /** `transitionsFrom` (2026-09-30, additive): when the ledger began recording status moves and reclassifications; none earlier exist. */
+    ledger: z.object({ projectorRanAt: iso.nullable(), newestRecordedAt: iso.nullable(), collectionStart: iso.nullable(), transitionsFrom: iso.nullable().optional() }).strict(),
     /** How to read further: the canonical ledger, which pages with a cursor. */
     more: url,
   })
@@ -330,6 +346,13 @@ const compareData = z
     windowDays: z.literal(30),
     projects: z.array(compareProject).max(AGENT_LIMITS.compareProjects),
     missing: z.array(z.string().max(120)).max(8),
+    /**
+     * Whether a comparison happened (2026-09-30, additive): `complete` — every
+     * project asked for is compared; `partial` — two or more are, and `missing`
+     * names the rest; `not_compared` — fewer than two were found, and the
+     * answer is `status: not_found` with `error.code: too_few_projects_found`.
+     */
+    completeness: z.enum(['complete', 'partial', 'not_compared']).optional(),
     ignored: z.array(z.string().max(120)).max(8),
     /** Whether every project sits in one peer cohort (peers-v1); null when a cohort is unknown. Different cohorts are shown side by side, never placed against each other. */
     sameCohort: z.boolean().nullable(),
@@ -396,6 +419,7 @@ const base = {
       days: z.number().int().optional(),
       types: z.array(code).max(40).optional(),
       limit: z.number().int().optional(),
+      building: z.literal('only').optional(),
     })
     .strict(),
   chain: z.object({ chainId: z.number().int(), name: z.string().max(60) }).strict(),
@@ -450,6 +474,7 @@ export type AgentBuilderStatusData = z.infer<typeof builderStatusData>;
 export type AgentVerifyData = z.infer<typeof verifyData>;
 export type AgentCompareData = z.infer<typeof compareData>;
 export type AgentCompareProject = z.infer<typeof compareProject>;
+export type AgentCompareCompleteness = NonNullable<AgentCompareData['completeness']>;
 export type AgentUnknownsData = z.infer<typeof unknownsData>;
 export type AgentCitation = z.infer<typeof citation>;
 export type AgentBoundaries = z.infer<typeof boundaries>;

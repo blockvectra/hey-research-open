@@ -40,7 +40,17 @@ export type VerifyInput = {
   contract: HeyContract | null;
   /** The project the caller named, as HEY found it. */
   asked?: { slug: string; found: boolean; url: string | null; name?: string; tokenAddress?: string | null };
+  /** When HEY last checked whether the project names its tracked token (the profile's `verifiedAt`); null when unknown. */
+  tokenVerifiedAt?: string | null;
   isEvidenceId?: (id: string) => boolean;
+};
+
+/** Where a token verification's reason was read (2026-09-30): the project's site, its own repository, or the chain. */
+const REASON_SOURCE: Readonly<Record<string, { name: string; type: 'project_site' | 'builder_source' | 'chain' }>> = {
+  onchain_signature: { name: 'on-chain signature', type: 'chain' },
+  deploy_record_in_own_repo: { name: 'project’s own repository', type: 'builder_source' },
+  site_names_contract: { name: 'project’s own site', type: 'project_site' },
+  site_names_another_contract: { name: 'project’s own site', type: 'project_site' },
 };
 
 type Verdict = AgentVerifyData['verdict'];
@@ -127,29 +137,43 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
       statement: derivedText(`${verdict} (${reasonCode}): ${reasons.map((reason) => reason.text).join(' ')}`),
       status: claimStatus,
       value: verdict,
-      source: claimStatus === 'UNKNOWN' ? null : claimStatus === 'FACT' ? { name: 'project’s own voice', type: 'project_site' } : { name: 'hey', type: 'hey_rule' },
-      observedAt: lookupProject?.asOf ?? null,
+      source: claimStatus === 'UNKNOWN' ? null : claimStatus === 'FACT' ? (REASON_SOURCE[tokenVerification?.reason ?? ''] ?? { name: 'project’s own voice', type: 'project_site' }) : { name: 'hey', type: 'hey_rule' },
+      // When HEY checked the token's verification, never the score's time (2026-09-30, methodology review); unknown when not given.
+      observedAt: recorded?.role === 'token' ? (input.tokenVerifiedAt ?? null) : null,
       occurredAt: null,
       precision: null,
-      freshness: 'unknown',
+      freshness: recorded?.role === 'token' && input.tokenVerifiedAt ? familyFreshness('contracts', { observedAt: input.tokenVerifiedAt, now: ctx.now }).freshnessStatus : 'unknown',
       evidence,
       ...(recorded && recorded.role === 'token' ? { explainUrl: `${ctx.baseUrl}/api/projects/${recorded.slug}/explain?fact=token.verification` } : {}),
       reason: reasonCode,
     },
   ];
+  const checkedAt = [input.contract?.freshness.sourceCheckedAt, input.contract?.freshness.proxyCheckedAt].filter((at): at is string => Boolean(at)).sort().at(-1) ?? null;
   if (recorded) {
+    /*
+     * Which project HEY files the contract under is HEY's own record — the
+     * contract registry the canonical reads publish — not a source's claim and
+     * not a rule's verdict (2026-09-30, adversarial review: it had no path to
+     * its basis). It points at the reads that state it: the token lookup for a
+     * tracked token, else the contract read (`associatedProject`, `role`); a
+     * follow-up contract cites its creation record, the deployer link it rests on.
+     */
+    const recordUrl = recorded.role === 'token' ? `${ctx.baseUrl}/api/token/${input.chainId}/${address}` : `${ctx.baseUrl}/api/contracts/${input.chainId}/${address}`;
+    const observed = recorded.role === 'token' ? (input.tokenVerifiedAt ?? null) : checkedAt;
     claims.push({
       id: 'verify.recorded_project',
       dimension: 'contract',
       statement: derivedText(`HEY records this contract under "${recorded.slug}"${recorded.role ? ` as its ${recorded.role === 'token' ? 'tracked token' : recorded.role === 'declared' ? 'recorded contract' : 'deployer’s follow-up contract'}` : ''}.`),
       status: 'DERIVED',
       value: recorded.slug,
-      source: { name: 'hey', type: 'hey_rule' },
-      observedAt: null,
+      source: { name: 'contract registry', type: 'hey_record' },
+      observedAt: observed,
       occurredAt: null,
       precision: null,
-      freshness: 'unknown',
-      evidence: [],
+      freshness: observed ? familyFreshness('contracts', { observedAt: observed, now: ctx.now }).freshnessStatus : 'unknown',
+      evidence: recorded.role === 'followup' ? evidence.filter((ref) => ref.id === input.contract?.creation?.evidenceId) : [],
+      explainUrl: recordUrl,
+      reason: `recorded_as_${recorded.role ?? 'project_contract'}`,
     });
   }
 
@@ -157,12 +181,12 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
   if (verdict === 'UNVERIFIED') unknowns.push({ category: 'NOT_VERIFIED', dimension: 'contractOwnership', statement: heyText('The project has not been seen naming this contract as its own.'), doNotConclude: doNotConclude('NOT_VERIFIED'), reason: reasonCode });
   if (verdict === 'UNKNOWN') unknowns.push({ category: 'UNKNOWN', dimension: 'contractAttribution', statement: heyText('HEY cannot attribute this contract to one published project.'), doNotConclude: doNotConclude('UNKNOWN'), reason: reasonCode });
 
-  const checkedAt = [input.contract?.freshness.sourceCheckedAt, input.contract?.freshness.proxyCheckedAt].filter((at): at is string => Boolean(at)).sort().at(-1) ?? null;
   const answer =
     verdict === 'VERIFIED'
       ? derivedText(`VERIFIED: the project "${recorded?.slug}" itself names ${address}. This is attribution, not a safety reading.`)
       : verdict === 'CONTRACT_MISMATCH'
-        ? derivedText(`CONTRACT_MISMATCH: ${reasons[0]?.text ?? ''}`)
+        ? // Every reason, so the answer says why (benchmark 2026-09-30): the first alone read "HEY records this contract as the project's tracked token", which sounds like a match.
+          derivedText(`CONTRACT_MISMATCH: ${reasons.map((reason) => reason.text).join(' ')}`)
         : verdict === 'UNVERIFIED'
           ? derivedText(`UNVERIFIED: HEY records ${address} under "${recorded?.slug}", and the project has not been seen naming it.`)
           : derivedText(`UNKNOWN: ${reasons[0]?.text ?? 'HEY cannot attribute this contract.'} Missing attribution is not evidence against it.`);

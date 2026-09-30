@@ -22,9 +22,12 @@ export function recordTag(id: string): 'FACT' | 'DERIVED' {
 /**
  * Whether a change event's `summary` is a source's own words (2026-09-30,
  * machine-safe text). A ship's summary is the title the source gave it — a
- * release name, a changelog heading, a commit week's title — passed on as
- * written. Every other ledger family's summary is a sentence HEY composed.
+ * release name, a changelog heading — passed on as written. A week of code
+ * activity is the exception: its summary ("100+ commits since … across 6
+ * contributors") is a sentence HEY composed from the commit counts, so it is
+ * HEY's (adversarial review, 2026-09-30). Every other ledger family's summary
+ * is a sentence HEY composed.
  */
-export function summaryIsSourceText(eventId: string): boolean {
-  return eventId.startsWith('ship:');
+export function summaryIsSourceText(eventId: string, type?: string): boolean {
+  return eventId.startsWith('ship:') && type !== 'build.code_activity';
 }

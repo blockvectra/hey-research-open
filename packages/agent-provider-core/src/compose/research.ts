@@ -3,7 +3,8 @@ import type { HeyProjectSnapshot, HeySummaryLine } from '@hey-research-lab/sdk';
 import { ageBucket, familyFreshness, SNAPSHOT_SOURCE_FAMILY, type AgentFreshnessEntry, type RefreshTier } from '../freshness';
 import type { AgentChange, AgentClaim, AgentFreshness, AgentResponseOf, AgentSourceType } from '../schema';
 import { derivedText, externalText, heyText } from '../text';
-import { agentChange, envelope, evidenceRef, looksLikeEvidenceId, projectApi, type AgentComposeContext } from './common';
+import { countOf, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
+import { agentChange, envelope, evidenceRef, isContextChange, looksLikeEvidenceId, projectApi, type AgentComposeContext } from './common';
 import { projectUnknowns, type CanonicalGap } from './gaps';
 
 /**
@@ -50,17 +51,32 @@ export function lineFreshness(line: Pick<HeySummaryLine, 'freshness' | 'observed
   return Number.isFinite(at) ? ageBucket(Math.max(0, now.getTime() - at)) : 'unknown';
 }
 
-/** One Research Summary line as a claim: the line's own tag, text, evidence and reading time — never restated in other words. */
-export function summaryClaim(line: HeySummaryLine, ctx: AgentComposeContext, isEvidenceId: (id: string) => boolean): AgentClaim {
+/**
+ * One Research Summary line as a claim: the line's own tag, text, evidence and reading time — never restated in other words.
+ *
+ * Two readings of the line's own evidence (2026-09-30, adversarial review):
+ * - a line that repeats a ledger event's source title ("Yesterday: AgentOS
+ *   2026.9.29.post1.") carries a source's words, so the whole line is typed
+ *   `external_source` and quoted as data on every text transport;
+ * - a line whose event is market or usage context (a volume spike as the
+ *   latest change) is `contextOnly`, and tagged no stronger than the event's
+ *   own record tag.
+ */
+export function summaryClaim(line: HeySummaryLine, ctx: AgentComposeContext, isEvidenceId: (id: string) => boolean, changes: readonly AgentChange[] = []): AgentClaim {
   const source = LINE_SOURCE[line.dimension];
   const evidence = line.evidence.filter((entry) => isEvidenceId(entry.id)).slice(0, 12).map((entry) => evidenceRef(ctx.baseUrl, entry.id, entry.url));
+  const lineIds = new Set(line.evidence.map((entry) => entry.id));
+  const event = changes.find((change) => lineIds.has(change.id) || change.evidence.some((ref) => lineIds.has(ref.id)));
+  const quotesSource = event !== undefined && event.summary.contentOrigin === 'external_source' && event.summary.text.length > 0 && line.text.includes(event.summary.text);
+  const context = source.context === true || (event !== undefined && isContextChange(event));
+  const tag = event && line.tag === 'FACT' && event.status === 'DERIVED' ? 'DERIVED' : line.tag;
   return {
     id: `summary.${line.dimension}`,
     dimension: line.dimension,
-    statement: derivedText(line.text),
-    status: line.tag,
+    statement: quotesSource ? externalText(line.text, 'research_summary_quoting_source', event.summary.sourceUrl, 600) : derivedText(line.text),
+    status: tag,
     value: null,
-    source: line.tag === 'UNKNOWN' ? null : line.tag === 'DERIVED' ? { name: 'hey', type: 'hey_rule' } : { name: evidence.length > 0 && line.evidence[0]?.label ? line.evidence[0].label.slice(0, 120) : source.name, type: source.type },
+    source: tag === 'UNKNOWN' ? null : tag === 'DERIVED' ? { name: 'hey', type: 'hey_rule' } : { name: evidence.length > 0 && line.evidence[0]?.label ? line.evidence[0].label.slice(0, 120) : source.name, type: context && event ? 'market_provider' : source.type },
     observedAt: line.observedAt ?? null,
     occurredAt: null,
     precision: null,
@@ -68,7 +84,7 @@ export function summaryClaim(line: HeySummaryLine, ctx: AgentComposeContext, isE
     evidence,
     explainUrl: line.detailUrl,
     ...(line.reason ? { reason: line.reason } : {}),
-    ...(source.context ? { contextOnly: true as const } : {}),
+    ...(context ? { contextOnly: true as const } : {}),
   };
 }
 
@@ -115,7 +131,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
   const verification = snapshot.verification.token;
 
   const claims: AgentClaim[] = [
-    ...snapshot.summary.lines.map((line) => summaryClaim(line, ctx, isEvidenceId)),
+    ...snapshot.summary.lines.map((line) => summaryClaim(line, ctx, isEvidenceId, changes)),
     {
       id: 'build.activity_status',
       dimension: 'build',
@@ -161,7 +177,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         },
     events30d === null
       ? { id: 'build.meaningful_events_30d', dimension: 'build', statement: heyText('Meaningful building events in 30 days are not measured for this project; no count is published, because a zero would mean "not read".'), status: 'UNKNOWN', value: null, source: null, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], reason: 'activity_not_measured', explainUrl: explain('activity.status') }
-      : { id: 'build.meaningful_events_30d', dimension: 'build', statement: derivedText(`${events30d} meaningful building event${events30d === 1 ? '' : 's'} in the last 30 days.`), status: 'DERIVED', value: events30d, source: { name: 'hey', type: 'hey_rule' }, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], explainUrl: explain('activity.status') },
+      : { id: 'build.meaningful_events_30d', dimension: 'build', statement: derivedText(`${countOf(events30d, WORD_MEANINGFUL_BUILDING_EVENT)} in the last 30 days.`), status: 'DERIVED', value: events30d, source: { name: 'hey', type: 'hey_rule' }, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], explainUrl: explain('activity.status') },
     b.buildMomentum === undefined
       ? { id: 'build.momentum', dimension: 'build', statement: heyText('Build Momentum is not measured for this project.'), status: 'UNKNOWN', value: null, source: null, observedAt: scoreAt, occurredAt: null, precision: null, freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], reason: 'not_measured', explainUrl: explain('build.momentum') }
       : { id: 'build.momentum', dimension: 'build', statement: derivedText(`Build Momentum ${b.buildMomentum} (0–100, from development evidence only; never price).`), status: 'DERIVED', value: b.buildMomentum, source: { name: 'hey', type: 'hey_rule' }, observedAt: scoreAt, occurredAt: null, precision: null, freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], explainUrl: explain('build.momentum') },
@@ -277,14 +293,17 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
       buildMomentum: b.buildMomentum,
       usage: snapshot.usage ? { state: snapshot.usage.state, reason: snapshot.usage.reason, ...(snapshot.usage.observedAt ? { observedAt: snapshot.usage.observedAt } : {}) } : null,
       ledger: snapshot.latestChanges.available ? { available: true } : { available: false, reason: snapshot.latestChanges.reason },
+      identity: { name: snapshot.identity.name, symbol: snapshot.identity.symbol ?? null },
     },
     coverageUrl: `${api}/coverage`,
     explainUrl: explain,
   });
 
   const shipWords = b.lastShippedAt ? `, last meaningful ship ${b.lastShippedAt.slice(0, 10)}` : b.activityMeasured === true ? ', no meaningful ship recorded' : '';
-  const eventWords = events30d === null ? 'meaningful events in 30 days not measured' : `${events30d} meaningful event${events30d === 1 ? '' : 's'} in 30 days`;
-  const answer = derivedText(`${slug}: activity status ${status}${shipWords}; ${eventWords}. HEY lists ${unknowns.length} thing${unknowns.length === 1 ? '' : 's'} it does not know under unknowns.`);
+  const eventWords = events30d === null ? 'meaningful events in 30 days not measured' : `${countOf(events30d, WORD_MEANINGFUL_EVENT)} in 30 days`;
+  // A mismatched token is named in the answer itself (2026-09-30, adversarial review), not only in a claim further down.
+  const tokenWords = verification?.status === 'MISMATCH' ? ' The token HEY tracks for it is not the one its own site names: this building does not apply to that token.' : '';
+  const answer = derivedText(`${slug}: activity status ${status}${shipWords}; ${eventWords}.${tokenWords} HEY lists ${countOf(unknowns.length, WORD_THING)} it does not know (coverage gaps and unverified identity) under unknowns.`);
 
   const u = snapshot.usage;
   return envelope(ctx, {
@@ -335,6 +354,8 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
             valuation: market.marketCap ? { usd: market.marketCap.usd, kind: market.marketCap.kind ?? 'unspecified', source: market.marketCap.source.slice(0, 80), observedAt: market.marketCap.observedAt ?? null } : null,
             valuationWithheld: market.valuationWithheld ?? null,
             liquidityUsd: market.liquidity?.usd ?? null,
+            // The API's own qualifier (2026-09-30): `launch_inventory` is a launch pool's supply, not a market's depth.
+            ...(market.liquidity?.kind ? { liquidityKind: market.liquidity.kind } : {}),
             volume24hUsd: market.volume24h?.usd ?? null,
             tokenMarketStatus: market.tokenMarket?.status ?? null,
             url: market.url,

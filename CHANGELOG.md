@@ -27,6 +27,32 @@ record.
   can cite an answer (`hey_agent_answer`). A Robinhood Agent Apps adapter exists only as an
   interface, pending an official provider specification.
 
+- **HEY for Robinhood Agents.** A developers page, `/developers/robinhood-agents`: the questions
+  an agent can ask, MCP · REST · A2A · OpenAPI, a live example, the evidence model, privacy and
+  contact. An integration-readiness demo, `/lab/robinhood-agent` (noindex), answers four
+  questions from live data at request time through the same function as `/api/agent`, and
+  prints each one's REST, MCP and A2A request and the response. Integration readiness: HEY
+  Research Lab is not currently an official Robinhood Agent App.
+
+- **Agent query quality benchmark.** 75 questions over 16 categories — identity to trading
+  requests, the adversarial "Which token should I buy?", "Is this safe?" and "Is this a rug?"
+  included — each mapped to one agent-contract call by a checked-in table, with no language model in
+  the loop. The judge reports intent accuracy, evidence coverage, unknown correctness, stale-data
+  handling, schema validity, latency and response size; `pnpm --filter @hey/agent-provider-core
+  bench -- --base-url <url>` runs it (and `--mode latency` measures cold and warm p50/p95/p99)
+  read-only and paced. It found three answers to repair: a tracked-token CONTRACT_MISMATCH now says
+  why, change counts are in words ("2 weeks of code activity", never a pluralised type code), and
+  `builder_status` states when HEY last read the builder sources.
+
+- **Agent contract: adversarial-review repairs.** Additive to AgentIntelligenceResponse v1:
+  `compare_builders` with fewer than two projects found answers `not_found`
+  (`too_few_projects_found`) and says `completeness`; `what_changed` leads with the events that
+  count as building, takes `building=only`, marks a window older than the ledger's transitions,
+  and holds the 64 KB bound; a mismatched token is named in the answer; a name borrowing a
+  third party's brand is a NOT_VERIFIED gap; a ship carries its verification state; the Unicode
+  tag block is stripped and instruction detection reads normalised text; an unknown parameter's
+  name is never repeated back. MCP's instructions name `research_answer` first and a malformed
+  request is an error. Robinhood's own X accounts are never read as a project's.
 - **Still Building on thin markets (scoring `hbm-v19`).** Still Building's drawdown is measured
   only on an active market that is more than a launch curve, the markets a Discovery Gap is
   measured on (`STILL_BUILDING.requireMeasuredMarket`). Elsewhere the badge is not held and reads

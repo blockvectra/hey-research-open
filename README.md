@@ -221,13 +221,27 @@ From the domain alone, with no JavaScript and no cookies:
 | `https://heyresearch.xyz/mcp` | Hosted MCP (Streamable HTTP); listed in the Official MCP Registry as `io.github.hey-research-lab/hey-research` ([`apps/mcp/server.json`](apps/mcp/server.json)) |
 | `https://heyresearch.xyz/api/hey/profile` | `$HEY` as research data: each utility LIVE, PLANNED, RETIRED or UNKNOWN |
 | `https://heyresearch.xyz/developers/agents` | The guide (Markdown at `/developers/agents.md`) |
-
 | `https://heyresearch.xyz/api/agent` | The agent contract: `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns` — the same answer on REST, MCP (`research_answer`) and A2A |
+| `https://heyresearch.xyz/developers/robinhood-agents` | HEY for Robinhood Agents: the questions, the four interfaces, the evidence model and privacy. Integration readiness; HEY Research Lab is not currently an official Robinhood Agent App. A demo that answers four questions from live data is at `/lab/robinhood-agent` |
 
 An agent that forms a thesis can record it as an
 [AgentResearchReceipt](docs/AGENT_RESEARCH_RECEIPTS.md) — neutral, for any project, checked but
 never stored or endorsed by HEY. HEY gives no trade instructions and runs no agents of its own.
 HEY is not an official Robinhood Agent App.
+
+The agent contract has a deterministic quality benchmark
+([`packages/agent-provider-core/src/benchmark`](packages/agent-provider-core/src/benchmark)): 75
+questions from "What has AgentOS shipped recently?" to "Which token should I buy?", each mapped to
+one call by a checked-in table, judged on the schema, evidence, unknowns, freshness and the absence
+of any trading output. Run it against a deployment, read-only and paced:
+`pnpm --filter @hey/agent-provider-core bench -- --base-url https://heyresearch.xyz`.
+
+An adversarial review from eight perspectives (a platform PM, an integration engineer,
+compliance, security, an AI platform engineer, a builder on the chain, a trader and HEY's own
+methodology) tightened the contract, additively: `what_changed` leads with what counts as building
+and takes `building=only`; a comparison says when it did not happen; the 64 KB bound is held when
+an answer is made; invisible Unicode tag characters are stripped and instruction detection reads
+normalised text; a caller's text is never repeated back as HEY's words.
 
 ## Sharing a record
 

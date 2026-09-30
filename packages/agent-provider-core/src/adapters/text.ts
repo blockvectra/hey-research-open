@@ -24,7 +24,8 @@ function claimLine(claim: AgentClaim): string {
 function changeLine(change: AgentChange): string {
   const when = change.occurredAt ? `${day(change.occurredAt)} (${change.precision})` : `HEY saw it ${day(change.detectedAt)} (${change.precision})`;
   const evidence = change.evidence.length > 0 ? ` · evidence ${change.evidence.map((ref) => ref.id).join(', ')}` : '';
-  return `- ${when} ${change.status} ${change.type} — ${change.project.slug}: ${q(change.summary)}${change.countsAsBuilding ? ' · counts as building' : ''}${evidence}`;
+  const verification = change.verification === 'SELF_REPORTED' ? ' · self-reported by the project, not verified' : change.verification === 'DISPUTED' ? ' · disputed' : '';
+  return `- ${when} ${change.status} ${change.type} — ${change.project.slug}: ${q(change.summary)}${change.countsAsBuilding ? ' · counts as building' : ''}${verification}${evidence}`;
 }
 
 function unknownLine(unknown: AgentUnknown): string {
@@ -55,10 +56,10 @@ function dataLines(response: AgentIntelligenceResponse): string[] {
       const d = response.data;
       return [
         `Window: ${d.window.days} days, ${day(d.window.from)} to ${day(d.window.to)} (by when it happened, else when HEY detected it); scope ${d.scope}${d.types ? `; types ${d.types.join(', ')}` : ''}.`,
-        `Showing ${d.shown} of ${d.total}. Read further with the cursor at ${d.more}`,
+        `Showing ${d.shown} of ${d.total}${d.countsAsBuilding === undefined ? '' : `; ${d.countsAsBuilding} of the ${d.total} count as building`}. Read further, newest first, at ${d.more}`,
         ...(d.byType.length > 0 ? [`By type: ${d.byType.map((row) => `${row.type} ${row.count}`).join(', ')}.`] : []),
         ...d.items.map(changeLine),
-        `Ledger: last projector run ${d.ledger.projectorRanAt ?? 'never'}; collecting since ${d.ledger.collectionStart ?? 'not started'}.`,
+        `Ledger: last projector run ${d.ledger.projectorRanAt ?? 'never'}; collecting since ${d.ledger.collectionStart ?? 'not started'}${d.ledger.transitionsFrom ? `; status moves and reclassifications since ${d.ledger.transitionsFrom}` : ''}.`,
       ];
     }
     case 'builder_status': {
@@ -86,8 +87,8 @@ function dataLines(response: AgentIntelligenceResponse): string[] {
     case 'compare_builders': {
       const d = response.data;
       return [
-        `Window: ${d.windowDays} days; order as requested; same peer cohort: ${d.sameCohort === null ? 'unknown' : d.sameCohort ? 'yes' : 'no'}.`,
-        ...d.projects.map((p) => `- ${p.slug}: ${p.activityStatus}; last meaningful ship ${p.lastMeaningfulShipAt ? day(p.lastMeaningfulShipAt) : 'none recorded'}; meaningful events 30d ${p.meaningfulEvents30d ?? 'not measured'}${p.meaningfulEventsPrevious30d === null ? '' : ` (${p.meaningfulEventsPrevious30d} the 30 before)`}; release cadence ${p.releaseCadence?.medianIntervalDays ?? 'not measured'}${p.releaseCadence?.medianIntervalDays ? ' days' : ''}; active weeks ${p.activeWeeks?.weeks ?? 'not measured'}${p.activeWeeks ? ` of ${p.activeWeeks.windowWeeks}` : ''}; Build Momentum ${p.buildMomentum ?? 'not measured'}; verified builder ${p.verifiedBuilder ? 'yes' : 'no'}; peer cohort ${p.peer?.cohort ?? 'none'}.`),
+        `Window: ${d.windowDays} days; order as requested; comparison ${d.completeness ?? 'complete'}; same peer cohort: ${d.sameCohort === null ? 'unknown' : d.sameCohort ? 'yes' : 'no'}.`,
+        ...d.projects.map((p) => `- ${p.slug}: ${p.activityStatus}; last meaningful ship ${p.lastMeaningfulShipAt ? day(p.lastMeaningfulShipAt) : 'none recorded'}; meaningful events 30d ${p.meaningfulEvents30d ?? 'not measured'}${p.meaningfulEventsPrevious30d === null ? '' : ` (${p.meaningfulEventsPrevious30d} the 30 before)`}; release cadence ${p.releaseCadence?.medianIntervalDays ?? 'not measured'}${p.releaseCadence?.medianIntervalDays ? ' days' : ''}; active weeks ${p.activeWeeks?.weeks == null ? 'not measured' : `${p.activeWeeks.weeks} of ${p.activeWeeks.windowWeeks}`}; Build Momentum ${p.buildMomentum ?? 'not measured'}; verified builder ${p.verifiedBuilder ? 'yes' : 'no'}; peer cohort ${p.peer?.cohort ?? 'none'}.`),
         ...(d.missing.length > 0 ? [`Not found: ${d.missing.join(', ')}.`] : []),
         q(d.method),
         `Not compared: ${d.excludedContext.map((entry) => entry.item).join(', ')}.`,

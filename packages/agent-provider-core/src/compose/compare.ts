@@ -1,9 +1,10 @@
 import type { HeyCompare, HeyPeerContext } from '@hey-research-lab/sdk';
 
 import { familyFreshness } from '../freshness';
-import type { AgentClaim, AgentCompareProject, AgentResponseOf, AgentUnknown } from '../schema';
+import type { AgentClaim, AgentCompareCompleteness, AgentCompareProject, AgentResponseOf, AgentUnknown } from '../schema';
 import { derivedText, externalText, heyText } from '../text';
 import { doNotConclude } from '../unknowns';
+import { countOf, WORD_MEANINGFUL_EVENT } from '../words';
 import { envelope, type AgentComposeContext } from './common';
 
 /**
@@ -84,7 +85,7 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
         : {
             id: `compare.${project.slug}.meaningful_events_30d`,
             dimension: 'build',
-            statement: derivedText(`${project.slug}: ${project.meaningfulEvents30d} meaningful event${project.meaningfulEvents30d === 1 ? '' : 's'} in the last 30 days${project.meaningfulEventsPrevious30d === null ? '' : `, ${project.meaningfulEventsPrevious30d} in the 30 before`}.`),
+            statement: derivedText(`${project.slug}: ${countOf(project.meaningfulEvents30d, WORD_MEANINGFUL_EVENT)} in the last 30 days${project.meaningfulEventsPrevious30d === null ? '' : `, ${project.meaningfulEventsPrevious30d} in the 30 before`}.`),
             status: 'DERIVED',
             value: project.meaningfulEvents30d,
             source: { name: 'hey', type: 'hey_rule' },
@@ -107,22 +108,42 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
   ];
 
   const oldest = Object.values(input.scoredAt).filter((at): at is string => Boolean(at)).sort()[0] ?? null;
-  const lines = projects.map((project) => `${project.slug} ${project.activityStatus}${project.meaningfulEvents30d === null ? ', events not measured' : `, ${project.meaningfulEvents30d} meaningful events in 30 days`}`);
-  const answer = projects.length === 0 ? heyText('HEY found none of these projects published, so there is nothing to compare.') : derivedText(`Side by side over 30 days: ${lines.join('; ')}. No winner: HEY compares building records, not investments.`);
+  const lines = projects.map((project) => `${project.slug} ${project.activityStatus}${project.meaningfulEvents30d === null ? ', events not measured' : `, ${countOf(project.meaningfulEvents30d, WORD_MEANINGFUL_EVENT)} in 30 days`}`);
+  const missing = input.compare.missing.slice(0, 8).map((slug) => slug.slice(0, 120));
+  const quotedMissing = missing.slice(0, 4).map((slug) => `"${slug.slice(0, 80)}"`).join(', ');
+  /*
+   * Whether a comparison happened (2026-09-30, adversarial review): with one
+   * of two projects missing the answer used to be `status: ok`, and an agent
+   * had to read `missing` to learn that nothing was compared. Fewer than two
+   * found is now a refusal in the contract's own vocabulary (`not_found`,
+   * `error.code: too_few_projects_found`) that still carries what was found;
+   * two or more found with one missing is `ok` and says `partial`.
+   */
+  const completeness: AgentCompareCompleteness = projects.length < 2 ? 'not_compared' : missing.length > 0 ? 'partial' : 'complete';
+  const refusedMessage =
+    projects.length === 0
+      ? `HEY found none of these projects published (${quotedMissing}), so there is nothing to compare.`
+      : `HEY found only ${projects[0]!.slug} published; ${quotedMissing} ${missing.length === 1 ? 'is' : 'are'} not a published project, so no comparison was made. ${lines[0]}.`;
+  const answer =
+    completeness === 'not_compared'
+      ? derivedText(refusedMessage)
+      : derivedText(`Side by side over 30 days: ${lines.join('; ')}.${completeness === 'partial' ? ` Not compared, because HEY publishes no such project: ${quotedMissing}.` : ''} No winner: HEY compares building records, not investments.`);
 
   return envelope(ctx, {
     capability: 'compare_builders',
-    status: 'ok',
+    status: completeness === 'not_compared' ? 'not_found' : 'ok',
     subject: { kind: 'projects', projects: projects.map((project) => ({ slug: project.slug, name: project.name, url: project.url })) },
     answer,
-    answerStatus: projects.length === 0 ? 'UNKNOWN' : 'DERIVED',
+    answerStatus: completeness === 'not_compared' ? 'UNKNOWN' : 'DERIVED',
+    ...(completeness === 'not_compared' ? { error: { code: 'too_few_projects_found', message: derivedText(refusedMessage) } } : {}),
     claims,
     unknowns,
     freshness: projects.length > 0 ? [familyFreshness('activity_score', { observedAt: oldest, now: ctx.now })] : [],
     data: {
       windowDays: 30,
       projects,
-      missing: input.compare.missing.slice(0, 8).map((slug) => slug.slice(0, 120)),
+      missing,
+      completeness,
       ignored: input.compare.ignoredSlugs.slice(0, 8).map((slug) => slug.slice(0, 120)),
       sameCohort,
       order: 'as_requested',

@@ -203,12 +203,13 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     {
       instructions: [
         'HEY Research Lab is the builder-discovery layer for Robinhood Chain (chain id 4663).',
-        'It answers: which projects are still building, what they shipped, and which of them the market is not yet weighting as heavily as their building.',
+        'It answers: which projects are still building, what they shipped, what changed, and what HEY does not know. Market figures are context only; nothing here is a view on a token.',
         '',
-        'Start with get_project_snapshot for one project, get_changes for "what changed", find_projects to find or browse, get_project_coverage for what HEY does not know.',
+        'For one bounded answer to a research question, start with research_answer (research_project, what_changed, builder_status, verify_project, compare_builders, unknowns): answer first, tagged claims, freshness, unknowns, evidence ids.',
+        'The other tools read one record in depth: get_project_snapshot, get_changes, get_project_coverage, get_contract; find_projects finds or browses.',
         'Lines are tagged FACT (recorded, with its source), DERIVED (a rule HEY applied) or UNKNOWN (not held). Absent means HEY does not know: a missing valuation is not zero, and a project with no measures has not been measured.',
         'Every listing says how many it showed of how many, and how to read on. Quote the evidence URLs; never state a cause HEY did not record.',
-        `HEY's own token, $HEY, is researched like any other: lookup_token with its contract, then get_project_snapshot; ${publicBase}/api/hey/profile adds its documented utility, each LIVE, PLANNED, RETIRED or UNKNOWN.`,
+        `Disclosure: HEY Research Lab issues its own token, $HEY, on Robinhood Chain. HEY researches it by the same rules as any project, with no ranking bonus; ${publicBase}/api/hey/profile states its utility, each LIVE, PLANNED, RETIRED or UNKNOWN.`,
         '',
         NOT_ADVICE,
       ].join('\n'),
@@ -283,7 +284,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         minVolume: z.number().positive().optional().describe('24h volume, USD.'),
         age: z.enum(AGES).optional().describe('Since the first pool opened.'),
         deployed: z.enum(AGES).optional().describe('Since the contract was deployed.'),
-        sort: z.enum(['activity', 'shipped', 'marketCap', 'newest', 'liquidity', 'volume24h']).optional().describe('Default activity (card completeness, then activity); shipped = most recently shipped first.'),
+        sort: z.enum(['activity', 'shipped', 'marketCap', 'newest', 'liquidity', 'volume24h']).optional().describe('Default activity; shipped = newest ship first.'),
         limit: z.number().int().min(1).max(48).optional().describe('Default 24.'),
         offset: z.number().int().min(0).optional().describe('The offset a previous answer gave.'),
       },
@@ -601,20 +602,33 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         days: z.number().int().min(1).max(30).optional(),
         types: z.array(z.string().regex(/^[a-z_]+\.[a-z_]+$/)).min(1).max(20).optional(),
         limit: z.number().int().min(1).max(50).optional(),
+        building: z.literal('only').optional(),
       },
     },
     async (args) => {
       const raw = Object.fromEntries(Object.entries(args).filter(([, value]) => value !== undefined));
       const parsed = parseAgentRequest(raw);
       if (!parsed.ok) {
-        const text = `${parsed.message} Parameters: research_project, builder_status → project; what_changed → project?, days?, types?, limit?; verify_project → address, project?; compare_builders → projects; unknowns → project or address.`;
+        const text = `${parsed.message} Parameters: research_project, builder_status → project; what_changed → project?, days?, types?, limit?, building? ("only"); verify_project → address, project?; compare_builders → projects; unknowns → project or address.`;
         report({ tool: 'research_answer', ok: false, truncated: false, bytes: text.length, ms: 0 });
         return { content: [{ type: 'text', text }], isError: true };
       }
       const request = parsed.request;
+      let refused = false;
       // The chain is HEY's one chain and the capability is the path: the rest is the query string.
       const { capability: _capability, chainId: _chainId, ...query } = request;
-      return run('research_answer', agentRequestUrl(publicBase, request), async () => renderAgentResponseText(await client.agent.answer(request.capability, query as never)));
+      const result = await run('research_answer', agentRequestUrl(publicBase, request), async () => {
+        const response = await client.agent.answer(request.capability, query as never);
+        refused = response.status === 'invalid_request';
+        return renderAgentResponseText(response);
+      });
+      /*
+       * A malformed request is the caller's to fix (2026-09-30, adversarial
+       * review): it came back as an ordinary answer, so a model could not tell
+       * a refusal from a result. It is `isError` now, with the same text.
+       * not_found and unavailable stay answers: they say what HEY holds.
+       */
+      return refused ? { ...result, isError: true } : result;
     },
   );
 
