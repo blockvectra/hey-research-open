@@ -287,15 +287,19 @@ export function ProjectCard({
       data-testid="project-card"
       data-slug={project.slug}
       data-has-token={hasToken ? 'true' : 'false'}
+      // The whole card is one target (the name's link covers it), so on glass it lifts 1px on hover.
+      data-interactive=""
       className={cn(
         // min-w-0 matters: a grid item defaults to its min-content width, and a
         // long name or a 32-character ticker would otherwise push the card wider
         // than its track and scroll the whole page sideways on mobile.
-        'group relative flex h-full min-w-0 flex-col gap-3 rounded-[14px] border border-hey-border bg-hey-surface p-4 sm:p-5',
-        // Calm: the border and a soft shadow answer the pointer; nothing moves (UI rule 9).
-        'transition-[border-color,box-shadow] duration-150 hover:border-hey-border-strong',
-        'hover:shadow-[0_1px_2px_rgba(10,13,18,0.04),0_12px_28px_-18px_rgba(10,13,18,0.24)]',
-        'focus-within:border-hey-border-strong motion-reduce:transition-none',
+        //
+        // `lg-card` (Luminous Glass, 2026-09-30): the level-2 card material —
+        // translucent fill, edge, specular highlight, radius, and on hover a
+        // 1px lift and a firmer edge — glass by translucency, never by blur.
+        // Every place a card is drawn (the public site, the Terminal) is a
+        // `[data-lg]` scope, so the card carries no surface of its own.
+        'lg-card group relative flex h-full min-w-0 flex-col gap-3 p-4 sm:p-5',
         className,
       )}
     >
@@ -318,7 +322,7 @@ export function ProjectCard({
              */}
             <a
               href={`/project/${project.slug}`}
-              className="line-clamp-2 [overflow-wrap:anywhere] after:absolute after:inset-0 after:rounded-[14px] after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-hey-ink/30"
+              className="line-clamp-2 [overflow-wrap:anywhere] after:absolute after:inset-0 after:rounded-card after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-hey-ink/30"
             >
               {project.name}
             </a>
@@ -392,7 +396,7 @@ export function ProjectCard({
           data-testid="latest-ship"
           data-ship-id={ship.id}
           data-verification={ship.verificationStatus}
-          className="min-w-0 rounded-[8px] bg-hey-subtle px-3 py-2.5"
+          className="min-w-0 rounded-control bg-hey-row-hover px-3 py-2.5 ring-1 ring-inset ring-hey-border"
         >
           <p className="flex items-baseline justify-between gap-3 text-[12.5px] text-hey-muted">
             {/*
@@ -555,7 +559,7 @@ export function CardGrid({ children, className }: { children: ReactNode; classNa
 /** Helpful empty states rather than blank screens (UI/UX V2 section 39). */
 export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   return (
-    <div className="rounded-[6px] border border-dashed border-hey-border bg-hey-subtle p-12 text-center">
+    <div className="lg-panel p-12 text-center" data-variant="empty">
       <p className="text-[15px] font-medium">{title}</p>
       {hint ? <p className="mt-1.5 text-[15px] text-hey-secondary">{hint}</p> : null}
     </div>

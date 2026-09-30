@@ -60,7 +60,10 @@ end-to-end test asserts it.
 
 </details>
 
-Captured from production on 20 September 2026.
+Captured from production on 20 September 2026. Since 30 September 2026 the whole site wears the
+Research Terminal's Luminous Glass material system — Lab Paper in light, graphite in dark, a glass
+header, translucent cards, a search that opens as a palette — with the same simple, card-first
+pages; the screenshots above predate it.
 
 ## In this repository
 

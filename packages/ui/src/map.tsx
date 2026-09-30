@@ -291,16 +291,18 @@ export function EcosystemMapChart({
       aria-label={`Ecosystem map of ${placed.length} projects`}
     >
       {/*
-       * Midnight ground (section 55): the map is HEY's most dramatic surface,
-       * and node opacity only reads as activity against a dark field.
+       * No ground of its own (Luminous Glass, 2026-09-30): the graph sits on
+       * the page's level-2 glass panel, which follows the theme. It used to
+       * paint a Midnight rectangle in both themes (section 55); a faded node
+       * reads as faded against either ground. The faint grid is drawn in the
+       * theme's own hairline token.
        */}
-      <rect width={WIDTH} height={HEIGHT} rx={16} fill="var(--color-midnight-950)" />
       <defs>
         <pattern id="hey-map-grid" width="32" height="32" patternUnits="userSpaceOnUse">
-          <path d="M32 0H0V32" fill="none" stroke="rgba(255,255,255,0.035)" strokeWidth="1" />
+          <path d="M32 0H0V32" fill="none" className="stroke-hey-border" strokeOpacity={0.6} strokeWidth="1" />
         </pattern>
       </defs>
-      <rect width={WIDTH} height={HEIGHT} rx={16} fill="url(#hey-map-grid)" />
+      <rect width={WIDTH} height={HEIGHT} rx={12} fill="url(#hey-map-grid)" />
 
       {edges.map((edge) => {
         const from = byslug.get(edge.from);
@@ -344,7 +346,7 @@ export function EcosystemMapChart({
               x={node.x}
               y={node.y + node.r + 15}
               textAnchor="middle"
-              className="fill-white/70 text-[10px]"
+              className="fill-hey-secondary text-[10px]"
             >
               {node.name.length > 18 ? `${node.name.slice(0, 17)}…` : node.name}
             </text>
@@ -358,8 +360,10 @@ export function EcosystemMapChart({
 /**
  * Legend: narrative colour keys, in the same order the layout uses.
  *
- * `tone` exists because the map sits on Midnight: secondary grey on a dark
- * ground is unreadable, and a legend nobody can read is worse than no legend.
+ * `tone="dark"` is kept for a legend placed on a fixed dark ground (secondary
+ * grey on one is unreadable, and a legend nobody can read is worse than no
+ * legend). The map page itself sits on the theme's glass canvas since
+ * 2026-09-30 and uses the default.
  */
 export function MapLegend({
   legend,
@@ -437,12 +441,12 @@ export function MapClusterList({
             {group.name}
             <span className="ml-2 text-hey-muted">{group.items.length}</span>
           </h2>
-          <ul className="divide-y divide-hey-border rounded-[6px] border border-hey-border bg-hey-surface">
+          <ul className="lg-card divide-y divide-hey-border overflow-hidden">
             {group.items.map((node) => (
               <li key={node.slug}>
                 <a
                   href={`/project/${node.slug}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3"
+                  className="hey-row-link flex items-center justify-between gap-3 px-4 py-3"
                 >
                   <span className="min-w-0">
                     <span className="block truncate text-sm text-hey-ink">{node.name}</span>

@@ -6,6 +6,15 @@ record.
 
 ## Unreleased (2026-09-30)
 
+- **Luminous Glass on the whole site.** The public pages now wear the Research Terminal's material
+  system (founder decision): one stylesheet and one set of primitives for both, Lab Paper in light
+  and graphite in dark, a glass header, level-2 glass cards and panels (translucency, never blur),
+  glass menus and dialogs, a glass footer in place of the dark slab, and a header search that
+  morphs into the Terminal's palette (⌘K). The information design is unchanged: discovery stays
+  card-first, pages answer first, one primary action each. At most three blurred layers at rest on
+  any page; every text colour at 4.5:1 on every surface; Reduce transparency in the menu and the
+  footer, and `prefers-reduced-transparency`, make every surface opaque; reduced motion gets a
+  fade. Embeds, the badge and share images are unchanged.
 - **Valuation plausibility (scoring `hbm-v20`).** A valuation — market cap or FDV — that is at
   least 10,000× the liquidity measured in the same reading, or above $10B on a Robinhood Chain
   token that no listing HEY reads carries (HEY reads CoinGecko), is not plausible from the

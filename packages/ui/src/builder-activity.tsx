@@ -11,9 +11,11 @@ import { cn } from './cn';
  * reader's emoji font, break alignment across platforms, and are announced one
  * by one to a screen reader. The strip is one labelled image instead.
  *
- * Research Blue marks an active week; Signal Gold marks the most recent one, so
- * the eye lands on how recently the project was building rather than on how
- * many squares are filled.
+ * A filled week is secondary ink and the most recent one full ink, so the eye
+ * lands on how recently the project was building rather than on how many
+ * squares are filled. Ink, not Research Blue and Signal Gold (Luminous Glass
+ * pass, 2026-09-30): the weekly bars beside it are ink too, and the legacy
+ * pair read as a second palette on the V7 surface.
  */
 export type BuilderActivityStripProps = {
   /** Oldest week first. */
@@ -43,7 +45,7 @@ export function BuilderActivityStrip({ weeks, size = 'md', className }: BuilderA
             'inline-block rounded-[3px]',
             box,
             !isActive && 'bg-ice-100 ring-1 ring-inset ring-hey-border',
-            isActive && index === lastActive ? 'bg-gold-500' : isActive ? 'bg-blue-500' : '',
+            isActive && index === lastActive ? 'bg-hey-ink' : isActive ? 'bg-hey-secondary' : '',
           )}
         />
       ))}
@@ -124,7 +126,7 @@ export function BuilderActivityWeeks({
               className={cn(
                 'h-9 w-full rounded-[3px]',
                 !isActive && 'bg-paper-deep ring-1 ring-inset ring-hey-border',
-                isActive && index === lastActive ? 'bg-gold-500' : isActive ? 'bg-blue-500' : '',
+                isActive && index === lastActive ? 'bg-hey-ink' : isActive ? 'bg-hey-secondary' : '',
               )}
             />
             <span aria-hidden="true" className="hey-telemetry text-hey-muted">

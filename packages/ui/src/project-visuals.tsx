@@ -52,7 +52,7 @@ export function BuilderActivityChart({
             <div
               className={cn(
                 'w-full rounded-t-[3px]',
-                week.ships > 0 ? 'bg-blue-500' : 'bg-hey-border',
+                week.ships > 0 ? 'bg-hey-secondary' : 'bg-hey-border',
               )}
               style={{ height: week.ships > 0 ? `${(week.ships / max) * 100}%` : '4px' }}
               title={

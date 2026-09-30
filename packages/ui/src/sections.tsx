@@ -28,7 +28,7 @@ export function SectionHeader({
       {href ? (
         <a
           href={href}
-          className="shrink-0 text-sm font-medium text-hey-accent hover:underline underline-offset-4"
+          className="shrink-0 text-sm font-medium text-hey-ink underline decoration-hey-border-strong underline-offset-4 transition-colors hover:decoration-hey-ink"
         >
           {linkLabel} →
         </a>

@@ -237,12 +237,7 @@ function ChartEmpty({
   className?: string;
 }) {
   return (
-    <div
-      className={cn(
-        'rounded-[6px] border border-dashed border-hey-border bg-hey-subtle p-12 text-center',
-        className,
-      )}
-    >
+    <div className={cn('lg-panel p-12 text-center', className)} data-variant="empty">
       <p className="text-[15px] font-medium">{message}</p>
       {hint ? <p className="mt-1.5 text-[15px] text-hey-secondary">{hint}</p> : null}
     </div>

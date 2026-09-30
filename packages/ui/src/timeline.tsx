@@ -93,7 +93,7 @@ export function BuildTimeline({
                   href={item.sourceUrl}
                   rel="nofollow noopener noreferrer"
                   target="_blank"
-                  className="inline-block text-sm text-hey-accent underline underline-offset-4"
+                  className="inline-block text-sm text-hey-ink underline decoration-hey-border-strong underline-offset-4 transition-colors hover:decoration-hey-ink"
                 >
                   View evidence
                 </a>
