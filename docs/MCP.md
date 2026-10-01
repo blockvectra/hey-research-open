@@ -177,13 +177,18 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
 - `building-with-token` — verified shipping, active or resumed, with a token whose market is live.
 - `still-building` — verified activity continuing through a market drawdown HEY tracked, on an
   active market that is more than a launch curve; on a thinner one Still Building is not
-  measured (`stillBuildingWithheld: "market_too_thin"`, hbm-v19).
+  measured (`stillBuildingWithheld: "market_too_thin"`, hbm-v19). With no tracked token, no
+  current market reading or building HEY cannot read it is not measured either (`no_token`,
+  `no_market_reading`, `activity_unknown`, hbm-v21), never "does not hold".
 - `under-the-radar` — **eligible under HEY's Under the Radar rule** (status shipping, active
   or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one
   of them a ship rather than a commit summary; a fresh reading of an active market, not a thin
   one or only a launch curve, for the project's own token) **and a positive Discovery Gap**: the
   market-attention percentile is below the build percentile. A token whose market is not
   active has no Discovery Gap at all (`discoveryGapWithheld: "market_too_thin"`, hbm-v18). A
+  market active only because another pool of the token holds the liquidity is measured on that
+  pool's reading, and not at all when HEY holds none (`active_pool_not_read`, hbm-v21). Since
+  hbm-v21 the stored flag itself requires the positive gap; the listing keeps the test too. A
   positive gap alone is not enough (`explain_fact` calls that one `POSITIVE`). It does not bound
   attention itself; an eligible project at the 90th attention percentile can be Under the Radar
   if it builds at the 99th.

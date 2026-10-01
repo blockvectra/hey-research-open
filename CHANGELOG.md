@@ -14,6 +14,24 @@ record.
   thing in the explain engine as on `/radar` (a positive gap). The agent API's `research_project`
   adds `latestMeaningfulChangeReason` beside a null latest change (additive). A malformed id is a
   404, not a 500. Design polish on cards, the project page, the Discovery radar and the 404.
+- **Scoring `hbm-v21` (founder rulings F1, F2, F6).** A token whose market is active only because
+  another pool of the same token holds the liquidity is measured on that pool's reading — the
+  Discovery Gap, Under the Radar, Still Building and the valuation gate — never on the token's
+  own thin pool; with no current reading of that pool it is not measured
+  (`active_pool_not_read`). Under the Radar is stored only beside a positive Discovery Gap. Still
+  Building reads `NOT_MEASURED`, never `NOT_HELD`, for a project with no tracked token, no current
+  market reading, building HEY cannot read, or no score under the current rules
+  (`stillBuildingWithheld`: `no_token`, `no_market_reading`, `activity_unknown`, `not_scored`,
+  additive); `stillBuilding` keeps its meaning.
+- **Signal rows, the front door and Scan's name.** `/signals` and the Terminal's Signals tab show
+  one row per kind per UTC day — "Trading again · 7 projects" — with its true count, opening to
+  the projects; a kind's own list stays flat. No page, Terminal view or share image prints a
+  signal's "Confidence N%" any more; the API's `confidence` stays, documented as a method
+  statistic (how much evidence the rule read), never a trading confidence. On a 375 px phone the
+  first project card now starts within 600 px of the top of the homepage and Explore: the three
+  answers sit behind a disclosure, the view switch shares a row with Filters, and the pulse strip
+  sits below the cards. Scan has one name: "Scan" in the navigation, "Is anyone building this?" on
+  the page and in its metadata.
 
 ## 2026-09-30
 

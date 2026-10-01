@@ -120,6 +120,13 @@ export const UNDER_THE_RADAR = {
    * shipped. Commits still count toward the two; they no longer suffice alone.
    */
   requireShipBeyondCommits: true,
+  /**
+   * The stored flag holds only beside a positive Discovery Gap (hbm-v21,
+   * founder ruling F6, 2026-10-01). The flag used to store eligibility alone
+   * and every surface added the gap test on read; one project with a gap of
+   * −1.5 carried the flag. The read-side predicate stays as a guard.
+   */
+  requirePositiveGap: true,
 } as const;
 
 /** PRD V4 section 13.3. All thresholds are configuration and versioned. */
@@ -152,6 +159,14 @@ export const STILL_BUILDING = {
    * met". The market status only withholds the badge; it never awards it.
    */
   requireMeasuredMarket: true,
+  /**
+   * Not measured is not "not met" (hbm-v21, founder ruling F2, 2026-10-01):
+   * a project with no tracked token, with no current reading of its market,
+   * or whose building HEY cannot read (activity UNKNOWN) is not measured, and
+   * the scorer persists why (`no_token`, `no_market_reading`,
+   * `activity_unknown`). The badge stays false; only its state changes.
+   */
+  withholdUnmeasured: true,
 } as const;
 
 /** PRD V4 section 12.1. Thresholds are configuration, never hardcoded in UI. */
@@ -175,6 +190,15 @@ export const MARKET_BANDS = {
 export const DISCOVERY_GAP = {
   measuredMarketStatuses: ['ACTIVE_MARKET'],
   unmeasuredLaunchStages: ['CURVE'],
+  /**
+   * A market active only because another pool of the same token holds it is
+   * measured on that pool's reading (hbm-v21, founder ruling F1, 2026-10-01):
+   * the gap, Under the Radar, Still Building and the valuation gate read the
+   * reading of the pool the market classifier chose, never the token's own
+   * thin pool; with no reading of that pool they are not measured
+   * (`active_pool_not_read`).
+   */
+  rescuedMarketOnActivePool: true,
 } as const;
 
 /** Discovery Gap component weights (PRD V4 section 13.1). */

@@ -6,6 +6,12 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Fixed (Still Building state and rescued markets, 2026-10-01, scoring hbm-v21)
+
+- `stillBuildingState` reads `NOT_MEASURED`, never `NOT_HELD`, for a project with no tracked token, no current market reading, building HEY cannot read, or no score under the current rules yet — what the state always meant; it read `NOT_HELD` for these for one day. `stillBuilding` keeps its v1 meaning (false).
+- `HeyStillBuildingWithheld` gains `no_token`, `active_pool_not_read`, `no_market_reading`, `activity_unknown` and `not_scored`, additively; `HeyDiscoveryGapWithheld` gains `active_pool_not_read`: a market active only because another pool of the same token holds the liquidity is measured on that pool's reading, and with no reading of that pool it is not measured. No existing code changes meaning; treat an unknown code as "not measured".
+- `underTheRadar` (where the API sends it) is stored only beside a positive Discovery Gap; readers already applied the same test.
+
 ### Added (valuation plausibility, round 4, 2026-09-30)
 
 - `valuationWithheld` carries two new codes, additively, wherever it is sent (`HeyProject`, the detail's `market`, the snapshot's `market`): `valuation_over_liquidity` (the valuation is at least 10,000× the liquidity measured in the same reading) and `unlisted_over_ceiling` (above $10B on a Robinhood Chain token that no listing HEY reads carries). Such a valuation is not plausible from the readings HEY has: it is never sent as a figure. No existing code changes meaning.

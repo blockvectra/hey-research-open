@@ -9,6 +9,7 @@ import {
   UNDER_THE_RADAR,
 } from './config';
 import { clampScore, percentileRank, renormalizeWeights } from './math';
+import { SCORING_VERSION } from './version';
 
 /**
  * Discovery Gap and Still Building (PRD V4 section 13).
@@ -107,11 +108,18 @@ export function discoveryGapScore(
  * `discoveryGapWithheld`: a missing gap is "not measured, because …", never
  * a zero. In the order the rebuild tests them.
  */
+/*
+ * `active_pool_not_read` (hbm-v21, founder ruling F1, 2026-10-01): the market
+ * is active only because another pool of the same token holds it, and HEY
+ * holds no current reading of that pool to measure on — the thin pool's own
+ * reading is never used instead.
+ */
 export const DISCOVERY_GAP_WITHHELD_REASONS = [
   'no_token',
   'market_not_live',
   'token_not_the_projects',
   'market_too_thin',
+  'active_pool_not_read',
   'no_market_reading',
   'no_build_momentum',
 ] as const;
@@ -123,6 +131,7 @@ export const DISCOVERY_GAP_WITHHELD_WORDS: Readonly<Record<DiscoveryGapWithheldR
   market_not_live: 'Not measured — no live market',
   token_not_the_projects: 'Not measured — the token is not tied to the project',
   market_too_thin: 'Not measured — market too thin',
+  active_pool_not_read: 'Not measured — no reading of the pool that makes the market active',
   no_market_reading: 'Not measured — no current market reading',
   no_build_momentum: 'Not measured — no building recorded',
 };
@@ -145,7 +154,27 @@ export function discoveryGapWithheldReason(value: unknown): DiscoveryGapWithheld
  * the current valuation (`valuation-plausibility.ts`), so there is no current
  * value to measure a drawdown against — not measured, never "not met".
  */
-export const STILL_BUILDING_WITHHELD_REASONS = ['market_not_live', 'token_not_the_projects', 'market_too_thin', 'valuation_not_plausible'] as const;
+/*
+ * hbm-v21 (2026-10-01), appended so the list only grows:
+ * - `active_pool_not_read` (founder ruling F1): a market active only because
+ *   another pool holds it, with no current reading of that pool;
+ * - `no_token`, `no_market_reading`, `activity_unknown` (founder ruling F2):
+ *   no tracked token, no current reading of the market, or building HEY
+ *   cannot read (activity UNKNOWN) — HEY never measured the badge;
+ * - `not_scored` (F2): never persisted by the scorer; the readers send it for
+ *   a project with no score under the current rules yet.
+ */
+export const STILL_BUILDING_WITHHELD_REASONS = [
+  'market_not_live',
+  'token_not_the_projects',
+  'market_too_thin',
+  'valuation_not_plausible',
+  'no_token',
+  'active_pool_not_read',
+  'no_market_reading',
+  'activity_unknown',
+  'not_scored',
+] as const;
 export type StillBuildingWithheldReason = (typeof STILL_BUILDING_WITHHELD_REASONS)[number];
 
 export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<StillBuildingWithheldReason, string>> = {
@@ -153,6 +182,11 @@ export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<StillBuildingWithhel
   token_not_the_projects: DISCOVERY_GAP_WITHHELD_WORDS.token_not_the_projects,
   market_too_thin: DISCOVERY_GAP_WITHHELD_WORDS.market_too_thin,
   valuation_not_plausible: 'Not measured — valuation not plausible',
+  no_token: DISCOVERY_GAP_WITHHELD_WORDS.no_token,
+  active_pool_not_read: DISCOVERY_GAP_WITHHELD_WORDS.active_pool_not_read,
+  no_market_reading: DISCOVERY_GAP_WITHHELD_WORDS.no_market_reading,
+  activity_unknown: 'Not measured — activity unknown',
+  not_scored: 'Not measured — not scored yet',
 };
 
 /** A stored reason read back: one of the list, or undefined for anything else (a row scored before hbm-v19). */
@@ -166,26 +200,55 @@ export function stillBuildingWithheldReason(value: unknown): StillBuildingWithhe
  *
  * - `HELD` — the badge is held (`stillBuilding: true`);
  * - `NOT_HELD` — HEY measured it and the badge is not held;
- * - `NOT_MEASURED` — HEY did not measure it: no score yet, or the scorer
- *   persisted a reason (`stillBuildingWithheld`, hbm-v19) beside the false.
+ * - `NOT_MEASURED` — HEY did not measure it: no score yet, a score from
+ *   superseded rules waiting to be rescored, or the scorer persisted a reason
+ *   (`stillBuildingWithheld`, hbm-v19) beside the false.
  *
  * `stillBuilding` keeps its v1 meaning (false whenever the badge is not held);
- * making it nullable is deferred to a future `/api/v2`. A score written before
- * hbm-v19 carries no reason and reads `NOT_HELD`, as its boolean always did.
+ * making it nullable is deferred to a future `/api/v2`.
+ *
+ * hbm-v21 (founder ruling F2, 2026-10-01): a project with no tracked token,
+ * no current market reading or building HEY cannot read reads NOT_MEASURED,
+ * never NOT_HELD — the scorer now persists a reason for each — and a score
+ * written under superseded rules (its `scoringVersion` is not the current
+ * one) is not measured until it is rescored: the cohort rebuild has already
+ * withdrawn the badge it held, so its false is not a finding.
  */
 export const STILL_BUILDING_STATES = ['HELD', 'NOT_HELD', 'NOT_MEASURED'] as const;
 export type StillBuildingState = (typeof STILL_BUILDING_STATES)[number];
 
 /**
  * The state from what the scorer persisted: the badge (`undefined`/`null`
- * when no score row exists) and the score's components.
+ * when no score row exists), the score's components and, where the reader
+ * has it, the score's `scoringVersion`.
  */
-export function stillBuildingState(stillBuilding: boolean | null | undefined, components: unknown): StillBuildingState {
+export function stillBuildingState(stillBuilding: boolean | null | undefined, components: unknown, scoringVersion?: string | null): StillBuildingState {
   if (stillBuilding === true) return 'HELD';
   if (stillBuilding === null || stillBuilding === undefined) return 'NOT_MEASURED';
+  if (scoringVersionStale(scoringVersion)) return 'NOT_MEASURED';
   const record = typeof components === 'object' && components !== null ? (components as Record<string, unknown>) : {};
   return stillBuildingWithheldReason(record['stillBuildingWithheld']) ? 'NOT_MEASURED' : 'NOT_HELD';
 }
+
+/**
+ * Why a Still Building that is not held was not measured, for the readers
+ * (hbm-v21, F2): `not_scored` for no score or a score from superseded rules,
+ * else the reason the scorer persisted, else nothing (measured, and not met).
+ */
+export function stillBuildingWithheldOf(
+  stillBuilding: boolean | null | undefined,
+  components: unknown,
+  scoringVersion?: string | null,
+): StillBuildingWithheldReason | undefined {
+  if (stillBuilding === true) return undefined;
+  if (stillBuilding === null || stillBuilding === undefined || scoringVersionStale(scoringVersion)) return 'not_scored';
+  const record = typeof components === 'object' && components !== null ? (components as Record<string, unknown>) : {};
+  return stillBuildingWithheldReason(record['stillBuildingWithheld']);
+}
+
+/** A version the reader holds that is not the current one; an unknown version decides nothing. */
+const scoringVersionStale = (scoringVersion: string | null | undefined): boolean =>
+  typeof scoringVersion === 'string' && scoringVersion !== '' && scoringVersion !== SCORING_VERSION;
 
 const ACTIVE_STATUSES: readonly ActivityStatus[] = ['SHIPPING', 'ACTIVE', 'RESUMED'];
 

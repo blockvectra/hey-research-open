@@ -53,6 +53,7 @@ export const GAP_WITHHELD_WORDS: Readonly<Record<HeyDiscoveryGapWithheld, string
   market_not_live: 'Not measured — no live market',
   token_not_the_projects: 'Not measured — the token is not tied to the project',
   market_too_thin: 'Not measured — market too thin',
+  active_pool_not_read: 'Not measured — no reading of the pool that makes the market active',
   no_market_reading: 'Not measured — no current market reading',
   no_build_momentum: 'Not measured — no building recorded',
 };
@@ -68,7 +69,21 @@ export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<HeyStillBuildingWith
   token_not_the_projects: GAP_WITHHELD_WORDS.token_not_the_projects,
   market_too_thin: GAP_WITHHELD_WORDS.market_too_thin,
   valuation_not_plausible: 'Not measured — valuation not plausible',
+  no_token: GAP_WITHHELD_WORDS.no_token,
+  active_pool_not_read: GAP_WITHHELD_WORDS.active_pool_not_read,
+  no_market_reading: GAP_WITHHELD_WORDS.no_market_reading,
+  activity_unknown: 'Not measured — activity unknown',
+  not_scored: 'Not measured — not scored yet',
 };
+
+/**
+ * A withheld code in its words, lower-cased for a sentence (hbm-v21): a code
+ * this build does not know yet — the lists only grow — still reads "not
+ * measured", never a crash or "undefined".
+ */
+function withheldWords(words: Readonly<Record<string, string>>, code: string): string {
+  return (words[code] ?? 'Not measured').replace(/^Not measured/, 'not measured');
+}
 
 /** A coverage state as the tag an agent should read it with: measured is a fact about HEY's record, anything else is a gap. */
 function coverageTag(state: HeyCoverageState): 'FACT' | 'UNKNOWN' {
@@ -197,7 +212,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     b.discoveryGap !== undefined
       ? `- DERIVED Discovery Gap ${b.discoveryGap}`
       : b.discoveryGapWithheld
-        ? `- UNKNOWN Discovery Gap: ${GAP_WITHHELD_WORDS[b.discoveryGapWithheld].replace(/^Not measured/, 'not measured')} (${b.discoveryGapWithheld})`
+        ? `- UNKNOWN Discovery Gap: ${withheldWords(GAP_WITHHELD_WORDS, b.discoveryGapWithheld)} (${b.discoveryGapWithheld})`
         : '- UNKNOWN Discovery Gap: not measured',
   );
   if (b.velocity) {
@@ -215,7 +230,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     lines.push(`- DERIVED STILL BUILDING${evidence ? `: ${evidence}` : ''}. ${STILL_BUILDING_MEANING} (stillBuildingState ${stillState})`);
   } else if (b.stillBuildingWithheld) {
     // Not measured, never "not met" (hbm-v19): the market is not one HEY measures a drawdown on.
-    lines.push(`- UNKNOWN Still Building: ${STILL_BUILDING_WITHHELD_WORDS[b.stillBuildingWithheld].replace(/^Not measured/, 'not measured')} (${b.stillBuildingWithheld}; stillBuildingState ${stillState})`);
+    lines.push(`- UNKNOWN Still Building: ${withheldWords(STILL_BUILDING_WITHHELD_WORDS, b.stillBuildingWithheld)} (${b.stillBuildingWithheld}; stillBuildingState ${stillState})`);
   } else if (stillState === 'NOT_MEASURED') {
     lines.push('- UNKNOWN Still Building: not measured — HEY has not scored this project (stillBuildingState NOT_MEASURED)');
   } else {

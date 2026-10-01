@@ -256,6 +256,30 @@ describe('get_project_snapshot', () => {
     expect(unscored).toContain('stillBuildingState NOT_MEASURED');
   });
 
+  it('says why a tokenless, unread or rescued-but-unread market is not measured (hbm-v21, F1 and F2)', () => {
+    const at = (build: Partial<typeof fx.snapshot.build>) => renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, ...build } } as typeof fx.snapshot, NOW);
+    expect(at({ stillBuilding: false, stillBuildingWithheld: 'no_token', stillBuildingState: 'NOT_MEASURED' })).toContain(
+      '- UNKNOWN Still Building: not measured — no tracked token (no_token; stillBuildingState NOT_MEASURED)',
+    );
+    expect(at({ stillBuilding: false, stillBuildingWithheld: 'activity_unknown', stillBuildingState: 'NOT_MEASURED' })).toContain(
+      '- UNKNOWN Still Building: not measured — activity unknown (activity_unknown; stillBuildingState NOT_MEASURED)',
+    );
+    const rescued = at({ discoveryGapWithheld: 'active_pool_not_read', stillBuilding: false, stillBuildingWithheld: 'active_pool_not_read', stillBuildingState: 'NOT_MEASURED' });
+    expect(rescued).toContain('- UNKNOWN Discovery Gap: not measured — no reading of the pool that makes the market active (active_pool_not_read)');
+    expect(rescued).toContain('- UNKNOWN Still Building: not measured — no reading of the pool that makes the market active (active_pool_not_read; stillBuildingState NOT_MEASURED)');
+    expect(rescued).not.toMatch(/Discovery Gap:? 0\b|Still Building: does not hold/);
+  });
+
+  it('reads a withheld code it does not know yet as "not measured", never a crash (the lists only grow)', () => {
+    const future = renderSnapshot(
+      { ...fx.snapshot, build: { ...fx.snapshot.build, discoveryGapWithheld: 'a_future_code', stillBuilding: false, stillBuildingWithheld: 'a_future_code', stillBuildingState: 'NOT_MEASURED' } } as unknown as typeof fx.snapshot,
+      NOW,
+    );
+    expect(future).toContain('- UNKNOWN Discovery Gap: not measured (a_future_code)');
+    expect(future).toContain('- UNKNOWN Still Building: not measured (a_future_code; stillBuildingState NOT_MEASURED)');
+    expect(future).not.toContain('undefined');
+  });
+
   it('keeps knowledge time apart from an outside listing date', () => {
     expect(text).toContain('FACT first recorded by HEY 2026-06-01 (HEY\'s knowledge time); listed by defillama 2022-10-19 (their date, not HEY\'s)');
   });

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { classifyTokenMarket, marketIsLive, TOKEN_MARKET, type DrainEvidence } from './token-market';
+import { activePoolAddress, classifyTokenMarket, marketIsLive, RESCUED_MARKET_REASON, TOKEN_MARKET, type DrainEvidence } from './token-market';
 
 const now = new Date('2026-09-11T00:00:00Z');
 const at = (daysAgo: number) => new Date(now.getTime() - daysAgo * 86_400_000);
@@ -98,6 +98,8 @@ describe('token market status', () => {
       trades: { observedAt: at(0.2), volume24hUsd: 10_600 },
     });
     expect(priviet).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
+    // Without a named series, no pool is claimed.
+    expect(priviet.activeSeries).toBeUndefined();
     // A day-old other pool no longer speaks for today.
     expect(
       classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 0 }, ...removed(48_000), otherPools: { observedAt: at(2), liquidityUsd: 14_000 } }),
@@ -167,5 +169,54 @@ describe('token market status', () => {
     expect(
       classifyTokenMarket({ now, latest: { ...pool, volume24hUsd: 0 }, peakLiquidityUsd: 42_032_764, trades: { observedAt: at(0.1), volume24hUsd: 56.26 } }),
     ).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'launch_pool_trading' });
+  });
+});
+
+/*
+ * The pool that rescues a market (2026-10-01, founder ruling F1): the
+ * classifier hands back which reading made the market active, and only on
+ * that outcome, so the scorer can measure a rescued market on that pool.
+ */
+describe('the active pool of a rescued market', () => {
+  const pool = 'pool:0x3c41e14e382dd4ca5077ed524c55f0a98393138d1a3b584a0784d27d12b7132d';
+
+  it('names the other pool that makes the market active', () => {
+    const deepstate = classifyTokenMarket({
+      now,
+      latest: { observedAt: at(0), liquidityUsd: 170.43, volume24hUsd: 1.75, fdvUsd: 1_726_920, priceUsd: 0.002132 },
+      peakLiquidityUsd: 8_000,
+      otherPools: { observedAt: at(0.5), liquidityUsd: 6_740.64, volume24hUsd: 1.1, priceUsd: 0.0020355, series: pool },
+    });
+    expect(deepstate).toEqual({ status: 'ACTIVE_MARKET', reason: RESCUED_MARKET_REASON, activeSeries: pool });
+    expect(activePoolAddress(deepstate.activeSeries)).toBe(pool.slice('pool:'.length));
+  });
+
+  it("names HEY's chain pool index when the index is the deeper reading", () => {
+    const rescued = classifyTokenMarket({
+      now,
+      latest: { observedAt: at(0), liquidityUsd: 4.68, volume24hUsd: 1.24 },
+      otherPools: { observedAt: at(0.2), liquidityUsd: 15_575, series: 'chain' },
+      trades: { observedAt: at(0.2), volume24hUsd: 900 },
+    });
+    expect(rescued).toMatchObject({ reason: RESCUED_MARKET_REASON, activeSeries: 'chain' });
+    // The index is every pool together: it names no pool.
+    expect(activePoolAddress(rescued.activeSeries)).toBeUndefined();
+  });
+
+  it('names nothing on any other outcome, even when another pool was read', () => {
+    const ordinary = classifyTokenMarket({
+      now,
+      latest: { observedAt: at(0), liquidityUsd: 40_000, volume24hUsd: 5_000 },
+      otherPools: { observedAt: at(0.2), liquidityUsd: 14_000, series: pool },
+    });
+    expect(ordinary).toEqual({ status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' });
+  });
+
+  it('reads a pool address only from a pool series', () => {
+    expect(activePoolAddress('pool:0xABC')).toBe('0xabc');
+    expect(activePoolAddress('chain')).toBeUndefined();
+    expect(activePoolAddress('pool:')).toBeUndefined();
+    expect(activePoolAddress(null)).toBeUndefined();
+    expect(activePoolAddress(undefined)).toBeUndefined();
   });
 });

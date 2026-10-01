@@ -137,6 +137,29 @@ describe('AgentIntelligenceResponse v1 from the API fixtures', () => {
     const measured = composeResearch(ctx(`${BASE}/api/agent/research_project?project=agentos`), { snapshot, gaps: [] });
     expect(measured.claims.find((claim) => claim.id === 'build.still_building')).toMatchObject({ status: 'DERIVED', value: false });
   });
+
+  it('restates every hbm-v21 reason as unknown with its own words, never a false (F1, F2)', () => {
+    const words: Record<string, RegExp> = {
+      no_token: /no tracked token/,
+      active_pool_not_read: /active only in another pool of the token.*never measured on the token's own thin pool/,
+      no_market_reading: /no current market reading/,
+      activity_unknown: /no builder source it can read/,
+      not_scored: /not scored it under the current rules yet/,
+    };
+    for (const [reason, text] of Object.entries(words)) {
+      const snapshot = clone(fx.snapshot) as HeyProjectSnapshot;
+      snapshot.build.stillBuilding = false;
+      snapshot.build.stillBuildingWithheld = reason as NonNullable<HeyProjectSnapshot['build']['stillBuildingWithheld']>;
+      snapshot.build.stillBuildingState = 'NOT_MEASURED';
+      const research = composeResearch(ctx(`${BASE}/api/agent/research_project?project=agentos`), { snapshot, gaps: [] });
+      const still = research.claims.find((claim) => claim.id === 'build.still_building')!;
+      expect(still, reason).toMatchObject({ status: 'UNKNOWN', value: null, reason });
+      expect(still.statement.text, reason).toMatch(/^Still Building is not measured for this project: /);
+      expect(still.statement.text, reason).toMatch(text);
+      expect(still.statement.text, reason).not.toMatch(/does not hold|buy|undervalued/i);
+      expect(research.data?.builderState, reason).toMatchObject({ stillBuilding: false, stillBuildingWithheld: reason, stillBuildingState: 'NOT_MEASURED' });
+    }
+  });
 });
 
 describe('a source’s words stay data, all the way to the assistant', () => {

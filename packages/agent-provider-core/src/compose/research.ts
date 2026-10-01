@@ -40,6 +40,12 @@ const STILL_BUILDING_WITHHELD_TEXT: Readonly<Record<string, string>> = {
   token_not_the_projects: "the tracked token is not the project's own",
   market_too_thin: 'the market is too thin to hold a drawdown HEY measures',
   valuation_not_plausible: 'its current valuation is not plausible from the readings HEY has, so there is no drawdown HEY measures',
+  // hbm-v21 (2026-10-01, founder rulings F1 and F2).
+  no_token: 'the project has no tracked token, so there is no market drawdown to measure',
+  active_pool_not_read: "the market is active only in another pool of the token, and HEY holds no current reading of that pool; it is never measured on the token's own thin pool",
+  no_market_reading: 'HEY holds no current market reading to measure a drawdown on',
+  activity_unknown: 'HEY holds no builder source it can read, so whether the project kept building is not known',
+  not_scored: 'HEY has not scored it under the current rules yet',
 };
 
 const STILL_BUILDING_MEANING = 'Still Building: verified activity continuing through a market drawdown HEY tracked; a record of what happened, not a prediction and not a buy signal.';

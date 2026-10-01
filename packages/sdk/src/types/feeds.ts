@@ -40,6 +40,7 @@ export type HeySignal = {
   label: string;
   meaning: string;
   severity: string;
+  /** A method statistic (0–1): how much evidence the rule read; it scales `importance`. Never a probability or a trading confidence. */
   confidence: number;
   importance: number;
   /** The window's end or the event's own time; not when HEY recorded it. */

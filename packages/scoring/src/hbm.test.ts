@@ -183,7 +183,7 @@ describe('HEY Build Momentum', () => {
   });
 
   it('stamps the scoring version onto every result', () => {
-    expect(SCORING_VERSION).toBe('hbm-v20');
+    expect(SCORING_VERSION).toBe('hbm-v21');
     expect(computeHbm({ events: [ship(1)], now }).scoringVersion).toBe(SCORING_VERSION);
   });
 

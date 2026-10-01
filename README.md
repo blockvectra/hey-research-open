@@ -132,7 +132,13 @@ rather than guessing.
 A person asks the same question at [heyresearch.xyz/scan](https://heyresearch.xyz/scan), or inside
 the Research Terminal at `/terminal/scan`, where the ⌘K palette offers it for any address HEY does
 not track. One scan behind both, and the same boundary: who is building this, never what the token
-might do next.
+might do next. It has one name (2026-10-01): the navigation says "Scan", and the page asks
+"Is anyone building this?".
+
+HEY Signal's `confidence` (0–1) is a method statistic — how much evidence a rule read, which
+scales `importance` — never a probability or a trading confidence. The API keeps it; since
+2026-10-01 no HEY page prints it, and `/signals` shows one row per kind per UTC day with its true
+count, opening to the projects.
 
 **Builder intelligence in your product, in one call** — the Partner Card (2026-09-30):
 
@@ -364,6 +370,10 @@ stops at 85% of the plan's share; a backfill reads only while a third of the day
   (`discoveryGapWithheld`). Still Building is measured on the same markets only: elsewhere it is
   "not measured", never "not met" (`stillBuildingWithheld`, scoring `hbm-v19`), and
   `stillBuildingState` (`HELD`, `NOT_HELD`, `NOT_MEASURED`) sits beside every `stillBuilding`.
+  A market active only because another pool of the same token holds the liquidity is measured on
+  that pool's reading, never on the thin pool, and not at all when HEY holds no reading of it; a
+  project with no tracked token, or whose building HEY cannot read, is "not measured" too; and
+  Under the Radar is stored only beside a positive gap (scoring `hbm-v21`).
 - **A valuation must be plausible from the readings HEY has.** A market cap or FDV at least
   10,000× the liquidity in the same reading, or above $10B on a Robinhood Chain token no listing
   HEY reads carries, is never printed, never FACT and never a scoring input; it reads "Not

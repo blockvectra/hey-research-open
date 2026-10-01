@@ -741,6 +741,8 @@ export type HeyDiscoveryGapWithheld =
   | 'market_not_live'
   | 'token_not_the_projects'
   | 'market_too_thin'
+  /** 2026-10-01 (hbm-v21, additive): the market is active only in another pool of the token, and HEY holds no current reading of that pool. Never measured on the thin pool instead. */
+  | 'active_pool_not_read'
   | 'no_market_reading'
   | 'no_build_momentum';
 
@@ -751,13 +753,33 @@ export type HeyDiscoveryGapWithheld =
  * launch curve, so there is no drawdown HEY measures. `stillBuilding` keeps
  * its v1 meaning: false whenever the badge is not held.
  */
-export type HeyStillBuildingWithheld = 'market_not_live' | 'token_not_the_projects' | 'market_too_thin' | 'valuation_not_plausible';
+/*
+ * 2026-10-01 (hbm-v21, additive): `no_token` (no tracked token),
+ * `active_pool_not_read` (the market is active only in another pool of the
+ * token, and HEY holds no current reading of it), `no_market_reading` (no
+ * market reading from the last day), `activity_unknown` (no builder source HEY
+ * can read) and `not_scored` (no score under the current rules yet). The list
+ * may grow; treat an unknown value as "not measured".
+ */
+export type HeyStillBuildingWithheld =
+  | 'market_not_live'
+  | 'token_not_the_projects'
+  | 'market_too_thin'
+  | 'valuation_not_plausible'
+  | 'no_token'
+  | 'active_pool_not_read'
+  | 'no_market_reading'
+  | 'activity_unknown'
+  | 'not_scored';
 
 /**
  * Still Building as three states (2026-09-30), beside the v1 boolean:
  * `HELD` (the badge is held), `NOT_HELD` (measured, not held) and
- * `NOT_MEASURED` (no score yet, or the scorer withheld it with a
- * `stillBuildingWithheld` reason). A nullable `stillBuilding` waits for `/api/v2`.
+ * `NOT_MEASURED` (no score yet, a score from superseded rules, or the scorer
+ * withheld it with a `stillBuildingWithheld` reason). A nullable
+ * `stillBuilding` waits for `/api/v2`. Since 2026-10-01 (hbm-v21) a project
+ * with no tracked token, no current market reading or building HEY cannot read
+ * is `NOT_MEASURED`, as the state always meant; it read `NOT_HELD` for a day.
  */
 export type HeyStillBuildingState = 'HELD' | 'NOT_HELD' | 'NOT_MEASURED';
 

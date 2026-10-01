@@ -381,11 +381,19 @@ snapshot as `build.discoveryGapWithheld`, and the reason is never a zero:
 | `market_too_thin` | Not measured — market too thin: the market is live but not active, or only a launch curve. |
 | `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
 | `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token. |
+| `active_pool_not_read` | Not measured — the market is active only because another pool of the same token holds the liquidity, and HEY holds no current reading of that pool (`hbm-v21`). |
 | `no_token` | Not measured — the project has no tracked token. |
 | `no_market_reading` | Not measured — HEY holds no current market reading to place it. |
 | `no_build_momentum` | Not measured — HEY has recorded no building to compare. |
 
-The field is absent beside a gap, and on a score written before `hbm-v18` (that absence is
+**A rescued market (`hbm-v21`, 2026-10-01).** A token whose market is active only because
+another pool of the same token holds the liquidity (market status reason
+`liquidity_in_another_pool`) is measured on the reading of that pool — its valuation, liquidity
+and volume — never on the thin pool the token's own reading describes. With no current reading of
+that pool the gap is absent with `active_pool_not_read`. The card and the detail's `market` still
+show the token's current reading; only what the scorer measures changes.
+
+The list may grow; read an unknown value as "not measured". The field is absent beside a gap, and on a score written before `hbm-v18` (that absence is
 unknown, not "measured"). SDK: `HeyDiscoveryGapWithheld`. OpenAPI:
 `#/components/schemas/DiscoveryGapWithheld`. `explain?fact=discovery_gap` gives the same reason
 as `NOT_MEASURED`.
@@ -406,9 +414,15 @@ same field is on the snapshot as `build.stillBuildingWithheld`:
 | `market_too_thin` | Not measured — market too thin: the market is live but not active, or only a launch curve. |
 | `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
 | `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token. |
+| `valuation_not_plausible` | Not measured — the valuation gate withheld the current valuation (`hbm-v20`). |
+| `no_token` | Not measured — the project has no tracked token (`hbm-v21`). |
+| `active_pool_not_read` | Not measured — the market is active only in another pool of the token, and HEY holds no current reading of it (`hbm-v21`). |
+| `no_market_reading` | Not measured — HEY holds no market reading from the last day (`hbm-v21`). |
+| `activity_unknown` | Not measured — HEY holds no builder source it can read, so whether the project kept building is not known (`hbm-v21`). |
+| `not_scored` | Not measured — HEY has no score for the project under the current scoring version yet (`hbm-v21`; sent by the reader, never stored). |
 
-The field is absent when the badge was measured (held or not met), and on a score written before
-`hbm-v19`. SDK: `HeyStillBuildingWithheld`. OpenAPI: `#/components/schemas/StillBuildingWithheld`.
+The list may grow; read an unknown value as "not measured". The field is absent when the badge
+was measured (held or not met). SDK: `HeyStillBuildingWithheld`. OpenAPI: `#/components/schemas/StillBuildingWithheld`.
 `explain?fact=still_building` gives the same reason as `NOT_MEASURED` with a `null` value.
 
 ### Still Building as three states: `stillBuildingState` (2026-09-30, additive)
@@ -421,10 +435,17 @@ Wherever `stillBuilding` appears — every project card (`/api/projects`, the de
 |---|---|
 | `HELD` | The badge is held (`stillBuilding: true`). |
 | `NOT_HELD` | HEY measured it, and the badge is not held. |
-| `NOT_MEASURED` | HEY did not measure it: no score yet, or the scorer withheld it (`stillBuildingWithheld` says why). |
+| `NOT_MEASURED` | HEY did not measure it: no score under the current scoring version yet, or the scorer withheld it (`stillBuildingWithheld` says why). |
 
 `stillBuilding` keeps its v1 meaning; a nullable `stillBuilding` is deferred to a future `/api/v2`.
-A score written before `hbm-v19` carries no reason and reads `NOT_HELD`, as its boolean always did.
+
+**Corrected 2026-10-01 (`hbm-v21`, a bug fix).** For its first day the field read `NOT_HELD` for
+about 2,800 published projects HEY had never measured: no tracked token, or building HEY cannot
+read. They read `NOT_MEASURED` now, with `stillBuildingWithheld` `no_token` or
+`activity_unknown`, as the state always meant. A score written under a superseded scoring
+version — for about an hour after each version change, until the rescore reaches it — reads
+`NOT_MEASURED` with `not_scored`: the badge it held has been withdrawn, and its `false` is not a
+finding. `NOT_HELD` still means measured and not met.
 SDK: `HeyStillBuildingState`. OpenAPI: `#/components/schemas/StillBuildingState`.
 `explain?fact=still_building` lists it among its inputs.
 
@@ -1540,6 +1561,16 @@ URLs a reader can open), `source` (the HEY table the figures came from), `confid
 `importance` (0–100). Every rule needs an absolute floor and a relative change, fires once per
 project per window, and honours a cooldown; a moderator can mark a false positive, which leaves
 the feed.
+
+**`confidence` is a method statistic (2026-10-01, founder F3).** It says how much evidence the
+rule had to go on — a fixed figure for a rule that reads a state change, or the share of its
+window a rule read (days of volume history against seven, ships against a floor) — clamped to
+0–1, and it scales `importance`, which orders `order=importance`. It is never a probability that
+anything will happen, never a trading confidence and never a recommendation. The field stays, with
+its meaning unchanged; HEY's own pages, the Terminal and the signal share images no longer print it,
+because a percentage beside a market move reads as exactly what it is not. `/signals` itself now
+groups rows of one kind on one UTC day into one row with its true count; the API is unchanged and
+lists every signal.
 
 **Two times, and the page's end (2026-09-26).** `observedAt` is the window's end or the event's
 own time — for `release_published` and `contract_deployed` it is the ship's publication — and is

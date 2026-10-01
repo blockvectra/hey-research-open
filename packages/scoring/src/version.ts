@@ -199,7 +199,32 @@
  * liquidity and volume, the population, Under the Radar's own rules and
  * activity status are unchanged.
  */
-export const SCORING_VERSION = 'hbm-v20' as const;
+/*
+ * hbm-v21 (2026-10-01, founder rulings F1, F2 and F6 of the UI/UX and
+ * data-wiring audit): no weight, threshold or Build Momentum figure changes.
+ * (1) F1, rescued markets: a token that is ACTIVE_MARKET only because another
+ * pool of the same token holds the liquidity (`liquidity_in_another_pool`) is
+ * measured on that pool's reading — the one the market classifier chose,
+ * recorded on the token beside its status — for the Discovery Gap, Under the
+ * Radar, Still Building and the valuation gate, never on the token's own thin
+ * pool. With no current reading of that pool (or when the deepest reading was
+ * HEY's chain pool index, which is every pool together and no pool's reading)
+ * they are not measured: `active_pool_not_read`. The pool used is persisted
+ * as `components.marketActivePool`. (2) F6: the stored Under the Radar flag
+ * holds only beside a positive Discovery Gap
+ * (`UNDER_THE_RADAR.requirePositiveGap`); the read-side predicate stays as a
+ * guard. (3) F2: Still Building is not measured, never "not met", for a
+ * project with no tracked token (`no_token`), no current reading of its market
+ * (`no_market_reading`) or building HEY cannot read (`activity_unknown`);
+ * the badge stays false and only its state changes. On production on the day
+ * (read-only dry run): 5 visible rescued markets (deepstate-1da24f's gap 90.7
+ * on its $170 pool, 32.3 on the $6.7K pool that makes its market active; 3
+ * rescued by the chain pool index, withheld), 1 stored Under the Radar flag on
+ * a gap at or below zero (orbio-so, -1.5), and 2,780 of 4,691 published
+ * states moving from NOT_HELD to NOT_MEASURED
+ * (docs/FOUNDER_DECISIONS_2026_09_30.md).
+ */
+export const SCORING_VERSION = 'hbm-v21' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

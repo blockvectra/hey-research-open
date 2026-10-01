@@ -249,8 +249,14 @@ export type TokenMarketEvidence = {
  */
 export type ChainIndexReading = { observedAt: Date; liquidityUsd: number; depthOnePctUsd?: number };
 
-/** A reading other than the current one: another pool's, or the chain index's. */
-export type SecondReading = { observedAt: Date; liquidityUsd: number; volume24hUsd?: number; priceUsd?: number };
+/**
+ * A reading other than the current one: another pool's, or the chain index's.
+ * `series` names which (2026-10-01): `pool:<address>` for one pool, `chain`
+ * for HEY's chain pool index across every pool — the vocabulary of
+ * `DrainEvidence.series`. The classifier hands it back when that reading
+ * rescues the market (`activeSeries`); it never decides anything.
+ */
+export type SecondReading = { observedAt: Date; liquidityUsd: number; volume24hUsd?: number; priceUsd?: number; series?: string };
 
 /**
  * Whether a second reading describes this token's market at all (2026-09-25),
@@ -314,6 +320,16 @@ export type TokenMarketClassification = {
   status: TokenMarketStatusValue;
   /** Machine key the page turns into a sentence. */
   reason: string;
+  /**
+   * The reading that makes the market active when it is not the current
+   * reading's own pool (2026-10-01, founder ruling F1): the `series` of the
+   * other pool — or of HEY's chain pool index — behind
+   * `liquidity_in_another_pool`, when the evidence named it. Recorded so the
+   * Discovery Gap, Under the Radar, Still Building and the valuation gate are
+   * measured on that pool's reading, never on the thin pool the current
+   * reading describes. Absent on every other outcome.
+   */
+  activeSeries?: string;
 };
 
 const DAY_MS = 86_400_000;
@@ -400,7 +416,8 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     const otherVolume = evidence.otherPools?.volume24hUsd;
     const pooled = otherVolume === undefined ? volume : volume === undefined ? otherVolume : Math.max(volume, otherVolume);
     if (pooled !== undefined && pooled <= TOKEN_MARKET.inactiveVolumeUsd) return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
-    return { status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' };
+    const series = evidence.otherPools?.series;
+    return { status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool', ...(series ? { activeSeries: series } : {}) };
   }
   /*
    * Disagreement claims nothing either way, but it still needs a reading of
@@ -459,6 +476,22 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
   }
   return { status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' };
+}
+
+/**
+ * The reason a market is active only because another pool of the same token
+ * holds it (2026-09-25), and the pool that does (2026-10-01, founder ruling
+ * F1). A "rescued" market is measured on that pool's reading — the Discovery
+ * Gap, Under the Radar, Still Building and the valuation gate — never on the
+ * token's own thin pool; with no reading of that pool, they are not measured.
+ */
+export const RESCUED_MARKET_REASON = 'liquidity_in_another_pool' as const;
+
+/** The pool address an `activeSeries` names (`pool:<address>`, lower case), or undefined for the chain index (`chain`) or nothing. */
+export function activePoolAddress(series: string | null | undefined): string | undefined {
+  if (!series || !series.startsWith('pool:')) return undefined;
+  const address = series.slice('pool:'.length).trim().toLowerCase();
+  return address === '' ? undefined : address;
 }
 
 /**
