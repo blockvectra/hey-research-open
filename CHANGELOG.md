@@ -6,6 +6,58 @@ record.
 
 ## Unreleased (2026-10-01)
 
+- **Machine surfaces say what the page says.** The token lookup and the partner card print the
+  project page's activity words ("Activity not measurable", "No builder signal yet"), and the
+  Research Summary's build line starts with them. Every summary line carries `basis` (additive):
+  a FACT cites a typed evidence id or names a basis no id family can cite. `scanUrl` and
+  `scan_url` are the permalink `/scan/<address>`; `/scan?address=` redirects there. A HoodLock
+  lock's withdrawal reads one sentence in the change feed and the integrity timeline. Usage
+  labels name the UTC day and the measure, the count strip names its units, and duplicate
+  sources (a trailing slash, an X share query) are listed once.
+- **Product value analytics.** HEY's own console now sees whether readers find answers: evidence
+  opened, Terminal entries (admitted, preview or locked), follows, alerts created, Ask HEY
+  outcomes and committed searches from the header palette, suggestions and Explore —
+  bare counts with a fixed word, never a question, address or account; staff sessions are refused.
+  A useful session is defined in code from 2026-10-01 (evidence, a change, a follow, an alert, an
+  answer, a share or a return — never page views). The admin Product value tab shows the
+  funnel, with steps HEY did not measure before that day printed as "not measured", never 0.
+- **The project page tells one story.** Building (a human answer first), the latest ship and why it
+  matters as a build event, product usage, the token market as context, and what HEY does not know
+  yet, in that order, before any deep module. A sparse project says "Builder source not linked
+  yet." once and lists what HEY knows, cannot verify and is still to read. A Research coverage
+  block counts measured of applicable dimensions (states, never a score). The snapshot API's
+  summary build line gains `answer` and `significance` (additive); a token-only usage line now
+  says its calls were transfers and approvals.
+- **Around the latest ship.** The project page, the market page and the Terminal chart's event
+  panel show what HEY observed in the seven days before and after a build event — price move,
+  volume, liquidity, calls, active contracts, the busiest day's distinct caller addresses — each
+  with its state, reason and source, and the fixed caveat that HEY does not claim the release
+  caused it. New read: `GET /api/projects/{slug}/around/{eventId}` (additive).
+- **Follow → notify → return.** Following a project offers its applicable alert presets inline
+  (one press, idempotent, same validation and audit as any rule). `/updates` is a public "What
+  changed", grouped by meaning, opening for a signed-in reader on "Since you were last here"
+  (followed projects and alert projects first); `/watchlist` opens with the short version and
+  `/today` lands on `/updates`. Alert emails, Telegram alert links and the alerts inbox open the
+  change on the project page (`?change=<event id>`). Sign-in from Follow or Create alert names
+  the project. HEY Today's kind counts say what each counts ("other ships", "weeks of code
+  pushed"); its digest words changed accordingly.
+- **First-time discovery.** Explore lists research-ready projects by default — a measured
+  activity status or a source-backed ship in the last 90 days — with "All indexed" one press away
+  and both counts printed; a presentation filter, never a score or an order. The homepage leads
+  with "Research the builder behind the token.", the search, then real cards (Building now, Back
+  in motion, Recently shipped, What changed), each project once. Search answers an address from
+  another chain in plain words, offers next steps on every zero result, and points "what shipped
+  today", "<project> usage" and "compare a b" at the page that answers; `/compare?a=&b=` shows two
+  projects' Research Summary lines side by side with no winner. The header is Explore, Ships, Scan,
+  Terminal, Watchlist and $HEY; `/today` and `/token/<address>` redirect.
+- **Scan answers; demand decides what HEY researches next.** A scan of a contract HEY publishes
+  answers with the project's Research Summary and Follow, Create alert, the page and the Terminal;
+  anything unresearched says "Builder not established yet.", what HEY holds, and "queued for
+  research" only while a research job is really waiting. A new hourly sweep sums what readers ask
+  about (`research_demand`) and queues the canonical site, contract-source and quality-gate jobs
+  for the most-asked under-researched records, capped per run and per day; it never publishes,
+  scores or ranks anything, and a test shows rankings read identically with and without demand.
+  The console's demand page opens with a high-demand gap queue and an audited "Research now".
 - **Design and data-wiring audit.** Every surface that withholds a valuation now says so in the
   same words, with the reason (the market page, the Terminal chart, header and compare, `/hey`).
   Unknown is never printed as zero and a capped read never as a total: a failed Terminal read
@@ -32,6 +84,14 @@ record.
   answers sit behind a disclosure, the view switch shares a row with Filters, and the pulse strip
   sits below the cards. Scan has one name: "Scan" in the navigation, "Is anyone building this?" on
   the page and in its metadata.
+
+- **The Terminal answers questions.** The preview says what early access opens as seven
+  questions about the project in view (from its public identity only), once, with one button; the
+  workspace Overview's Research Brief leads with What changed? · Build · Usage · Market · Contracts
+  · Evidence, each with a way into its view; Ask HEY gives every answer that cannot answer in full
+  a typed reason and next steps (did you mean, open, coverage, scan, follow, alert, a question it
+  answers), and records the outcome. Public links into the Terminal say "early access" to a reader
+  who is not let in; `/terminal/changes` goes to What changed.
 
 ## 2026-09-30
 

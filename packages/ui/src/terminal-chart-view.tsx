@@ -7,6 +7,7 @@ import {
   type ChartTimeframe,
   type CodeActivityInput,
 } from './terminal-chart';
+import type { AroundPanel } from './around-event';
 import { TerminalChartInteractive, type ChartLens } from './terminal-chart-client';
 
 /**
@@ -38,8 +39,11 @@ export function DailyCandleChart({
   timeframe = '1d',
   openBucket,
   code,
+  around,
 }: {
   days: readonly CandleDay[];
+  /** Before and after each build event, by its typed id (2026-10-01): the domain's read, shaped on the server. */
+  around?: Readonly<Record<string, AroundPanel>> | undefined;
   events?: readonly ChartEvent[];
   /** The families the caller offers, in importance order. */
   families?: readonly ChartFamilyMeta[];
@@ -92,6 +96,7 @@ export function DailyCandleChart({
       {...(selectedFamilies ? { initialFamilies: selectedFamilies } : {})}
       {...(symbol ? { symbol } : {})}
       {...(choiceKey ? { choiceKey } : {})}
+      {...(around ? { aroundPanels: around } : {})}
       {...(className ? { className } : {})}
     />
   );

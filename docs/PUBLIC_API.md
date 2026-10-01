@@ -964,6 +964,36 @@ calls-per-method read and the decoded usage read; no provider in the request pat
 Usage is its own dimension: it never feeds activity status, Build Momentum, the Discovery Gap, the
 Radar or any ordering. SDK: `client.projects.usage(slug, { window })` → `HeyProjectUsage`.
 
+### `GET /api/projects/{slug}/around/{eventId}` (2026-10-01, additive)
+
+What HEY measured in the seven days before one of the project's build events, on its own UTC day
+(its ISO week for a `WEEK`-precision event — never an invented hour), and in the seven days after.
+The same canonical read (`aroundEvent`, rules `around-event-v1`) as the Terminal chart's event
+panel and the project page's "Around the latest ship"; HEY's own tables only.
+
+- `eventId` — a typed evidence id: `ship:<uuid>`, `impl:…` or `method:<uuid>`. Another family is a
+  `400 invalid_parameter`; an id the project does not hold, a withdrawn ship, a superseded method
+  fact or an event dated to no day or week is a `404`.
+- `event` — `{ id, kind, title, at, precision, window: "DAY" | "WEEK", anchor: "source_date" |
+  "observed_by_hey", sourceUrl, evidenceUrl }`. `spans` — `{ before, around, after }`, each
+  `{ from, to, days }`; `closedThrough` — the last closed UTC day (the day in progress is never
+  compared).
+- `fields[]` — `price` (close-to-close move, `pct_move`, with `around` for the event's own day or
+  week), `volume` (mean per day of the days read), `liquidity` and `valuation` (at the span's last
+  day read), `calls` (mean per covered day), `activeContracts` (most on one day) and
+  `callerAddresses` (the busiest day's count — never added across days; addresses, not people).
+  Each has `state` (`MEASURED`, `PARTIAL`, `NOT_MEASURED`, `STALE`, `WITHHELD`), `reason`,
+  `before`/`after` sides `{ state, reason?, value, daysCovered, fromDay?, toDay? }`, `changePct`
+  (a level's after against before; null otherwise), `source`, `basis` and `collectedFrom`. A value
+  is `null` whenever nothing was measured, never a zero.
+- Withheld, with the reason as the code: `token_not_the_projects`, `active_pool_not_read` (a
+  rescued market is read on its active pool, F1), `market_too_thin` and `market_not_live` (no price
+  move or valuation), `readings_implausible` (liquidity), `valuation_not_plausible`.
+- `answer` — the sentence the pages print first, absent when nothing after the event is measured;
+  `caveat`; `relation: "observed_around_the_same_time_not_a_cause"`; `contextOnly: true`.
+
+Never an input to activity status, Build Momentum, the Discovery Gap, Still Building or the Radar.
+
 ### `snapshot.peerContext` (2026-09-28, additive)
 
 Peer context, rules `peers-v1` ([`docs/PEERS.md`](PEERS.md)): some of the project's published

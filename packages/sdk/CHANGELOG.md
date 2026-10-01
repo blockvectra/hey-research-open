@@ -6,6 +6,11 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (project story, 2026-10-01)
+
+- `HeySummaryLine.answer?: string` and `HeySummaryLine.significance?: { text, about, receiptUrl }`, additively, on the snapshot's Research Summary build line: the human answer ("Shipping consistently", "Quiet for 34 days", "Builder source not linked yet") and why the newest counted building event matters as a build event ("First release after 18 quiet days."), with the typed evidence id it is about. Derived only from the stored ship dates and types; absent when the record supports no sentence. `text` is unchanged.
+- The usage line's token-only wording is plainer: calls that all reached the ERC-20 functions now read as token transfers and approvals, which trading alone produces.
+
 ### Fixed (Still Building state and rescued markets, 2026-10-01, scoring hbm-v21)
 
 - `stillBuildingState` reads `NOT_MEASURED`, never `NOT_HELD`, for a project with no tracked token, no current market reading, building HEY cannot read, or no score under the current rules yet — what the state always meant; it read `NOT_HELD` for these for one day. `stillBuilding` keeps its v1 meaning (false).

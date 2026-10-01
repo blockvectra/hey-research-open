@@ -16,3 +16,4 @@ export * from './valuation-display';
 export * from './valuation-plausibility';
 export * from './calendar';
 export * from './market-status-words';
+export * from './activity-words';

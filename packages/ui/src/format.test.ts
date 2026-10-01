@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatUsdCompact, plainText, formatRelativeTime } from './format';
+import { formatUsdCompact, oneLineDescription, plainText, formatRelativeTime } from './format';
 
 /**
  * Source text reaches the interface as words, never as markup (QA sweep
@@ -193,5 +193,20 @@ describe('Terminal price and date formats (redesign, 2026-09-26)', () => {
     expect(formatShortDate('2025-09-23', now)).toBe('23 Sep 2025');
     expect(formatShortDate('not a day', now)).toBe('—');
     expect(formatMonthTick('2026-07-01')).toBe('Jul');
+  });
+});
+
+describe('oneLineDescription', () => {
+  it('keeps a short description whole', () => {
+    expect(oneLineDescription('Autonomous agent infrastructure for Robinhood Chain.')).toBe('Autonomous agent infrastructure for Robinhood Chain.');
+    expect(oneLineDescription(null)).toBe('');
+  });
+
+  it('cuts a pasted README to its first sentence, or to whole words', () => {
+    const readme = `# Overview\n\nRobinhood Chain is an Arbitrum Nitro rollup. ${'The execution layer adds a protected gateway and a sealed-bid auction. '.repeat(20)}`;
+    expect(oneLineDescription(readme)).toBe('Overview Robinhood Chain is an Arbitrum Nitro rollup.');
+    const words = oneLineDescription('word '.repeat(80), 60);
+    expect(words.length).toBeLessThanOrEqual(61);
+    expect(words.endsWith('word…')).toBe(true);
   });
 });

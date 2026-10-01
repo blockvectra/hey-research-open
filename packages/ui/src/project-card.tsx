@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from './cn';
+import { emailSafe } from './email-safe';
 import {
   formatEventType,
   formatMarketSource,
@@ -8,6 +9,7 @@ import {
   formatRelativeTime,
   formatUsdCompact,
   formatVerification,
+  oneLineDescription,
   plainText,
   staleReadingAge,
   tickerLabel,
@@ -202,7 +204,8 @@ export function ProjectCard({
   const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
   const shipVerified = ship ? VERIFIED_STATES.has(ship.verificationStatus) : false;
   // Source text as words: launchpad descriptions arrive with Markdown in them (QA sweep 2026-09-04).
-  const description = plainText(project.shortDescription);
+  // A line, not a pasted README (2026-10-01): the two-line clamp hid the rest on screen, never from a screen reader.
+  const description = oneLineDescription(project.shortDescription, 220);
   const shipTitle = ship ? plainText(ship.title) : '';
   /*
    * The one latest-evidence line (public IA pass, 2026-09-28): what shipped
@@ -359,7 +362,7 @@ export function ProjectCard({
             title={`${formatEventType(latest.eventType)}: ${latestTitle}`}
           >
             {/* Wraps at a word when the card is narrow; never an ellipsis in the middle of one. */}
-            <span className="font-medium text-hey-ink">{latestPhrase.what}</span>{' '}
+            <span className="font-medium text-hey-ink">{emailSafe(latestPhrase.what)}</span>{' '}
             <time
               dateTime={latest.publishedAt.toISOString()}
               data-testid="card-last-ship"
@@ -412,7 +415,7 @@ export function ProjectCard({
             </time>
           </p>
           <p className="mt-1 line-clamp-2 break-words text-[14px] font-medium text-hey-ink" title={shipTitle} data-testid="ship-title">
-            {shipTitle}
+            {emailSafe(shipTitle)}
           </p>
           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px]">
             <span className="text-hey-secondary" data-testid="ship-type">

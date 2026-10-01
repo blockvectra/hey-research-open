@@ -19,6 +19,7 @@ import {
   formatUsdCompact,
 } from './format';
 import { MarketChange, describeMarketChange } from './market-change';
+import { AroundEventRows, type AroundPanel } from './around-event';
 import {
   axisOf,
   bandsFor,
@@ -562,11 +563,17 @@ function EventPanel({
   title,
   left,
   top,
+  around,
   onClose,
 }: {
   events: readonly PanelEvent[];
   title: string;
   left: number | null;
+  /**
+   * What HEY measured before and after the panel's first event that has a
+   * reading (2026-10-01): the domain's canonical read, built on the server.
+   */
+  around?: AroundPanel | undefined;
   /** Opened from a callout: hangs under it. Otherwise it stands on the lane. */
   top?: number;
   onClose: (restore: boolean) => void;
@@ -589,6 +596,7 @@ function EventPanel({
       data-testid="chart-event-panel"
       className="hey-chart-panel"
       data-anchor={top === undefined ? 'lane' : 'band'}
+      {...(around ? { 'data-around': '' } : {})}
       style={
         {
           ...(left === null ? {} : { '--panel-left': `${left}px` }),
@@ -630,7 +638,20 @@ function EventPanel({
           </li>
         ))}
       </ul>
-      <p className="mt-2 text-t-micro text-hey-muted">Aligned by time. HEY does not infer that an event caused a price move.</p>
+      {around ? (
+        <section className="mt-3 border-t border-hey-border pt-2.5" aria-label={`${around.headings.before} and ${around.headings.after.toLowerCase()}: ${around.title}`} data-testid="chart-around-event" data-event-id={around.eventId}>
+          <p className="hey-chart-kicker">{around.headings.around}</p>
+          {events.length > 1 ? <p className="mt-0.5 text-t-micro text-hey-muted">{around.title} · {around.when}</p> : null}
+          {around.answer ? (
+            <p className="mt-1 text-t-meta text-hey-ink" data-testid="chart-around-answer">
+              {around.answer}
+            </p>
+          ) : null}
+          <AroundEventRows panel={around} className="mt-2" />
+        </section>
+      ) : (
+        <p className="mt-2 text-t-micro text-hey-muted">Aligned by time. HEY does not infer that an event caused a price move.</p>
+      )}
     </div>
   );
 }
@@ -778,8 +799,11 @@ export function TerminalChartInteractive({
   lensFromUrl = false,
   familyParam = 'layers',
   choiceKey,
+  aroundPanels,
 }: {
   model: ChartModel;
+  /** Before and after each build event, by its typed id (2026-10-01); absent draws the panel without it. */
+  aroundPanels?: Readonly<Record<string, AroundPanel>> | undefined;
   summary: string;
   symbol?: string;
   /**
@@ -1765,6 +1789,7 @@ export function TerminalChartInteractive({
           {panel ? (
             <EventPanel
               events={panelEvents}
+              around={aroundPanels ? panelEvents.map((e) => aroundPanels[e.id]).find((value): value is AroundPanel => value !== undefined) : undefined}
               title={panel.title}
               left={panel.left}
               {...(panel.top === undefined ? {} : { top: panel.top })}

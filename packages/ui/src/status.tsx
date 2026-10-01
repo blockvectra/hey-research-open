@@ -11,6 +11,14 @@ import {
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 
+import {
+  ACTIVITY_NOT_MEASURABLE,
+  ACTIVITY_STATUS_WORDS,
+  activityPresentation,
+  NO_BUILDER_SIGNAL,
+  unknownActivityReason,
+  type UnknownActivityReason,
+} from '@hey/scoring/activity-words';
 import { TOKEN_MARKET_LABELS, type UnconfirmedMarketReason } from '@hey/scoring/market-status-words';
 
 import { cn } from './cn';
@@ -30,64 +38,22 @@ import { cn } from './cn';
 export type ActivityStatusValue =
   'SHIPPING' | 'ACTIVE' | 'QUIET' | 'DORMANT' | 'RESUMED' | 'UNKNOWN';
 
-const STATUS_PRESENTATION: Record<
-  ActivityStatusValue,
-  { Icon: LucideIcon; label: string; text: string; surface: string; help: string }
-> = {
-  SHIPPING: {
-    Icon: PackageCheck,
-    label: 'Shipping',
-    text: 'text-status-shipping',
-    surface: 'bg-status-shipping-bg text-status-shipping',
-    help: 'Shipped something meaningful in the last 7 days.',
-  },
-  ACTIVE: {
-    Icon: Activity,
-    label: 'Active',
-    text: 'text-status-active',
-    surface: 'bg-status-active-bg text-status-active',
-    help: 'Meaningful updates in the last month.',
-  },
-  QUIET: {
-    Icon: Clock3,
-    label: 'Quiet',
-    text: 'text-status-quiet',
-    surface: 'bg-status-quiet-bg text-status-quiet',
-    help: 'No meaningful updates for over a month.',
-  },
-  DORMANT: {
-    Icon: PauseCircle,
-    label: 'Dormant',
-    text: 'text-status-dormant',
-    surface: 'bg-status-dormant-bg text-status-dormant',
-    help: 'No meaningful updates observed for a long time. Not the same as abandoned.',
-  },
-  RESUMED: {
-    Icon: RefreshCcw,
-    label: 'Resumed building',
-    text: 'text-status-resumed',
-    surface: 'bg-status-resumed-bg text-status-resumed',
-    help: 'Started shipping again after a long gap.',
-  },
-  UNKNOWN: {
-    Icon: CircleHelp,
-    label: 'Activity unknown',
-    text: 'text-status-unknown',
-    surface: 'bg-status-unknown-bg text-status-unknown',
-    help: 'Not enough public sources to judge activity yet.',
-  },
+/*
+ * The words come from `@hey/scoring/activity-words` (2026-10-01): the one
+ * table the chip, the Research Summary and the API read, so a project's
+ * status reads the same on the page and in an agent's answer. This file adds
+ * the icon and the colours.
+ */
+const STATUS_STYLE: Record<ActivityStatusValue, { Icon: LucideIcon; text: string; surface: string }> = {
+  SHIPPING: { Icon: PackageCheck, text: 'text-status-shipping', surface: 'bg-status-shipping-bg text-status-shipping' },
+  ACTIVE: { Icon: Activity, text: 'text-status-active', surface: 'bg-status-active-bg text-status-active' },
+  QUIET: { Icon: Clock3, text: 'text-status-quiet', surface: 'bg-status-quiet-bg text-status-quiet' },
+  DORMANT: { Icon: PauseCircle, text: 'text-status-dormant', surface: 'bg-status-dormant-bg text-status-dormant' },
+  RESUMED: { Icon: RefreshCcw, text: 'text-status-resumed', surface: 'bg-status-resumed-bg text-status-resumed' },
+  UNKNOWN: { Icon: CircleHelp, text: 'text-status-unknown', surface: 'bg-status-unknown-bg text-status-unknown' },
 };
 
-/**
- * UNKNOWN with nothing to read (2026-09-13). Most token projects HEY found
- * through trades hold no repository, changelog or feed, so "Activity unknown"
- * on them read as HEY not having looked. It looked; there is nothing to read
- * building from yet, and trading is not building.
- */
-export const NO_BUILDER_SIGNAL = {
-  label: 'No builder signal yet',
-  help: 'No repository, changelog or feed for HEY to read building from. Trading is not building.',
-} as const;
+export { ACTIVITY_NOT_MEASURABLE, activityPresentation, NO_BUILDER_SIGNAL, unknownActivityReason, type UnknownActivityReason };
 
 /**
  * Whether a project reads "No builder signal yet" (2026-09-25): UNKNOWN,
@@ -104,61 +70,12 @@ export function showsNoBuilderSignal(project: {
   return unknownActivityReason(project) === 'no_builder_signal';
 }
 
-/**
- * UNKNOWN with a ship on record and nothing HEY can keep reading
- * (data-correctness pass, 2026-09-28). A Verified Builder whose ships came
- * from a deployment, an X post or a repository now gone printed
- * "VERIFIED BUILDER" directly above "Activity unknown · Last ship 2mo ago":
- * a verdict and its opposite, with nothing joining them. Both are true — the
- * badge says HEY verified what it shipped, the status says HEY cannot tell
- * whether it is shipping now — so the label says why.
- */
-export const ACTIVITY_NOT_MEASURABLE = {
-  label: 'Activity not measurable',
-  help: 'HEY has a ship on record but no repository, changelog or feed it can keep reading, so whether this project is building now cannot be judged. The last ship is the newest evidence HEY holds.',
-} as const;
-
-/**
- * Why an UNKNOWN status is unknown, from three facts every surface already
- * holds: the status, whether HEY reads a builder source (the scorer's
- * `observableBuilderSource`, selected as `hasBuilderSource`) and the last
- * meaningful ship. The one rule behind the chip on the card, the project
- * header, the Terminal catalogue and workspace, and the preview.
- *
- *   - `no_builder_signal` — nothing to read and nothing ever shipped;
- *   - `no_readable_source` — a ship on record, and nothing HEY can keep reading;
- *   - `null` — not UNKNOWN, or UNKNOWN beside a source HEY reads ("Activity unknown").
- *
- * `hasBuilderSource` undefined means the caller does not know, and the chip
- * keeps the plain status word rather than guess.
- */
-export type UnknownActivityReason = 'no_builder_signal' | 'no_readable_source';
-
-export function unknownActivityReason(project: {
-  activityStatus: string;
-  hasBuilderSource?: boolean | undefined;
-  lastMeaningfulShipAt?: Date | string | null | undefined;
-}): UnknownActivityReason | null {
-  if (project.activityStatus !== 'UNKNOWN' || project.hasBuilderSource !== false) return null;
-  return project.lastMeaningfulShipAt ? 'no_readable_source' : 'no_builder_signal';
-}
-
-/** The words for a status, with the reason an UNKNOWN is unknown: the one label map every chip reads. */
-export function activityPresentation(
-  status: ActivityStatusValue,
-  unknownReason?: UnknownActivityReason | null,
-): { label: string; help: string } {
-  if (status === 'UNKNOWN' && unknownReason === 'no_builder_signal') return { label: NO_BUILDER_SIGNAL.label, help: NO_BUILDER_SIGNAL.help };
-  if (status === 'UNKNOWN' && unknownReason === 'no_readable_source') return { label: ACTIVITY_NOT_MEASURABLE.label, help: ACTIVITY_NOT_MEASURABLE.help };
-  const presentation = STATUS_PRESENTATION[status] ?? STATUS_PRESENTATION.UNKNOWN;
-  return { label: presentation.label, help: presentation.help };
-}
-
 export function ActivityChip({
   status,
   variant = 'text',
   noBuilderSource = false,
   unknownReason,
+  answer,
   className,
 }: {
   status: ActivityStatusValue;
@@ -168,12 +85,19 @@ export function ActivityChip({
   noBuilderSource?: boolean;
   /** Why an UNKNOWN is unknown (`unknownActivityReason`); takes precedence over `noBuilderSource`. */
   unknownReason?: UnknownActivityReason | null;
+  /**
+   * The human answer to print in place of the status word (2026-10-01): the
+   * Research Summary's `answer` ("Quiet for 34 days"), same icon and colour.
+   * The status word stays in `data-activity-status` and the title.
+   */
+  answer?: string | undefined;
   className?: string;
 }) {
-  const presentation = STATUS_PRESENTATION[status] ?? STATUS_PRESENTATION.UNKNOWN;
+  const presentation = STATUS_STYLE[status] ?? STATUS_STYLE.UNKNOWN;
   const { Icon } = presentation;
   const reason = unknownReason !== undefined ? unknownReason : noBuilderSource ? 'no_builder_signal' : null;
-  const { label, help } = activityPresentation(status, reason);
+  const { label: statusLabel, help } = activityPresentation(status, reason);
+  const label = answer ?? statusLabel;
 
   return (
     <span
@@ -196,11 +120,11 @@ export function ActivityChip({
 }
 
 export function activityLabel(status: ActivityStatusValue): string {
-  return (STATUS_PRESENTATION[status] ?? STATUS_PRESENTATION.UNKNOWN).label;
+  return (ACTIVITY_STATUS_WORDS[status] ?? ACTIVITY_STATUS_WORDS.UNKNOWN).label;
 }
 
 export function activityHelp(status: ActivityStatusValue): string {
-  return (STATUS_PRESENTATION[status] ?? STATUS_PRESENTATION.UNKNOWN).help;
+  return (ACTIVITY_STATUS_WORDS[status] ?? ACTIVITY_STATUS_WORDS.UNKNOWN).help;
 }
 
 /**

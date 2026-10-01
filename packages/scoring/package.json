@@ -11,7 +11,8 @@
     "./valuation-display": "./src/valuation-display.ts",
     "./valuation-plausibility": "./src/valuation-plausibility.ts",
     "./calendar": "./src/calendar.ts",
-    "./market-status-words": "./src/market-status-words.ts"
+    "./market-status-words": "./src/market-status-words.ts",
+    "./activity-words": "./src/activity-words.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

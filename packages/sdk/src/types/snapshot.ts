@@ -275,6 +275,8 @@ export type HeySummaryTag = 'FACT' | 'DERIVED' | 'UNKNOWN';
 
 export type HeySummaryFreshness = 'fresh' | 'stale' | 'unknown' | 'not_applicable';
 
+export type HeySummaryBasis = 'evidence_record' | 'market_reading' | 'usage_reading' | 'registry_record' | 'canonical_read' | 'ledger_count' | 'coverage_state' | 'rule_output' | 'not_held';
+
 /** One answer-first line: the same line the Terminal, the project page and the MCP print. */
 export type HeySummaryLine = {
   dimension: HeySummaryDimension;
@@ -283,12 +285,25 @@ export type HeySummaryLine = {
   text: string;
   /** Typed public evidence ids (`ship:`, `abi:`, `impl:`, …), each with its receipt on this API. */
   evidence: { id: string; label: string; url?: string; receiptUrl: string }[];
+  /**
+   * What the line rests on (additive, 2026-10-01), in the agent contract's
+   * `evidenceKind` words: `evidence_record` (the ids above), or a basis no
+   * evidence id family can cite — `market_reading`, `usage_reading`,
+   * `registry_record`, `canonical_read`, `ledger_count`, `coverage_state` —
+   * or `rule_output` (DERIVED) and `not_held` (UNKNOWN). A FACT with no
+   * evidence always names one of the uncited bases.
+   */
+  basis: HeySummaryBasis;
   /** Where the detail behind the line is, on this API. */
   detailUrl: string;
   /** When HEY read what the line rests on; absent when it holds no reading. */
   observedAt?: string;
   freshness: HeySummaryFreshness;
   reason?: string;
+  /** The human answer to the line's question; on the build line only (2026-10-01). */
+  answer?: string;
+  /** Why the newest counted building event matters as a build event, with the typed evidence id it is about (2026-10-01). */
+  significance?: { text: string; about: string; receiptUrl: string };
 };
 
 /** The Project Research Summary: one line per dimension that applies. */

@@ -29,6 +29,13 @@ Every answer on HEY is a fact with the source it came from. There is no score of
 worth, no grade, no verdict, and the words *rug* and *scam* appear nowhere in the product — an
 end-to-end test asserts it.
 
+A project page opens with its story: whether the builder is building (in plain words first),
+the latest ship and why it matters as a build event, whether the product is used, the token
+market as context, and what HEY does not know yet. Where HEY has nothing to read building from,
+the page says so once and lists what it does know, what it cannot verify yet and what it is still
+to read. A Research coverage block counts the dimensions HEY measured for that project — a count
+of states, never a score.
+
 ## What it looks like
 
 | Explore the catalogue | One project's evidence |
@@ -64,6 +71,11 @@ Captured from production on 20 September 2026. Since 30 September 2026 the whole
 Research Terminal's Luminous Glass material system — Lab Paper in light, graphite in dark, a glass
 header, translucent cards, a search that opens as a palette — with the same simple, card-first
 pages; the screenshots above predate it.
+
+Since 1 October 2026 a first visit starts research-ready: Explore lists the projects HEY can
+answer the builder question for (a measured activity status or a source-backed ship in the last
+90 days), with every indexed project one press away; the homepage shows real project cards right
+under the search; and a search that matches nothing says why and where to go next.
 
 ## In this repository
 
@@ -133,7 +145,19 @@ A person asks the same question at [heyresearch.xyz/scan](https://heyresearch.xy
 the Research Terminal at `/terminal/scan`, where the ⌘K palette offers it for any address HEY does
 not track. One scan behind both, and the same boundary: who is building this, never what the token
 might do next. It has one name (2026-10-01): the navigation says "Scan", and the page asks
-"Is anyone building this?".
+"Is anyone building this?". A published project answers with its Research Summary and the doors
+to follow it; anything unresearched says "Builder not established yet." and what HEY holds. What
+readers keep asking about is summed per record (`research_demand`) and decides only what HEY
+researches next — an hourly, capped sweep queues the canonical site, contract-source and
+quality-gate jobs for the most-asked under-researched records — never a status, score or rank.
+
+The Research Terminal answers questions (2026-10-01). A reader previewing it is told what early
+access opens as questions about the project in view — full timeline, build evidence, usage history,
+the market around releases, contract intelligence, Ask HEY in depth, watchlist and alerts — filled
+from public identity only. The workspace Overview opens on the Research Brief, its lines led by
+What changed? · Build · Usage · Market · Contracts · Evidence. Ask HEY never dead-ends: each answer
+that cannot answer in full says why and offers next steps, including "Did you mean …" from the one
+search matcher.
 
 HEY Signal's `confidence` (0–1) is a method statistic — how much evidence a rule read, which
 scales `importance` — never a probability or a trading confidence. The API keeps it; since
@@ -259,6 +283,20 @@ when HEY holds meaningful building that is not among the newest changes listed, 
 read as "none" — and the explain engine calls a project Under the Radar only on a positive gap,
 as `/radar` does.
 
+Every line of a project's Research Summary (`summary.lines` on the snapshot) carries a `basis`:
+a FACT either cites typed evidence ids or names a basis no evidence id can cite — a market
+reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
+ledger or a coverage state. A FACT with neither is never published as a FACT.
+
+## Following and what changed
+
+Follow a project and it joins your private watchlist; the project page then offers the alerts
+that can fire for it — a release, a contract implementation change, building resuming, an
+official docs or site change — as one press. `/updates` is the public "What changed": the
+change ledger grouped by meaning, and, signed in, what changed on your projects since you were
+last here first. Every row, alert email and Telegram alert opens the change on the project's
+page, with its source.
+
 ## Sharing a record
 
 Any eligible record — a ship, a release, a deployment, a development spike, a builder resuming,
@@ -276,6 +314,14 @@ same composition as JSON.
 change ledger inside the event's official window. Announcements made at the event are listed apart
 with their official source and are never counted as shipped. The first is HOOD Summit '26
 (`/events/hood-summit-26`).
+
+## Around a ship
+
+A project page shows what HEY observed in the week before and the week after the project's latest
+ship — the token's price move, volume and liquidity, and its contracts' calls and distinct caller
+addresses — each with its state and source, and only where it was measured. The Terminal chart
+shows the same for any event a reader selects, and `GET /api/projects/<slug>/around/<eventId>`
+returns it as JSON. Observed around the same time: HEY never claims a release caused a move.
 
 ## Uniswap on Robinhood Chain
 
@@ -402,6 +448,10 @@ stops at 85% of the plan's share; a backfill reads only while a third of the day
   default; when on, it reads only HEY's own evidence, cites it by id, is labelled as an
   interpretation, and never moves a status, a score or a rank. `AI_PROVIDER` accepts `disabled` or
   `anthropic` only.
+- **Product analytics count research, not people.** HEY's first-party counts (2026-10-01) record
+  that a reader opened evidence, followed, set an alert or got an answer — a fixed word each,
+  never a question, an address or an account; staff and crawlers are not counted. A useful session
+  is defined in code; usage never reaches a status, a score or a ranking.
 - **Every claim carries its source.** And none of them is a buy signal.
 
 The full rules, with the thresholds they use, are on [the methodology page](https://heyresearch.xyz/methodology).

@@ -310,6 +310,23 @@ export function shortenAddress(address: string, head = 6, tail = 4): string {
  * other character exactly as written. Nothing here rewrites what a project
  * said, only how its source happened to punctuate it.
  */
+/**
+ * A description as one short line (product-usefulness pass, 2026-10-01): the
+ * first sentence of its plain text when that fits, otherwise the words that
+ * fit with an ellipsis. CSS line-clamping hid a pasted README on screen but
+ * left all ~350 words in the page for a screen reader and a copy; a result row
+ * and a card carry a line, so the server sends a line.
+ */
+export function oneLineDescription(value: string | null | undefined, max = 160): string {
+  const text = plainText(value).replace(/\s+/g, ' ').trim();
+  if (text.length <= max) return text;
+  const sentence = /^(.{20,}?[.!?])\s/.exec(text.slice(0, max + 1))?.[1];
+  if (sentence) return sentence;
+  const cut = text.slice(0, max);
+  const space = cut.lastIndexOf(' ');
+  return `${(space > max * 0.6 ? cut.slice(0, space) : cut).replace(/[\s,;:.\-–—]+$/u, '')}…`;
+}
+
 export function plainText(value: string | null | undefined): string {
   if (!value) return '';
   const words = plainWords(value);

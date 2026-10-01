@@ -110,7 +110,12 @@ export function summaryClaim(line: HeySummaryLine, ctx: AgentComposeContext, isE
     explainUrl: line.detailUrl,
     ...(line.reason ? { reason: line.reason } : {}),
     ...(context ? { contextOnly: true as const } : {}),
-    ...(tag !== 'UNKNOWN' && evidence.length === 0 && LINE_KIND[line.dimension] ? { evidenceKind: LINE_KIND[line.dimension] } : {}),
+    // The line's own basis first (2026-10-01): the summary names what an uncited FACT rests on, in this contract's words.
+    ...(tag !== 'UNKNOWN' && evidence.length === 0 && line.basis && line.basis !== 'evidence_record' && line.basis !== 'not_held'
+      ? { evidenceKind: line.basis }
+      : tag !== 'UNKNOWN' && evidence.length === 0 && LINE_KIND[line.dimension]
+        ? { evidenceKind: LINE_KIND[line.dimension] }
+        : {}),
   };
 }
 

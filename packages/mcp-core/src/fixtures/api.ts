@@ -119,11 +119,11 @@ export const lookupPublished: HeyTokenLookup = {
     activityAppliesToToken: true,
     badgeUrl: `${BASE}/badge/agentos.svg`,
   },
-  scanUrl: `${BASE}/scan?address=0xcab100000000000000000000000000000000cb07`,
+  scanUrl: `${BASE}/scan/0xcab100000000000000000000000000000000cb07`,
   disclaimer: DISCLAIMER,
 };
 
-export const lookupUnknown: HeyTokenLookup = { chainId: 4663, contractAddress: '0x' + 'a'.repeat(40), status: 'unknown', scanUrl: `${BASE}/scan?address=0x${'a'.repeat(40)}`, disclaimer: DISCLAIMER };
+export const lookupUnknown: HeyTokenLookup = { chainId: 4663, contractAddress: '0x' + 'a'.repeat(40), status: 'unknown', scanUrl: `${BASE}/scan/0x${'a'.repeat(40)}`, disclaimer: DISCLAIMER };
 
 export const snapshot: HeyProjectSnapshot = {
   summary: {
@@ -136,6 +136,7 @@ export const snapshot: HeyProjectSnapshot = {
         tag: 'DERIVED',
         text: 'Shipping: 4 meaningful events in 30 days; latest release yesterday.',
         evidence: [{ id: 'ship:2ac87a66-0000-0000-0000-000000000001', label: 'GitHub release', url: 'https://github.com/agentos/sdk/releases/tag/v0.4', receiptUrl: `${BASE}/api/evidence/ship%3A2ac87a66-0000-0000-0000-000000000001` }],
+        basis: 'evidence_record',
         detailUrl: `${BASE}/api/projects/agentos/timeline`,
         observedAt: '2026-09-24T10:00:00.000Z',
         freshness: 'fresh',
@@ -153,6 +154,7 @@ export const snapshot: HeyProjectSnapshot = {
             receiptUrl: `${BASE}/api/evidence/method%3A5b2d0000-0000-0000-0000-000000000001`,
           },
         ],
+        basis: 'usage_reading',
         detailUrl: `${BASE}/api/projects/agentos/usage`,
         observedAt: '2026-09-25T23:10:00.000Z',
         freshness: 'fresh',
@@ -163,6 +165,7 @@ export const snapshot: HeyProjectSnapshot = {
         tag: 'DERIVED',
         text: 'Liquidity no longer detected: HEY holds a valuation and does not publish it while the market is not live.',
         evidence: [],
+        basis: 'rule_output',
         detailUrl: `${BASE}/api/projects/agentos/market`,
         observedAt: '2026-09-25T18:00:00.000Z',
         freshness: 'fresh',
@@ -174,6 +177,7 @@ export const snapshot: HeyProjectSnapshot = {
         tag: 'UNKNOWN',
         text: '3 gaps: Contract activity (not enough yet), Supply distribution (stale), Locks (no source). HEY has not read a day of the contract’s activity yet.',
         evidence: [],
+        basis: 'coverage_state',
         detailUrl: `${BASE}/api/projects/agentos/coverage`,
         freshness: 'unknown',
         reason: 'no_day_read',
