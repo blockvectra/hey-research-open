@@ -6,6 +6,13 @@ record.
 
 ## Unreleased (2026-10-01)
 
+- **Evidence in words, anchors that exist, one count.** `/evidence/<id>` renders an evidence
+  receipt for a reader (source, dates, whether it counts toward building, what it does not
+  establish) with the JSON as "As data"; reader links open it, while the API, snapshot and Ask HEY
+  API keep citing `/api/evidence/<id>`. Project-page section links come from one anchor list and
+  only to sections the page draws. A cut type-ahead read says "Several" launch records; the
+  project page keeps one current liquidity figure; the market page labels each HEY date; the
+  footer names Robinhood Chain; the palette says "Press Enter to ask" for a question.
 - **Uniswap v4 hooks are recorded.** The v4 pool scan decodes each pool's hook from the
   PoolManager's `Initialize` log it already reads — no extra request, quote-only pools included —
   into `v4_hooks` and, for pools on a tracked token, `v4_hook_pool_links`; hooks Doppler's Airlock

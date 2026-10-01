@@ -173,6 +173,13 @@ results; `/api/compare?a=&b=` mirrors `/compare?a=&b=`, and each compared projec
 `valuation: { usd, kind, label }` beside `marketCapUsd`, which may be an FDV. Explore names its
 sets in one line: published projects · research-ready · verified builders.
 
+Round 3 (2026-10-01): "Evidence →" opens `/evidence/<id>`, the receipt in words — source, dates,
+whether it counts toward building and what it does not establish — with `/api/evidence/<id>` as
+"As data"; machine surfaces still cite the API. Section links are built from one list of the
+project page's anchors and only to a section the page draws. The type-ahead says "Several" where
+its read was cut, the project page holds one current liquidity figure (the rest, each named, are
+the market page's), and the market page names each date by what it dates.
+
 HEY Signal's `confidence` (0–1) is a method statistic — how much evidence a rule read, which
 scales `importance` — never a probability or a trading confidence. The API keeps it; since
 2026-10-01 no HEY page prints it, and `/signals` shows one row per kind per UTC day with its true
