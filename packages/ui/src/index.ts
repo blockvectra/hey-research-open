@@ -45,3 +45,4 @@ export * from './market-change';
 export * from './glyph';
 export * from './ship-phrase';
 export * from './around-event';
+export * from './around-event-beacon';

@@ -7,7 +7,8 @@
   "types": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",
-    "./terminal-chart-view": "./src/terminal-chart-view.tsx"
+    "./terminal-chart-view": "./src/terminal-chart-view.tsx",
+    "./around-event-beacon": "./src/around-event-beacon.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

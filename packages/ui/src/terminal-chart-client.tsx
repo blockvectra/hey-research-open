@@ -20,6 +20,7 @@ import {
 } from './format';
 import { MarketChange, describeMarketChange } from './market-change';
 import { AroundEventRows, type AroundPanel } from './around-event';
+import { announceAroundEventOpened } from './around-event-beacon';
 import {
   axisOf,
   bandsFor,
@@ -579,6 +580,11 @@ function EventPanel({
   onClose: (restore: boolean) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const aroundId = around?.eventId;
+  useEffect(() => {
+    // A reader selected an event whose before-and-after rows HEY holds: one `around_event.opened` per opening (round 2).
+    if (aroundId) announceAroundEventOpened('terminal', aroundId);
+  }, [aroundId]);
   useEffect(() => {
     // The first evidence link, else the close button.
     (ref.current?.querySelector<HTMLElement>('li a') ?? ref.current?.querySelector<HTMLElement>('button'))?.focus();

@@ -34,7 +34,10 @@ the latest ship and why it matters as a build event, whether the product is used
 market as context, and what HEY does not know yet. Where HEY has nothing to read building from,
 the page says so once and lists what it does know, what it cannot verify yet and what it is still
 to read. A Research coverage block counts the dimensions HEY measured for that project — a count
-of states, never a score.
+of states, never a score. The badge and the story read one table of research-level words, so a
+"Researched" page never says "Not researched yet", and a Verified Builder whose ships came from a
+deployment reads "Verified builder · no shipping source HEY can read yet", never "not linked". A
+latest change that is a market or lock event says so, and its link opens that event's own record.
 
 ## What it looks like
 
@@ -158,6 +161,17 @@ from public identity only. The workspace Overview opens on the Research Brief, i
 What changed? · Build · Usage · Market · Contracts · Evidence. Ask HEY never dead-ends: each answer
 that cannot answer in full says why and offers next steps, including "Did you mean …" from the one
 search matcher.
+
+Search, What changed and Compare say one thing (2026-10-01). The header type-ahead lists projects
+first, labels an empty page that shares a researched project's name, and folds launch records of
+one name into a single row that opens the search page (`emptyNamesake` and `moreLaunchRecords` on
+`/api/search/suggest`, additive). A question typed into search is answered — a question about one
+project with its latest ship and Research Summary lines, anything else with where Ask HEY answers
+it — never "nothing matches". "What changed" is always `/updates`; HEY Signal is "Signals", and
+each page says what its count counts. "Compare with…" sits on every project page and under search
+results; `/api/compare?a=&b=` mirrors `/compare?a=&b=`, and each compared project carries
+`valuation: { usd, kind, label }` beside `marketCapUsd`, which may be an FDV. Explore names its
+sets in one line: published projects · research-ready · verified builders.
 
 HEY Signal's `confidence` (0–1) is a method statistic — how much evidence a rule read, which
 scales `importance` — never a probability or a trading confidence. The API keeps it; since
@@ -322,6 +336,9 @@ ship — the token's price move, volume and liquidity, and its contracts' calls 
 addresses — each with its state and source, and only where it was measured. The Terminal chart
 shows the same for any event a reader selects, and `GET /api/projects/<slug>/around/<eventId>`
 returns it as JSON. Observed around the same time: HEY never claims a release caused a move.
+Collection starts at the first price, liquidity or volume reading — not at a day that holds
+back-filled trade counts alone — and a ship before it says when HEY began reading
+(`market.collectedFrom`, `usage.collectedFrom`).
 
 ## Uniswap on Robinhood Chain
 

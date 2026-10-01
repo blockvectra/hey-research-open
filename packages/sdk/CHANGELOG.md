@@ -6,6 +6,12 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (search, compare, round 2, 2026-10-01)
+
+- `HeySearchSuggestions.moreLaunchRecords?: boolean` and `emptyNamesake?: true` on a project suggestion, additively: whether HEY may hold more launch records matching `q` than the rows list (the search page lists them all), and a published page with no token, ship or builder signal that shares its name with a fuller suggestion (listed after the other projects). The `suggestions` array keeps its shape.
+- `HeyCompare.projects[].valuation?: { usd, kind, label }`, additively: the figure `marketCapUsd` carries, with its kind and the words HEY prints it under ("Market cap" or "Fully diluted valuation"). `marketCapUsd` keeps its name and meaning — the valuation the page prints, which may be an FDV.
+- `GET /api/compare?a=&b=` is the same request as `?slugs=a,b` (`slugs` wins when both are sent).
+
 ### Added (project story, 2026-10-01)
 
 - `HeySummaryLine.answer?: string` and `HeySummaryLine.significance?: { text, about, receiptUrl }`, additively, on the snapshot's Research Summary build line: the human answer ("Shipping consistently", "Quiet for 34 days", "Builder source not linked yet") and why the newest counted building event matters as a build event ("First release after 18 quiet days."), with the typed evidence id it is about. Derived only from the stored ship dates and types; absent when the record supports no sentence. `text` is unchanged.

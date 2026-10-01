@@ -263,9 +263,12 @@ export type HeyCompare = {
     verifiedBuilder: boolean;
     sources: { verified: number; total: number };
     tokenMarketStatus?: string;
+    /** The valuation the project page prints — a market cap or an FDV; `valuationKind` (and `valuation.kind`) say which. Named so since 2026-09-24. */
     marketCapUsd?: number;
     /** `fdv` when the figure is the fully diluted valuation standing in for a market cap. */
     valuationKind?: 'marketCap' | 'fdv';
+    /** The same figure with its kind and the words HEY prints it under, "Market cap" or "Fully diluted valuation" (additive, 2026-10-01). Absent exactly when `marketCapUsd` is. */
+    valuation?: { usd: number; kind: 'marketCap' | 'fdv'; label: string };
     /** Why `marketCapUsd` is absent although HEY holds a reading (round 4, 2026-09-30): the list's `valuationWithheld` code. */
     valuationWithheld?: string;
     /** The liquidity the project page prints: the current reading's, else the token's last recorded depth (2026-09-25). */
@@ -396,8 +399,13 @@ export type HeyPartnerSignal = {
 
 /** One type-ahead row: a published project, or a launch record typed as one (never presented as a project). */
 export type HeySearchSuggestion =
-  | { type: 'project'; name: string; symbol?: string; contract?: string; target: string }
+  /** `emptyNamesake` (additive, 2026-10-01): a page with no token, ship or builder signal recorded that shares its name with a fuller suggestion; listed after the other projects. */
+  | { type: 'project'; name: string; symbol?: string; contract?: string; target: string; emptyNamesake?: true }
   | { type: 'launch'; name: string; symbol?: string; contract: string; launchedVia: string; target: string };
 
-/** `GET /api/search/suggest?q=`: at most eight rows, HEY's own tables only. */
-export type HeySearchSuggestions = { q: string; suggestions: HeySearchSuggestion[] };
+/**
+ * `GET /api/search/suggest?q=`: at most eight rows, HEY's own tables only.
+ * `moreLaunchRecords` (additive, 2026-10-01): true when HEY may hold more
+ * launch records matching `q` than the rows list; the search page lists them.
+ */
+export type HeySearchSuggestions = { q: string; suggestions: HeySearchSuggestion[]; moreLaunchRecords?: boolean };

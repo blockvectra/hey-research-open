@@ -20,6 +20,7 @@ import {
   type UnknownActivityReason,
 } from '@hey/scoring/activity-words';
 import { TOKEN_MARKET_LABELS, type UnconfirmedMarketReason } from '@hey/scoring/market-status-words';
+import { RESEARCH_LEVEL_WORDS } from '@hey/scoring/research-level-words';
 
 import { cn } from './cn';
 
@@ -159,25 +160,11 @@ export function StillBuildingBadge({ className }: { className?: string }) {
  */
 export type ResearchLevelValue = 'INDEXED' | 'RESEARCHED' | 'VERIFIED_BUILDER';
 
-const RESEARCH_PRESENTATION: Record<
-  ResearchLevelValue,
-  { label: string; className: string; help: string }
-> = {
-  INDEXED: {
-    label: 'Indexed',
-    className: 'border-hey-border bg-ice-100 text-hey-secondary',
-    help: 'Verified on Robinhood Chain. Not researched yet.',
-  },
-  RESEARCHED: {
-    label: 'Researched',
-    className: 'border-blue-300 bg-blue-soft text-blue-600',
-    help: 'HEY has enriched this project from public sources.',
-  },
-  VERIFIED_BUILDER: {
-    label: 'Verified Builder',
-    className: 'border-gold-300 bg-gold-soft text-gold-dark',
-    help: 'HEY holds verified evidence of shipping.',
-  },
+/** The words are `RESEARCH_LEVEL_WORDS` (`@hey/scoring`), the table the build line and "What HEY checked" read too. */
+const RESEARCH_PRESENTATION: Record<ResearchLevelValue, { label: string; className: string; help: string }> = {
+  INDEXED: { ...RESEARCH_LEVEL_WORDS.INDEXED, className: 'border-hey-border bg-ice-100 text-hey-secondary' },
+  RESEARCHED: { ...RESEARCH_LEVEL_WORDS.RESEARCHED, className: 'border-blue-300 bg-blue-soft text-blue-600' },
+  VERIFIED_BUILDER: { ...RESEARCH_LEVEL_WORDS.VERIFIED_BUILDER, className: 'border-gold-300 bg-gold-soft text-gold-dark' },
 };
 
 export function ResearchLevelBadge({

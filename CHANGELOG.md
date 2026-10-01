@@ -6,6 +6,28 @@ record.
 
 ## Unreleased (2026-10-01)
 
+- **The project page agrees with itself.** One table of research-level words (`@hey/scoring`)
+  feeds the badge, "What HEY checked" and the summary's build line: a researched project whose
+  sources HEY has not read for ship events says "Building not checked yet" (`reason:
+  building_not_read`, additive), and a Verified Builder with no readable source says "Verified
+  builder · no shipping source HEY can read yet". A latest change that is a market or lock event
+  is named as one ("Token lock event today: …. Context, not building.") and its link opens its own
+  record. "Around the latest ship" starts collection at the first market reading and says when
+  HEY began reading (`collectedFrom` on `market` and `usage`, additive); the market page names
+  its first price reading beside its first indexed trade. Market context says "current
+  liquidity", the integrity block names its daily-index closes, a disagreeing-readings event is
+  worded plainly, and the coverage count opens with "HEY can answer N of the M research
+  questions that apply".
+- **Search, What changed, compare and counts say one thing.** The type-ahead groups like the
+  search page: projects first, an empty namesake labelled (`emptyNamesake`), same-name launch
+  records folded into one row that says "or more" when the read was cut (`moreLaunchRecords`),
+  names readable at 375 px. A question in search is answered from the project's own lines or
+  pointed at Ask HEY, never "nothing matches"; a buy or sell question is told HEY never answers
+  it. Every "What changed" link is `/updates`; Signals keeps its name and both pages say what
+  they count. "Compare with…" on project pages and search results; `/api/compare?a=&b=`; an
+  additive `valuation` (figure, kind, printed label) beside `marketCapUsd`. Explore prints the
+  published, research-ready and verified-builder sets in one line, and its second chip reads
+  "All published". Every stored text on a signal row is kept out of the edge's e-mail rewriting.
 - **Machine surfaces say what the page says.** The token lookup and the partner card print the
   project page's activity words ("Activity not measurable", "No builder signal yet"), and the
   Research Summary's build line starts with them. Every summary line carries `basis` (additive):
