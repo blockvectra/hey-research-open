@@ -349,6 +349,11 @@ Uniswap. Market activity never affects HEY's builder research. See
 https://heyresearch.xyz/integrations/uniswap. Uniswap is a trademark of Uniswap Labs; HEY Research
 Lab is not affiliated with or endorsed by Uniswap Labs.
 
+HEY also records which Uniswap v4 hook contract each v4 pool on Robinhood Chain names, from the
+PoolManager logs its pool scan already reads, and which hooks a launch protocol's own event names.
+A hook is kept as a contract — never an account, a pool count or a volume — and is not building
+evidence; who built a hook is not read yet.
+
 ## Terms and privacy
 
 What HEY records about a reader, what it never stores and for how long:

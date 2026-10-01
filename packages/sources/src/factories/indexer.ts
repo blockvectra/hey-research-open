@@ -18,6 +18,52 @@ export type ScannableFactory = Pick<
   pairTokenTopics?: readonly (1 | 2 | 3)[];
   /** Lowercase addresses never recorded as a launch (a pool's quote asset). */
   skipTokens?: readonly string[];
+  /**
+   * The data word that holds a Uniswap v4 pool's hook (2026-10-01): set only
+   * on the PoolManager's `Initialize`, where it is word 2 (fee, tickSpacing,
+   * hooks, sqrtPriceX96, tick). When set, every log in a window read — a
+   * pool between two quote assets included — is also returned as a
+   * `V4PoolInit`, from the same answer: no extra request.
+   */
+  hookDataWord?: number;
+  /**
+   * Where a launch protocol's creation event names the contracts that may be
+   * a v4 hook (2026-10-01): Doppler's Airlock `Create(address asset, address
+   * indexed numeraire, address initializer, address poolOrHook)` — asset word
+   * 0, initializer word 1, poolOrHook word 2.
+   */
+  launchHook?: { protocol: string; assetWord: number; initializerWord: number; poolOrHookWord: number };
+};
+
+/**
+ * One Uniswap v4 `Initialize` log (2026-10-01): the pool id, both currencies
+ * (the zero address is native ETH) and the hook (the zero address when the
+ * pool has none). Returned for every log, so a quote-only pool's hook is not
+ * lost because its currencies are not launches.
+ */
+export type V4PoolInit = {
+  poolId: string;
+  currency0: string;
+  currency1: string;
+  hook: string;
+  blockNumber: number;
+  txHash: string;
+  /** Null when the RPC did not say. */
+  logIndex: number | null;
+};
+
+/**
+ * A contract a launch protocol's own event names as possibly its v4 hook
+ * (2026-10-01). Only a claim: HEY marks it only on a hook it has already read
+ * in an `Initialize` log, so a v3 pool or a token named in the same slot is
+ * never taken for a hook.
+ */
+export type LaunchHookClaim = {
+  protocol: string;
+  hook: string;
+  asset: string;
+  blockNumber: number;
+  txHash: string;
 };
 
 /**
@@ -100,6 +146,10 @@ export function decodeEventString(
 
 export type ScanResult = {
   launches: FactoryLaunch[];
+  /** Every v4 `Initialize` read, when the factory has a `hookDataWord`; otherwise empty. */
+  poolInits: V4PoolInit[];
+  /** Hook claims from a launch protocol's event, when the factory has a `launchHook`; otherwise empty. */
+  launchHookClaims: LaunchHookClaim[];
   /** Last block fully covered — the next run resumes from here + 1. */
   lastIndexedBlock: number;
   requests: number;
@@ -127,6 +177,7 @@ const logSchema = z.object({
   data: z.string().optional(),
   blockNumber: z.string(),
   transactionHash: z.string(),
+  logIndex: z.string().optional(),
 });
 
 /** The strings a registry entry says the event carries, decoded from one log. */
@@ -183,6 +234,69 @@ const dataWord = (data: string | undefined, word: number | undefined): string | 
   return `0x${slot}`;
 };
 
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+const ADDRESS_FROM_TOPIC = (topic: string): string => `0x${topic.slice(-40)}`.toLowerCase();
+const BYTES32 = /^0x[0-9a-f]{64}$/;
+
+/** The address a left-padded data word holds, lower-cased; undefined when the word is not one. */
+export const dataWordAddress = (data: string | undefined, word: number): string | undefined => {
+  const slot = dataWord(data, word);
+  return slot ? `0x${slot.slice(-40)}`.toLowerCase() : undefined;
+};
+
+/** A v4 `Initialize` log as a pool init, or undefined when the log is not shaped like one. */
+export function decodeV4PoolInit(
+  log: { topics: string[]; data?: string | undefined; blockNumber: string; transactionHash: string; logIndex?: string | undefined },
+  hookDataWord: number,
+): V4PoolInit | undefined {
+  const poolId = log.topics[1]?.toLowerCase();
+  const currency0 = log.topics[2];
+  const currency1 = log.topics[3];
+  const hook = dataWordAddress(log.data, hookDataWord);
+  if (!poolId || !BYTES32.test(poolId) || !currency0 || !currency1 || !hook) return undefined;
+  if (!/^0x0{24}[0-9a-fA-F]{40}$/.test(currency0) || !/^0x0{24}[0-9a-fA-F]{40}$/.test(currency1)) return undefined;
+  const blockNumber = Number.parseInt(log.blockNumber, 16);
+  const logIndex = log.logIndex === undefined ? null : Number.parseInt(log.logIndex, 16);
+  if (!Number.isSafeInteger(blockNumber)) return undefined;
+  return {
+    poolId,
+    currency0: ADDRESS_FROM_TOPIC(currency0),
+    currency1: ADDRESS_FROM_TOPIC(currency1),
+    hook,
+    blockNumber,
+    txHash: log.transactionHash.toLowerCase(),
+    logIndex: logIndex !== null && Number.isSafeInteger(logIndex) ? logIndex : null,
+  };
+}
+
+/**
+ * The hook a launch protocol's creation event names, if any (2026-10-01).
+ *
+ * Doppler's Airlock emits `Create(asset, numeraire, initializer, poolOrHook)`
+ * where `poolOrHook` is whatever the initializer returned: a v4 hook for the
+ * dynamic-auction initializer, a v3 pool for the v3 one, and the asset itself
+ * for the multicurve initializer — which is then its own pools' hook. Read on
+ * Robinhood Chain 2026-10-01: every one of 2,386 sampled Creates (ten 100k-block
+ * windows from block 740,000 to 70.1M) has poolOrHook equal to the asset and
+ * the initializer as the hook of the `Initialize` in the same transaction. So
+ * the claim is `poolOrHook` when it is neither zero nor the asset, else the
+ * initializer; HEY marks it only on a contract it has seen as a hook.
+ */
+export function decodeLaunchHookClaim(
+  log: { data?: string | undefined; blockNumber: string; transactionHash: string },
+  launchHook: NonNullable<ScannableFactory['launchHook']>,
+): LaunchHookClaim | undefined {
+  const asset = dataWordAddress(log.data, launchHook.assetWord);
+  const initializer = dataWordAddress(log.data, launchHook.initializerWord);
+  const poolOrHook = dataWordAddress(log.data, launchHook.poolOrHookWord);
+  if (!asset || !initializer || !poolOrHook) return undefined;
+  const hook = poolOrHook !== ZERO_ADDRESS && poolOrHook !== asset ? poolOrHook : initializer;
+  if (hook === ZERO_ADDRESS) return undefined;
+  const blockNumber = Number.parseInt(log.blockNumber, 16);
+  if (!Number.isSafeInteger(blockNumber)) return undefined;
+  return { protocol: launchHook.protocol, hook, asset, blockNumber, txHash: log.transactionHash.toLowerCase() };
+}
+
 const MAX_CHUNK = 2_000_000;
 const MIN_CHUNK = 25_000;
 /**
@@ -207,7 +321,6 @@ export const MAX_RATE_LIMIT_HITS = 12;
  */
 export const TRANSIENT_ERROR_BACKOFF_MS = 1_000;
 export const MAX_TRANSIENT_ERRORS = 4;
-const ADDRESS_FROM_TOPIC = (topic: string): string => `0x${topic.slice(-40)}`.toLowerCase();
 
 export type ScanOptions = {
   rpcUrl: string;
@@ -230,6 +343,8 @@ export async function scanFactory(
   const fetchImpl = ctx.fetchImpl ?? fetch;
   const sleep = options.sleep ?? defaultSleep;
   const launches = new Map<string, FactoryLaunch>();
+  const poolInits: V4PoolInit[] = [];
+  const launchHookClaims: LaunchHookClaim[] = [];
   const unresolvedWindows: { from: number; to: number }[] = [];
 
   let from = options.fromBlock;
@@ -333,6 +448,15 @@ export async function scanFactory(
     }
 
     for (const log of parsed.result ?? []) {
+      // Every log of a window read, before any token filter: a quote-only pool still names its hook.
+      if (factory.hookDataWord !== undefined) {
+        const init = decodeV4PoolInit(log, factory.hookDataWord);
+        if (init) poolInits.push(init);
+      }
+      if (factory.launchHook) {
+        const claim = decodeLaunchHookClaim(log, factory.launchHook);
+        if (claim) launchHookClaims.push(claim);
+      }
       const topics = factory.pairTokenTopics
         ? factory.pairTokenTopics.map((index) => log.topics[index])
         : [factory.tokenTopicIndex === 'data' ? dataWord(log.data, factory.tokenDataWord) : log.topics[factory.tokenTopicIndex]];
@@ -371,6 +495,8 @@ export async function scanFactory(
 
   return {
     launches: [...launches.values()],
+    poolInits,
+    launchHookClaims,
     lastIndexedBlock,
     requests,
     rateLimitHits,

@@ -6,6 +6,12 @@ record.
 
 ## Unreleased (2026-10-01)
 
+- **Uniswap v4 hooks are recorded.** The v4 pool scan decodes each pool's hook from the
+  PoolManager's `Initialize` log it already reads — no extra request, quote-only pools included —
+  into `v4_hooks` and, for pools on a tracked token, `v4_hook_pool_links`; hooks Doppler's Airlock
+  names are marked as launch-protocol hooks. Contracts only, no account or pool count; permission
+  flags are decoded from the address, never stored. Nothing reaches a score or a ranking, and no
+  public surface shows them yet.
 - **The project page agrees with itself.** One table of research-level words (`@hey/scoring`)
   feeds the badge, "What HEY checked" and the summary's build line: a researched project whose
   sources HEY has not read for ship events says "Building not checked yet" (`reason:

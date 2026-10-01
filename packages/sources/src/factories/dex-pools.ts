@@ -95,6 +95,8 @@ export const DEX_POOL_FACTORIES: readonly DexPoolFactoryConfig[] = [
     eventTopic0: '0xdd466e674ea557f56295e2d0218a125ea4b4f0f6f3307b95f85e6110838d6438',
     tokenTopicIndex: 2,
     pairTokenTopics: [2, 3],
+    // The hook (2026-10-01): data words are fee, tickSpacing, hooks, sqrtPriceX96, tick.
+    hookDataWord: 2,
     skipTokens: DEX_POOL_SKIP_TOKENS,
     enabled: true,
     verification:
@@ -123,6 +125,12 @@ export const DEX_POOL_FACTORIES: readonly DexPoolFactoryConfig[] = [
     eventTopic0: '0x68ff1cfcdcf76864161555fc0de1878d8f83ec6949bf351df74d8a4a1a2679ab',
     tokenTopicIndex: 'data',
     tokenDataWord: 0,
+    /*
+     * The v4 hook the launch used (2026-10-01): Airlock.sol emits
+     * `Create(asset, numeraire, address(poolInitializer), pool)`, so word 1 is
+     * the initializer and word 2 what it returned. See `decodeLaunchHookClaim`.
+     */
+    launchHook: { protocol: 'doppler', assetWord: 0, initializerWord: 1, poolOrHookWord: 2 },
     skipTokens: DEX_POOL_SKIP_TOKENS,
     enabled: true,
     verification:
