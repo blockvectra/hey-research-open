@@ -289,6 +289,23 @@ Full reference: [docs/PUBLIC_API.md](docs/PUBLIC_API.md) · [docs/MCP.md](docs/M
 [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) — the line to render, the three answers to handle,
 and the four things not to do.
 
+## The open ecosystem
+
+Ten more repositories sit beside the mirror, each independent,
+MIT and Robinhood Chain only: [hey-project-manifest](https://github.com/hey-research-lab/hey-project-manifest)
+(the `/.well-known/hey-project.json` declaration — declared, never verified),
+[hey-ship-action](https://github.com/hey-research-lab/hey-ship-action) (ship evidence from a GitHub
+workflow), [hey-agent-contract](https://github.com/hey-research-lab/hey-agent-contract) and
+[hey-research-receipts](https://github.com/hey-research-lab/hey-research-receipts) (the public agent
+and receipt contracts, byte-faithful with parity tests), [hey-cli](https://github.com/hey-research-lab/hey-cli),
+[rhchain-registry](https://github.com/hey-research-lab/rhchain-registry) (sourced infrastructure
+registry), [chainprint](https://github.com/hey-research-lab/chainprint) (offline Robinhood Chain marker
+detector), [hey-embed](https://github.com/hey-research-lab/hey-embed),
+[hey-telegram-bot](https://github.com/hey-research-lab/hey-telegram-bot) (read-only, public API only) and
+[hey-data](https://github.com/hey-research-lab/hey-data) (snapshots of HEY's own facts, CC BY 4.0; no
+market or provider data). None reads HEY's database; production does not consume any of them yet.
+
+
 ## For autonomous agents
 
 From the domain alone, with no JavaScript and no cookies:

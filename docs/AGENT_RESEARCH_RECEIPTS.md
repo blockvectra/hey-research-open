@@ -36,7 +36,7 @@ conclusion. A receipt is never a HEY signal and never an instruction to anyone e
 Evidence references are one of six kinds:
 
 - `hey_evidence` — a HEY typed evidence id (`ship:`, `signal:`, `abi:`, `impl:`, `lock:`, `source:`,
-  `claim:`, `state:`, `narrative:`, `method:`, `sourcechange:`), resolvable at `/api/evidence/{id}`;
+  `claim:`, `state:`, `integrity:`, `narrative:`, `method:`, `sourcechange:`, `security:`, `v4hook:`), resolvable at `/api/evidence/{id}`;
 - `hey_change_event` — a ChangeEvent id from `/api/changes`, with the revision read;
 - `hey_snapshot` — a project snapshot as read: the slug, its `asOf`, the `scoringVersion`;
 - `market_observation` — a market reading: its provider and the time the provider observed it, and
