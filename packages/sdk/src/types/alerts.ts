@@ -13,7 +13,8 @@ import type { HeyWebhookEventType } from './webhooks';
 /** The types a rule may name: the webhook types, plus a contract's functions first called or called again after a silence (shown in the inbox only; never emailed or sent to a webhook). */
 export type HeyAlertEventType = HeyWebhookEventType | 'contract.method_first_observed' | 'contract.method_resumed';
 
-export type HeyAlertPresetId = 'release' | 'implementation' | 'resumed' | 'unlock' | 'docs' | 'integrity' | 'usage';
+/** `deploy` and `status` added 2026-10-03 (additive). */
+export type HeyAlertPresetId = 'release' | 'deploy' | 'implementation' | 'resumed' | 'status' | 'unlock' | 'docs' | 'integrity' | 'usage';
 
 /** Conditions narrow only the types they apply to, on facts the event itself carries. */
 export type HeyAlertConditions = {

@@ -135,6 +135,20 @@ after its repository was renamed. A description that claims a Robinhood partners
 own notice. A QUIET or DORMANT status that lost the builder source it rests on is rescored first, to "No builder
 source linked". Search lists an issuer's own token as its own row, above lookalikes.
 
+A token a page took on a deploy record that no longer proves anything goes back to its own launch
+record, logged and reversible. When published projects share a name or a ticker on different
+contracts, the project page, the Terminal, search and the type-ahead say so in one line, with what
+each project's own site or deploy record names — never which one is "real". `/signals` lists
+projects with Robinhood Chain evidence first within each group.
+
+A card's one line is a description, never a README (2026-10-03). Provider text — a listing, a
+launchpad form, a repository's README — passes through one deterministic rule (`descriptionLine`):
+Markdown, label headings, addresses, URLs and bot commands go; instructions, chat, relay
+boilerplate and how-to sections are never the line; whole sentences are kept up to 200 characters.
+Text with no description in it leaves the line empty rather than filling it with anything. A
+project with no line takes its own site's meta description through the same rule, logged. Words an
+owner typed are never rewritten.
+
 ## Use the API
 
 No key needed for the read API. 120 requests a minute anonymously, more with a key. Every answer names its
@@ -180,13 +194,26 @@ readers keep asking about is summed per record (`research_demand`) and decides o
 researches next — an hourly, capped sweep queues the canonical site, contract-source and
 quality-gate jobs for the most-asked under-researched records — never a status, score or rank.
 
-The Research Terminal answers questions (2026-10-01). A reader previewing it is told what early
+The Research Terminal answers questions (2026-10-01). A reader previewing it is told what Terminal
 access opens as questions about the project in view — full timeline, build evidence, usage history,
-the market around releases, contract intelligence, Ask HEY in depth, watchlist and alerts — filled
-from public identity only. The workspace Overview opens on the Research Brief, its lines led by
+the market around releases, holders and locks, contract intelligence, Ask HEY in depth, watchlist
+and alerts — filled from public identity only. Two ways in, said the same way everywhere and
+explained at `/terminal/access` (2026-10-03): hold $HEY in a wallet you sign in with, or request
+early access and an admin reviews it by hand. The same page's "Terminal vs free" table is built
+from what the code actually gates, so the Terminal never claims to lock what the public site and
+API already give away. The workspace Overview opens on the Research Brief, its lines led by
 What changed? · Build · Usage · Market · Contracts · Evidence. Ask HEY never dead-ends: each answer
 that cannot answer in full says why and offers next steps, including "Did you mean …" from the one
 search matcher.
+
+One project is fully open in the Research Terminal for every reader (2026-10-03): every tab, the
+real data, no decoys — the console's choice, or the published project with the most the Terminal can
+draw, never HEY's own. Every other project's research stays behind the gate. HEY's own project's
+row says "HEY’s own project — researched by the same rules" wherever it is listed. Each workspace
+opens on a coverage strip (Build, Market, Usage, Intraday — states, never a score); HEY Today folds a
+project's weeks of code into one line with "Show every row"; and, with the model layer on, the
+Overview leads with a pre-answered Ask HEY brief for the most-opened projects, written ahead of time
+from HEY's records, cached by their hash and held to half the day's AI budget.
 
 Search, What changed and Compare say one thing (2026-10-01). The header type-ahead lists projects
 first, labels an empty page that shares a researched project's name, and folds launch records of
@@ -374,11 +401,24 @@ Robinhood Chain among many chains is no longer published as a Robinhood Chain pr
 published before the rule are held only by one reviewed command, `pnpm data:publication-holds`
 (reversible, logged).
 
+Since scoring `hbm-v23` (2026-10-03) a release burst is one ship: a repository's full GitHub
+releases of one UTC day count once — the newest corroborated one stands for the day — in activity
+status, Build Momentum and every count of building. Prereleases keep their weekly rule, two
+repositories on one day count as two, a release whose ship id names no repository is never
+collapsed, and every release stays on the timeline. Chain feeds show the burst as one line ("27
+releases in owner/repo on 1 Oct") and `/signals` announces it once, by count.
+
 ## Following and what changed
 
 Follow a project and it joins your private watchlist; the project page then offers the alerts
 that can fire for it — a release, a contract implementation change, building resuming, an
-official docs or site change — as one press. `/updates` is the public "What changed": the
+official docs or site change — as one press. In the Research Terminal, Follow carries one box,
+ticked by default, that turns on alerts for every project you follow: a release, a contract
+deploy, an implementation change, an unlock due within 7 days, a Market Integrity event or an
+activity status change — never a price or trading alert. An empty watchlist is offered a starter
+set of recently shipping projects to choose from (never read from your wallet), and a daily email
+of what changed on the projects you follow is one switch away (off by default, to a confirmed
+address only, nothing on a quiet day). `/updates` is the public "What changed": the
 change ledger grouped by meaning, and, signed in, what changed on your projects since you were
 last here first. Every row, alert email and Telegram alert opens the change on the project's
 page, with its source.
@@ -389,7 +429,7 @@ every page with a feed declares it in its head. An email address alone subscribe
 digest, a daily digest or one project's changes — double opt-in, one-click unsubscribe that
 deletes the address, nothing else stored. Data checks (two of HEY's own readings disagreeing)
 fold under their own heading; "+N more" opens the kind's full list; "Today" is a UTC calendar
-day. Telegram is coming soon.
+day. Telegram alerts are not available yet.
 
 ## For builders
 
@@ -592,8 +632,9 @@ The full rules, with the thresholds they use, are on [the methodology page](http
 `$HEY` (`0xB33eb16782776b4D738c0Fd643577cb0284Db610` on Robinhood Chain) pays for evidence:
 research bounties set in dollars and paid in HEY, claim bonds, and priority on research requests.
 Holding changes what a reader pays, when they see new research and how much API the lab serves
-them; $HEY worth at least $500 at the time of HEY's balance check, valued at HEY's own market
-reading, also opens the Research Terminal beta. It never buys a rank, a status or a score.
+them; $HEY worth at least $500 at the time of HEY's daily balance check, valued at HEY's own
+market reading, also opens the Research Terminal beta — kept while it stays at $450 or more, with
+one day of grace and a warning below that. It never buys a rank, a status or a score.
 
 ## How this repository is produced
 

@@ -4,8 +4,35 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## Unreleased (2026-10-03)
+
+- **Terminal audit: what a trader would screenshot.** A token a page took on a deploy record that
+  no longer proves anything goes back to its launch record (logged in `identity_repairs`,
+  reversible). "Same name, different contract": project pages, the Terminal, search and the
+  type-ahead name published lookalikes and what each one's own sources name (additive
+  `sameNameDifferentContract` on a project suggestion). `/signals` lists projects with Robinhood
+  Chain evidence first within each group. A span around an event that has not started or ended is
+  never printed as observed (additive `state`, `observedThrough` on the around read). Every public
+  count on the homepage, Explore, the Terminal, the Radar and `llms.txt` comes from one snapshot.
+
+- **Live markets.** Every live market's 15m and 1H bars are built hourly from decoded trades
+  against USDG, WETH and ETH (Bitquery, five points for a hundred tokens), and a token a Terminal
+  reader opens is refreshed by the queue within about twenty minutes; GeckoTerminal reads such a
+  token's history once and never overwrites a trade bar. Builder-source discovery reads live
+  markets first, a
+  GitHub pace stop or a 304 no longer leaves a site's repository link unchecked, and a context-only
+  repository no longer stops a site's other repository links from being checked. Usage watches a
+  project's attributed follow-up contracts beside its token.
+
 ## Unreleased (2026-10-02)
 
+- **A release burst is one ship (scoring `hbm-v23`).** A repository's full GitHub releases of one
+  UTC day count once, the newest corroborated one standing for the day, in activity status, Build
+  Momentum and every count of building; prereleases keep their weekly rule, two repositories on
+  one day count as two, and a release whose ship id names no repository is never collapsed. Every
+  release stays on the timeline. Chain feeds show a burst as one line ("27 releases in
+  owner/repo on 1 Oct") and `/signals` announces it once, by count; `GET /api/ships` and the
+  change ledger stay a record of every release.
 - **Outsider re-check, round 2.** Market pages fit a phone again (the candle chart's
   screen-reader table is hidden by a block wrapper). E-mail addresses render so the edge's
   obfuscation has nothing to rewrite (no more hydration errors on /about and the claim page). A

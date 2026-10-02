@@ -107,6 +107,23 @@ export const ACTIVITY = {
   resumedWithinDays: 14,
 } as const;
 
+/**
+ * A release burst is one ship (hbm-v23, 2026-10-03, founder delegation,
+ * outsider audit). A repository's full GitHub releases of one UTC day count
+ * once — the newest corroborated one stands for the day — in activity status,
+ * Build Momentum and every SQL count of building (`buildingEvidenceSql`).
+ * Prereleases keep their weekly collapse (hbm-v11); different repositories
+ * on one day still count apart; a release with no known repository is never
+ * collapsed (unknown is no ground to demote). The ships stay on the record.
+ */
+export const RELEASE_BURST = {
+  eventType: 'GITHUB_RELEASE',
+  /** One counted full release per repository per this period. */
+  period: 'utc_day',
+  /** The repository is the `owner/repo` of `github-release:<owner>/<repo>:<id>`. */
+  externalIdPrefix: 'github-release:',
+} as const;
+
 /** PRD V4 section 13.2. */
 export const UNDER_THE_RADAR = {
   /** 45 until hbm-v5 (2026-09-13): on the honest published cohort only 16 projects cleared 45 with a live market; 30 admits 29 and still demands verified building. */

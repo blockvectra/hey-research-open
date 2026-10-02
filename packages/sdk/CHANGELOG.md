@@ -6,6 +6,10 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (follow → alerts, 2026-10-03)
+
+- `HeyAlertPresetId` gains `deploy` (`contract.deployed`: a contract the project deployed, never a serial launcher's follow-up) and `status` (`build.status_changed`, `build.dormant` and `build.resumed`: an activity status move, measured from building), additively. `GET /api/alerts` lists them among `presets`. No existing id changes meaning; treat an unknown preset id as a label you do not have words for.
+
 ## 0.1.2 — 2026-10-02
 
 ### Added (outsider open-source check, 2026-10-02)

@@ -249,7 +249,27 @@
  * feed is never a release feed nor coverage (docs/FOUNDER_DECISIONS_2026_09_30.md,
  * "2026-10-02 shipping-signal repair").
  */
-export const SCORING_VERSION = 'hbm-v22' as const;
+/*
+ * hbm-v23 (2026-10-03, founder delegation, outsider audit "a release burst is
+ * one ship"): no weight, threshold or Build Momentum formula changes. A
+ * repository's full GitHub releases of one UTC day count once — one release
+ * day, the newest corroborated release standing for it — in activity status,
+ * Build Momentum, the streak, velocity and cadence (`collapseRepeatedEvidence`,
+ * `RELEASE_BURST`) and in every SQL count of building (`buildingEvidenceSql`'s
+ * release-day keeper). The repository is the `owner/repo` of the ship's
+ * external id (`github-release:<owner>/<repo>:<id>`); a release whose
+ * repository is not known is never collapsed. What did not change:
+ * prereleases keep their weekly collapse (hbm-v11), two repositories on one
+ * day still count as two, and no ship is deleted or retracted — every release
+ * stays on the timeline with its provenance; only the count changes. Measured
+ * on production before the change (read-only, 2026-10-03): digitaldon
+ * (bambini-tech/digitaldon-public) carried 27 PUBLICLY_VERIFIED releases
+ * published three seconds apart on 2026-10-01; over 90 days, counted full
+ * GitHub releases grouped by project, repository and UTC day were 1,374 groups
+ * of 1, 342 of 2, 153 of 3, 109 of 4–5, 78 of 6–10 and 33 of 11 or more (537
+ * ships on 16 projects).
+ */
+export const SCORING_VERSION = 'hbm-v23' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

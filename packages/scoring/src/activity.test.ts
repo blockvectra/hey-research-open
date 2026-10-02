@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { deriveActivityStatus, type ScoredEvent } from './activity';
+import {
+  collapseRepeatedEvidence,
+  collapseSameWeekCodeActivity,
+  deriveActivityStatus,
+  meaningfulEvents,
+  releaseRepositoryOf,
+  type ScoredEvent,
+} from './activity';
+import { computeHbm } from './hbm';
 
 const now = new Date('2026-09-01T00:00:00Z');
 const DAY = 24 * 60 * 60 * 1000;
@@ -73,6 +81,81 @@ describe('activity status', () => {
     expect(derive([pre(33), pre(40)]).meaningfulEventCount).toBe(2);
     // Full releases in one week each count, and a prerelease beside them still counts once.
     expect(derive([ship(33), ship(34), pre(35), pre(36)]).meaningfulEventCount).toBe(3);
+  });
+
+  describe('a release burst is one ship (hbm-v23)', () => {
+    const at = (iso: string) => new Date(iso);
+    const release = (repository: string | undefined, iso: string, overrides: Partial<ScoredEvent> = {}): ScoredEvent => ({
+      eventType: 'GITHUB_RELEASE',
+      verificationStatus: 'PUBLICLY_VERIFIED',
+      publishedAt: at(iso),
+      sourceKind: 'GITHUB',
+      ...(repository === undefined ? {} : { repository }),
+      ...overrides,
+    });
+    const burstNow = new Date('2026-10-03T12:00:00Z');
+    const count = (events: ScoredEvent[]) => meaningfulEvents(events, burstNow).length;
+
+    it('counts 27 releases of one repository on one UTC day once', () => {
+      const burst = Array.from({ length: 27 }, (_, index) =>
+        release('bambini-tech/digitaldon-public', `2026-10-01T09:00:${String(index * 2).padStart(2, '0')}Z`),
+      );
+      expect(count(burst)).toBe(1);
+      expect(deriveActivityStatus({ events: burst, now: burstNow, hasSourceCoverage: true }).meaningfulEventCount).toBe(1);
+      // Build Momentum reads the same events: a burst earns what one release earns.
+      expect(computeHbm({ events: burst, now: burstNow }).hbm).toBe(computeHbm({ events: [burst.at(-1)!], now: burstNow }).hbm);
+    });
+
+    it('counts two repositories on one day as two, and one repository on two UTC days as two', () => {
+      expect(count([release('kyber/dex-lib', '2026-10-01T10:00:00Z'), release('kyber/other', '2026-10-01T10:00:01Z')])).toBe(2);
+      // 23:59 and 00:01 UTC are two days.
+      expect(count([release('kyber/dex-lib', '2026-09-30T23:59:00Z'), release('kyber/dex-lib', '2026-10-01T00:01:00Z')])).toBe(2);
+      // The key is case-folded, as the ship id is.
+      expect(count([release('Kyber/Dex-Lib', '2026-10-01T10:00:00Z'), release('kyber/dex-lib', '2026-10-01T11:00:00Z')])).toBe(1);
+    });
+
+    it('never collapses a release whose repository is not known', () => {
+      expect(count([release(undefined, '2026-10-01T10:00:00Z'), release(undefined, '2026-10-01T10:00:01Z')])).toBe(2);
+      expect(count([release(undefined, '2026-10-01T10:00:00Z', { repository: null }), release('a/b', '2026-10-01T10:00:01Z')])).toBe(2);
+      // Another event type on the same day is never part of a release day.
+      expect(count([release('a/b', '2026-10-01T10:00:00Z', { eventType: 'FEATURE_RELEASE' }), release('a/b', '2026-10-01T10:00:01Z', { eventType: 'FEATURE_RELEASE' })])).toBe(2);
+    });
+
+    it('keeps the weekly prerelease rule unchanged beside it', () => {
+      const pre = (iso: string) => release('a/b', iso, { verificationStatus: 'SOURCE_LINKED', prerelease: true });
+      // Monday 28 September – Sunday 4 October 2026: two prereleases on two days are one week.
+      expect(count([pre('2026-09-28T10:00:00Z'), pre('2026-09-30T10:00:00Z')])).toBe(1);
+      // A full release and a prerelease of one repository on one day are one each.
+      expect(count([release('a/b', '2026-10-01T10:00:00Z'), pre('2026-10-01T11:00:00Z')])).toBe(2);
+    });
+
+    it('keeps the newest corroborated release of the day', () => {
+      const kept = meaningfulEvents(
+        [
+          release('a/b', '2026-10-01T08:00:00Z'),
+          release('a/b', '2026-10-01T09:00:00Z', { verificationStatus: 'ADMIN_VERIFIED' }),
+          // Newer, and not corroborated: never the one kept, and never what displaces it.
+          release('a/b', '2026-10-01T10:00:00Z', { verificationStatus: 'SELF_REPORTED' }),
+        ],
+        burstNow,
+      );
+      expect(kept.map((event) => event.publishedAt.toISOString())).toEqual(['2026-10-01T09:00:00.000Z']);
+    });
+
+    it('keeps the hbm-v11 name working', () => {
+      const events = [release('a/b', '2026-10-01T10:00:00Z'), release('a/b', '2026-10-01T09:00:00Z')];
+      expect(collapseSameWeekCodeActivity(events)).toEqual(collapseRepeatedEvidence(events));
+      expect(collapseSameWeekCodeActivity(events)).toHaveLength(1);
+    });
+
+    it('reads the repository from a GitHub release ship id', () => {
+      expect(releaseRepositoryOf('GITHUB_RELEASE', 'github-release:Bambini-Tech/digitaldon-public:123')).toBe('bambini-tech/digitaldon-public');
+      expect(releaseRepositoryOf('GITHUB_RELEASE', 'github-release:kyber/dex-lib:9')).toBe('kyber/dex-lib');
+      expect(releaseRepositoryOf('GITHUB_RELEASE', 'rss:https://x')).toBeUndefined();
+      expect(releaseRepositoryOf('GITHUB_RELEASE', 'github-release::9')).toBeUndefined();
+      expect(releaseRepositoryOf('GITHUB_RELEASE', null)).toBeUndefined();
+      expect(releaseRepositoryOf('FEATURE_RELEASE', 'github-release:a/b:1')).toBeUndefined();
+    });
   });
 
   it('is ACTIVE on two meaningful updates inside 45 days', () => {

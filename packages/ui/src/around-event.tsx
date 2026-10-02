@@ -53,8 +53,10 @@ export type AroundPanel = {
   /** The answer first (UI rule 15), the domain's sentence. */
   answer?: string | undefined;
   headings: { before: string; around: string; after: string };
-  /** The spans in words: "3–9 Sep". */
+  /** The spans in words, by how much is observed: "3–9 Sep", "5–6 Oct so far", "starts 5 Oct, not yet observed". */
   spans: { before: string; around: string; after: string };
+  /** Each heading with its span, in the domain's words: "Observed after — starts 5 Oct, not yet observed". */
+  spanHeadings: { before: string; around: string; after: string };
   rows: AroundRow[];
   /** Fields with nothing to show, and why: "Valuation: not measured — market too thin". */
   notShown: string[];
@@ -90,7 +92,7 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
     <div className={cn('grid gap-2', className)} data-testid="around-event-rows">
       <table className="w-full table-fixed border-collapse text-t-meta">
         <caption className="sr-only">
-          {panel.headings.before} ({panel.spans.before}) and {panel.headings.after} ({panel.spans.after}): {panel.title}
+          {panel.spanHeadings.before} and {panel.spanHeadings.after}: {panel.title}
         </caption>
         <thead>
           <tr className="text-left text-hey-secondary">

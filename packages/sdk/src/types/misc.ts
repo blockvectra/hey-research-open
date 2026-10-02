@@ -423,8 +423,11 @@ export type HeyPartnerSignal = {
 
 /** One type-ahead row: a published project, or a launch record typed as one (never presented as a project). */
 export type HeySearchSuggestion =
-  /** `emptyNamesake` (additive, 2026-10-01): a page with no token, ship or builder signal recorded that shares its name with a fuller suggestion; listed after the other projects. */
-  | { type: 'project'; name: string; symbol?: string; contract?: string; target: string; emptyNamesake?: true }
+  /**
+   * `emptyNamesake` (additive, 2026-10-01): a page with no token, ship or builder signal recorded that shares its name with a fuller suggestion; listed after the other projects.
+   * `sameNameDifferentContract` (additive, 2026-10-03): another project suggestion shares this one's name or ticker on a different contract.
+   */
+  | { type: 'project'; name: string; symbol?: string; contract?: string; target: string; emptyNamesake?: true; sameNameDifferentContract?: true }
   /**
    * `brandNotice` (additive, 2026-10-02): "Not affiliated with Robinhood" — the record's name or ticker borrows
    * a Robinhood stock token's ticker (`stock_ticker`) or Robinhood's brand (`robinhood_brand`,

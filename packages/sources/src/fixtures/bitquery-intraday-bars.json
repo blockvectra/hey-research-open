@@ -1,0 +1,17 @@
+{
+  "data": {
+    "EVM": {
+      "bars": [
+        { "Block": { "bucket": "2026-10-03T10:00:00Z" }, "Trade": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" }, "open": "0.0120", "close": "0.0124", "high": "0.0126", "low": "0.0119" }, "trades": "41", "volume_usd": "1830.5" },
+        { "Block": { "bucket": "2026-10-03T10:15:00Z" }, "Trade": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" }, "open": "0.0124", "close": "0.0122", "high": "0.0125", "low": "0.0121" }, "trades": "12", "volume_usd": "420" },
+        { "Block": { "bucket": "2026-10-03T10:45:00Z" }, "Trade": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" }, "open": "0.0122", "close": "0.0130", "high": "0.0129", "low": "0.0122" }, "trades": "30", "volume_usd": null },
+        { "Block": { "bucket": "2026-10-03T10:45:00Z" }, "Trade": { "Currency": { "SmartContract": "0xB33EB16782776B4D738C0FD643577CB0284DB610" }, "open": "0.5", "close": "0.5", "high": "0.5", "low": "0.5" }, "trades": "1", "volume_usd": "1" },
+        { "Block": { "bucket": "2026-10-03T11:00:00Z" }, "Trade": { "Currency": { "SmartContract": "0xb33eb16782776b4d738c0fd643577cb0284db610" }, "open": "0.0130", "close": "0.0131", "high": "0.0133", "low": "0" }, "trades": "4", "volume_usd": "90" },
+        { "Block": { "bucket": "2026-10-03T10:30:00Z" }, "Trade": { "Currency": { "SmartContract": "0x1740A3C5B6FB21044DF973490B8095439DBB1B07" }, "open": 3.5, "close": 3.6, "high": 3.7, "low": 3.4 }, "trades": 2, "volume_usd": 40 },
+        { "Block": { "bucket": "2026-10-03T10:37:00Z" }, "Trade": { "Currency": { "SmartContract": "0x1740a3c5b6fb21044df973490b8095439dbb1b07" }, "open": 3.6, "close": 3.6, "high": 3.6, "low": 3.6 }, "trades": 1, "volume_usd": 5 },
+        { "Block": { "bucket": "not-a-time" }, "Trade": { "Currency": { "SmartContract": "0x1740a3c5b6fb21044df973490b8095439dbb1b07" }, "open": 3.6, "close": 3.6, "high": 3.6, "low": 3.6 }, "trades": 1, "volume_usd": 5 },
+        { "Block": { "bucket": "2026-10-03T10:30:00Z" }, "Trade": { "Currency": { "SmartContract": "not-an-address" }, "open": 1, "close": 1, "high": 1, "low": 1 }, "trades": 1, "volume_usd": 1 }
+      ]
+    }
+  }
+}

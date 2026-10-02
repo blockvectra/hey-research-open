@@ -1,6 +1,6 @@
 import type { ActivityStatus, ShipEventType, ShipSourceKind, VerificationStatus } from '@hey/db';
 
-import { ACTIVITY } from './config';
+import { ACTIVITY, RELEASE_BURST } from './config';
 import { isMeaningful } from './significance';
 
 /**
@@ -26,7 +26,28 @@ export type ScoredEvent = {
    * meaningful; null, absent or `UNKNOWN` — not read yet — counts as before.
    */
   codeSubstance?: string | null;
+  /**
+   * A GitHub release's repository, `owner/repo` lowercased (hbm-v23): a
+   * repository's full releases of one UTC day count once. Absent or null —
+   * not known — the release is never collapsed. `releaseRepositoryOf` reads
+   * it from the ship's external id.
+   */
+  repository?: string | null;
 };
+
+/**
+ * The repository a GitHub release ship names, from its external id
+ * `github-release:<owner>/<repo>:<id>` (hbm-v23), lowercased like the
+ * ship-id index. Undefined for any other event or shape: an unknown
+ * repository is never grounds to collapse.
+ */
+export function releaseRepositoryOf(eventType: string, externalId: string | null | undefined): string | undefined {
+  if (eventType !== RELEASE_BURST.eventType || !externalId) return undefined;
+  const lower = externalId.toLowerCase();
+  if (!lower.startsWith(RELEASE_BURST.externalIdPrefix)) return undefined;
+  const repository = lower.split(':')[1];
+  return repository && /^[^/\s]+\/[^/\s]+$/.test(repository) ? repository : undefined;
+}
 
 export type ActivityInput = {
   events: readonly ScoredEvent[];
@@ -89,7 +110,7 @@ export const FUTURE_DATE_TOLERANCE_MS = 24 * 60 * 60 * 1000;
  */
 export function meaningfulEvents(events: readonly ScoredEvent[], now?: Date): ScoredEvent[] {
   const horizon = now ? now.getTime() + FUTURE_DATE_TOLERANCE_MS : Number.POSITIVE_INFINITY;
-  return collapseSameWeekCodeActivity(
+  return collapseRepeatedEvidence(
     events
       .filter((event) => isMeaningful(event))
       .filter((event) => event.publishedAt.getTime() <= horizon)
@@ -112,20 +133,48 @@ export function isoWeekIndex(date: Date): number {
  * one GitHub prerelease per UTC ISO week, each kind on its own; the input is
  * newest first, so the newest of a week is kept. A nightly or release
  * candidate cut every day is one week of building, not seven releases: in
- * production one project carried sixty prereleases in thirty days. A full
- * release is never collapsed.
+ * production one project carried sixty prereleases in thirty days.
+ *
+ * And — since hbm-v23 (2026-10-03, outsider audit) — one full GitHub release
+ * per repository per UTC day (`RELEASE_BURST`): one repository cut 27
+ * releases three seconds apart on 1 October, each a weight-5 ship. A day's
+ * releases of one repository are one release day; two repositories on one
+ * day are two. A release whose repository is not known is never collapsed.
+ *
+ * The input is meaningful events (corroborated) newest first, so the kept
+ * row is the newest corroborated one — the row `buildingEvidenceSql` keeps.
  */
-export function collapseSameWeekCodeActivity(sorted: readonly ScoredEvent[]): ScoredEvent[] {
+export function collapseRepeatedEvidence(sorted: readonly ScoredEvent[]): ScoredEvent[] {
   const seen = new Set<string>();
   return sorted.filter((event) => {
-    const kind = event.eventType === 'CODE_ACTIVITY' ? 'code' : event.prerelease === true ? 'prerelease' : undefined;
-    if (!kind) return true;
-    const key = `${kind}:${isoWeekIndex(event.publishedAt)}`;
+    const key = collapseKey(event);
+    if (key === undefined) return true;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
 }
+
+/** The period an event counts once in, or undefined when it always counts. */
+function collapseKey(event: ScoredEvent): string | undefined {
+  if (event.eventType === 'CODE_ACTIVITY') return `code:${isoWeekIndex(event.publishedAt)}`;
+  if (event.prerelease === true) return `prerelease:${isoWeekIndex(event.publishedAt)}`;
+  if (event.eventType === RELEASE_BURST.eventType && event.repository) {
+    return `release-day:${event.repository.toLowerCase()}:${utcDayIndex(event.publishedAt)}`;
+  }
+  return undefined;
+}
+
+/** Whole UTC days since the epoch: the release-day key (hbm-v23). */
+export function utcDayIndex(date: Date): number {
+  return Math.floor(date.getTime() / 86_400_000);
+}
+
+/**
+ * The hbm-v11 name, kept for its callers: it applies every collapse the
+ * scorer applies, the release day included (hbm-v23).
+ */
+export const collapseSameWeekCodeActivity = collapseRepeatedEvidence;
 
 export function deriveActivityStatus(input: ActivityInput): ActivityResult {
   const meaningful = meaningfulEvents(input.events, input.now);

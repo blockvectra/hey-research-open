@@ -10,6 +10,7 @@ import {
   HBM_WEIGHTS,
   MARKET_CONTEXT_WEIGHTS,
   RECENCY,
+  RELEASE_BURST,
   SIGNIFICANCE_DIMENSIONS,
   SOURCE_DIVERSITY,
   STILL_BUILDING,
@@ -49,6 +50,8 @@ const RULES_DIGEST = createHash('sha256')
       DISCOVERY_GAP,
       // The valuation gate decides which valuations the Discovery Gap and Still Building read (hbm-v20).
       VALUATION_PLAUSIBILITY,
+      // A repository's full releases of one UTC day count once (hbm-v23).
+      RELEASE_BURST,
     }),
   )
   .digest('hex')
@@ -73,8 +76,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v22',
-      rules: '880d2af1acb0c543',
+      version: 'hbm-v23',
+      rules: '12cb1a6ee806d255',
     });
   });
 });

@@ -33,8 +33,10 @@ types; nothing is computed for the alert.
 | Preset | Sentence | Ledger types |
 |---|---|---|
 | `release` | When *project* ships a release | `build.release` |
+| `deploy` | When *project* deploys a contract | `contract.deployed` — never `contract.followup_deployed`, a serial launcher's deploy that is context, not a ship (added 2026-10-03) |
 | `implementation` | When *project* changes implementation | `contract.implementation_changed` |
 | `resumed` | When *project* resumes building after a long quiet period | `build.resumed` — HEY's own Resumed status: shipping again after 60 or more days without observed activity (`ACTIVITY.dormancyGapDays`) |
+| `status` | When the activity status of *project* changes | `build.status_changed`, `build.dormant`, `build.resumed` — every activity status move the ledger announces, measured from building (added 2026-10-03) |
 | `unlock` | When an unlock for *project* is due within 7 days | `lock.unlock_due`, with `unlockWithinDays` (1–7) |
 | `docs` | When official docs or site for *project* materially change | `research.source_changed` |
 | `integrity` | When Market Integrity for *project* changes | `market_integrity.event` — offered only where HEY publishes Market Integrity |
@@ -46,6 +48,36 @@ event. The preset says so.
 
 *Project* is one of: a project (from its page), every project on your watchlist
 **as it is when the change arrives**, or any published project.
+
+## Follow → alerts in one step (Terminal, 2026-10-03)
+
+In the Terminal, Follow opens a small form with one box, ticked by default:
+"Alert me when it has a release, a contract deploy, a contract implementation
+change, an unlock due within 7 days, a Market Integrity event or an activity
+status change", with where the alerts go (in HEY; by email too when the account
+has a confirmed address). One press follows the project and makes **one** rule:
+
+- `scope: watchlist`, the presets `release`, `deploy`, `implementation`,
+  `unlock` (7 days), `integrity` (only where Market Integrity is published) and
+  `status` — the meaningful ledger types only, never a price, market-movement
+  or holder-derived type;
+- named "Projects you follow: what they ship and what changes", marked
+  `preset = 'followed'` in the table (the API reports `preset: null`);
+- every project followed later is covered by the same rule, and unfollowing a
+  project stops its alerts — the matcher reads the watchlist when the event
+  arrives;
+- pressing again makes nothing; a rule the reader switched off is switched back
+  on from the ledger's head, never replayed.
+
+The box is the follow form's own: unticked, Follow only follows. Once the rule
+is on, Follow is a plain button again, and the Terminal's ⋯ menu and watchlist
+say "Alerts on for projects you follow". The Terminal's starter set (an empty
+watchlist's first visit) carries the same box.
+
+**Unlocks are 7 days, not 30.** The ledger announces `lock.unlock_due` seven days
+ahead — its documented meaning on `/api/changes` and every webhook — so no
+alert can come earlier without changing what that event means for every
+consumer.
 
 ## What a rule is
 
