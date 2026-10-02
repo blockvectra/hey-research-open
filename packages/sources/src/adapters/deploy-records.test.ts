@@ -3,7 +3,9 @@ import { describe, expect, it } from 'vitest';
 import { hasData } from '../adapter';
 import { readFixture, stubFetch, testContext } from '../testing';
 import {
+  isLibraryRepository,
   isReferenceKey,
+  namesAnotherRepository,
   isTokenListRepository,
   parseDeploymentsJson,
   parseDeployRecord,
@@ -179,5 +181,54 @@ describe('what a record says', () => {
     expect(isTokenListRepository('assets')).toBe(true);
     expect(isTokenListRepository('robinhood-tokenlist')).toBe(true);
     expect(isTokenListRepository('neon-contracts')).toBe(false);
+  });
+});
+
+/*
+ * A library's test fixture is not its deployment (2026-10-02, outsider
+ * re-check): KyberNetwork's kyberswap-dex-lib keeps another team's hook
+ * deployment at `pkg/liquidity-source/uniswap/v4/hooks/inverse/testdata/deployment.json`,
+ * naming $INVERSE as `plan.token` under `"sourceRepository":
+ * "https://github.com/calmdentist/inversecoin"`, and the library's page
+ * adopted $INVERSE as its own token.
+ */
+describe('a record about something else is not this repository’s deployment', () => {
+  const KYBER_FIXTURE = 'pkg/liquidity-source/uniswap/v4/hooks/inverse/testdata/deployment.json';
+
+  it('never reads test data, fixtures, samples or specs, nor a hand-kept file deep in the tree', () => {
+    for (const refused of [
+      KYBER_FIXTURE,
+      'testdata/deployment.json',
+      'internal/test_data/deployments.json',
+      'src/__fixtures__/deployments.json',
+      'samples/deployments.json',
+      'demo/deployments/4663.json',
+      'e2e/deployments.json',
+      'spec/deployments.json',
+      'a/b/c/deployments.json',
+      'a/b/c/deployments/4663.json',
+    ]) {
+      expect(planDeployRecordReads([refused]).files, refused).toEqual([]);
+    }
+    // Near the root a hand-kept file still counts: every one HEY verified a token from sat one or two folders deep.
+    for (const kept of ['deployments.json', 'contracts/deployments.json', 'packages/app/deployment-rh.json', 'contracts/deployments/4663.json', 'packages/core/deployments/robinhood.json']) {
+      expect(planDeployRecordReads([kept]).files, kept).toEqual([{ path: kept, kind: 'DEPLOYMENTS_JSON' }]);
+    }
+  });
+
+  it('drops a file that names another repository as its source, and keeps one that names its own', () => {
+    const fixture = { chainId: 4663, sourceRepository: 'https://github.com/calmdentist/inversecoin', plan: { token: '0x07c8f63efac882d882427ef3e6471eda9cde6a3b' } };
+    expect(parseDeploymentsJson(JSON.stringify(fixture), 4663, 'deployment.json', { owner: 'KyberNetwork', name: 'kyberswap-dex-lib' })).toBeNull();
+    expect(parseDeployRecord('DEPLOYMENTS_JSON', 'deployment.json', JSON.stringify(fixture), 4663, { owner: 'KyberNetwork', name: 'kyberswap-dex-lib' })).toBeNull();
+    const own = { ...fixture, sourceRepository: 'git+https://github.com/CalmDentist/InverseCoin.git' };
+    expect(parseDeploymentsJson(JSON.stringify(own), 4663, 'deployment.json', { owner: 'calmdentist', name: 'inversecoin' })?.map((contract) => contract.address)).toEqual(['0x07c8f63efac882d882427ef3e6471eda9cde6a3b']);
+    expect(namesAnotherRepository({ repository: { url: 'https://github.com/other/repo' } }, { owner: 'me', name: 'repo' })).toBe(true);
+    expect(namesAnotherRepository({ repository: 'not a repository' }, { owner: 'me', name: 'repo' })).toBe(false);
+  });
+
+  it('reads `npm` (the position manager) as a reference, and knows a library or SDK by its name', () => {
+    expect(isReferenceKey('npm')).toBe(true);
+    for (const name of ['kyberswap-dex-lib', 'pons-trade-sdk', 'sdk', 'core_libs', 'viem.lib']) expect(isLibraryRepository(name), name).toBe(true);
+    for (const name of ['sdk-priors', 'hookr-contracts', 'library-of-babel', 'libra', 'neon-contracts']) expect(isLibraryRepository(name), name).toBe(false);
   });
 });

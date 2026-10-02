@@ -379,39 +379,43 @@ export function PublicDailyCandleChart({
         day. Price only — the valuation is not drawn. Market context, never a buy signal, and never an input to activity status or any HEY score.
       </p>
 
-      {/* Every day in words, for a screen reader. */}
-      <table className="sr-only" data-testid="public-daily-chart-table">
-        <caption>Daily candles, oldest first, in {unit}</caption>
-        <thead>
-          <tr>
-            <th scope="col">Date</th>
-            <th scope="col">Open</th>
-            <th scope="col">High</th>
-            <th scope="col">Low</th>
-            <th scope="col">Close</th>
-            <th scope="col">Direction</th>
-          </tr>
-        </thead>
-        <tbody>
-          {model.rows.map((row) =>
-            row.length === 1 ? (
-              <tr key={row[0]}>
-                <th scope="row">{row[0]}</th>
-                <td colSpan={5}>Not read by HEY: a gap, not zero</td>
-              </tr>
-            ) : (
-              <tr key={row[0]}>
-                <th scope="row">{row[0]}</th>
-                <td>Open {priceText(row[1])}</td>
-                <td>High {priceText(row[2])}</td>
-                <td>Low {priceText(row[3])}</td>
-                <td>Close {priceText(row[4])}</td>
-                <td>{DIRECTION_WORDS[row[7]]}</td>
-              </tr>
-            ),
-          )}
-        </tbody>
-      </table>
+      {/* Every day in words, for a screen reader. The visually-hidden box is a block wrapper:
+          a table ignores width and overflow, so a hidden table on its own kept its full width
+          and pushed every market page sideways (2026-10-02). */}
+      <div className="sr-only">
+        <table data-testid="public-daily-chart-table">
+          <caption>Daily candles, oldest first, in {unit}</caption>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Open</th>
+              <th scope="col">High</th>
+              <th scope="col">Low</th>
+              <th scope="col">Close</th>
+              <th scope="col">Direction</th>
+            </tr>
+          </thead>
+          <tbody>
+            {model.rows.map((row) =>
+              row.length === 1 ? (
+                <tr key={row[0]}>
+                  <th scope="row">{row[0]}</th>
+                  <td colSpan={5}>Not read by HEY: a gap, not zero</td>
+                </tr>
+              ) : (
+                <tr key={row[0]}>
+                  <th scope="row">{row[0]}</th>
+                  <td>Open {priceText(row[1])}</td>
+                  <td>High {priceText(row[2])}</td>
+                  <td>Low {priceText(row[3])}</td>
+                  <td>Close {priceText(row[4])}</td>
+                  <td>{DIRECTION_WORDS[row[7]]}</td>
+                </tr>
+              ),
+            )}
+          </tbody>
+        </table>
+      </div>
     </>,
     summary,
   );

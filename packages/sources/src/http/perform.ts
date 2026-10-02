@@ -33,7 +33,12 @@ export async function performSourceFetch<TRaw, TOut>(
       // Unchanged upstream: callers keep cached data and skip downstream work.
       return {
         fetchedAt: resolveNow(ctx),
-        sourceUrl: request.url,
+        /*
+         * The URL that answered (2026-10-02): a redirect before the 304 is a
+         * fact about the source — a renamed repository — that an unchanged
+         * body must not hide.
+         */
+        sourceUrl: outcome.url,
         cacheTtlSeconds: options.cacheTtlSeconds,
         status: 'not_modified',
         ...(ctx.etag === undefined ? {} : { etag: ctx.etag }),

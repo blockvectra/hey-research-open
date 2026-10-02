@@ -3,7 +3,7 @@
  * (2026-09-26). Each is read from HEY's own tables; none calls a provider.
  * Absent means HEY does not know; a withheld figure says it is withheld.
  */
-import type { HeyDiscoveryGapWithheld, HeyProject, HeyStillBuildingState, HeyStillBuildingWithheld } from './projects';
+import type { HeyCodeWeek, HeyDiscoveryGapWithheld, HeyProject, HeyStillBuildingState, HeyStillBuildingWithheld } from './projects';
 import type { HeyPeerContext } from './graph';
 import type { HeyUsageSummary } from './usage';
 
@@ -156,6 +156,12 @@ export type HeyEvidenceReceipt =
        * week (GitHub commits between the bounds), null when HEY cannot build one.
        */
       window?: { isoWeek: string; start: string; end: string; firstDay: string; lastDay: string; sourceUrl: string | null };
+      /**
+       * A code-activity ship (2026-10-02, additive): the same object as `HeyShip.codeWeek`. `summary`
+       * stays the stored legacy rolling title; `codeWeek.title` and `codeWeek.commits` are what HEY's
+       * pages, CSV and feeds print, from one count.
+       */
+      codeWeek?: HeyCodeWeek;
       verification: string | null;
       /** Present and true only when the record counts toward activity status. */
       countsAsBuilding?: true;

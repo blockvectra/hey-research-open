@@ -99,7 +99,8 @@ describe('PublicDailyCandleChart (CLAUDE.md UI rule 13)', () => {
 
   it('carries every day in a screen-reader table with open, high, low, close and the direction in words', () => {
     const html = render();
-    const table = /<table class="sr-only"[\s\S]*<\/table>/.exec(html)![0];
+    // Hidden by a block wrapper, never by a class on the table: a table ignores the 1px box and widened the page (2026-10-02).
+    const table = /<div class="sr-only"><table data-testid="public-daily-chart-table">[\s\S]*<\/table><\/div>/.exec(html)![0];
     expect(table).toContain('<th scope="col">Open</th>');
     expect(table).toContain('Open $1.00');
     expect(table).toContain('High $1.30');

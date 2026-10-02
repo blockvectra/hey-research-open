@@ -6,6 +6,22 @@ record.
 
 ## Unreleased (2026-10-02)
 
+- **Outsider re-check, round 2.** Market pages fit a phone again (the candle chart's
+  screen-reader table is hidden by a block wrapper). E-mail addresses render so the edge's
+  obfuscation has nothing to rewrite (no more hydration errors on /about and the claim page). A
+  code week reads by its fixed week and commit count on every feed; the API's `title` is
+  documented as the stored legacy rolling title and `/api/evidence` gains the additive `codeWeek`.
+  Feeds are newest first by their own date, cached five minutes, and the ships feed shows a
+  repository's releases of one day once. A renamed repository's release counts once, renames are
+  followed on a 304, and `github_repo_id` is backfilled within budget. A library, a test fixture,
+  a deep or foreign deployments file, or an asset list never proves a token; an unproven adopted
+  token's verified source is context (`token_link_not_proven`). Explore's CSV is the page's order.
+  `/api/status` `build` is the running build; `summaryBuild` (additive) is the summary's. The
+  market page names a venue from the chain's factory read. A QUIET or DORMANT without its builder
+  source is rescored first, to "No builder source linked". Descriptions claiming a Robinhood
+  partnership carry a notice. Search lists Robinhood's own stock tokens as their own row above
+  lookalikes, which carry the notice (the suggestion type `issuer` is additive). Home and Explore
+  declare the updates feed.
 - **What counts as shipping (scoring `hbm-v22`).** Bot accounts (`*-bot`, bot e-mails) and
   automated commit streams are never counted; a CI-only commit is maintenance; a burst week needs
   3 of a 10-commit sample to change code (`commit-substance-v3`; the API's `codeSubstance` gains

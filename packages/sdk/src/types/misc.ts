@@ -204,7 +204,10 @@ export type HeyStatus = {
   capturedAt: string | null;
   verdict: HeyStatusLevel;
   headline: string;
+  /** The build serving the answer (its `HEY_BUILD_SHA`, as `/api/health` reports it), since 2026-10-02; before, the summary's. */
   build: string | null;
+  /** The build that wrote the summary `capturedAt` dates (additive, 2026-10-02); null without one. */
+  summaryBuild: string | null;
   worker: { heartbeatAgeSeconds: number | null; fresh: boolean };
   /** `verifiedBuilders` is the badge on every chain; `verifiedBuildersOnChain` its Robinhood Chain part and `asOf` when counted (2026-10-02, additive). */
   catalog: { published: number; verifiedBuilders: number; indexed: number; verifiedBuildersOnChain?: number; asOf?: string };
@@ -422,7 +425,26 @@ export type HeyPartnerSignal = {
 export type HeySearchSuggestion =
   /** `emptyNamesake` (additive, 2026-10-01): a page with no token, ship or builder signal recorded that shares its name with a fuller suggestion; listed after the other projects. */
   | { type: 'project'; name: string; symbol?: string; contract?: string; target: string; emptyNamesake?: true }
-  | { type: 'launch'; name: string; symbol?: string; contract: string; launchedVia: string; target: string };
+  /**
+   * `brandNotice` (additive, 2026-10-02): "Not affiliated with Robinhood" — the record's name or ticker borrows
+   * a Robinhood stock token's ticker (`stock_ticker`) or Robinhood's brand (`robinhood_brand`,
+   * `robinhood_affiliation`, …). `kind` is open: a new kind may be added. Presentation only.
+   */
+  | {
+      type: 'launch';
+      name: string;
+      symbol?: string;
+      contract: string;
+      launchedVia: string;
+      target: string;
+      brandNotice?: { kind: string; title: string; detail: string; ticker?: string };
+    }
+  /**
+   * An issuer's own token (additive, 2026-10-02): a Robinhood stock token from HEY's issuer-token registry —
+   * never a project and never a launch record. `label` says so ("Robinhood stock token · issued by Robinhood");
+   * `match` is how the query found it; `target` is its address permalink (`/scan/<address>`).
+   */
+  | { type: 'issuer'; name: string; symbol?: string; contract: string; label: string; match: 'address' | 'ticker' | 'name'; target: string };
 
 /**
  * `GET /api/search/suggest?q=`: at most eight rows, HEY's own tables only.

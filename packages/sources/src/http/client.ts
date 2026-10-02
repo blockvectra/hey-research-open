@@ -67,7 +67,14 @@ export type HttpResponse = {
 export const MAX_ATTEMPTS_IN_PROCESS = 2;
 
 /** `304 Not Modified` — the source is unchanged, so no downstream work is needed. */
-export type HttpOutcome = { kind: 'ok'; response: HttpResponse } | { kind: 'not_modified' };
+/**
+ * `url` on a 304 is the URL that answered it (2026-10-02, outsider re-check
+ * OA-A): GitHub answers a renamed repository's path with a 301 to
+ * `/repositories/<id>/…`, and the validators replayed on that hop make it a
+ * 304 — so the redirect, the only sign of the rename, was dropped with the
+ * body. Additive: the request's own URL when nothing redirected.
+ */
+export type HttpOutcome = { kind: 'ok'; response: HttpResponse } | { kind: 'not_modified'; url: string };
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -305,7 +312,7 @@ async function attemptOnce(
   // From here the response is either read or discarded, and the pinned dispatcher always released.
   if (response.status === 304) {
     await discard(response, dispatcher);
-    return { kind: 'not_modified' };
+    return { kind: 'not_modified', url: response.url || currentUrl };
   }
 
   if (!response.ok) {

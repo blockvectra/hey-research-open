@@ -94,6 +94,28 @@ describe('redirect handling', () => {
     expect(stub.callCount()).toBe(MAX_REDIRECTS + 1);
   });
 
+  it('reports the URL that answered a 304 after a redirect (OA-A, 2026-10-02)', async () => {
+    /*
+     * GitHub answers a renamed repository with a 301 to /repositories/<id>/…;
+     * the validators ride the same-host hop, so the answer is a 304 — and the
+     * redirect was dropped with it, so the rename was never followed.
+     */
+    const stub = stubFetch([redirectTo('https://api.github.com/repositories/1369635198/releases?per_page=30', 301), { status: 304 }]);
+    const outcome = await httpRequest(
+      { url: 'https://api.github.com/repos/odaiin/assetfare-mcp/releases?per_page=30', enforceUrlSafety: false },
+      testContext({ fetchImpl: stub.fetchImpl, etag: 'W/"abc"' }),
+    );
+
+    expect(outcome).toEqual({ kind: 'not_modified', url: 'https://api.github.com/repositories/1369635198/releases?per_page=30' });
+    // The validator rode the hop, which is why the hop answered 304.
+    expect((stub.requests[1]?.init?.headers as Record<string, string> | undefined)?.['if-none-match']).toBe('W/"abc"');
+
+    // Nothing redirected: the request's own URL.
+    const plain = stubFetch({ status: 304 });
+    const unchanged = await httpRequest({ url: 'https://api.github.com/repos/a/b/releases' }, testContext({ fetchImpl: plain.fetchImpl, etag: 'W/"abc"' }));
+    expect(unchanged).toEqual({ kind: 'not_modified', url: 'https://api.github.com/repos/a/b/releases' });
+  });
+
   it('downgrades a 302 to GET and drops the body', async () => {
     const stub = stubFetch([redirectTo('https://rpc.example/v2'), page('{}')]);
     await httpRequest(

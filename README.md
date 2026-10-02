@@ -127,6 +127,14 @@ borrow Robinhood's brand or a stock ticker carry a notice above every badge. Ren
 repositories are followed by GitHub's numeric id, and a pool is "Uniswap" only when the chain
 confirms its factory.
 
+A library or SDK repository, a test-data or fixture folder, a hand-kept deployments file deep in
+the tree, a file that names another repository as its source, or an asset list never proves that a
+token is a project's; a token a page took by a link that no longer holds gives that page no
+verified-contract ship. A GitHub release counts once across pages by its numeric release id, even
+after its repository was renamed. A description that claims a Robinhood partnership carries its
+own notice. A QUIET or DORMANT status that lost the builder source it rests on is rescored first, to "No builder
+source linked". Search lists an issuer's own token as its own row, above lookalikes.
+
 ## Use the API
 
 No key needed for the read API. 120 requests a minute anonymously, more with a key. Every answer names its

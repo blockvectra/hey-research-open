@@ -215,7 +215,9 @@ export type HeyShip = {
 
 /**
  * A code week by its fixed window (2026-10-02). `HeyShip.title` stays the
- * stored rolling measurement ("100+ commits since …"); this names the
+ * stored legacy rolling title ("100+ commits since …"), kept for existing
+ * clients — it is not the week's count and can disagree with it; display
+ * `title` here and count with `commits`. This names the
  * Monday–Sunday UTC week the ship is keyed on, that week's own commit count
  * and up to three of its commits by the subject the repository gave them.
  */

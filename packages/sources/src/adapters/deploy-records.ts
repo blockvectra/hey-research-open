@@ -16,8 +16,10 @@ import { z } from 'zod';
  * (`packages/domain/src/token-repos/deploy-records.ts`). Rules kept here:
  *
  * - A path under a vendored or dependency tree (`node_modules`, `lib/`,
- *   `vendor`, `third_party`), a test or example folder, or a Foundry
- *   `dry-run` never counts: it is not this repository's deployment.
+ *   `vendor`, `third_party`), a test, test-data, fixture, sample or example
+ *   folder, or a Foundry `dry-run` never counts: it is not this repository's
+ *   deployment. Nor does a hand-kept file more than two folders deep, or one
+ *   that names another repository as its source (2026-10-02).
  * - The chain is read from the record — the broadcast's directory and its
  *   `chain` field, the network's `.chainId`, Ignition's `chain-<id>` folder,
  *   the JSON's own chain key — never guessed from a network's name.
@@ -59,7 +61,29 @@ export type DeployedContract = {
 };
 
 const MAX_PATH_CHARS = 300;
-const EXCLUDED_SEGMENT = /(^|\/)(node_modules|vendor|vendored|third[_-]?party|lib|libs|external|\.git|test|tests|__tests__|fixtures?|mocks?|examples?|dry-run|cache|artifacts|out|typechain(-types)?|solcInputs)\//i;
+/**
+ * A folder of test data, fixtures, samples or specs (2026-10-02, outsider
+ * re-check): KyberNetwork's `kyberswap-dex-lib` keeps another team's hook
+ * deployment as `…/hooks/inverse/testdata/deployment.json` for an
+ * integration test, and Go's `testdata/` was not on the list, so the
+ * library's page adopted that team's $INVERSE as its own token. One spelling,
+ * shared with the domain's SQL check of records already stored
+ * (`deployRecordIsProofSql`), POSIX-compatible on purpose.
+ */
+export const TEST_DATA_PATH_PATTERN = '(^|/)(test|tests|__tests__|testdata|test[-_]data|fixtures?|__fixtures__|mocks?|examples?|samples?|demos?|specs?|e2e)/';
+const EXCLUDED_SEGMENT = new RegExp(
+  `(^|/)(node_modules|vendor|vendored|third[_-]?party|lib|libs|external|\\.git|dry-run|cache|artifacts|out|typechain(-types)?|solcInputs)/|${TEST_DATA_PATH_PATTERN}`,
+  'i',
+);
+/**
+ * A hand-kept deployments file is the repository's own record near its root
+ * (2026-10-02): every one HEY verified a token from sits one or two folders
+ * deep; the fixture above sat seven deep. Deeper, it is a file about
+ * something else, unless it is the one file per chain inside a `deployments/`
+ * folder at that depth.
+ */
+const HAND_KEPT_MAX_DEPTH = 2;
+const folderDepth = (path: string): number => path.split('/').length - 1;
 const FOUNDRY = (chainId: number) => new RegExp(`(^|/)broadcast/[^/]+/${chainId}/run-latest\\.json$`, 'i');
 const IGNITION = (chainId: number) => new RegExp(`(^|/)ignition/deployments/chain-${chainId}/deployed_addresses\\.json$`, 'i');
 const HARDHAT_FILE = /(^|\/)deployments\/([^/]+)\/([^/]+)\.json$/i;
@@ -110,7 +134,10 @@ export function planDeployRecordReads(paths: readonly string[], options: { chain
       continue;
     }
     // A hand-kept deployments file: `deployments.json`, `deployment-rh.json`, or one file per chain in `deployments/`.
-    if (DEPLOYMENTS_JSON.test(path) || DEPLOYMENTS_FOLDER_FILE.test(path)) files.push({ path, kind: 'DEPLOYMENTS_JSON' });
+    const depth = folderDepth(path);
+    if (DEPLOYMENTS_FOLDER_FILE.test(path) ? depth <= HAND_KEPT_MAX_DEPTH + 1 : DEPLOYMENTS_JSON.test(path) && depth <= HAND_KEPT_MAX_DEPTH) {
+      files.push({ path, kind: 'DEPLOYMENTS_JSON' });
+    }
   }
 
   const hardhatNetworks = [...networks.values()]
@@ -134,10 +161,12 @@ const MOCK_NAME = /mock|fake|dummy|(^|[^a-z])test/i;
  * (`currency0`, `quote`, `numeraire`, `settlement`, `collateral`).
  * Measured on production repositories, 2026-09-30: every such key named a
  * quote asset or another project's token, never the builder's own. Compared
- * with case and punctuation removed.
+ * with case and punctuation removed. `npm` is the nonfungible position
+ * manager's usual short name (2026-10-02: a deployments file named Uniswap's
+ * V3 Positions NFT under it).
  */
 const REFERENCE_KEY =
-  /^(w?eth\d*|weth9|w?btc|usd\w*|dai|link|uni|native|wrapped\w*|globaldollar|currency\d?|token[01]|(quote|base|settlement|collateral|underlying|payment|fee|reward|stake|staking|deposit|borrow|lend|margin)(token|asset|currency|coin)?s?|numeraire|assets?|\w*stable(coin|token)?s?|\w*(router|factory|oracle|pricefeed|feed|quoter|positionmanager|poolmanager|entrypoint|multicall|permit2)\d*|pool|pair|lp(token)?|uniswap\w*|univ\d\w*|v\d(router|factory|positionmanager)|pyth|chainlink\w*)$/;
+  /^(w?eth\d*|weth9|w?btc|usd\w*|dai|link|uni|native|wrapped\w*|globaldollar|currency\d?|token[01]|npm|(quote|base|settlement|collateral|underlying|payment|fee|reward|stake|staking|deposit|borrow|lend|margin)(token|asset|currency|coin)?s?|numeraire|assets?|\w*stable(coin|token)?s?|\w*(router|factory|oracle|pricefeed|feed|quoter|positionmanager|poolmanager|entrypoint|multicall|permit2)\d*|pool|pair|lp(token)?|uniswap\w*|univ\d\w*|v\d(router|factory|positionmanager)|pyth|chainlink\w*)$/;
 
 export const isReferenceKey = (key: string): boolean => REFERENCE_KEY.test(key.toLowerCase().replace(/[^a-z0-9]/g, ''));
 
@@ -316,11 +345,13 @@ const deploymentsJsonSchema = z.union([z.record(z.string(), z.unknown()), z.arra
  * list says its chain. A file that names no chain is not a record for this
  * one, whatever addresses it holds.
  */
-export function parseDeploymentsJson(text: string, chainId: number = ROBINHOOD_CHAIN_ID, path?: string): DeployedContract[] | null {
+export function parseDeploymentsJson(text: string, chainId: number = ROBINHOOD_CHAIN_ID, path?: string, repo?: RecordRepository): DeployedContract[] | null {
   const parsed = deploymentsJsonSchema.safeParse(parseJson(text));
   if (!parsed.success) return null;
   const found: Named[] = [];
   const data = parsed.data;
+  // A file that says it records another repository's deployment is that repository's record, not this one's.
+  if (repo && !Array.isArray(data) && namesAnotherRepository(data, repo)) return null;
   // The file's own name may be the chain: `deployments/4663.json`, `deployments.4663.json`.
   const named = path ? new RegExp(`(^|[^0-9])${chainId}([^0-9]|$)`).test(path.split('/').pop() ?? '') : false;
 
@@ -367,8 +398,42 @@ export function parseDeploymentsJson(text: string, chainId: number = ROBINHOOD_C
   return dedupe(out);
 }
 
+/** The repository a record was read from. */
+export type RecordRepository = { owner: string; name: string };
+
+const REPOSITORY_KEYS = ['sourceRepository', 'repository', 'sourceRepo', 'repo'] as const;
+
+/**
+ * The file's own top-level `sourceRepository` (or `repository`) names a
+ * different GitHub repository (2026-10-02): Kyber's fixture said
+ * `"sourceRepository": "https://github.com/calmdentist/inversecoin"`, the
+ * repository that deployed the token. A value that names no GitHub
+ * repository says nothing either way.
+ */
+export function namesAnotherRepository(data: Record<string, unknown>, repo: RecordRepository): boolean {
+  for (const key of REPOSITORY_KEYS) {
+    const raw = data[key];
+    const value = typeof raw === 'string' ? raw : raw && typeof raw === 'object' && typeof (raw as { url?: unknown }).url === 'string' ? (raw as { url: string }).url : undefined;
+    if (!value) continue;
+    const named = /^(?:(?:git\+)?https?:\/\/(?:www\.)?github\.com\/|git@github\.com:|github:)?([A-Za-z0-9-]{1,39})\/([A-Za-z0-9_.-]{1,100}?)(?:\.git)?\/?$/.exec(value.trim());
+    if (!named) continue;
+    if (named[1]!.toLowerCase() !== repo.owner.toLowerCase() || named[2]!.toLowerCase() !== repo.name.toLowerCase()) return true;
+  }
+  return false;
+}
+
+/**
+ * A library or SDK repository, by its name (2026-10-02): code others build
+ * with, across chains. A token contract its tree names — in a fixture, an
+ * address book, an integration — is one it works with, never one it issued:
+ * `kyberswap-dex-lib` named $INVERSE. One spelling, shared with the domain's
+ * SQL check of records already stored.
+ */
+export const LIBRARY_REPOSITORY_PATTERN = '([-_.](lib|libs|sdk|sdks)$|^(lib|sdk)$)';
+export const isLibraryRepository = (name: string): boolean => new RegExp(LIBRARY_REPOSITORY_PATTERN, 'i').test(name.replace(/\.git$/i, ''));
+
 /** One parsed file, by kind; null when the file is not a record for `chainId`. */
-export function parseDeployRecord(kind: DeployRecordKind, path: string, text: string, chainId: number = ROBINHOOD_CHAIN_ID): DeployedContract[] | null {
+export function parseDeployRecord(kind: DeployRecordKind, path: string, text: string, chainId: number = ROBINHOOD_CHAIN_ID, repo?: RecordRepository): DeployedContract[] | null {
   switch (kind) {
     case 'FOUNDRY_BROADCAST':
       return parseFoundryBroadcast(text, chainId);
@@ -379,7 +444,7 @@ export function parseDeployRecord(kind: DeployRecordKind, path: string, text: st
       return one ? [one] : null;
     }
     case 'DEPLOYMENTS_JSON':
-      return parseDeploymentsJson(text, chainId, path);
+      return parseDeploymentsJson(text, chainId, path, repo);
   }
 }
 
