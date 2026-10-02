@@ -186,7 +186,8 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
       statement: derivedText(`Activity status ${status} under HEY's activity rule${snapshot.scoringVersion ? ` (${snapshot.scoringVersion})` : ''}.`),
       status: status === 'UNKNOWN' ? 'UNKNOWN' : 'DERIVED',
       value: status,
-      source: { name: 'hey', type: 'hey_rule' },
+      // An UNKNOWN claim names no source (AgentIntelligenceResponse v1 invariant).
+      source: status === 'UNKNOWN' ? null : { name: 'hey', type: 'hey_rule' },
       observedAt: scoreAt,
       occurredAt: null,
       precision: null,

@@ -6,6 +6,13 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.1.2 — 2026-10-02
+
+### Added (outsider open-source check, 2026-10-02)
+
+- `HeyTokenLookup.issuer?: { issuerName, kind, symbol, sentence }`, additively, with `status: 'unknown'`: the address is a token an issuer minted (a Robinhood stock token such as NVDA), never any project's token. `status` keeps its meaning.
+- `package.json` `repository` and `bugs` point at the public source, `hey-research-lab/hey-research-open` (the private name was a 404).
+
 ### Added (search, compare, round 2, 2026-10-01)
 
 - `HeySearchSuggestions.moreLaunchRecords?: boolean` and `emptyNamesake?: true` on a project suggestion, additively: whether HEY may hold more launch records matching `q` than the rows list (the search page lists them all), and a published page with no token, ship or builder signal that shares its name with a fuller suggestion (listed after the other projects). The `suggestions` array keeps its shape.

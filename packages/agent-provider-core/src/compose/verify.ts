@@ -42,6 +42,12 @@ export type VerifyInput = {
   asked?: { slug: string; found: boolean; url: string | null; name?: string; tokenAddress?: string | null };
   /** When HEY last checked whether the project names its tracked token (the profile's `verifiedAt`); null when unknown. */
   tokenVerifiedAt?: string | null;
+  /**
+   * The address is a token an issuer minted (2026-10-02, outsider OSS check): a
+   * Robinhood stock token from Robinhood's factory. Its `sentence` is the one every
+   * surface prints (`issuerTokenSentence`). It is never any project's token.
+   */
+  issuerToken?: { sentence: string; issuerName: string } | null;
   isEvidenceId?: (id: string) => boolean;
 };
 
@@ -103,6 +109,9 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
     if (asked?.tokenAddress && asked.tokenAddress.toLowerCase() !== address) {
       reasonCode = 'not_in_project_record';
       reasons.push(derivedText(`HEY's record of "${asked.slug}" does not list this contract; the token HEY tracks for it is ${asked.tokenAddress.toLowerCase()}. That is not a finding that this contract is not the project's.`));
+    } else if (input.issuerToken) {
+      reasonCode = 'issuer_token';
+      reasons.push(heyText(input.issuerToken.sentence));
     } else if (input.contract) {
       reasonCode = 'no_single_project_on_record';
       reasons.push(heyText('HEY holds a record of this contract, and no single published project on it: none, or several sharing the strongest link.'));
@@ -149,6 +158,24 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
       reason: reasonCode,
     },
   ];
+  if (input.issuerToken && !recorded) {
+    // Who minted the token is read from the issuer's factory on chain: a fact, never a project attribution.
+    claims.push({
+      id: 'verify.issuer_token',
+      dimension: 'contract',
+      statement: heyText(input.issuerToken.sentence),
+      status: 'FACT',
+      value: 'issuer_token',
+      source: { name: `${input.issuerToken.issuerName} token factory`, type: 'chain' },
+      observedAt: null,
+      occurredAt: null,
+      precision: null,
+      freshness: 'unknown',
+      evidence: [],
+      evidenceKind: 'registry_record',
+      reason: 'issuer_token',
+    });
+  }
   const checkedAt = [input.contract?.freshness.sourceCheckedAt, input.contract?.freshness.proxyCheckedAt].filter((at): at is string => Boolean(at)).sort().at(-1) ?? null;
   if (recorded) {
     /*
@@ -191,7 +218,9 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
           derivedText(`CONTRACT_MISMATCH: ${reasons.map((reason) => reason.text).join(' ')}`)
         : verdict === 'UNVERIFIED'
           ? derivedText(`UNVERIFIED: HEY records ${address} under "${recorded?.slug}", and the project has not been seen naming it.`)
-          : derivedText(`UNKNOWN: ${reasons[0]?.text ?? 'HEY cannot attribute this contract.'} Missing attribution is not evidence against it.`);
+          : reasonCode === 'issuer_token'
+            ? derivedText(`UNKNOWN (issuer_token): ${reasons[0]?.text ?? ''} It is never any project's token.`)
+            : derivedText(`UNKNOWN: ${reasons[0]?.text ?? 'HEY cannot attribute this contract.'} Missing attribution is not evidence against it.`);
 
   const projectForSubject = recorded ?? (asked?.found && asked.url ? { slug: asked.slug, url: asked.url } : null);
   return envelope(ctx, {

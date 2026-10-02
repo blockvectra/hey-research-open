@@ -582,6 +582,11 @@ export type HeyTokenLookup = {
   project?: HeyTokenLookupProject;
   /** Where a reader can ask the chain directly about an address HEY has no page for. */
   scanUrl: string;
+  /**
+   * Additive (2026-10-02): the address is a token an issuer minted — a Robinhood stock token from
+   * Robinhood's factory — never any project's token. Present only with `status: 'unknown'`.
+   */
+  issuer?: { issuerName: string; kind: string; symbol: string | null; sentence: string };
   disclaimer: string;
 };
 

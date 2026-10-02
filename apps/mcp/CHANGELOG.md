@@ -6,6 +6,12 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.1.2 — 2026-10-02
+
+### Fixed (outsider open-source check, 2026-10-02)
+
+- `package.json` `repository` and `bugs` point at the public source, `hey-research-lab/hey-research-open` (the private name was a 404).
+
 ### Changed (round 4, 2026-09-30)
 
 - **Typed output.** Every tool returns `structuredContent` and declares an `outputSchema`: `research_answer` the AgentIntelligenceResponse v1 itself, every other tool the public API object it rendered in a `hey.mcp-api-answer` wrapper. The text is unchanged.

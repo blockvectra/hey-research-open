@@ -3,7 +3,7 @@
   "name": "io.github.hey-research-lab/hey-research",
   "title": "HEY Research Lab",
   "description": "Evidence-backed Robinhood Chain research: builders, ships, contracts, changes, market context.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "websiteUrl": "https://heyresearch.xyz/developers/agents",
   "repository": {
     "url": "https://github.com/hey-research-lab/hey-research-open",

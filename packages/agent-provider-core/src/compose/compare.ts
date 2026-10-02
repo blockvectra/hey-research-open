@@ -86,7 +86,8 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
         statement: derivedText(`${project.slug}: activity status ${project.activityStatus}.`),
         status: project.activityStatus === 'UNKNOWN' ? 'UNKNOWN' : 'DERIVED',
         value: project.activityStatus,
-        source: { name: 'hey', type: 'hey_rule' },
+        // An UNKNOWN claim names no source (AgentIntelligenceResponse v1 invariant).
+        source: project.activityStatus === 'UNKNOWN' ? null : { name: 'hey', type: 'hey_rule' },
         observedAt,
         occurredAt: null,
         precision: null,

@@ -303,7 +303,11 @@ registry), [chainprint](https://github.com/hey-research-lab/chainprint) (offline
 detector), [hey-embed](https://github.com/hey-research-lab/hey-embed),
 [hey-telegram-bot](https://github.com/hey-research-lab/hey-telegram-bot) (read-only, public API only) and
 [hey-data](https://github.com/hey-research-lab/hey-data) (snapshots of HEY's own facts, CC BY 4.0; no
-market or provider data). None reads HEY's database; production does not consume any of them yet.
+market or provider data). None reads HEY's database; production does not consume any of them yet. HEY serves its own manifest at
+[`/.well-known/hey-project.json`](https://heyresearch.xyz/.well-known/hey-project.json), derived from
+the machine identity, as the working reference; `/developers#open-source` maps each package to its
+job. An outside-in check on 2026-10-02 (fresh clones and npm installs as a builder, a developer and
+an agent) led to 0.1.1 of nine of them.
 
 
 ## For autonomous agents

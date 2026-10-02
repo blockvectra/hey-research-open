@@ -619,6 +619,10 @@ a token has one URL for caches and crawlers to hold. The address prefix may be `
 **`status: "unknown"` answers `200`, not `404`.** Most addresses pasted anywhere are not
 published projects, and a 404 would make the ordinary case an exception for every caller. That
 answer carries `scanUrl` — somewhere to send the reader instead of a dead end — and no `project`.
+When the address is a token an issuer minted — a Robinhood stock token from Robinhood's factory,
+such as NVDA — the unknown answer also carries `issuer` (`issuerName`, `kind`, `symbol` and the
+one `sentence` every surface prints) (additive, 2026-10-02): it is never any project's token, so
+an agent should not read it as "a project HEY has not found".
 
 **Published records only.** An address HEY holds but has not reviewed answers `unknown`, the same
 as one it has never seen. An unreviewed launch record is not a project to this API.

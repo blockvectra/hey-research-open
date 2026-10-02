@@ -1,6 +1,6 @@
 {
   "name": "@hey-research-lab/sdk",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Typed client for the HEY Research Lab public API: evidence-backed research on Robinhood Chain projects — builder activity, ships, contracts, changes and market context, each with its source.",
   "license": "MIT",
   "type": "module",
@@ -41,12 +41,12 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/hey-research-lab/hey-research.git",
+    "url": "git+https://github.com/hey-research-lab/hey-research-open.git",
     "directory": "packages/sdk"
   },
   "homepage": "https://heyresearch.xyz/developers",
   "bugs": {
-    "url": "https://github.com/hey-research-lab/hey-research/issues"
+    "url": "https://github.com/hey-research-lab/hey-research-open/issues"
   },
   "keywords": [
     "robinhood-chain",

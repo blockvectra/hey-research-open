@@ -207,6 +207,15 @@ export function withEvidenceKind(claim: AgentClaim): AgentClaim {
   return { ...claim, evidenceKind: kind };
 }
 
+/**
+ * An UNKNOWN claim names no source (AgentIntelligenceResponse v1, the published
+ * `checkAgentInvariants`): a rule that could not decide is not the claim's source.
+ * The envelope applies it to every claim, so no composer can break it.
+ */
+export function unknownNamesNoSource(claim: AgentClaim): AgentClaim {
+  return claim.status === 'UNKNOWN' && claim.source !== null ? { ...claim, source: null } : claim;
+}
+
 /** Every project slug and contract an answer names, for the own-token disclosure. */
 function namedSubjects(subject: AgentSubject, data: unknown): { slugs: Set<string>; contracts: Set<string> } {
   const slugs = new Set<string>();
@@ -240,7 +249,7 @@ export function ownTokenDisclosures(ctx: AgentComposeContext, subject: AgentSubj
 }
 
 export function envelope<C extends AgentCapability>(ctx: AgentComposeContext, parts: EnvelopeParts<C>): AgentResponseOf<C> {
-  const claims = (parts.claims ?? []).slice(0, AGENT_LIMITS.claims).map(withEvidenceKind);
+  const claims = (parts.claims ?? []).slice(0, AGENT_LIMITS.claims).map(withEvidenceKind).map(unknownNamesNoSource);
   const disclosures = ownTokenDisclosures(ctx, parts.subject, parts.data);
   const unknowns = (parts.unknowns ?? []).slice(0, AGENT_LIMITS.unknowns);
   const asOf = ctx.now.toISOString();

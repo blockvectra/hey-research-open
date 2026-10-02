@@ -271,3 +271,32 @@ describe('what HEY does not know, said fairly (builder and compliance review)', 
     expect(valid(status) && valid(unknown)).toBe(true);
   });
 });
+
+describe('an UNKNOWN claim names no source (outsider OSS check, 2026-10-02)', () => {
+  it('compare_builders on a project whose activity is UNKNOWN carries source null, as @hey-research-lab/agent-contract checks', () => {
+    const unknown = { ...column('agentos'), activityStatus: 'UNKNOWN', lastMeaningfulShipAt: null } as unknown as HeyCompare['projects'][number];
+    const answer = composeCompare(ctx(), { compare: { projects: [unknown, column('stockfi')], missing: [], ignoredSlugs: [] } as unknown as HeyCompare, peers: {}, scoredAt: {} });
+    expect(valid(answer)).toBe(true);
+    const unknowns = answer.claims.filter((claim) => claim.status === 'UNKNOWN');
+    expect(unknowns.length).toBeGreaterThan(0);
+    for (const claim of unknowns) expect(claim.source).toBeNull();
+  });
+});
+
+describe('verify_project names a Robinhood stock token (outsider OSS check, 2026-10-02)', () => {
+  it('keeps the verdict UNKNOWN (the enum is fixed) and says, as a FACT, who issued the token', () => {
+    const answer = composeVerify(ctx(), {
+      chainId: 4663,
+      address: '0xd0601ab0d6ad0b5d3e1a6a0e8b2c6c3c1f7a9b21',
+      token: { status: 'unknown', scanUrl: `${BASE}/scan` } as unknown as HeyTokenLookup,
+      contract: null,
+      issuerToken: { sentence: 'Robinhood stock token: NVIDIA (NVDA) — issued by Robinhood, not a project on HEY.', issuerName: 'Robinhood' },
+    });
+    expect(valid(answer)).toBe(true);
+    expect(answer.data?.verdict).toBe('UNKNOWN');
+    expect(answer.answer.text).toContain('issued by Robinhood');
+    const fact = answer.claims.find((claim) => claim.id === 'verify.issuer_token');
+    expect(fact).toMatchObject({ status: 'FACT', value: 'issuer_token', source: { type: 'chain' } });
+    expect(answer.unknowns.find((u) => u.dimension === 'contractAttribution')?.reason).toBe('issuer_token');
+  });
+});
