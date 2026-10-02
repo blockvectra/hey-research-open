@@ -29,7 +29,53 @@ export type WebsiteMetadata = HtmlMetadata & {
   contentHash: string;
   /** Which of the requested `mentions` the page actually contains, lowercased. */
   mentioned?: string[];
+  /**
+   * Which of `mentioned` appear *only* inside a list of contract addresses
+   * (2026-10-02, outsider audit OA-A): every occurrence has at least
+   * `LISTED_MIN_NEIGHBOURS` other distinct addresses within
+   * `LISTED_WINDOW_CHARS` of it. A page of stock tokens it trades or of the
+   * contracts it integrates names each of them; that is a contract the site
+   * uses, not the one it issues.
+   */
+  listed?: string[];
 };
+
+/** Characters either side of a mention searched for other addresses. */
+export const LISTED_WINDOW_CHARS = 600;
+/** Other distinct addresses that make a mention part of a list. */
+export const LISTED_MIN_NEIGHBOURS = 3;
+
+const ADDRESS_IN_PAGE = /0x[0-9a-f]{40}/g;
+
+/**
+ * The needles of `mentioned` that the page names only inside a list of
+ * contract addresses. Pure; `haystack` is the lower-cased body.
+ */
+export function listedMentions(haystack: string, mentioned: readonly string[]): string[] {
+  const addresses: { at: number; address: string }[] = [];
+  for (const match of haystack.matchAll(ADDRESS_IN_PAGE)) addresses.push({ at: match.index ?? 0, address: match[0] });
+  const bare = (value: string) => value.replace(/^0x/, '');
+  return mentioned.filter((needle) => {
+    const own = bare(needle);
+    let from = 0;
+    let seen = false;
+    for (;;) {
+      const at = haystack.indexOf(needle, from);
+      if (at < 0) break;
+      seen = true;
+      const neighbours = new Set<string>();
+      for (const other of addresses) {
+        if (Math.abs(other.at - at) > LISTED_WINDOW_CHARS) continue;
+        const address = bare(other.address);
+        if (address !== own) neighbours.add(address);
+      }
+      // One mention standing on its own is enough: the page names it as itself somewhere.
+      if (neighbours.size < LISTED_MIN_NEIGHBOURS) return false;
+      from = at + needle.length;
+    }
+    return seen;
+  });
+}
 
 const CACHE_TTL_SECONDS = 21_600;
 
@@ -70,19 +116,18 @@ export function createWebsiteAdapter(): SourceAdapter<WebsiteInput, WebsiteMetad
               ...extractHtmlMetadata(body, finalUrl),
               url: finalUrl,
               contentHash: hashContent(body),
-              ...(wanted.length > 0
-                ? {
-                    mentioned: wanted
-                      .map((needle) => needle.toLowerCase())
-                      .filter((needle) => needle.length > 0 && haystack.includes(needle)),
-                  }
-                : {}),
+              ...(wanted.length > 0 ? mentionsOf(haystack, wanted) : {}),
             };
           },
         },
       );
     },
   };
+}
+
+function mentionsOf(haystack: string, wanted: readonly string[]): { mentioned: string[]; listed: string[] } {
+  const mentioned = wanted.map((needle) => needle.toLowerCase()).filter((needle) => needle.length > 0 && haystack.includes(needle));
+  return { mentioned, listed: listedMentions(haystack, mentioned) };
 }
 
 /**

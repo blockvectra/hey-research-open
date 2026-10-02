@@ -73,6 +73,13 @@ export type CandleDay = {
    * an open from the price series) is never given a direction.
    */
   ohlcSource?: 'price' | 'trade' | 'mixed' | undefined;
+  /**
+   * `provider_archive` (2026-10-02): the day is a provider's daily candle,
+   * read from its archive long after the day — not one of HEY's own readings.
+   * It is drawn like any measured candle (the provider measured it) inside a
+   * hatched band the chart names, and the readout and the table say so.
+   */
+  basis?: 'provider_archive' | undefined;
 };
 
 export type ChartEventShape = 'circle' | 'square' | 'diamond' | 'plus' | 'cross' | 'bar' | 'dash' | 'dot';
@@ -557,6 +564,9 @@ export type ChartSummaryCounts = {
   gaps: number;
 };
 
+/** Whether a row is the provider's daily archive (2026-10-02), not HEY's own reading. */
+export const archivedRow = (row: ChartRow): boolean => row.length === 9 && row[8] === 'a';
+
 /**
  * Everything the island needs, computed once on the server: the rows with
  * their directions, the padded domain, the ticks and their labels, the month
@@ -609,17 +619,23 @@ export function buildChartModel(
      * refuses to draw.
      */
     const ohlc = code === 'n' || code === 'm';
-    return [
-      d.day,
-      ohlc ? null : sig(d.open),
-      ohlc ? null : sig(d.high),
-      ohlc ? null : sig(d.low),
-      sig(d.close),
-      sig(d.volume),
-      d.readings,
-      code,
-    ];
+    const [open, high, low] = ohlc ? [null, null, null] : [sig(d.open), sig(d.high), sig(d.low)];
+    const closeAt = sig(d.close);
+    const volume = sig(d.volume);
+    return d.basis === 'provider_archive'
+      ? [d.day, open, high, low, closeAt, volume, d.readings, code, 'a']
+      : [d.day, open, high, low, closeAt, volume, d.readings, code];
   });
+  /* Runs of provider-archive days (2026-10-02), each drawn as one hatched band the chart names. */
+  const archiveRuns: [number, number][] = [];
+  for (let i = 0; i < rows.length; i += 1) {
+    if (!archivedRow(rows[i]!)) continue;
+    let j = i;
+    while (j + 1 < rows.length && archivedRow(rows[j + 1]!)) j += 1;
+    archiveRuns.push([i, j]);
+    i = j;
+  }
+  const archiveDays = archiveRuns.reduce((sum, [a, b]) => sum + b - a + 1, 0);
 
   /*
    * The domain is the lows and highs of the drawn days, padded 6% below and 8%
@@ -791,6 +807,7 @@ export function buildChartModel(
     today: options.todayUtc,
     ...(intraday ? { tf: timeframe } : {}),
     ...(codeLane ? { code: codeLane } : {}),
+    ...(archiveRuns.length ? { archive: archiveRuns } : {}),
   };
 
   /* The whole chart as one sentence, for the figure's caption. */
@@ -813,6 +830,7 @@ export function buildChartModel(
   const summary =
     `${movement}; ${counts.up} up ${unit}${counts.up === 1 ? '' : 's'}, ${counts.down} down, ${counts.flat} unchanged, ${counts.closeOnly} close-only` +
     `${counts.partial ? (intraday ? ', the latest bar still open' : ', today still open') : ''}; ${counts.gaps} ${unit}${counts.gaps === 1 ? '' : 's'} without ${intraday ? 'a bar' : 'a reading'}; ` +
-    `${eventCount} builder and research event${eventCount === 1 ? '' : 's'} in range, aligned by time only.`;
+    `${eventCount} builder and research event${eventCount === 1 ? '' : 's'} in range, aligned by time only.` +
+    (archiveDays ? ` ${archiveDays} day${archiveDays === 1 ? '' : 's'} drawn from the provider’s daily archive, not from HEY’s own readings.` : '');
   return { model, summary, counts };
 }

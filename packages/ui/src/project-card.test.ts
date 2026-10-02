@@ -105,15 +105,15 @@ describe('ProjectCard — fallbacks', () => {
     expect(html).not.toContain('Shipping');
   });
 
-  it('says "No builder signal yet" only for UNKNOWN with nothing to read building from', () => {
+  it('says "No builder source linked" only for UNKNOWN with nothing to read building from', () => {
     const html = render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false });
-    expect(html).toContain('No builder signal yet');
+    expect(html).toContain('No builder source linked');
     expect(html).not.toContain('Activity unknown');
     // A source HEY can read keeps the plain word; a known status never changes.
     expect(render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: true })).toContain('Activity unknown');
-    expect(render({ ...tokenBacked, activityStatus: 'SHIPPING', hasBuilderSource: false })).not.toContain('No builder signal');
+    expect(render({ ...tokenBacked, activityStatus: 'SHIPPING', hasBuilderSource: false })).not.toContain('No builder source linked');
     // Not beside a recorded ship (2026-09-25): a card that says "Last ship 1mo ago" has had a signal.
-    expect(render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false, lastMeaningfulShipAt: new Date('2026-08-16T00:00:00Z') })).not.toContain('No builder signal');
+    expect(render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false, lastMeaningfulShipAt: new Date('2026-08-16T00:00:00Z') })).not.toContain('No builder source linked');
   });
 
   it('prints what it knows under an UNKNOWN token card: trades and on-chain events, and nothing when it knows neither', () => {
@@ -397,10 +397,11 @@ describe('ProjectCard — builder line and latest signal (public IA pass, 2026-0
     expect(html.match(/data-testid="card-last-ship"/g)).toHaveLength(1);
   });
 
-  it('names a code week by its count and its week, never "Active development: 100…"', () => {
+  it('names a code week by its kind and its week, never "Active development: 100…" nor the rolling count', () => {
     const code = { id: 'c1', title: 'Active development: 100+ commits since 2026-09-16 across 1 contributor', eventType: 'CODE_ACTIVITY', publishedAt: new Date('2026-09-28T02:00:00Z') };
     const html = renderAt({ ...tokenBacked, latestShip: code, lastMeaningfulShipAt: code.publishedAt });
-    expect(html).toContain('>100+ commits<');
+    expect(html).toContain('>Code changes<');
+    expect(html).not.toContain('100+ commits');
     expect(html).toContain('· this week');
     expect(html).not.toContain('>Active development');
   });
@@ -422,7 +423,7 @@ describe('ProjectCard — builder line and latest signal (public IA pass, 2026-0
     const html = renderAt({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false });
     expect(html).not.toContain('card-last-ship');
     expect(html).not.toContain('card-latest-signal');
-    expect(html).toContain('No builder signal yet');
+    expect(html).toContain('No builder source linked');
   });
 
   it('a ship card carries its ship, not a second latest-signal line', () => {

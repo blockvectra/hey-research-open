@@ -25,7 +25,7 @@
  * beyond whitespace; LOW_INFORMATION when every file is README, docs,
  * dependency lockfile, generated, asset, whitespace-only or a pure rename.
  */
-export const COMMIT_SUBSTANCE_VERSION = 'commit-substance-v2' as const;
+export const COMMIT_SUBSTANCE_VERSION = 'commit-substance-v3' as const;
 
 /*
  * commit-substance-v2 (2026-09-27, founder ruling: "data tak kira"): a data
@@ -37,6 +37,30 @@ export const COMMIT_SUBSTANCE_VERSION = 'commit-substance-v2' as const;
  * (one production repository: 58 one-line commits to one JSON file) read as
  * building. YAML and XML outside configuration directories stay `unknown`:
  * they are as often deployment configuration as data.
+ */
+
+/*
+ * commit-substance-v3 (2026-10-02, outsider audit; founder delegation
+ * 2026-10-02, hbm-v22). Three rules, each from a real repository that led the
+ * ships feed:
+ *
+ *  1. A commit that changes only CI configuration (`.github/workflows/…`) is
+ *     maintenance, `ci_only`. A repository running a trading script from
+ *     GitHub Actions edited its workflow files dozens of times a week; one
+ *     such commit, read first, made a 149-commit week "building".
+ *  2. A burst week — `BURST.minCommits` or more human commits — needs
+ *     substance on a sample, not on its first commit: SUBSTANTIVE once
+ *     `BURST.minSubstantive` of up to `BURST.sample` commits read changed
+ *     code; read as "mostly maintenance or automation" (LOW_INFORMATION,
+ *     `sampled`) when the sample is read and too few could have; UNKNOWN
+ *     (counts as before) until then. A sample may decide a week whose listing
+ *     was cut short; nothing else may.
+ *  3. A week whose commits HEY holds are all automation — bot accounts or an
+ *     automated stream (`commit-automation.ts`) — and at least as many as its
+ *     summary counted is `automated_only`, LOW_INFORMATION.
+ *
+ * The absence of HEY's reading still never demotes a project: an unread
+ * sample, or a week HEY holds too few commits for, is UNKNOWN.
  */
 
 export const FILE_CLASSES = [
@@ -61,7 +85,7 @@ export const COMMIT_SUBSTANCES = ['SUBSTANTIVE', 'LOW_INFORMATION', 'UNKNOWN'] a
 export type CommitSubstance = (typeof COMMIT_SUBSTANCES)[number];
 
 /** Classes whose change is evidence of development. */
-const SUBSTANTIVE_CLASSES: ReadonlySet<FileClass> = new Set(['source', 'test', 'config', 'ci']);
+const SUBSTANTIVE_CLASSES: ReadonlySet<FileClass> = new Set(['source', 'test', 'config']);
 /** Classes whose change alone is documentation or maintenance (G1). */
 const LOW_INFORMATION_CLASSES: ReadonlySet<FileClass> = new Set([
   'readme',
@@ -72,6 +96,8 @@ const LOW_INFORMATION_CLASSES: ReadonlySet<FileClass> = new Set([
   'whitespace',
   'rename',
   'data',
+  // CI configuration alone is maintenance (commit-substance-v3).
+  'ci',
 ]);
 
 export const emptyFileClassCounts = (): FileClassCounts =>
@@ -405,6 +431,7 @@ const ONLY_REASON: Partial<Record<FileClass, string>> = {
   whitespace: 'whitespace_only',
   rename: 'rename_only',
   data: 'data_only',
+  ci: 'ci_only',
 };
 const CHANGED_REASON: Partial<Record<FileClass, string>> = {
   source: 'source_changed',
@@ -473,7 +500,23 @@ export type CodeWeekInput = {
    * the week as the summary counted.
    */
   fullyListed: boolean;
+  /**
+   * How many commits the week's summary counted as human when it was written
+   * (v3). An `automated_only` week needs HEY to hold at least that many
+   * automated commits for it; without the figure the rule never applies.
+   */
+  counted?: number | undefined;
 };
+
+/** A burst week is decided on a sample (commit-substance-v3). */
+export const BURST = {
+  /** Human, non-merge commits HEY holds for the week that make it a burst. */
+  minCommits: 25,
+  /** How many of its commits are read before the week is decided. */
+  sample: 10,
+  /** Commits of the sample that must change code for the week to be building. */
+  minSubstantive: 3,
+} as const;
 
 export type CodeWeekSubstance = {
   verdict: CommitSubstance;
@@ -488,19 +531,37 @@ export type CodeWeekSubstance = {
   pending: number;
   classes: FileClassCounts;
   classifierVersion: typeof COMMIT_SUBSTANCE_VERSION;
+  /** Bot or automated-stream commits HEY holds for the week (v3; never part of the counts above). */
+  automated: number;
+  /** The verdict rests on a sample of a burst week (v3). */
+  sampled: boolean;
+  /** Why a LOW_INFORMATION week is one, when it is not "every commit read" (v3). */
+  basis: 'all_read' | 'burst_sample' | 'automated_only' | null;
 };
 
+/** How many substantive commits decide a week, and how many reads a week may take: what the detail sweep reads to. */
+export function codeWeekReadPlan(humanCommits: number): { burst: boolean; needSubstantive: number; sample: number } {
+  const burst = humanCommits >= BURST.minCommits;
+  return burst
+    ? { burst, needSubstantive: BURST.minSubstantive, sample: Math.min(BURST.sample, humanCommits) }
+    : { burst, needSubstantive: 1, sample: humanCommits };
+}
+
 /**
- * One repository's ISO week, from its commits (G1).
+ * One repository's ISO week, from its commits (G1, v3).
  *
- * SUBSTANTIVE as soon as one human commit changed code. LOW_INFORMATION only
- * when HEY can show it for the whole week: every human, non-merge commit
- * listed, read and documentation or maintenance only. Anything short of that
- * is UNKNOWN — HEY has not read the substance, and the absence of HEY's
- * reading must never demote a project, so UNKNOWN counts exactly as before.
+ * An ordinary week is SUBSTANTIVE as soon as one human commit changed code,
+ * and LOW_INFORMATION only when HEY can show it for the whole week: every
+ * human, non-merge commit listed, read and documentation or maintenance only.
+ * A burst week is decided on a sample (`BURST`). A week whose commits are all
+ * automation, at least as many as its summary counted, is LOW_INFORMATION.
+ * Anything short of that is UNKNOWN — HEY has not read the substance, and the
+ * absence of HEY's reading must never demote a project, so UNKNOWN counts
+ * exactly as before.
  */
 export function codeWeekSubstance(input: CodeWeekInput): CodeWeekSubstance {
   const human = input.commits.filter((commit) => !commit.isBot && !commit.isMerge);
+  const automated = input.commits.filter((commit) => commit.isBot && !commit.isMerge).length;
   const classes = emptyFileClassCounts();
   let substantive = 0;
   let lowInformation = 0;
@@ -515,12 +576,27 @@ export function codeWeekSubstance(input: CodeWeekInput): CodeWeekSubstance {
   }
   const classified = substantive + lowInformation + unknown;
   const pending = human.length - classified;
-  const verdict: CommitSubstance =
-    substantive > 0
-      ? 'SUBSTANTIVE'
-      : input.fullyListed && human.length > 0 && pending === 0 && unknown === 0 && lowInformation === human.length
-        ? 'LOW_INFORMATION'
-        : 'UNKNOWN';
+  const plan = codeWeekReadPlan(human.length);
+
+  let verdict: CommitSubstance = 'UNKNOWN';
+  let basis: CodeWeekSubstance['basis'] = null;
+  if (human.length === 0) {
+    if (automated > 0 && input.counted !== undefined && input.counted > 0 && automated >= input.counted) {
+      verdict = 'LOW_INFORMATION';
+      basis = 'automated_only';
+    }
+  } else if (plan.burst) {
+    if (substantive >= plan.needSubstantive) verdict = 'SUBSTANTIVE';
+    // The sample is read and even the commits HEY could not place would not make enough.
+    else if (classified >= plan.sample && substantive + unknown < plan.needSubstantive) {
+      verdict = 'LOW_INFORMATION';
+      basis = 'burst_sample';
+    }
+  } else if (substantive > 0) verdict = 'SUBSTANTIVE';
+  else if (input.fullyListed && pending === 0 && unknown === 0 && lowInformation === human.length) {
+    verdict = 'LOW_INFORMATION';
+    basis = 'all_read';
+  }
   return {
     verdict,
     commitsRead: human.length,
@@ -531,6 +607,9 @@ export function codeWeekSubstance(input: CodeWeekInput): CodeWeekSubstance {
     pending,
     classes,
     classifierVersion: COMMIT_SUBSTANCE_VERSION,
+    automated,
+    sampled: plan.burst,
+    basis,
   };
 }
 

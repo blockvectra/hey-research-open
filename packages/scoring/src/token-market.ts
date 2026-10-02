@@ -518,8 +518,14 @@ export function marketIsLive(status: TokenMarketStatusValue | null | undefined, 
  * rebuild reads it only to withhold, never to award, and activity status and
  * Build Momentum never read it.
  */
-export function discoveryGapMarketMeasurable(status: TokenMarketStatusValue | string | null | undefined, launchStage: string | null | undefined): boolean {
+export function discoveryGapMarketMeasurable(
+  status: TokenMarketStatusValue | string | null | undefined,
+  launchStage: string | null | undefined,
+  /** The classifier's reason (hbm-v22): a launch pool's inventory is not a market, whatever the status beside it. */
+  reason?: string | null | undefined,
+): boolean {
   if (!status || !(DISCOVERY_GAP.measuredMarketStatuses as readonly string[]).includes(status)) return false;
+  if (reason && DISCOVERY_GAP.unmeasuredReasonPrefixes.some((prefix) => reason.startsWith(prefix))) return false;
   return !(launchStage && (DISCOVERY_GAP.unmeasuredLaunchStages as readonly string[]).includes(launchStage));
 }
 

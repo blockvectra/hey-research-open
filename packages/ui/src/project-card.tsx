@@ -10,16 +10,17 @@ import {
   formatUsdCompact,
   formatVerification,
   oneLineDescription,
-  plainText,
   staleReadingAge,
   tickerLabel,
 } from './format';
 import { valuationDisplay, valuationDisplayLabel, valuationHiddenSentence, VALUATION_HIDDEN_WORDS } from '@hey/scoring/valuation-display';
+import { projectCategory } from './project-category';
 import { ProjectLogo } from './project-logo';
-import { cardShipPhrase } from './ship-phrase';
+import { cardShipPhrase, displayShipTitle } from './ship-phrase';
 import { ActivityChip, activityPresentation, type ActivityStatusValue, unknownActivityReason, StillBuildingBadge, TokenVerificationChip } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
 import { TokenLockChip, type TokenLockFacts } from './token-lock';
+import { BrandNotice, type BrandNoticeData } from './brand-notice';
 
 /**
  * Project card (Card V7, 2026-09-03; recomposed in the public IA pass,
@@ -51,6 +52,9 @@ import { TokenLockChip, type TokenLockFacts } from './token-lock';
  * name or a ticker — the token's identity is its chain id and contract
  * address — and nothing here is derived: every value is a canonical card fact.
  */
+/** What "Valuation" means on a card when the figure is a fully diluted valuation: the card's title and the glossary read it. */
+export const FDV_HELP = 'Fully diluted valuation: the provider reports no circulating supply, so this is price × total supply.';
+
 export type ProjectCardData = {
   slug: string;
   name: string;
@@ -92,6 +96,8 @@ export type ProjectCardData = {
   onchainEvents24h?: number;
   /** Canonical token identity. Absent for a project without a token. */
   token?: { chainId: number; contractAddress: string };
+  /** "Not affiliated with Robinhood — HEY has not verified this claim." (2026-10-02): drawn first, above every badge. */
+  brandNotice?: BrandNoticeData;
   /**
    * Supply held at HoodLock, when HEY found a live lock. Absent is the
    * ordinary case and is never drawn as a failing check — context, never a
@@ -153,6 +159,7 @@ export function ProjectCard({
   showStillBuilding = false,
   marketLens = false,
   disclosure,
+  terms,
   className,
 }: {
   project: ProjectCardData;
@@ -179,6 +186,16 @@ export function ProjectCard({
    * the card only prints them, and they change nothing else on it.
    */
   disclosure?: string;
+  /**
+   * Definitions one press away (outsider audit, 2026-10-02): the caller wraps
+   * the status chip and the valuation label in its glossary control. The card
+   * only hands over what it drew and the facts it drew it from; the words
+   * live in the app's glossary. Absent, the card renders as before.
+   */
+  terms?: {
+    status?: (chip: ReactNode, status: ActivityStatusValue) => ReactNode;
+    valuation?: (label: ReactNode, kind: 'marketCap' | 'fdv' | undefined) => ReactNode;
+  };
   className?: string;
 }) {
   const marketSource = formatMarketSource(project.marketCapSource);
@@ -206,7 +223,8 @@ export function ProjectCard({
   // Source text as words: launchpad descriptions arrive with Markdown in them (QA sweep 2026-09-04).
   // A line, not a pasted README (2026-10-01): the two-line clamp hid the rest on screen, never from a screen reader.
   const description = oneLineDescription(project.shortDescription, 220);
-  const shipTitle = ship ? plainText(ship.title) : '';
+  // A code week by its fixed week, never the rolling "100+ commits since …" (2026-10-02, `displayShipTitle`).
+  const shipTitle = ship ? displayShipTitle(ship) : '';
   /*
    * The one latest-evidence line (public IA pass, 2026-09-28): what shipped
    * and when, from the canonical latest meaningful ship. A card used to say
@@ -215,7 +233,7 @@ export function ProjectCard({
    * scorer holds, and says only that.
    */
   const latest = ship ? undefined : project.latestShip;
-  const latestTitle = latest ? plainText(latest.title) : '';
+  const latestTitle = latest ? displayShipTitle(latest) : '';
   /*
    * The line's words come from one formatter (`cardShipPhrase`, public UX
    * review 2026-09-28): short by construction and never cut mid-word by CSS.
@@ -230,12 +248,12 @@ export function ProjectCard({
   // the narrative already names it. "Uncategorised" (kind OTHER) is a data
   // state, not a fact about the project; it is shown only when the line
   // would otherwise be empty, never beside a ticker or a narrative.
-  const kindLabel = formatProjectKind(project.projectKind);
   // The catch-all narrative "Other" is a data state too (ux-data audit, 2026-10-01): "$CHIT · Other · Infrastructure" named no category.
-  const narrative = project.primaryNarrative?.slug === 'other' ? undefined : project.primaryNarrative;
-  const showKind =
-    narrative?.name.toLowerCase() !== kindLabel.toLowerCase() &&
-    (project.projectKind !== 'OTHER' || (!project.symbol && !narrative));
+  // One rule with the compare page and `/api/compare` (`projectCategory`, OA-G 2026-10-02).
+  const category = projectCategory(project);
+  const kindLabel = formatProjectKind(project.projectKind);
+  const narrative = category.narrative;
+  const showKind = category.kindLabel !== undefined || (project.projectKind === 'OTHER' && !project.symbol && !narrative);
   const identityParts: ReactNode[] = [];
   if (project.symbol)
     identityParts.push(
@@ -308,6 +326,9 @@ export function ProjectCard({
         className,
       )}
     >
+      {/* A name that borrows Robinhood's brand or a stock ticker says so before anything else (2026-10-02). */}
+      {project.brandNotice ? <BrandNotice notice={project.brandNotice} /> : null}
+
       {/* IDENTITY — logo, name, ticker · narrative · kind */}
       <div className="flex items-start gap-3">
         <ProjectLogo
@@ -353,7 +374,10 @@ export function ProjectCard({
        * line wraps under the chip on a narrow card instead of squeezing.
        */}
       <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5" data-testid="card-builder">
-        <ActivityChip status={project.activityStatus} variant="surface" unknownReason={unknownActivityReason(project)} className="shrink-0" />
+        {(() => {
+          const chip = <ActivityChip status={project.activityStatus} variant="surface" unknownReason={unknownActivityReason(project)} className="shrink-0" />;
+          return terms?.status ? terms.status(chip, project.activityStatus) : chip;
+        })()}
         {!ship && latest && latestPhrase ? (
           <p
             className="min-w-0 grow basis-[9rem] text-[13px] leading-5"
@@ -470,10 +494,10 @@ export function ProjectCard({
               <span
                 className="text-hey-secondary"
                 {...(valuation.shown && valuation.kind === 'fdv'
-                  ? { title: 'Fully diluted valuation: the provider reports no circulating supply, so this is price × total supply.' }
+                  ? { title: FDV_HELP }
                   : {})}
               >
-                {valuationDisplayLabel(valuation, 'card')}
+                {terms?.valuation ? terms.valuation(valuationDisplayLabel(valuation, 'card'), valuation.shown ? valuation.kind : undefined) : valuationDisplayLabel(valuation, 'card')}
               </span>
               {valuation.shown ? (
                 <span className="font-semibold tabular-nums text-hey-ink" {...(marketSource ? { title: `via ${marketSource}` } : {})}>

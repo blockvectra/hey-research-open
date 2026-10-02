@@ -30,6 +30,7 @@ depends on a live API.
 | `dexscreener` | Primary market context | 5 min | Deepest-liquidity pair wins; figures are never merged across pairs |
 | `geckoterminal` | Fallback market context | 5 min | Same normalized shape as DEX Screener |
 | `geckoterminal-ohlcv` (hour, minute) | 1h and 15m candles for the Terminal chart, a bounded token set (2026-09-29) | 15 min | Per-pool OHLC with per-bar volume; only bars that traded are listed, so a missing bar stays missing; own key `geckoterminal-intraday` 1,440/day inside the provider's 7,000; context only |
+| `geckoterminal-ohlcv` (day, archive) | A token's daily OHLC and per-day volume back to its pool's first trade, for the days HEY never read (2026-10-02) | 6 h | One-time, resumable backfill into `token_market_archive_days` (basis `provider_archive`), never `token_market_days`; no liquidity or valuation in the archive; own key `geckoterminal-archive` 600/day on the history lane a minute apart; display context only — see `docs/MARKET_ARCHIVE_BACKFILL.md` |
 | `blockscout` | Contract metadata, verification, deployment evidence | 1 h | Holder endpoints are deliberately not implemented |
 | `rpc-contract` | `eth_getCode` existence check | 1 h | Lightweight verification only; HEY runs no node |
 | `github-repo` | Repository activity window | 30 min | Stars are display context, never a score input |

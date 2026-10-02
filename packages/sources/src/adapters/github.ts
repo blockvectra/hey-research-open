@@ -16,6 +16,8 @@ import { keepToProviderHost } from './provider-host';
 export const GITHUB_DEFAULT_BASE_URL = 'https://api.github.com';
 
 export const githubRepoSchema = z.object({
+  /** GitHub's numeric repository id (2026-10-02): unchanged by a rename or a transfer, so it is the repository's identity. */
+  id: z.number().optional(),
   full_name: z.string(),
   description: z.string().nullish(),
   html_url: z.string().optional(),
@@ -99,6 +101,8 @@ export type GithubRelease = {
 
 export type GithubRepoActivity = {
   fullName: string;
+  /** GitHub's numeric repository id, when the answer carried it (2026-10-02). */
+  repoId?: number;
   description?: string;
   homepage?: string;
   defaultBranch?: string;
@@ -170,6 +174,7 @@ export function createGithubRepoAdapter(): SourceAdapter<GithubRepoInput, Github
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (raw): GithubRepoActivity => ({
             fullName: raw.full_name,
+            ...opt('repoId', raw.id !== undefined && Number.isSafeInteger(raw.id) && raw.id > 0 ? raw.id : undefined),
             isArchived: raw.archived ?? false,
             isFork: raw.fork ?? false,
             isTemplate: raw.is_template ?? false,

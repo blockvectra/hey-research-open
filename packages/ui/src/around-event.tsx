@@ -37,6 +37,8 @@ export type AroundRow = {
   change?: { pct: number; market: boolean } | undefined;
   /** The event's own day or week: the price move only. */
   around?: AroundCell | undefined;
+  /** "provider archive" when the row's figures are wholly or partly the provider's daily archive, not HEY's own readings. */
+  basisLabel?: string | undefined;
 };
 
 export type AroundPanel = {
@@ -56,6 +58,8 @@ export type AroundPanel = {
   rows: AroundRow[];
   /** Fields with nothing to show, and why: "Valuation: not measured — market too thin". */
   notShown: string[];
+  /** Where an archive-sourced price or volume came from, in the domain's words (2026-10-02); absent when none did. */
+  basisNote?: string | undefined;
   caveat: string;
 };
 
@@ -108,6 +112,11 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
             <tr key={row.key} className="border-t border-hey-border" data-testid="around-event-row" data-field={row.key}>
               <th scope="row" className="py-1.5 pr-2 text-left font-normal text-hey-secondary">
                 {row.label}
+                {row.basisLabel ? (
+                  <span className="mt-0.5 block text-t-micro text-hey-muted" data-testid="around-event-basis-label">
+                    {row.basisLabel}
+                  </span>
+                ) : null}
                 {row.around ? (
                   <span className="mt-0.5 flex flex-wrap items-baseline gap-x-1 text-t-micro text-hey-muted" data-testid="around-event-day">
                     <span>{panel.headings.around}:</span>
@@ -142,6 +151,11 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
           ))}
         </tbody>
       </table>
+      {panel.basisNote ? (
+        <p className="text-t-micro text-hey-secondary" data-testid="around-event-basis">
+          {panel.basisNote}
+        </p>
+      ) : null}
       {panel.notShown.length > 0 ? (
         <p className="text-t-micro text-hey-muted" data-testid="around-event-not-shown">
           Not shown: {panel.notShown.join(' · ')}

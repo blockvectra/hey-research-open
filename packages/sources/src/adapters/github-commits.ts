@@ -17,7 +17,7 @@ export const githubCommitsSchema = z.array(
     sha: z.string(),
     commit: z.object({
       message: z.string().nullish(),
-      author: z.object({ name: z.string().nullish(), date: z.string().nullish() }).nullish(),
+      author: z.object({ name: z.string().nullish(), email: z.string().nullish(), date: z.string().nullish() }).nullish(),
     }),
     author: z.object({ login: z.string().nullish(), type: z.string().nullish() }).nullish(),
     /** More than one parent is a merge (2026-09-27): counted by structure, not only by its message. */
@@ -29,6 +29,14 @@ export type GithubCommit = {
   sha: string;
   message: string;
   authorLogin?: string;
+  /**
+   * Who wrote the commit, for counting distinct contributors only (outsider
+   * audit, 2026-10-02): the lower-cased login, else the commit's author
+   * e-mail, else its author name. Commits with no linked GitHub account all
+   * read "unknown" before, so a repository whose commits carry no login always
+   * said "1 contributor". Held in memory for the count; never stored.
+   */
+  authorKey?: string;
   committedAt: Date;
   /** Bot and automated commits are excluded from activity summaries. */
   isBot: boolean;
@@ -67,15 +75,35 @@ export type GithubCommitsInput = GithubRepoInput & {
   /** Only commits after this instant are requested. */
   since: Date;
   perPage?: number;
+  /** 1-based page of the listing (2026-10-02): the caller follows a truncated week back. */
+  page?: number;
 };
 
 const CACHE_TTL_SECONDS = 1800;
 const REPO_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
-/** Automation that should not be mistaken for a human shipping (PRD V4 26). */
-export const GITHUB_BOT_LOGIN = /\[bot\]$|^(dependabot|renovate|github-actions|greenkeeper|snyk-bot)/i;
+/**
+ * Automation that should not be mistaken for a human shipping (PRD V4 26).
+ *
+ * Widened 2026-10-02 (outsider audit): the only generic case was a `[bot]`
+ * suffix, so an account named `brodie-terminal-bot` — committing "chore:
+ * refresh ledgers" a dozen times a day under a GitHub user literally called
+ * `bot` — was counted as a contributor and its commits as building. A login or
+ * author name that is `bot`, ends in `-bot`/`_bot`/`.bot`/` bot` or starts
+ * with `bot-` is automation; `talbot` and `abbot` are not.
+ */
+export const GITHUB_BOT_LOGIN =
+  /\[bot\]$|(?:^|[-_.\s])bot$|^bot[-_.]|^(dependabot|renovate|github-actions|greenkeeper|snyk-bot|imgbot|allcontributors|semantic-release-bot|pre-commit-ci|mergify|codecov|kodiakhq|deepsource-autofix|actions-user|github-action|gitbook-bot|changeset-bot|release-please)/i;
 const BOT_LOGIN = GITHUB_BOT_LOGIN;
-const BOT_MESSAGE = /^(chore\(deps\)|build\(deps\)|bump |merge pull request|merge branch)/i;
+/** A commit e-mail that names automation: `…[bot]@users.noreply.github.com`, `bot@…`, `x-bot@…`, GitHub Actions' own. */
+export const GITHUB_BOT_EMAIL = /\[bot\]@|(?:^|[-_.+])bot@|^(action|actions|github-actions)@github\.com$/i;
+/**
+ * Messages only automation writes (2026-10-02). It used to be any `chore(deps)`
+ * or `bump …` subject, whoever wrote it — so a person's "chore(deps): timebox
+ * age excludes" was dropped as a bot's. Now only a dependency updater's own
+ * subject (`bump X from A to B`) and merge subjects.
+ */
+const BOT_MESSAGE = /^((chore|build|fix|deps)\((deps|deps-dev)\): )?bump \S+ from \S+ to \S+|^merge pull request|^merge branch/i;
 
 const toDate = (value: string | null | undefined): Date | undefined => {
   if (!value) return undefined;
@@ -102,6 +130,7 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
       const query = new URLSearchParams({
         since: input.since.toISOString(),
         per_page: String(perPage),
+        ...(input.page !== undefined && input.page > 1 ? { page: String(Math.floor(input.page)) } : {}),
       });
       const url = `${base}/repos/${input.owner}/${input.repo}/commits?${query.toString()}`;
 
@@ -128,7 +157,9 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
                 const login = entry.author?.login ?? undefined;
                 // The commit's own author name, for a bot with no linked GitHub account (2026-09-24).
                 const authorName = entry.commit.author?.name ?? undefined;
+                const authorEmail = entry.commit.author?.email ?? undefined;
                 const message = (entry.commit.message ?? '').split('\n')[0] ?? '';
+                const authorKey = login?.toLowerCase() ?? (authorEmail ? `email:${authorEmail.toLowerCase()}` : authorName ? `name:${authorName.toLowerCase()}` : undefined);
 
                 return {
                   sha: entry.sha,
@@ -138,9 +169,11 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
                     entry.author?.type === 'Bot' ||
                     (login !== undefined && BOT_LOGIN.test(login)) ||
                     (authorName !== undefined && BOT_LOGIN.test(authorName)) ||
+                    (authorEmail !== undefined && GITHUB_BOT_EMAIL.test(authorEmail)) ||
                     BOT_MESSAGE.test(message),
                   isMerge: (entry.parents?.length ?? 0) > 1,
                   ...opt('authorLogin', login),
+                  ...opt('authorKey', authorKey),
                 } satisfies GithubCommit;
               })
               .filter((commit): commit is GithubCommit => commit !== undefined);

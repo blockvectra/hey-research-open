@@ -89,6 +89,13 @@ export const serverEnvSchema = z
      * repository is on its way when it is not.
      */
     publicRepoUrl: optionalUrl,
+    /**
+     * The legal entity behind HEY, as `/about` states it (outsider audit,
+     * 2026-10-02). Free text the founder sets ("<name>, registered in
+     * <place>"); null means not stated, and `/about` then omits the line
+     * entirely — never a placeholder. No person is ever named on the site.
+     */
+    legalEntity: optionalString.transform((value) => value ?? null),
     // Roles (MODERATOR, ADMIN) live on the users table and are granted with
     // `pnpm data:grant-role`; there is no email allowlist (removed 2026-09-04).
     /**
@@ -663,6 +670,7 @@ function shapeEnv(raw: RawEnv) {
     nodeEnv: raw.NODE_ENV,
     appUrl: raw.APP_URL,
     publicRepoUrl: raw.HEY_PUBLIC_REPO_URL,
+    legalEntity: raw.HEY_LEGAL_ENTITY,
     buildSha: raw.HEY_BUILD_SHA,
     databaseUrl: raw.DATABASE_URL,
     databaseStatementTimeoutMs: raw.DATABASE_STATEMENT_TIMEOUT_MS,
@@ -778,6 +786,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   nodeEnv: 'NODE_ENV',
   appUrl: 'APP_URL',
   publicRepoUrl: 'HEY_PUBLIC_REPO_URL',
+  legalEntity: 'HEY_LEGAL_ENTITY',
   buildSha: 'HEY_BUILD_SHA',
   databaseUrl: 'DATABASE_URL',
   databaseStatementTimeoutMs: 'DATABASE_STATEMENT_TIMEOUT_MS',

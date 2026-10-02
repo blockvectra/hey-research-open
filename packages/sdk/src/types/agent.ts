@@ -232,6 +232,10 @@ export type HeyAgentCompareProject = {
   releaseCadence: { state: string; medianIntervalDays: number | null } | null;
   activeWeeks: { weeks: number | null; windowWeeks: number } | null;
   buildMomentum: number | null;
+  /** The Build Momentum component the project page prints as "CONSISTENCY" (additive, 2026-10-02); null when Build Momentum is not measured. */
+  buildMomentumConsistency?: { score: number; activeWeeks: number | null; windowWeeks: number | null } | null;
+  /** The category every HEY card prints (additive, 2026-10-02). */
+  category?: HeyAgentText | null;
   verifiedBuilder: boolean;
   sources: { verified: number; total: number };
   peer: { rulesVersion: string; state: string; cohort: string | null; reason: string | null } | null;

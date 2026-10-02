@@ -4,8 +4,101 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## Unreleased (2026-10-02)
+
+- **What counts as shipping (scoring `hbm-v22`).** Bot accounts (`*-bot`, bot e-mails) and
+  automated commit streams are never counted; a CI-only commit is maintenance; a burst week needs
+  3 of a 10-commit sample to change code (`commit-substance-v3`; the API's `codeSubstance` gains
+  additive `automatedCommits`, `sampled` and `basis`). Date-stamped automated tags are rolling
+  tags; sitemaps, oEmbed cards and comments feeds are not release feeds; a comment is not a ship.
+  A launch pool is "Launch pool only" and gets no Discovery Gap, Under the Radar or Still Building.
+  "No builder signal yet" now reads "No builder source linked". Chain feeds rank releases and
+  launches above commit summaries within a day and show a release once. A multi-chain repository
+  that only lists the chain is no longer published; pages published before are held by
+  `pnpm data:publication-holds`, reversibly.
+- **Every count says one thing.** Public figures are read through the list they link to and print
+  when they were counted: "verified builders on Robinhood Chain" (the strip, Explore, Pulse,
+  /status, the share image) and the Verified builder badge on every chain are named apart; the
+  strip's "shipping now" is the Shipping tab's count; `/methodology#counts` is a live table of every
+  count with its scope. `/api/projects` `catalogue` adds `verifiedBuildersOnChain`, `published`,
+  `chainId`, `asOf`, `listScope` and `definitions`; `/api/status` `catalog` adds
+  `verifiedBuildersOnChain` and `asOf` (both additive; `verifiedBuilders` keeps its meaning).
+  Explore's default order leads on the most recent meaningful ship; the homepage's "Building now"
+  means a ship in the last 14 days; /updates and /signals counts add up and name their window;
+  /narratives states its population with an Uncategorised bucket; the project market page leads
+  with one liquidity figure and dates its holder and TVL readings.
+- **Builders: one status, product contracts, claiming without GitHub.** One activity label on the
+  page, share image and text, og:description, badge, embed and API; a line under Verified
+  Builder says what it verified, and the badge states it. Shares lead with the strongest true
+  fact. Contracts the official site links on the explorer become declared contracts once the
+  chain confirms code (`page-v3`, `hc-v3`); owners add product contracts, checked on chain and
+  audited. A locker's product usage adds locks created per UTC week; lock events carry amount
+  and share of supply. Claims work from a wallet session; `/builders/guide`; `/submit` checks
+  "already on HEY?" and takes a changelog, feed or docs URL; the badge page has a header, copy
+  buttons and no sideways scroll; context-only sources say why.
+- **About, glossary, corrections.** `/about` (who runs HEY, what it is not, how it is funded; a
+  legal-entity line only when set), `/glossary` (plain definitions that restate the canonical
+  words) and `/corrections` (accepted error reports on published pages and the changes HEY withdrew
+  from its ledger, by day and kind, never a reader or a hidden project), all in the footer's About
+  group; `/contact` and `/team` redirect to `/about#contact`. Definitions open from the card's status
+  chip and valuation, the Verified builder badge and the research-ready count. Search reads plain
+  words — a category opens its narratives, "safe", "how to buy" and "what is hey" open help cards,
+  "what is fdv?" the glossary. Paid placements read one state on the Terms, `/hey` and the roadmap.
+- **Coming back without an account.** New feeds `/feed/updates.xml` and
+  `/project/<slug>/feed.xml`; every feed item is dated by its event's own date (the ships feed
+  dated by first detection, the this-week feed by build time) and keyed on its ledger id, and
+  pages declare their feeds in `<head>`. Email-only subscriptions (weekly, daily, one project)
+  with double opt-in and a one-click unsubscribe that deletes the address; new job
+  `SEND_DAILY_EMAIL_DIGEST`. `/updates` folds data checks (`MARKET_DATA_CONFLICT`) under their own
+  heading, links "+N more" to the kind's paged list, holds only today's events under "Today"
+  (UTC), and marks what is new since a signed-out reader's last visit from their own browser.
+  `ChangeTypeCount.dataCheck` and the Today kind `datacheck` are additive. Telegram reads "coming
+  soon" until its bot is registered.
+
 ## Unreleased (2026-10-01)
 
+- **Who built a Uniswap v4 hook.** A daily, paced read of each hook's creation record (five hooks a
+  call, sixty calls a day on its own budget) compares the creating transaction's sender with the
+  project's token deployer and keeps only the outcome: created by the project's deployer (directly
+  or through a deterministic CREATE2 deployer), named by the project's own contract listing, a
+  launch instance, or not tied. A project's own hook is an ordinary `CONTRACT_DEPLOY_FOLLOWUP` ship —
+  no Uniswap weight — whose `contract.followup_deployed` event carries the additive facts
+  `contractKind` and `hookPermissions`. New evidence family `v4hook:<chainId>:<address>`
+  (2026-10-02).
+- **Market history before HEY's first reading, labelled as the provider's.** A one-time,
+  resumable, budgeted backfill reads each published token's daily OHLC and per-day volume from its
+  pool's archive into its own table (`basis: provider_archive`, with source, pool and read time),
+  never into HEY's daily index and never over a day HEY observed; there is no liquidity or
+  valuation in it. "Around the latest ship", the Terminal chart (a hatched "Provider archive"
+  band) and `GET /api/projects/{slug}/market` (`archive`, additive) show it labelled; the around
+  API adds `basis: provider_archive`, `archiveReadAt` and `market.archive`. It decides nothing:
+  market status, Build Momentum, the Discovery Gap, Still Building, signals and rankings never
+  read it.
+- **Analyst tools (2026-10-02).** A code week reads as its fixed Monday–Sunday UTC week with that
+  week's own commit count and up to three commit subjects (`repository_commits.subject`: the first
+  line only, e-mails and @handles redacted, display only), on the timeline, the evidence page,
+  `codeWeek` in `/api/ships` and the CSV. Explore sorts by "Most shipped · 7d / 30d"; Explore and
+  /ships export their list as CSV (`/api/export/projects`, `/api/export/ships`, ≤ 1,000 rows).
+  `/api/ships` and `/api/projects` answer `400 invalid_parameter` with the allowed values instead of
+  dropping a value they do not read, and `/api/ships` reads `type=releases`, comma lists and
+  `until`. Compare takes two to four projects as an aligned table (`category` and
+  `buildMomentumConsistency` added to `/api/compare`); the evidence page names a code week's window,
+  links that week's commits and offers "Cite this" (`window` added to `/api/evidence/{id}`); "Copy
+  research" prints absolute dates and the build line's own count; the Pulse list is "Highest Build
+  Momentum" and points to the Builder Radar; the public market page draws daily candles below the
+  builder story.
+- **Which token, account and repository are a project's.** Issuer tokens (Robinhood's stock
+  tokens) are read from the issuer factory's creation events into `issuer_tokens` and are never a
+  project's token, usage, valuation or market; a database trigger refuses the link, verification
+  never marks one VERIFIED, and links made earlier are undone by a logged, reversible repair
+  (`identity_repairs`). A site that names a contract only inside a list of contracts does not
+  verify it. `POST /api/scan` answers `status: issuer_token` and the partner card `reason:
+  issuer_token` (additive). Sources read "From a launch or market listing" when a listing gave
+  them; Robinhood's accounts are never a project's; a declared site that did not answer says so.
+  Names borrowing Robinhood's brand or a stock ticker carry a notice above every badge. Renamed
+  GitHub repositories are followed by numeric id (`project_sources.github_repo_id`) and feeds show a
+  release once. A venue is "Uniswap" only when the chain confirms the pool's factory; otherwise
+  it is named by its shape ("v3-style").
 - **Evidence in words, anchors that exist, one count.** `/evidence/<id>` renders an evidence
   receipt for a reader (source, dates, whether it counts toward building, what it does not
   establish) with the JSON as "As data"; reader links open it, while the API, snapshot and Ask HEY

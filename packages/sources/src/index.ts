@@ -1,6 +1,7 @@
 export * from './adapter';
 export * from './errors';
 export * from './html';
+export * from './feed-kind';
 export * from './registrable';
 export * from './xml';
 export * from './market';

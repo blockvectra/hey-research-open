@@ -23,6 +23,12 @@ export type TimelineItem = {
    * building", or what HEY read. Worded by the domain, shown as text.
    */
   substanceNote?: string;
+  /**
+   * What a code week shipped (2026-10-02): up to three commits by the
+   * subject the repository gave them, each linking to the commit. Chosen by
+   * the domain (`codeWeekDetails`); the timeline only lists them.
+   */
+  highlights?: readonly { text: string; href?: string }[];
 };
 
 export function BuildTimeline({
@@ -82,6 +88,8 @@ export function BuildTimeline({
 
           <ShipSummary summary={readableSummary(item.summary)} className="mt-2 text-sm" />
 
+          <CodeWeekHighlights highlights={item.highlights} className="mt-2" />
+
           {item.substanceNote ? (
             <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{item.substanceNote}</p>
           ) : null}
@@ -104,6 +112,39 @@ export function BuildTimeline({
         </li>
       ))}
     </ol>
+  );
+}
+
+/**
+ * What a code week changed, in the repository's own words (2026-10-02): up to
+ * three commit subjects, each linking to its commit. The timeline and the
+ * latest-ship card both draw it, so a code week reads the same in either.
+ */
+export function CodeWeekHighlights({
+  highlights,
+  className,
+}: {
+  highlights: readonly { text: string; href?: string }[] | undefined;
+  className?: string;
+}) {
+  if (!highlights || highlights.length === 0) return null;
+  return (
+    <div className={className}>
+      <p className="text-xs text-hey-secondary">What changed, in the repository&rsquo;s own words:</p>
+      <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-hey-ink/80" data-testid="code-week-highlights">
+        {highlights.map((highlight, index) => (
+          <li key={index} className="[overflow-wrap:anywhere]">
+            {highlight.href ? (
+              <a href={highlight.href} rel="nofollow noopener noreferrer" target="_blank" className="underline decoration-hey-border-strong underline-offset-4 hover:decoration-hey-ink">
+                {shortenHexInText(highlight.text)}
+              </a>
+            ) : (
+              shortenHexInText(highlight.text)
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

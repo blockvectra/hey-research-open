@@ -1,0 +1,811 @@
+{
+ "_note": "First-line subjects and dates of public GitHub commits, read 2026-10-02 for the outsider audit (commit-substance-v3). No author or e-mail is kept.",
+ "sol_rh_stats_stream": [
+  {
+   "sha": "55208cd58352",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T19:15:21Z"
+  },
+  {
+   "sha": "7df67d50b82d",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T18:50:12Z"
+  },
+  {
+   "sha": "f94b0388fc28",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T18:24:57Z"
+  },
+  {
+   "sha": "d62a6c6fddea",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T17:59:49Z"
+  },
+  {
+   "sha": "5f45412c360e",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T17:34:41Z"
+  },
+  {
+   "sha": "9ed46a05ac06",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T17:09:32Z"
+  },
+  {
+   "sha": "8927af80ebd9",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T16:44:22Z"
+  },
+  {
+   "sha": "b8fb07873f9c",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T16:19:12Z"
+  },
+  {
+   "sha": "f2881aa58baa",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T15:54:04Z"
+  },
+  {
+   "sha": "041ae5ecc28d",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T15:28:57Z"
+  },
+  {
+   "sha": "87200d842d2c",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T15:03:50Z"
+  },
+  {
+   "sha": "c8b283541561",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T14:38:43Z"
+  },
+  {
+   "sha": "18bc629453f5",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T14:13:36Z"
+  },
+  {
+   "sha": "64fac329d3f7",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T13:48:30Z"
+  },
+  {
+   "sha": "0d71ab3ca79e",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T13:23:22Z"
+  },
+  {
+   "sha": "f393ff8ef54d",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T12:58:16Z"
+  },
+  {
+   "sha": "90d0be9ef047",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T12:33:09Z"
+  },
+  {
+   "sha": "3e43c853f0ce",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T12:08:03Z"
+  },
+  {
+   "sha": "d6ce1069db0b",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T11:42:56Z"
+  },
+  {
+   "sha": "9ae293fbde3b",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T11:17:49Z"
+  },
+  {
+   "sha": "4c56241354e7",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T10:52:42Z"
+  },
+  {
+   "sha": "d8c23a598927",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T10:27:35Z"
+  },
+  {
+   "sha": "e4d5ac69d168",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T10:02:28Z"
+  },
+  {
+   "sha": "c8bd6a90166e",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T09:37:21Z"
+  },
+  {
+   "sha": "83e057e6fa02",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T09:12:15Z"
+  },
+  {
+   "sha": "b2c25e300856",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T08:47:08Z"
+  },
+  {
+   "sha": "05a502b78838",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T08:22:02Z"
+  },
+  {
+   "sha": "2719bde3380d",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T07:56:55Z"
+  },
+  {
+   "sha": "a833fa6204f9",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T07:31:48Z"
+  },
+  {
+   "sha": "90cef9e9c7a3",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T07:06:30Z"
+  },
+  {
+   "sha": "416aa183227f",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T06:41:24Z"
+  },
+  {
+   "sha": "7f102e3298b6",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T06:16:17Z"
+  },
+  {
+   "sha": "2db5bda11584",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T05:51:10Z"
+  },
+  {
+   "sha": "1ff35c759ff1",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T05:26:03Z"
+  },
+  {
+   "sha": "a162c1424201",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T05:00:56Z"
+  },
+  {
+   "sha": "fe4cf571214c",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T04:35:49Z"
+  },
+  {
+   "sha": "54db76b2c9a1",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T04:10:43Z"
+  },
+  {
+   "sha": "61aff536a42f",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T03:45:37Z"
+  },
+  {
+   "sha": "a9673b74222b",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T03:20:30Z"
+  },
+  {
+   "sha": "814ece46d763",
+   "message": "stats: 7.80609407393365932 BNB distributed",
+   "committedAt": "2026-10-01T02:55:23Z"
+  }
+ ],
+ "brodie_terminal_ledgers": [
+  {
+   "sha": "8407706ae34f",
+   "message": "chore: refresh ledgers 2026-10-01T17:09:57Z",
+   "committedAt": "2026-10-01T17:09:57Z"
+  },
+  {
+   "sha": "5c5604e2f3e5",
+   "message": "chore: refresh ledgers 2026-10-01T07:00:58Z",
+   "committedAt": "2026-10-01T07:00:58Z"
+  },
+  {
+   "sha": "e652e215e2fe",
+   "message": "chore: refresh ledgers 2026-10-01T00:52:20Z",
+   "committedAt": "2026-10-01T00:52:20Z"
+  },
+  {
+   "sha": "2ddd666af49c",
+   "message": "chore: refresh ledgers 2026-09-30T21:18:56Z",
+   "committedAt": "2026-09-30T21:18:56Z"
+  },
+  {
+   "sha": "d28077abbfc4",
+   "message": "chore: refresh ledgers 2026-09-30T17:15:14Z",
+   "committedAt": "2026-09-30T17:15:14Z"
+  },
+  {
+   "sha": "64806b1fcf3f",
+   "message": "chore: refresh ledgers 2026-09-30T16:31:13Z",
+   "committedAt": "2026-09-30T16:31:13Z"
+  },
+  {
+   "sha": "9a46a863123a",
+   "message": "chore: refresh ledgers 2026-09-30T10:44:42Z",
+   "committedAt": "2026-09-30T10:44:42Z"
+  },
+  {
+   "sha": "b4762c8688f0",
+   "message": "chore: refresh ledgers 2026-09-30T04:26:31Z",
+   "committedAt": "2026-09-30T04:26:31Z"
+  },
+  {
+   "sha": "c7f6ec41e541",
+   "message": "chore: refresh ledgers 2026-09-29T23:57:59Z",
+   "committedAt": "2026-09-29T23:57:59Z"
+  },
+  {
+   "sha": "85a1e6f1a2c3",
+   "message": "chore: refresh ledgers 2026-09-29T20:13:52Z",
+   "committedAt": "2026-09-29T20:13:52Z"
+  },
+  {
+   "sha": "ce9db576e6c3",
+   "message": "chore: refresh ledgers 2026-09-29T18:04:10Z",
+   "committedAt": "2026-09-29T18:04:10Z"
+  },
+  {
+   "sha": "4b47d406e48c",
+   "message": "chore: refresh ledgers 2026-09-29T15:31:18Z",
+   "committedAt": "2026-09-29T15:31:19Z"
+  },
+  {
+   "sha": "652c11d38cad",
+   "message": "chore: refresh ledgers 2026-09-29T08:58:06Z",
+   "committedAt": "2026-09-29T08:58:06Z"
+  },
+  {
+   "sha": "96b218143ae2",
+   "message": "chore: refresh ledgers 2026-09-29T02:28:39Z",
+   "committedAt": "2026-09-29T02:28:39Z"
+  },
+  {
+   "sha": "83e61390b1fd",
+   "message": "chore: refresh ledgers 2026-09-28T22:58:12Z",
+   "committedAt": "2026-09-28T22:58:12Z"
+  },
+  {
+   "sha": "3c31756f17a8",
+   "message": "chore: refresh ledgers 2026-09-28T17:01:07Z",
+   "committedAt": "2026-09-28T17:01:08Z"
+  },
+  {
+   "sha": "e1564ec450e5",
+   "message": "chore: refresh ledgers 2026-09-28T16:59:48Z",
+   "committedAt": "2026-09-28T16:59:48Z"
+  },
+  {
+   "sha": "b3222dd84f85",
+   "message": "chore: refresh ledgers 2026-09-28T08:28:42Z",
+   "committedAt": "2026-09-28T08:28:42Z"
+  },
+  {
+   "sha": "666d512f4bc5",
+   "message": "chore: refresh ledgers 2026-09-28T02:03:12Z",
+   "committedAt": "2026-09-28T02:03:12Z"
+  },
+  {
+   "sha": "e1c62b27ff85",
+   "message": "chore: refresh ledgers 2026-09-27T23:26:44Z",
+   "committedAt": "2026-09-27T23:26:44Z"
+  },
+  {
+   "sha": "5274de0c259e",
+   "message": "chore: refresh ledgers 2026-09-27T20:26:51Z",
+   "committedAt": "2026-09-27T20:26:51Z"
+  },
+  {
+   "sha": "37186928ffac",
+   "message": "chore: refresh ledgers 2026-09-27T17:17:28Z",
+   "committedAt": "2026-09-27T17:17:28Z"
+  },
+  {
+   "sha": "166437c0425c",
+   "message": "CTO fund: say the tally includes stablecoins and other tokens",
+   "committedAt": "2026-09-27T15:50:34Z"
+  },
+  {
+   "sha": "f06bc5713c4b",
+   "message": "CTO fund: publish the new EVM, Solana and Bitcoin addresses",
+   "committedAt": "2026-09-27T15:18:19Z"
+  },
+  {
+   "sha": "ce644dfe7100",
+   "message": "chore: refresh ledgers 2026-09-27T12:26:21Z",
+   "committedAt": "2026-09-27T12:26:21Z"
+  },
+  {
+   "sha": "e1854543427e",
+   "message": "chore: refresh ledgers 2026-09-27T12:04:27Z",
+   "committedAt": "2026-09-27T12:04:27Z"
+  },
+  {
+   "sha": "bd896593f5de",
+   "message": "chore: refresh ledgers 2026-09-27T06:25:25Z",
+   "committedAt": "2026-09-27T06:25:25Z"
+  },
+  {
+   "sha": "0d063c1c9522",
+   "message": "CTO fund card: no goal wording until goals are set",
+   "committedAt": "2026-09-27T04:50:29Z"
+  },
+  {
+   "sha": "1919f3a9f276",
+   "message": "Contracts: publish the CTO fund address with its live balance",
+   "committedAt": "2026-09-27T04:31:34Z"
+  },
+  {
+   "sha": "9654c319382d",
+   "message": "Faster, sturdier terminal: baked checkpoints, exact ledger, UX fixes",
+   "committedAt": "2026-09-27T03:18:42Z"
+  },
+  {
+   "sha": "132a9c5b66cb",
+   "message": "chore: refresh ledgers 2026-09-27T00:56:27Z",
+   "committedAt": "2026-09-27T00:56:27Z"
+  },
+  {
+   "sha": "249e74de2c8b",
+   "message": "Fix inflated 'unclaimed' and stale burned snapshot",
+   "committedAt": "2026-09-27T00:25:08Z"
+  },
+  {
+   "sha": "8b84d77d8dd8",
+   "message": "chore: refresh ledgers 2026-09-26T22:31:18Z",
+   "committedAt": "2026-09-26T22:31:18Z"
+  },
+  {
+   "sha": "3fd0bcb9f29e",
+   "message": "chore: refresh ledgers 2026-09-26T19:42:07Z",
+   "committedAt": "2026-09-26T19:42:07Z"
+  },
+  {
+   "sha": "a39e093a49b5",
+   "message": "chore: refresh ledgers 2026-09-26T16:52:06Z",
+   "committedAt": "2026-09-26T16:52:06Z"
+  },
+  {
+   "sha": "80a9ce1bf83b",
+   "message": "chore: refresh ledgers 2026-09-26T12:34:27Z",
+   "committedAt": "2026-09-26T12:34:27Z"
+  },
+  {
+   "sha": "e2f7e8efaee3",
+   "message": "chore: refresh ledgers 2026-09-26T07:17:45Z",
+   "committedAt": "2026-09-26T07:17:45Z"
+  },
+  {
+   "sha": "d61c82383104",
+   "message": "Brand logo files (transparent PNG) for listings",
+   "committedAt": "2026-09-26T03:21:07Z"
+  },
+  {
+   "sha": "3d4f98c45a0e",
+   "message": "supply endpoint: state only what was checked",
+   "committedAt": "2026-09-26T02:49:37Z"
+  },
+  {
+   "sha": "b93bba9389e0",
+   "message": "Live supply endpoints for CoinGecko / CMC (/supply/circulating, /supply/total, /supply/max)",
+   "committedAt": "2026-09-26T02:40:10Z"
+  }
+ ],
+ "meme_hunter_web_edits": [
+  {
+   "sha": "14a5dbc30a42",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T17:22:44Z"
+  },
+  {
+   "sha": "6bdd2685880f",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T15:29:32Z"
+  },
+  {
+   "sha": "cc4b4d50eef1",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T15:11:25Z"
+  },
+  {
+   "sha": "7bca415ee6dc",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T15:04:06Z"
+  },
+  {
+   "sha": "898e33088f37",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T14:27:13Z"
+  },
+  {
+   "sha": "89934a7d824c",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T14:10:09Z"
+  },
+  {
+   "sha": "27aa47f1bf29",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T10:56:44Z"
+  },
+  {
+   "sha": "e445e342cf94",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T10:42:46Z"
+  },
+  {
+   "sha": "cf38af6536ab",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T10:14:47Z"
+  },
+  {
+   "sha": "94c9ad69e7c7",
+   "message": "Update worker.js",
+   "committedAt": "2026-10-01T05:50:50Z"
+  },
+  {
+   "sha": "f2bf1ccded58",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T20:36:23Z"
+  },
+  {
+   "sha": "c10b9e939829",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T20:24:59Z"
+  },
+  {
+   "sha": "e3992f8d56f2",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T20:18:42Z"
+  },
+  {
+   "sha": "c62eeb6a1ca5",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T20:11:46Z"
+  },
+  {
+   "sha": "93f7cc2c475a",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T20:04:15Z"
+  },
+  {
+   "sha": "372aaeb71a33",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T19:54:49Z"
+  },
+  {
+   "sha": "6c68d2bec2a8",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T19:35:58Z"
+  },
+  {
+   "sha": "2ef166310a86",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T19:18:27Z"
+  },
+  {
+   "sha": "3bb8d241dc5a",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T19:13:28Z"
+  },
+  {
+   "sha": "22deaacce7ae",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T19:07:24Z"
+  },
+  {
+   "sha": "2f05d87e4440",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T19:05:08Z"
+  },
+  {
+   "sha": "c94dbbebc5a1",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T18:58:13Z"
+  },
+  {
+   "sha": "7e961e49974b",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T18:53:32Z"
+  },
+  {
+   "sha": "7cb30faca1a0",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T18:45:02Z"
+  },
+  {
+   "sha": "437a0446ad6b",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T18:37:12Z"
+  },
+  {
+   "sha": "0c1086ade44c",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T18:33:48Z"
+  },
+  {
+   "sha": "e8971112fce8",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T18:27:51Z"
+  },
+  {
+   "sha": "4030d94d9cfc",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T15:02:26Z"
+  },
+  {
+   "sha": "dc7e0293338d",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T14:38:10Z"
+  },
+  {
+   "sha": "214948d8aae8",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T14:33:54Z"
+  },
+  {
+   "sha": "b92179bbacb6",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T13:57:16Z"
+  },
+  {
+   "sha": "9e989197241a",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T09:46:11Z"
+  },
+  {
+   "sha": "ca91603f5531",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T09:32:25Z"
+  },
+  {
+   "sha": "bd3326abda35",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T08:23:14Z"
+  },
+  {
+   "sha": "715a9825c36e",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T07:50:58Z"
+  },
+  {
+   "sha": "ed479da962b8",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T07:40:31Z"
+  },
+  {
+   "sha": "7a5b3758afa1",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T07:09:09Z"
+  },
+  {
+   "sha": "6d5281df8adb",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T06:58:46Z"
+  },
+  {
+   "sha": "156b259a4dfe",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T06:44:49Z"
+  },
+  {
+   "sha": "618080293ced",
+   "message": "Update worker.js",
+   "committedAt": "2026-09-30T06:28:39Z"
+  }
+ ],
+ "chain_alpha_agent_commits": [
+  {
+   "sha": "33a7b51c9d6f",
+   "message": "Nositel: sverka po podpisjam -- vhod ostatkov",
+   "committedAt": "2026-10-01T19:17:39Z"
+  },
+  {
+   "sha": "57bfa982e05d",
+   "message": "Nositel: progon sverki po podpisjam",
+   "committedAt": "2026-10-01T19:14:27Z"
+  },
+  {
+   "sha": "4597f0298bc2",
+   "message": "Nositel: progon tajmerov strok vladelcu",
+   "committedAt": "2026-10-01T18:44:28Z"
+  },
+  {
+   "sha": "cdf618b17e11",
+   "message": "Nositel: cron uchjota -- \"17 * * * *\" i \"47 * * * *\"",
+   "committedAt": "2026-10-01T18:36:03Z"
+  },
+  {
+   "sha": "fade8da9e0ea",
+   "message": "Nositel: fajl prigona audita kljuchej laboratorii",
+   "committedAt": "2026-10-01T17:56:23Z"
+  },
+  {
+   "sha": "f5691c20637c",
+   "message": "Nositel: fajl prigona chistki kljuchej",
+   "committedAt": "2026-10-01T17:46:52Z"
+  },
+  {
+   "sha": "b14b9e27a23e",
+   "message": "Nositel: pravka prigona R po chasam",
+   "committedAt": "2026-10-01T17:06:51Z"
+  },
+  {
+   "sha": "11f3f212490b",
+   "message": "Nositel': fajl prigona 'R po chasam'",
+   "committedAt": "2026-10-01T16:51:25Z"
+  },
+  {
+   "sha": "9c69ccb50a91",
+   "message": "Nositel': pravka prigona prodazhi ostatka",
+   "committedAt": "2026-10-01T10:03:26Z"
+  },
+  {
+   "sha": "1abd7f212980",
+   "message": "Nositel': fajl prigona odnorazovoj prodazhi ostatka",
+   "committedAt": "2026-10-01T10:01:09Z"
+  },
+  {
+   "sha": "2ffa61e68bd0",
+   "message": "Nositel': fajl prigona proverki sekretov (chtoby workflow_dispatch ego videl)",
+   "committedAt": "2026-10-01T09:51:55Z"
+  },
+  {
+   "sha": "2e1ecec4bf36",
+   "message": "Nositel: progon audita koshelka i kljuchej",
+   "committedAt": "2026-10-01T09:36:43Z"
+  },
+  {
+   "sha": "64a013b56f12",
+   "message": "Nositel: put obrazcov u zamera USDC-nogi",
+   "committedAt": "2026-10-01T06:48:55Z"
+  },
+  {
+   "sha": "28171bc1d06a",
+   "message": "Nositel: progon zamera razmera i CU USDC-nogi",
+   "committedAt": "2026-10-01T06:42:05Z"
+  },
+  {
+   "sha": "fc5e32be9018",
+   "message": "Nositel: rezhim prinjatija u workflow tablicy adresov",
+   "committedAt": "2026-10-01T06:32:46Z"
+  },
+  {
+   "sha": "382142656cee",
+   "message": "Nositel: workflow tablicy adresov USDC-nogi (dlja workflow_dispatch)",
+   "committedAt": "2026-10-01T06:24:23Z"
+  },
+  {
+   "sha": "7c15ae502aac",
+   "message": "Nositel: pravka prav kataloga u rezhima zapisat",
+   "committedAt": "2026-10-01T03:45:55Z"
+  },
+  {
+   "sha": "0aac8cbccd56",
+   "message": "Nositel: rezhim zapisat u progona audita po cepi",
+   "committedAt": "2026-10-01T03:24:03Z"
+  },
+  {
+   "sha": "2a7e37e00379",
+   "message": "Nositel: progon audita itogov po cepi (pravilo 13)",
+   "committedAt": "2026-10-01T02:20:57Z"
+  },
+  {
+   "sha": "d92bfe8e66a5",
+   "message": "Nositel: progon 'sdelki po cepi za okno' -- bez nego workflow_dispatch otvechaet 404",
+   "committedAt": "2026-10-01T00:25:25Z"
+  },
+  {
+   "sha": "82794829bcf1",
+   "message": "Nositel: progon tenej po pravilu signala",
+   "committedAt": "2026-09-30T21:24:47Z"
+  },
+  {
+   "sha": "704c3dcd1c18",
+   "message": "Nositel: cand1 -- shag proverki priznaka zhizni zhdjot i padaet",
+   "committedAt": "2026-09-30T21:09:14Z"
+  },
+  {
+   "sha": "c9137ff461ca",
+   "message": "Nositel: progon gruppy cand1 -- vhody perenosa i otkata",
+   "committedAt": "2026-09-30T20:42:45Z"
+  },
+  {
+   "sha": "11d8ea859d47",
+   "message": "Nositel: progon gruppy cand1 -- chtoby workflow_dispatch ego videl",
+   "committedAt": "2026-09-30T20:37:03Z"
+  },
+  {
+   "sha": "c8772aeed17b",
+   "message": "Nositel: progon laboratorij (miami / ams) -- chtoby workflow_dispatch ego videl",
+   "committedAt": "2026-09-30T19:58:11Z"
+  },
+  {
+   "sha": "b4018f46866c",
+   "message": "Nositel: progon lab-miami -- chtoby workflow_dispatch ego videl",
+   "committedAt": "2026-09-30T18:46:04Z"
+  },
+  {
+   "sha": "04c9ba4bad73",
+   "message": "Nositel: progon zabora S+0 (registracija progona)",
+   "committedAt": "2026-09-30T15:39:33Z"
+  },
+  {
+   "sha": "8e7b90abe3d2",
+   "message": "Nositel: progon zonda deshred (registracija progona)",
+   "committedAt": "2026-09-30T13:25:25Z"
+  },
+  {
+   "sha": "86bc199fec80",
+   "message": "Nositel: deploj perezapuskaet vse sluzhby kataloga koda",
+   "committedAt": "2026-09-30T03:22:41Z"
+  },
+  {
+   "sha": "355ed1a70e7d",
+   "message": "Nositel: padenie sverki pri starte ronjaet deploj i na zhivom progone",
+   "committedAt": "2026-09-30T02:32:44Z"
+  },
+  {
+   "sha": "7a6854ddfe13",
+   "message": "Nositel: ohrana nulja pozicij v progonah, perezapuskajushchih sluzhby deneg",
+   "committedAt": "2026-09-30T02:26:06Z"
+  },
+  {
+   "sha": "e6cadfd910cc",
+   "message": "Nositel: c2_nalog_2022 v deploj i flag v belom spiske env",
+   "committedAt": "2026-09-30T01:27:31Z"
+  },
+  {
+   "sha": "db1ad893ff4c",
+   "message": "Nositel: progon razmera sdelki polosy",
+   "committedAt": "2026-09-30T01:16:59Z"
+  },
+  {
+   "sha": "8e7375a47ba0",
+   "message": "Nositel: AMM v4 v spiske deploja i flagi v belom spiske env",
+   "committedAt": "2026-09-30T00:49:47Z"
+  },
+  {
+   "sha": "c2ca61b20e61",
+   "message": "Nositel: u progona dvuh putej DLMM vhod zhdat i timeout 45 min",
+   "committedAt": "2026-09-30T00:32:31Z"
+  },
+  {
+   "sha": "938fb70e68f3",
+   "message": "Nositel: prava na katalog u progona dvuh putej DLMM",
+   "committedAt": "2026-09-30T00:24:59Z"
+  },
+  {
+   "sha": "4bf34ebceaf1",
+   "message": "Nositel: progon dvuh putej ceny DLMM",
+   "committedAt": "2026-09-30T00:21:40Z"
+  },
+  {
+   "sha": "789c0d59b3cb",
+   "message": "Nositel: v deploj detektora dobavlen c2_dlmm_odno_chtenie",
+   "committedAt": "2026-09-30T00:18:51Z"
+  },
+  {
+   "sha": "8bc46860614d",
+   "message": "Nositel: belyj spisok env s flagami stroitelej",
+   "committedAt": "2026-09-29T23:50:23Z"
+  },
+  {
+   "sha": "1f9d058c2d69",
+   "message": "Nositel: progon vkljuchenija lane_pools polnym spiskom",
+   "committedAt": "2026-09-29T23:49:34Z"
+  }
+ ]
+}

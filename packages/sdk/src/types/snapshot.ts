@@ -149,6 +149,13 @@ export type HeyEvidenceReceipt =
       publishedAt: string | null;
       detectedAt: string;
       precision: 'EXACT' | 'DATE' | 'WEEK' | 'WINDOW' | 'OBSERVED' | 'SCHEDULED';
+      /**
+       * With precision WEEK (2026-10-02, additive): the fixed Monday–Sunday UTC ISO week the record
+       * describes. `start` is Monday 00:00 UTC, `end` the next Monday 00:00 UTC (exclusive);
+       * `firstDay`/`lastDay` are Monday and Sunday. `sourceUrl` lists the source's own records of that
+       * week (GitHub commits between the bounds), null when HEY cannot build one.
+       */
+      window?: { isoWeek: string; start: string; end: string; firstDay: string; lastDay: string; sourceUrl: string | null };
       verification: string | null;
       /** Present and true only when the record counts toward activity status. */
       countsAsBuilding?: true;
@@ -161,7 +168,7 @@ export type HeyEvidenceReceipt =
   | {
       id: string;
       withdrawn: true;
-      /** `retracted`, `disputed`, `context_only`, `review_false_positive`, `announced_ship_withdrawn`, `superseded`, or `not_public`. */
+      /** `retracted`, `disputed`, `context_only`, `review_false_positive`, `announced_ship_withdrawn`, `superseded`, `not_attributed` (a `v4hook:` id HEY ties to no project), or `not_public`. */
       withdrawalReason: string;
       /**
        * With `context_only`: which rule holds a follow-up deployment as context (2026-09-27) —

@@ -97,10 +97,10 @@ export function changeEvidence(baseUrl: string, evidence: readonly { id: string;
  * The web app passes the domain's own parser; this is the fallback shape
  * check for a pure caller.
  */
-const EVIDENCE_FAMILIES = new Set(['ship', 'signal', 'abi', 'impl', 'lock', 'source', 'claim', 'state', 'integrity', 'narrative', 'method', 'sourcechange', 'security']);
+const EVIDENCE_FAMILIES = new Set(['ship', 'signal', 'abi', 'impl', 'lock', 'source', 'claim', 'state', 'integrity', 'narrative', 'method', 'sourcechange', 'security', 'v4hook']);
 export function looksLikeEvidenceId(id: string): boolean {
   const family = id.split(':')[0] ?? '';
-  return EVIDENCE_FAMILIES.has(family) && /^[a-z]+:[A-Za-z0-9:._-]{1,220}$/.test(id) && !/:(added|removed|restored|unavailable|changed)$/.test(id);
+  return EVIDENCE_FAMILIES.has(family) && /^[a-z][a-z0-9]*:[A-Za-z0-9:._-]{1,220}$/.test(id) && !/:(added|removed|restored|unavailable|changed)$/.test(id);
 }
 
 /** The fields of a ledger event the contract reads: `/api/changes`'s upsert and the snapshot's latest changes both carry them. */

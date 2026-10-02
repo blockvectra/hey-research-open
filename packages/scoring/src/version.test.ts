@@ -16,7 +16,8 @@ import {
   UNDER_THE_RADAR,
   VERIFICATION_WEIGHTS,
 } from './config';
-import { COMMIT_SUBSTANCE_VERSION } from './commit-substance';
+import { AUTOMATION } from './commit-automation';
+import { BURST, COMMIT_SUBSTANCE_VERSION } from './commit-substance';
 import { VALUATION_PLAUSIBILITY } from './valuation-plausibility';
 import { SCORING_VERSION, SCORING_VERSIONS } from './version';
 
@@ -42,6 +43,9 @@ const RULES_DIGEST = createHash('sha256')
       UNDER_THE_RADAR,
       VERIFICATION_WEIGHTS,
       COMMIT_SUBSTANCE_VERSION,
+      // What counts in a code week (hbm-v22): the burst sample and the automated-stream rule.
+      BURST,
+      AUTOMATION,
       DISCOVERY_GAP,
       // The valuation gate decides which valuations the Discovery Gap and Still Building read (hbm-v20).
       VALUATION_PLAUSIBILITY,
@@ -69,8 +73,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v21',
-      rules: '6e2d83c3970f5160',
+      version: 'hbm-v22',
+      rules: '880d2af1acb0c543',
     });
   });
 });

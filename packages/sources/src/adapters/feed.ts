@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
+import { isCommentEntry } from '../feed-kind';
 import { decodeEntities, sanitizeText } from '../html';
 import { performSourceFetch } from '../http/perform';
 import { parseBoundedXml } from '../xml';
@@ -149,6 +150,8 @@ function normalizeEntries(document: Record<string, unknown>, feedUrl: string): {
       // `#` or `javascript:` is not something HEY can cite.
       const externalId = text(entry.guid) ?? text(entry.id) ?? link;
       if (!externalId || !title) return undefined;
+      // A reader's comment is not a post (2026-10-02): "Comment on … by Andrew", evidence `#comment-4`.
+      if (isCommentEntry({ link, externalId, title })) return undefined;
 
       const summary = text(entry.description ?? entry.summary ?? entry.content);
       const publishedAt = toDate(entry.pubDate ?? entry.published ?? entry.updated);
@@ -186,7 +189,15 @@ export function createFeedAdapter(): SourceAdapter<FeedInput, FeedResult> {
           maxBytes: MAX_FEED_BYTES,
         },
         {
-          schema: z.object({ body: z.string(), document: z.record(z.unknown()), page: z.boolean() }),
+          /*
+           * A document with neither an RSS nor an Atom root is not a feed
+           * (2026-10-02): a sitemap parsed to no entries and no error, so the
+           * source was stamped "read, nothing shipped" and a project with no
+           * other builder source read DORMANT. It is now an invalid response.
+           */
+          schema: z
+            .object({ body: z.string(), document: z.record(z.unknown()), page: z.boolean() })
+            .refine((value) => value.page || value.document.rss !== undefined || value.document.feed !== undefined, { message: 'not an RSS or Atom document' }),
           parse: (body) =>
             input.changelogPage === true && isHtmlPage(body)
               ? { body, document: {}, page: true }

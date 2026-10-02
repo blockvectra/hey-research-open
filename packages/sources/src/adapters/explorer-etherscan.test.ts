@@ -19,6 +19,32 @@ describe('explorer etherscan-style reads (Blockscout PRO)', () => {
     expect(JSON.stringify(result)).not.toContain('proapi_secret');
   });
 
+  /*
+   * Read live on 2026-10-02 for four Uniswap v4 hooks (read-only, one call),
+   * then checked against the node: for every row `contractCreator` was the
+   * creating transaction's `from` (an account with no code) and
+   * `contractFactory` the contract that ran CREATE2 — for 0xd083…6888 the
+   * Arachnid deterministic deployer, for the others a launch protocol's own
+   * contract. The answer also carries `creationBytecode`, which is dropped.
+   */
+  it('names the transaction sender as creator and the CREATE2 contract as factory for a v4 hook (live read, 2026-10-02)', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('explorer-getcontractcreation-v4-hooks.json') });
+    const hooks = ['0x364cd41cd348f12901617a7bd41b90b2705a8a80', '0x63e15437c80898e7a75ef9cb9e40ca7364f8c144', '0xd083414a0612b380ebe25f971c5aa247d6e86888', '0x5c8af506dfca8ba66f79deb5001888cbf6844080'];
+    const result = await createContractCreationAdapter().fetch({ ...api, addresses: hooks }, testContext({ fetchImpl: stub.fetchImpl }));
+    const arachnid = result.data?.find((row) => row.address === '0xd083414a0612b380ebe25f971c5aa247d6e86888');
+    expect(arachnid).toEqual({
+      address: '0xd083414a0612b380ebe25f971c5aa247d6e86888',
+      creator: '0x03eb633721e217a1a91f3b14af04e6ef235d8404',
+      factory: '0x4e59b44847b379578588920ca78fbf26c0b4956c',
+      txHash: '0xc5a64501fd17c70f8577ae53b684f32b677a785a9a2c59a695056fbe5e58df27',
+      blockNumber: 76_883_441,
+      createdAt: new Date(1790808248 * 1000),
+    });
+    expect(result.data).toHaveLength(4);
+    expect(result.data?.every((row) => row.factory !== undefined)).toBe(true);
+    expect(JSON.stringify(result.data)).not.toContain('creationBytecode');
+  });
+
   it('lists what an address sent since a block and marks the deployments and the failures', async () => {
     const stub = stubFetch({ status: 200, body: readFixture('explorer-txlist.json') });
     const result = await createAddressTxListAdapter().fetch({ ...api, address: '0xfdfbcae9ed23dc88757a48b2c0cc3910e6c1afa6', startBlock: 58729102 }, testContext({ fetchImpl: stub.fetchImpl }));

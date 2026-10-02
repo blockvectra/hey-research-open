@@ -29,9 +29,16 @@ export const ACTIVITY_STATUS_WORDS: Readonly<Record<ActivityStatusWordsKey, { la
  * on them read as HEY not having looked. It looked; there is nothing to read
  * building from yet, and trading is not building.
  */
+/*
+ * "No builder source linked" since 2026-10-02 (outsider audit): "No builder
+ * signal yet" beside $579M of TVL on Morpho Blue read as "nothing is being
+ * built". What HEY knows is narrower — it has no repository, changelog or feed
+ * linked to read building from — so the label says that, and a project with
+ * no such source is never DORMANT ("we looked and saw nothing").
+ */
 export const NO_BUILDER_SIGNAL = {
-  label: 'No builder signal yet',
-  help: 'No repository, changelog or feed for HEY to read building from. Trading is not building.',
+  label: 'No builder source linked',
+  help: 'HEY has no repository, changelog or feed linked for this project, so whether it is building is not measured. It does not mean nothing is being built. Trading is not building.',
 } as const;
 
 /**

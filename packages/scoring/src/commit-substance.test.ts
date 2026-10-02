@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  BURST,
   classifyCommit,
+  codeWeekReadPlan,
   classifyFile,
   classifyPath,
   codeWeekSubstance,
@@ -24,7 +26,7 @@ const file = (filename: string, patch?: string, extra: Partial<CommitFileInput> 
   ...extra,
 });
 
-describe('classifyPath (commit-substance-v2)', () => {
+describe('classifyPath (commit-substance-v2, unchanged in v3)', () => {
   const cases: [string, FileClass][] = [
     // README and documentation.
     ['README.md', 'readme'],
@@ -308,9 +310,13 @@ describe('classifyCommit', () => {
     });
   });
 
-  it('config and CI count as development', () => {
+  it('config counts as development; CI configuration alone is maintenance (commit-substance-v3)', () => {
     expect(classifyCommit({ files: [file('package.json')], filesTruncated: false }).substance).toBe('SUBSTANTIVE');
-    expect(classifyCommit({ files: [file('.github/workflows/ci.yml')], filesTruncated: false })).toMatchObject({ substance: 'SUBSTANTIVE', reasons: ['ci_changed'] });
+    // robinhood-chain-alpha, 2026-10-01: a 149-commit week was "building" on one workflow edit.
+    expect(classifyCommit({ files: [file('.github/workflows/sell-remainder.yml')], filesTruncated: false })).toMatchObject({ substance: 'LOW_INFORMATION', reasons: ['ci_only'] });
+    expect(classifyCommit({ files: [file('.github/workflows/ci.yml'), file('README.md')], filesTruncated: false }).substance).toBe('LOW_INFORMATION');
+    // CI beside code is the code's commit.
+    expect(classifyCommit({ files: [file('.github/workflows/ci.yml'), file('src/bot.ts')], filesTruncated: false })).toMatchObject({ substance: 'SUBSTANTIVE', reasons: ['source_changed'] });
   });
 
   it('an unplaceable file → UNKNOWN, never a guess', () => {
@@ -385,5 +391,49 @@ describe('isLowInformationCodeWeek', () => {
     expect(isLowInformationCodeWeek({ eventType: 'CODE_ACTIVITY', codeSubstance: null })).toBe(false);
     expect(isLowInformationCodeWeek({ eventType: 'CODE_ACTIVITY' })).toBe(false);
     expect(isLowInformationCodeWeek({ eventType: 'GITHUB_RELEASE', codeSubstance: 'LOW_INFORMATION' })).toBe(false);
+  });
+});
+
+describe('code weeks under commit-substance-v3 (2026-10-02)', () => {
+  const human = (substance: 'SUBSTANTIVE' | 'LOW_INFORMATION' | 'UNKNOWN' | null) => ({ isBot: false, isMerge: false, substance });
+  const bot = { isBot: true, isMerge: false, substance: null };
+
+  it('decides an ordinary week as before: one commit that changed code', () => {
+    expect(codeWeekSubstance({ commits: [human('LOW_INFORMATION'), human('SUBSTANTIVE'), human(null)], fullyListed: false })).toMatchObject({ verdict: 'SUBSTANTIVE', sampled: false });
+  });
+
+  it('a burst week needs 3 commits of a 10-commit sample to change code, not 1 of 149', () => {
+    const week = (substantive: number, low: number, pending: number) => [
+      ...Array.from({ length: substantive }, () => human('SUBSTANTIVE')),
+      ...Array.from({ length: low }, () => human('LOW_INFORMATION')),
+      ...Array.from({ length: pending }, () => human(null)),
+    ];
+    // One substantive commit read, the rest unread: not decided yet, counts as before (UNKNOWN).
+    expect(codeWeekSubstance({ commits: week(1, 0, 148), fullyListed: false })).toMatchObject({ verdict: 'UNKNOWN', sampled: true, basis: null });
+    // The sample read: 1 changed code, 9 maintenance — mostly maintenance or automation.
+    expect(codeWeekSubstance({ commits: week(1, 9, 139), fullyListed: false })).toMatchObject({ verdict: 'LOW_INFORMATION', basis: 'burst_sample', sampled: true });
+    // Three in the sample changed code: building.
+    expect(codeWeekSubstance({ commits: week(3, 2, 144), fullyListed: false })).toMatchObject({ verdict: 'SUBSTANTIVE', sampled: true });
+    // Commits HEY could not place keep the week open: never demoted on what HEY could not read.
+    const unclear = [...week(1, 7, 139), human('UNKNOWN'), human('UNKNOWN')];
+    expect(codeWeekSubstance({ commits: unclear, fullyListed: false }).verdict).toBe('UNKNOWN');
+  });
+
+  it('BURST and the read plan agree', () => {
+    expect(BURST).toEqual({ minCommits: 25, sample: 10, minSubstantive: 3 });
+    expect(codeWeekReadPlan(24)).toEqual({ burst: false, needSubstantive: 1, sample: 24 });
+    expect(codeWeekReadPlan(149)).toEqual({ burst: true, needSubstantive: 3, sample: 10 });
+  });
+
+  it('a week of automation only is LOW_INFORMATION when HEY holds at least what its summary counted', () => {
+    const automated = Array.from({ length: 100 }, () => bot);
+    expect(codeWeekSubstance({ commits: automated, fullyListed: false, counted: 100 })).toMatchObject({ verdict: 'LOW_INFORMATION', basis: 'automated_only', automated: 100, commitsRead: 0 });
+    // Fewer held than counted, or no count: HEY cannot show it, so it counts as before.
+    expect(codeWeekSubstance({ commits: automated.slice(0, 40), fullyListed: false, counted: 100 }).verdict).toBe('UNKNOWN');
+    expect(codeWeekSubstance({ commits: automated, fullyListed: false }).verdict).toBe('UNKNOWN');
+  });
+
+  it('carries the classifier version', () => {
+    expect(COMMIT_SUBSTANCE_VERSION).toBe('commit-substance-v3');
   });
 });

@@ -61,7 +61,11 @@ import {
 /** u up · d down · f flat (doji) · n close only · m mixed series · p today, still open · x read but no price. */
 export type RowDirection = 'u' | 'd' | 'f' | 'n' | 'm' | 'p' | 'x';
 
-/** `[day]` is a day HEY did not read. Otherwise day, open, high, low, close, volume, readings, direction. */
+/**
+ * `[day]` is a day HEY did not read. Otherwise day, open, high, low, close,
+ * volume, readings, direction — and `'a'` last when the day is the provider's
+ * daily archive, not HEY's own reading (2026-10-02).
+ */
 export type ChartRow =
   | [string]
   | [
@@ -73,6 +77,7 @@ export type ChartRow =
       number | null,
       number,
       RowDirection,
+      ('a' | undefined)?,
     ];
 
 /** One event on the time axis. Nothing here is a price. */
@@ -174,6 +179,8 @@ export type ChartModel = {
   tf?: '15m' | '1h' | '4h';
   /** The code lane, when the caller read one. */
   code?: CodeLaneModel;
+  /** Column runs drawn from the provider's daily archive (2026-10-02): hatched and named, never HEY's own readings. */
+  archive?: [number, number][];
 };
 
 export type ChartLens = 'events' | 'market';
@@ -483,6 +490,11 @@ function Readout({
             <MarketChange pct={change} window={barWindow(model)} showWindow={false} />
           )}
           {vol}
+          {row[8] === 'a' ? (
+            <span className="text-hey-secondary" data-testid="chart-readout-archive">
+              · provider archive, not HEY’s reading
+            </span>
+          ) : null}
         </>
       );
     }
@@ -1409,6 +1421,17 @@ export function TerminalChartInteractive({
             className="@container relative h-[min(56vh,320px)] sm:h-[360px]"
             style={{ '--bw': `clamp(1px, calc(70cqw / ${n}), 14px)` } as CSSProperties}
           >
+            {(model.archive ?? []).map(([a, b]) => (
+              <div
+                key={`archive-${a}`}
+                aria-hidden="true"
+                className="hey-chart-archiveband pointer-events-none absolute inset-y-0"
+                data-testid="chart-archive-band"
+                style={{ left: pct(cw * a, W), width: pct(cw * (b - a + 1), W) }}
+              >
+                {b - a + 1 >= 5 ? <span className="hey-chart-archiveband-label">Provider archive</span> : null}
+              </div>
+            ))}
             {hiEvent ? (
               <div
                 aria-hidden="true"
@@ -1601,6 +1624,7 @@ export function TerminalChartInteractive({
                   <p className="font-mono tabular-nums text-hey-ink">
                     {hoverRow[1] !== null ? `O ${formatTerminalPrice(hoverRow[1])} ` : ''}C {formatTerminalPrice(hoverRow[4])}
                     <span className="text-hey-secondary"> · {DIRECTION_WORD[hoverRow[7]]}</span>
+                    {hoverRow[8] === 'a' ? <span className="block font-sans text-t-micro text-hey-muted">Provider archive, not HEY’s reading</span> : null}
                   </p>
                 )}
                 {lens === 'events' ? (
@@ -1930,7 +1954,10 @@ export function TerminalChartInteractive({
                               {v === null ? '—' : formatTerminalPrice(v)}
                             </td>
                           ))}
-                          <td className="py-1.5 pr-3 font-sans">{DIRECTION_WORD[row[7]]}</td>
+                          <td className="py-1.5 pr-3 font-sans">
+                            {DIRECTION_WORD[row[7]]}
+                            {row[8] === 'a' ? <span className="text-hey-muted"> · provider archive</span> : null}
+                          </td>
                           <td className="py-1.5 pr-3">
                             {typeof row[5] === 'number' ? (formatUsdCompact(row[5]) ?? '—') : '—'}
                           </td>

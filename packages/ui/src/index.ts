@@ -46,3 +46,5 @@ export * from './glyph';
 export * from './ship-phrase';
 export * from './around-event';
 export * from './around-event-beacon';
+export * from './project-category';
+export * from './brand-notice';

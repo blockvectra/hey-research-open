@@ -8,6 +8,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./terminal-chart-view": "./src/terminal-chart-view.tsx",
+    "./public-daily-chart": "./src/public-daily-chart.tsx",
     "./around-event-beacon": "./src/around-event-beacon.ts"
   },
   "scripts": {

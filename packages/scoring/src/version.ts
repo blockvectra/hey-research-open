@@ -224,7 +224,32 @@
  * states moving from NOT_HELD to NOT_MEASURED
  * (docs/FOUNDER_DECISIONS_2026_09_30.md).
  */
-export const SCORING_VERSION = 'hbm-v21' as const;
+/*
+ * hbm-v22 (2026-10-02, founder delegation 2026-10-02, outsider-audit
+ * data-truth repair): no weight, threshold or Build Momentum formula changes.
+ * (1) The commit classifier moves to commit-substance-v3: a commit that
+ * changes only CI configuration is maintenance (`ci_only`); a burst week (25
+ * or more human commits) is building only when 3 of a 10-commit sample change
+ * code, and reads "mostly maintenance or automation" when the sample is read
+ * and too few could; commits from bot accounts (now also `*-bot` names and
+ * bot e-mails) and from automated streams — one templated message repeated on
+ * a clock, or carrying a changing timestamp or figures — are never counted,
+ * and a week of nothing else is `automated_only`. (2) A launch pool is not a
+ * measured market: a token ACTIVE_MARKET only as `launch_pool_trading` gets no
+ * Discovery Gap, no Under the Radar and no Still Building
+ * (`DISCOVERY_GAP.unmeasuredReasonPrefixes`), withheld as `market_too_thin`
+ * and labelled "Launch pool only". Measured on production before the change
+ * (read-only): 690 published projects on such a market held 40 gaps, 15 of
+ * the 26 Under the Radar badges and 4 Still Building; 783 burst weeks since
+ * W36 were decided on their first commit; 85 commits were SUBSTANTIVE on CI
+ * files alone. Ship-eligibility repairs recorded the same day without a
+ * scoring rule (they change the evidence, not the rules): date-stamped
+ * automated tags are rolling tags (101 ships, 39 counted, on 8 projects), a
+ * reader's comment is not a ship, and a sitemap, oEmbed document or comments
+ * feed is never a release feed nor coverage (docs/FOUNDER_DECISIONS_2026_09_30.md,
+ * "2026-10-02 shipping-signal repair").
+ */
+export const SCORING_VERSION = 'hbm-v22' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

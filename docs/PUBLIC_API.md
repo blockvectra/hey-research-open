@@ -182,7 +182,7 @@ The catalogue, with the same filters and order the browse pages use.
 |---|---|---|
 | `limit` | 1–48 | 24 |
 | `offset` | 0–5000; a larger value is silently clamped to 5000 (`MAX_LISTING_OFFSET`), so a deep walk ends there rather than erroring | 0 |
-| `sort` | `activity`, `marketCap`, `newest`, `liquidity`, `volume24h` | `activity` |
+| `sort` | `activity`, `shipped` (newest ship first), `shipped7d` / `shipped30d` (most meaningful ships in the last 7 / 30 days, the scorer's count), `marketCap`, `newest`, `liquidity`, `volume24h`; anything else is a 400 | `activity` |
 | `tab` | `building-with-token`, `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes` | — |
 | `kind` | `UTILITY`, `MEME`, `HYBRID`, `INFRASTRUCTURE`, `RWA`, `APPLICATION`, `OTHER` | — |
 | `status` | `SHIPPING`, `ACTIVE`, `QUIET`, `DORMANT`, `RESUMED`, `UNKNOWN` | — |
@@ -1235,14 +1235,56 @@ three times, each with its own source.
 | `limit` / `offset` | 1–48 / ≥ 0 | 24 / 0 |
 | `sort` | `latest`, `marketCap`, `activity`, `detected` (by when HEY observed the ship) | `latest` |
 | `project` | a project slug | — |
-| `type` | a ship event type, e.g. `GITHUB_RELEASE`, `PRODUCT_LAUNCH` | — |
+| `type` | a ship event type (`GITHUB_RELEASE`), a comma list (`GITHUB_RELEASE,APP_RELEASE`), or `releases` for every release type | — |
 | `has` | the card facts, as above | — |
 | `q` | the shipping project's name, ticker or contract prefix | — |
-| `since` | an ISO 8601 instant — the window you are reporting on (filters `publishedAt`) | — |
+| `since` | an ISO 8601 date or instant — the window you are reporting on (filters `publishedAt`, inclusive) | — |
+| `until` | an ISO 8601 date or instant — the window's end, **exclusive** (2026-10-02); must be after `since` | — |
 | `detectedSince` | an ISO 8601 instant filtering `detectedAt`, the mirroring axis — see below | — |
 
-An unreadable `since` is treated as **no window** rather than a silently shifted one, and the
-echo shows the instant it was actually read as.
+**Unknown values are refused (2026-10-02).** A value a parameter does not read — `type=banana`,
+`sort=byPrice`, `has=moon`, an unreadable date, an `until` not after `since` — answers `400`:
+
+```json
+{ "error": "invalid_parameter", "message": "type=banana is not a value this API reads. Allowed: …",
+  "errors": [{ "parameter": "type", "value": "banana", "allowed": ["PRODUCT_LAUNCH", "…", "releases"], "message": "…" }] }
+```
+
+It used to be dropped, which handed a caller the unfiltered feed with a missing echo as the only
+tell (`type=releases` returned every ship). `/api/projects` follows the same rule for `tab`, `kind`,
+`status`, `launchpad`, `has`, `sort` (`sort=momentum` is a 400 listing the orders; the Builder
+Radar, `/api/builders`, is HEY's ranking by builder signals), `stage`, `age`, `deployed` and the
+dollar floors. `limit` and `offset` are still capped, not refused.
+
+**A code week names its fixed week (2026-10-02).** A `CODE_ACTIVITY` ship carries `codeWeek`:
+`isoWeek`, `start` (Monday 00:00 UTC) and `end` (the next Monday, exclusive), `repository`,
+`commits` (human, non-merge commits in that week; `null` when HEY holds no count) with
+`commitsAtLeast` when it is a floor, `commitsUrl` (that week's commits on GitHub), up to three
+`highlights` (`subject`, `sha`, `committedAt`, `readAsCode`, `url` — the commits HEY read as
+changing code first; never a bot's, a merge's or a documentation-only one) and `title`, the one
+display title HEY prints. `title` on the ship itself stays the stored rolling measurement
+("100+ commits since …"), so two neighbouring weeks' titles can name overlapping spans; `codeWeek`
+never overlaps.
+
+## CSV exports (2026-10-02)
+
+`GET /api/export/projects` — the current Explore result as CSV (the page's **Download CSV**
+link writes its applied filters into the URL: `tab`, `kindGroup`, `kind`, `status`, `narrative`,
+`level`, `ready`, `stage`, `minLiquidity`, `minVolume`, `minMarketCap`, `maxMarketCap`, `age`,
+`deployed`, `has`, `launchpad`, `sort`, `q`). `GET /api/export/ships` — the ships feed for a
+window (`since`, `until`, `type` incl. `releases`, `has`, `q`, `sort`, `project`). Both: at most
+**1,000 rows** in the listing's own order (`x-hey-rows`, and `x-hey-truncated: true` when more
+matched), UTF-8 with a BOM, dates in UTC, every row stamped `as_of_utc`; an empty cell is not
+measured, never zero. An export costs 21 requests from the per-minute bucket (a 48-row page each),
+so a keyless client can take about five a minute. Cells that a spreadsheet would run as a formula
+are prefixed with `'`. A value not understood is the same `400 invalid_parameter`.
+
+Project columns: identity, `kind`, `primary_narrative`, `activity_status` and its words,
+`research_level`, `verified_builder`, the latest ship (title, type, date, evidence URL),
+`meaningful_ships_7d` / `_30d` (the scorer's count; empty where activity is not measured),
+the valuation with its kind or the reason it is withheld, `market_status`, and links. Ship
+columns: `published_at`, `date_precision`, a code week's `week_start`/`week_end` and
+`what_changed`, `event_type`, `title`, `verification`, `source_url`, `evidence_id`/`evidence_url`.
 
 ## `GET /api/bounties` and `GET /api/bounties/{id}` (2026-09-13)
 

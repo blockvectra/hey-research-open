@@ -58,6 +58,11 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
       releaseCadence: row.cadence ? { state: row.cadence.state, medianIntervalDays: row.cadence.medianIntervalDays ?? null } : null,
       activeWeeks: row.consistency ? { weeks: row.consistency.activeWeeks, windowWeeks: row.consistency.windowWeeks } : null,
       buildMomentum: row.buildMomentum ?? null,
+      buildMomentumConsistency: row.buildMomentumConsistency
+        ? { score: row.buildMomentumConsistency.score, activeWeeks: row.buildMomentumConsistency.activeWeeks ?? null, windowWeeks: row.buildMomentumConsistency.windowWeeks ?? null }
+        : null,
+      // The card's own category (`projectCategory`), never the raw catch-all narrative "Other".
+      category: row.category ? heyText(row.category.label) : null,
       verifiedBuilder: row.verifiedBuilder,
       sources: { verified: row.sources.verified, total: row.sources.total },
       peer: peer ? { rulesVersion: peer.rulesVersion, state: peer.state, cohort: peer.cohort?.key ?? null, reason: peer.reason } : null,

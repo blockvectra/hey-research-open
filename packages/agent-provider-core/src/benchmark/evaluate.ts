@@ -402,7 +402,7 @@ export function evaluate(question: BenchQuestion, observation: BenchObservation)
   /* Evidence expectations. */
   let evidence: BenchQuestionResult['evidence'] = { claims: 0, withEvidenceId: 0, traceable: 0, ids: [], untraceable: [] };
   if (envelope) evidence = envelopeInvariants(checks, envelope, observation.bytes);
-  else if (parsed.text && question.call.transport === 'mcp') evidence.ids = [...parsed.text.matchAll(/^- ((?:ship|signal|abi|impl|lock|source|claim|state|integrity|narrative|method|sourcechange|security):[^\s]+) — /gm)].map((match) => match[1]!);
+  else if (parsed.text && question.call.transport === 'mcp') evidence.ids = [...parsed.text.matchAll(/^- ((?:ship|signal|abi|impl|lock|source|claim|state|integrity|narrative|method|sourcechange|security|v4hook):[^\s]+) — /gm)].map((match) => match[1]!);
   if (expect.evidence === 'required') check(checks, 'evidence', 'cites at least one typed evidence id', evidence.ids.length > 0);
   if (expect.evidence === 'when_items' && envelope?.capability === 'what_changed' && envelope.data) {
     const withEvidence = envelope.data.items.filter((item) => item.evidence.length > 0).length;

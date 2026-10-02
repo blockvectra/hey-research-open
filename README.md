@@ -117,11 +117,29 @@ pnpm --filter @hey-research-lab/sdk build        # packages/sdk/dist
 pnpm --filter @hey-research-lab/mcp build        # apps/mcp/dist/index.js
 ```
 
+## Which token, account and repository are a project's
+
+An issuer's own token — a Robinhood stock token, read from the issuer factory's creation events
+into `issuer_tokens` — is never a project's token, usage, valuation or market, and Scan says whose
+it is. A site that only lists a contract among others does not verify it. A source copied from a
+launch or market listing says so; Robinhood's own accounts are never a project's. Names that
+borrow Robinhood's brand or a stock ticker carry a notice above every badge. Renamed GitHub
+repositories are followed by GitHub's numeric id, and a pool is "Uniswap" only when the chain
+confirms its factory.
+
 ## Use the API
 
 No key needed for the read API. 120 requests a minute anonymously, more with a key. Every answer names its
 version in `x-hey-api-version`. A platform partner can ask for a partner key with its own quota and
 route permissions; it reads the same public research, never anyone's account data (2026-09-30).
+
+**Filters that say no, and exports (2026-10-02).** A value a parameter does not read is a `400
+invalid_parameter` listing the allowed values, never the unfiltered list (`/api/ships?type=banana`,
+`/api/projects?sort=momentum`). `/api/ships` reads `type=releases` (every release type), a comma
+list of types, and `until` (exclusive) beside `since`; a code-activity ship carries `codeWeek`, its
+fixed Monday–Sunday UTC week with that week's commit count and up to three commit subjects.
+`/api/projects?sort=shipped7d|shipped30d` orders by meaningful ships in the window.
+`/api/export/projects` and `/api/export/ships` return the same lists as CSV, at most 1,000 rows.
 
 **One address, one line** — the call a trading bot makes:
 
@@ -309,6 +327,24 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## What counts as shipping (2026-10-02)
+
+Outside readers found automation leading the ship feeds. Since 2026-10-02 a commit from a bot
+account (`*-bot`, bot e-mails) or from an automated stream — one templated message repeated on a
+clock, or carrying its own changing timestamp or figures — is kept on the record and never counted;
+a CI-only commit is maintenance; a week of 25 or more commits counts as building only when 3 of a
+10-commit sample change code (`commit-substance-v3`). Date-stamped automated tags
+(`data-2026-10-01`, `backend-202610010354-6802318`) are rolling tags; a sitemap, an oEmbed card or
+a comments feed is never a release feed, and a reader's comment is never a ship. A launch pool is
+"Launch pool only", never a measured market: no Discovery Gap, Under the Radar or Still Building.
+A project with no repository, changelog or feed linked reads "No builder source linked", never
+Dormant. Sources are read on their project's current tier, HOT first. `/ships`, `/this-week` and
+"Recently shipped" put releases and launches above commit summaries within a day, show a
+repository's releases of one day once and one GitHub release once. A repository that only lists
+Robinhood Chain among many chains is no longer published as a Robinhood Chain project; the pages
+published before the rule are held only by one reviewed command, `pnpm data:publication-holds`
+(reversible, logged).
+
 ## Following and what changed
 
 Follow a project and it joins your private watchlist; the project page then offers the alerts
@@ -317,6 +353,22 @@ official docs or site change — as one press. `/updates` is the public "What ch
 change ledger grouped by meaning, and, signed in, what changed on your projects since you were
 last here first. Every row, alert email and Telegram alert opens the change on the project's
 page, with its source.
+
+Without an account (2026-10-02): `/feed/updates.xml` and `/project/<slug>/feed.xml` carry the
+public change ledger, each item dated by the event's own date and keyed on its ledger id, and
+every page with a feed declares it in its head. An email address alone subscribes to the weekly
+digest, a daily digest or one project's changes — double opt-in, one-click unsubscribe that
+deletes the address, nothing else stored. Data checks (two of HEY's own readings disagreeing)
+fold under their own heading; "+N more" opens the kind's full list; "Today" is a UTC calendar
+day. Telegram is coming soon.
+
+## For builders
+
+`/builders/guide` is the one-screen checklist: get researched, get linked, read as shipping,
+become a Verified Builder, claim (GitHub or a wallet), keep the page accurate, show the badge.
+A contract your site links on the explorer becomes a declared contract HEY watches once the
+chain confirms it holds code; a verified owner can add product contracts the same way. Every
+surface prints one status label, and a share leads with the strongest true fact.
 
 ## Sharing a record
 
@@ -345,7 +397,11 @@ shows the same for any event a reader selects, and `GET /api/projects/<slug>/aro
 returns it as JSON. Observed around the same time: HEY never claims a release caused a move.
 Collection starts at the first price, liquidity or volume reading — not at a day that holds
 back-filled trade counts alone — and a ship before it says when HEY began reading
-(`market.collectedFrom`, `usage.collectedFrom`).
+(`market.collectedFrom`, `usage.collectedFrom`). For days HEY never read itself, the price and volume
+come from the provider's daily archive of the same pool (GeckoTerminal's OHLCV, read once and kept
+apart from HEY's own readings): every such row says "provider archive", with the source and when HEY
+read it, and the archive never supplies a liquidity or a valuation. It is display context only — no
+status, score, gap, badge, signal or order reads it.
 
 ## Uniswap on Robinhood Chain
 
@@ -358,8 +414,12 @@ Lab is not affiliated with or endorsed by Uniswap Labs.
 
 HEY also records which Uniswap v4 hook contract each v4 pool on Robinhood Chain names, from the
 PoolManager logs its pool scan already reads, and which hooks a launch protocol's own event names.
-A hook is kept as a contract — never an account, a pool count or a volume — and is not building
-evidence; who built a hook is not read yet.
+A hook is kept as a contract — never an account, a pool count or a volume. Since 2026-10-02 HEY
+reads who created each hook from the explorer, compares the sender with the account that launched a
+tracked project's token, and keeps only the outcome. A hook the project's own token deployer created
+is recorded as an ordinary follow-up deployment, counting exactly like any other contract it
+deploys; a hook a launch protocol or a factory created is context. Each attributed hook has an
+evidence id, `v4hook:<chainId>:<address>`.
 
 ## Terms and privacy
 
@@ -373,6 +433,11 @@ account page; what deletion keeps (the treasury's record of a transfer, a closed
 published research, the audit trail) stays with nothing linking it to them. Anyone signed in can
 report an error on a project page; a moderator checks it against the page's sources, and a report
 never changes a status, a score or a ranking by itself.
+
+Who runs HEY, what it is not and how it is funded: https://heyresearch.xyz/about. What HEY's words
+mean, in plain language: https://heyresearch.xyz/glossary. What HEY got wrong and fixed — accepted
+error reports and the changes it withdrew from its own record, never naming a reader or a hidden
+project: https://heyresearch.xyz/corrections.
 
 ## The badge
 
@@ -427,6 +492,14 @@ two for a known launchpad's venue — and keep a ledger of the days and hours re
 settled one is never asked again. A slice the provider's ten-page ceiling cuts short is halved
 until it finishes. Bitquery meters in points, so each request books its measured cost and the day
 stops at 85% of the plan's share; a backfill reads only while a third of the day's points remain.
+
+## Counts
+
+Every public count names its set, links to the list it counts and says when it was counted. The
+verified builders on Robinhood Chain (the Verified builder badge plus chain evidence) and the badge
+on every chain are two figures with two names; the strip's "shipping now" is the Shipping tab's own
+count; `/methodology#counts` lists every figure with its scope; `/api/projects` returns the same
+figures in `catalogue`, scoped and dated, beside the unchanged `verifiedBuilders`.
 
 ## Rules that do not move
 

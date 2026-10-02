@@ -174,6 +174,12 @@ export type HeyCodeSubstance = {
   files: { source: number; test: number; docs: number; readme: number; dependency: number; config: number; ci: number; generated: number; asset: number; whitespace: number; rename: number; data: number; unknown: number };
   /** Every commit of the week was on a page HEY read. */
   weekFullyListed: boolean;
+  /** Bot or automated-stream commits HEY holds for the week, never counted (commit-substance-v3, 2026-10-02; additive). */
+  automatedCommits: number;
+  /** The verdict rests on a sample of a burst week (additive, 2026-10-02). */
+  sampled: boolean;
+  /** What a LOW_INFORMATION verdict rests on: every commit read, a burst sample, or automation only; null otherwise (additive, 2026-10-02). */
+  basis: 'all_read' | 'burst_sample' | 'automated_only' | null;
   /** One plain sentence, as the page says it. */
   summary: string;
 };
@@ -200,9 +206,37 @@ export type HeyShip = {
   sourceUrl?: string;
   /** A code-activity week's substance (2026-09-27); see `HeyCodeSubstance`. */
   codeSubstance?: HeyCodeSubstance;
+  /** What a code-activity week shipped (2026-10-02); see `HeyCodeWeek`. Absent on every other ship. */
+  codeWeek?: HeyCodeWeek;
   project: HeyProject;
   /** The ship on HEY's own page. */
   url: string;
+};
+
+/**
+ * A code week by its fixed window (2026-10-02). `HeyShip.title` stays the
+ * stored rolling measurement ("100+ commits since …"); this names the
+ * Monday–Sunday UTC week the ship is keyed on, that week's own commit count
+ * and up to three of its commits by the subject the repository gave them.
+ */
+export type HeyCodeWeek = {
+  /** The ISO week key, `2026-w40`. */
+  isoWeek: string;
+  /** Monday 00:00 UTC, inclusive. */
+  start: string;
+  /** The next Monday 00:00 UTC, exclusive. */
+  end: string;
+  repository: string;
+  /** Human, non-merge commits HEY counted in the week; null when it holds no count. */
+  commits: number | null;
+  /** The count is a floor: the page HEY read stopped inside the week. */
+  commitsAtLeast: boolean;
+  /** The week's commits on GitHub. */
+  commitsUrl?: string;
+  /** Up to three commits, those HEY read as changing code first; never a bot's, a merge's or a documentation-only one. */
+  highlights: { subject: string; sha: string; committedAt: string; readAsCode: boolean; url?: string }[];
+  /** The one display title every HEY surface prints for the week. */
+  title: string;
 };
 
 /** Present when the request named a market field: how many matching rows carry each figure. */
@@ -224,10 +258,22 @@ export type HeyMarketCoverage = {
 
 /** The denominators behind the strict states: three of 3,600 reads as broken without the 3,600. */
 export type HeyCatalogueCounts = {
+  /** Published projects marked Verified builder, on every chain HEY tracks. */
   verifiedBuilders: number;
   stillBuilding: number;
   underTheRadar: number;
   marketCoverage?: HeyMarketCoverage;
+  /** The part of `verifiedBuilders` with evidence on `chainId` (2026-10-02, additive): the site's "verified builders on Robinhood Chain". */
+  verifiedBuildersOnChain?: number;
+  /** Every published project (2026-10-02, additive). */
+  published?: number;
+  chainId?: number;
+  /** When these figures were counted (ISO 8601). */
+  asOf?: string;
+  /** Which population the page's `total` is over: a builder tab counts only the Robinhood Chain builders. */
+  listScope?: 'published' | 'robinhood_chain_verified_builders';
+  /** Where each figure is defined. */
+  definitions?: string;
 };
 
 export type HeyPage<T> = {
@@ -336,6 +382,25 @@ export type HeyProjectDetail = HeyProject & {
 
 /* ------------------------------------------------------------------ market */
 
+/** The provider's daily archive beside a token's market (2026-10-02): days HEY never read, labelled `provider_archive`. */
+export type HeyMarketArchive = {
+  basis: 'provider_archive';
+  /** The provider, by its public name. */
+  source: string;
+  /** The pool the bars were read from (the pool HEY's market uses). */
+  poolAddress: string;
+  /** When HEY read the archive. */
+  readAt: string;
+  /** HEY's own first priced day: where the observed basis starts; null when HEY priced none. */
+  observedFrom: string | null;
+  /** The first and last archive day HEY holds for the token, whatever the window. */
+  firstDay: string;
+  lastDay: string;
+  notInArchive: ['liquidity', 'valuation'];
+  /** `volumeUsd` is the UTC day's own volume in the pool; absent when the provider gave none, never zero. */
+  days: { day: string; openUsd: number; highUsd: number; lowUsd: number; closeUsd: number; volumeUsd?: number }[];
+};
+
 /** `GET /api/projects/{slug}/market`: HEY's own daily index of one token. Counts of trades and events, never of accounts. */
 export type HeyTokenMarket = {
   slug: string;
@@ -439,6 +504,13 @@ export type HeyTokenMarket = {
     poolsTraded?: number;
     tradesSource?: string;
   }[];
+  /**
+   * The provider's daily archive for the days in the same window HEY never
+   * priced (2026-10-02, additive): a different basis from `days`, reconstructed
+   * from the provider's pool OHLCV long after the day and never merged into
+   * `days`. No liquidity or valuation is in it. Absent when there is none.
+   */
+  archive?: HeyMarketArchive;
   lifecycle: {
     launchSeenAt?: string;
     publishedAt?: string;
@@ -517,8 +589,11 @@ export type HeyScanCard =
       found: false;
       chainId: number;
       contractAddress?: string;
-      /** `chain` for a chain HEY does not index; `not_a_token` for the zero address (2026-09-27), not metered. */
-      reason?: 'chain' | 'not_a_token';
+      /**
+       * `chain` for a chain HEY does not index; `not_a_token` for the zero address (2026-09-27), not metered;
+       * `issuer_token` for an issuer's own token — a Robinhood stock token (2026-10-02) — never a project on HEY.
+       */
+      reason?: 'chain' | 'not_a_token' | 'issuer_token';
       message?: string;
       scan_url?: string;
       disclaimer: string;
@@ -704,7 +779,8 @@ export type HeyProjectsQuery = {
    * Default `activity` (card completeness, then activity); `shipped` is most
    * recently shipped first. A market order is context the caller asked for.
    */
-  sort?: 'activity' | 'shipped' | 'marketCap' | 'newest' | 'liquidity' | 'volume24h';
+  /** `shipped7d` / `shipped30d` (2026-10-02): most meaningful ships in the last 7 / 30 days. Any other value is a 400. */
+  sort?: 'activity' | 'shipped' | 'shipped7d' | 'shipped30d' | 'marketCap' | 'newest' | 'liquidity' | 'volume24h';
   /** 1–48; default 24. */
   limit?: number;
   offset?: number;
@@ -716,9 +792,14 @@ export type HeyShipsQuery = {
   project?: string;
   /** ISO 8601 instant. Only ships at or after it — the window you are reporting on. */
   since?: string;
+  /** ISO 8601 instant, exclusive (2026-10-02). Only ships before it; must be after `since`. */
+  until?: string;
   /** ISO 8601 instant. Only ships HEY observed at or after it — the watermark to mirror along. */
   detectedSince?: string;
-  /** One event type, e.g. `GITHUB_RELEASE`, `PRODUCT_LAUNCH`. */
+  /**
+   * One event type (`GITHUB_RELEASE`), a comma list (`GITHUB_RELEASE,APP_RELEASE`), or `releases`
+   * for every release type. Any other value is a 400 naming the allowed values (2026-10-02).
+   */
   type?: string;
   /** The shipping project's name, ticker or contract prefix. */
   q?: string;

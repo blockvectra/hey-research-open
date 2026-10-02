@@ -5,6 +5,25 @@ import type { TokenMarketStatusValue } from './token-market';
  * page, the Terminal header and chart, and the Research Summary (`@hey/ui`'s
  * `tokenMarketLabel` and the domain's `SUMMARY_MARKET_WORDS` read this).
  */
+/**
+ * A market that is only a launch pool (2026-10-02, outsider audit): the
+ * classifier calls a launch pool that traded ACTIVE_MARKET
+ * (`launch_pool_trading`), and every surface printed "Active market" beside
+ * "(launch pool inventory, not a market)". The label names what it is; the
+ * Discovery Gap, Under the Radar and Still Building do not measure it
+ * (`DISCOVERY_GAP.unmeasuredReasonPrefixes`, hbm-v22).
+ */
+export const LAUNCH_POOL_ONLY_LABEL = 'Launch pool only';
+
+/** Whether a status reason says the market is a launch pool's own inventory. */
+export const isLaunchPoolReason = (reason: string | null | undefined): boolean => (reason ?? '').startsWith('launch_pool');
+
+/** The market label for a status and its reason: "Launch pool only" for an active launch pool, else the status's own label. */
+export function tokenMarketStatusLabel(status: TokenMarketStatusValue, reason?: string | null): string {
+  if (status === 'ACTIVE_MARKET' && isLaunchPoolReason(reason)) return LAUNCH_POOL_ONLY_LABEL;
+  return TOKEN_MARKET_LABELS[status] ?? TOKEN_MARKET_LABELS.INSUFFICIENT_DATA;
+}
+
 export const TOKEN_MARKET_LABELS: Readonly<Record<TokenMarketStatusValue, string>> = {
   ACTIVE_MARKET: 'Active market',
   LOW_LIQUIDITY: 'Low liquidity',
@@ -62,5 +81,5 @@ export function marketStatusWords(status: TokenMarketStatusValue, facts: MarketF
     if ((facts.pricedDays ?? 0) >= 2) return 'Not classified yet';
     if (facts.hasCurrentReading) return 'Daily history too short; current reading available';
   }
-  return TOKEN_MARKET_LABELS[status] ?? TOKEN_MARKET_LABELS.INSUFFICIENT_DATA;
+  return tokenMarketStatusLabel(status, facts.reason);
 }

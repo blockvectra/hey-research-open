@@ -364,6 +364,18 @@ const compareProject = z
     releaseCadence: z.object({ state: code, medianIntervalDays: z.number().nullable() }).strict().nullable(),
     activeWeeks: z.object({ weeks: z.number().int().min(0).nullable(), windowWeeks: z.number().int().min(1) }).strict().nullable(),
     buildMomentum: z.number().nullable(),
+    /**
+     * The Build Momentum component the project page prints as "CONSISTENCY" (additive, 2026-10-02):
+     * 0–100 as printed, with the weeks of Build Momentum's six-week window it counts. Null when
+     * Build Momentum is not measured. `activeWeeks` above is the twelve-week intelligence window.
+     */
+    buildMomentumConsistency: z
+      .object({ score: z.number().min(0).max(100), activeWeeks: z.number().int().min(0).nullable(), windowWeeks: z.number().int().min(1).nullable() })
+      .strict()
+      .nullable()
+      .optional(),
+    /** The category every HEY card prints (additive, 2026-10-02): "Infrastructure", "AI Agents · Utility", or "Uncategorised". */
+    category: agentTextSchema.nullable().optional(),
     verifiedBuilder: z.boolean(),
     sources: z.object({ verified: z.number().int().min(0), total: z.number().int().min(0) }).strict(),
     peer: z.object({ rulesVersion: code, state: code, cohort: code.nullable(), reason: code.nullable() }).strict().nullable(),

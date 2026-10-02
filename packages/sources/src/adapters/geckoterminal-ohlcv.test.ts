@@ -119,3 +119,38 @@ describe('geckoterminal ohlcv adapter, a bucket listed twice (2026-09-30)', () =
     ]);
   });
 });
+
+describe('geckoterminal ohlcv adapter, the daily archive (2026-10-02)', () => {
+  const pool = '0x04de0599e1f0701f55e16cee7a7489c33eb0e74363a4aa886235e80e01f32fd0';
+
+  it('asks for a full page of days, and an older page with before_timestamp', () => {
+    expect(ohlcvUrl({ network: 'robinhood', poolAddress: pool, timeframe: 'day', aggregate: 1, limit: 1000 })).toBe(
+      `https://api.geckoterminal.com/api/v2/networks/robinhood/pools/${pool}/ohlcv/day?aggregate=1&limit=1000`,
+    );
+    expect(ohlcvUrl({ network: 'robinhood', poolAddress: pool, timeframe: 'day', aggregate: 1, limit: 1000, beforeTimestamp: 1780444800 })).toBe(
+      `https://api.geckoterminal.com/api/v2/networks/robinhood/pools/${pool}/ohlcv/day?aggregate=1&limit=1000&before_timestamp=1780444800`,
+    );
+  });
+
+  it('reads a long series of UTC days, oldest first, one bar a day, numbers and strings alike', async () => {
+    const ctx = testContext({ fetchImpl: stubFetch({ status: 200, body: readFixture('geckoterminal-ohlcv-day-archive.json') }).fetchImpl });
+    const result = await createGeckoterminalOhlcvAdapter().fetch({ network: 'robinhood', poolAddress: pool, timeframe: 'day', aggregate: 1, limit: 1000 }, ctx);
+    expect(hasData(result)).toBe(true);
+    if (!hasData(result)) return;
+    // 121 listings, one bucket listed twice: 120 days.
+    expect(result.data).toHaveLength(120);
+    const days = result.data.map((c) => c.day.toISOString().slice(0, 10));
+    expect(days[0]).toBe('2026-06-03');
+    expect(days.at(-1)).toBe('2026-09-30');
+    expect(new Set(days).size).toBe(120);
+    for (const candle of result.data) {
+      expect(candle.day.getTime() % 86_400_000).toBe(0);
+      for (const value of [candle.openUsd, candle.highUsd, candle.lowUsd, candle.closeUsd, candle.volumeUsd]) expect(Number.isFinite(value)).toBe(true);
+      expect(candle.highUsd).toBeGreaterThanOrEqual(Math.max(candle.openUsd, candle.closeUsd));
+      expect(candle.lowUsd).toBeLessThanOrEqual(Math.min(candle.openUsd, candle.closeUsd));
+    }
+    // A short page (120 of 1,000) is the whole archive: the caller stops there.
+    expect(result.data.length).toBeLessThan(1000);
+    expect(result.sourceUrl).toContain('/ohlcv/day?aggregate=1&limit=1000');
+  });
+});

@@ -1,3 +1,4 @@
+import { isNotAReleaseFeedUrl } from './feed-kind';
 import { registrableHost } from './registrable';
 import { classifySecurityLink } from './security-links';
 
@@ -282,7 +283,50 @@ export type HtmlMetadata = {
    * or GitHub. Security context, never identity and never a ship.
    */
   securityUrls: string[];
+  /**
+   * Contract pages the site links on a Robinhood Chain explorer (2026-10-02),
+   * as `https://<explorer>/address/0x…` with the address lower-cased: what a
+   * project's own site names as its contracts — HoodLock's site links its
+   * locker this way. Addresses only; whether each is a contract (and not an
+   * account) is checked on chain before anything is registered.
+   */
+  contractUrls: string[];
+  /**
+   * X accounts the page links to (2026-10-02, outsider audit OA-A): the
+   * lower-cased handles of `x.com/<handle>` / `twitter.com/<handle>` anchors,
+   * a post's author included. What the project's own site says its account
+   * is, to hold a listing's X link against.
+   */
+  xHandles: string[];
 };
+
+/**
+ * Robinhood Chain's block explorers (2026-10-02): the hosts a link to one of
+ * a project's contracts lives on. One today, the explorer every HEY page
+ * links (`RH_BLOCKSCOUT_BASE_URL`).
+ */
+export const ROBINHOOD_EXPLORER_HOSTS: ReadonlySet<string> = new Set(['robinhoodchain.blockscout.com']);
+
+/**
+ * The contract an explorer link names, as the canonical address-page URL and
+ * its lower-cased address; undefined for any other link. `/address/0x…` and
+ * `/token/0x…` both name one address.
+ */
+export function explorerContractLink(url: string): { url: string; address: string } | undefined {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return undefined;
+  }
+  if (parsed.protocol !== 'https:' && parsed.protocol !== 'http:') return undefined;
+  const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
+  if (!ROBINHOOD_EXPLORER_HOSTS.has(host)) return undefined;
+  const match = /^\/(?:address|token)\/(0x[0-9a-fA-F]{40})(?:\/|$)/.exec(parsed.pathname);
+  if (!match) return undefined;
+  const address = match[1]!.toLowerCase();
+  return { url: `https://${host}/address/${address}`, address };
+}
 
 /** Cap on links harvested from one page, so a link farm cannot flood ingestion. */
 const MAX_LINKS_PER_KIND = 10;
@@ -393,7 +437,9 @@ export function parseForgeRepoUrl(url: URL): ForgeRepoLink | undefined {
 }
 
 export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadata {
-  const meta: HtmlMetadata = { feedUrls: [], githubUrls: [], docsUrls: [], forgeUrls: [], securityUrls: [] };
+  const meta: HtmlMetadata = { feedUrls: [], githubUrls: [], docsUrls: [], forgeUrls: [], securityUrls: [], contractUrls: [], xHandles: [] };
+  const xHandles = new Set<string>();
+  let anchorsSeen = 0;
   const page = html.length > MAX_EXTRACT_CHARS ? html.slice(0, MAX_EXTRACT_CHARS) : html;
 
   const seenFeeds = new Set<string>();
@@ -414,7 +460,14 @@ export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadat
     }
 
     if (name === 'a') {
-      links.add(attr(attributes, 'href'));
+      const href = attr(attributes, 'href');
+      links.add(href);
+      // A cheap prefix test first: a hostile page of a million anchors must not cost a URL parse each (audit G S1).
+      anchorsSeen += 1;
+      if (anchorsSeen <= MAX_ANCHORS && xHandles.size < MAX_LINKS_PER_KIND && href && X_LINK.test(href)) {
+        const handle = xHandleOf(href);
+        if (handle) xHandles.add(handle);
+      }
       return;
     }
 
@@ -446,10 +499,17 @@ export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadat
     }
 
     const type = attr(attributes, 'type')?.toLowerCase() ?? '';
-    const isFeed = rels.includes('alternate') && (type.includes('rss') || type.includes('atom') || type.includes('xml'));
+    /*
+     * An RSS or Atom document only (2026-10-02): a bare `xml` type matched a
+     * docs site's sitemap and WordPress's `text/xml+oembed` card, and both
+     * were registered as the project's release feed. A comments feed is RSS
+     * but not a release feed either (`isNotAReleaseFeedUrl`).
+     */
+    const isFeed = rels.includes('alternate') && (type.includes('rss') || type.includes('atom')) && !type.includes('oembed');
     if (!isFeed) return;
 
     const resolved = resolveUrl(href, baseUrl);
+    if (resolved && isNotAReleaseFeedUrl(resolved)) return;
     if (resolved && !seenFeeds.has(resolved)) {
       seenFeeds.add(resolved);
       meta.feedUrls.push(resolved);
@@ -461,8 +521,41 @@ export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadat
   meta.docsUrls = [...links.docs];
   meta.forgeUrls = [...links.forges.values()];
   meta.securityUrls = [...links.security];
+  meta.contractUrls = [...links.contracts];
+  meta.xHandles = [...xHandles];
   return meta;
 }
+
+/** An absolute link to x.com or twitter.com, before any parse. */
+const X_LINK = /^\s*(?:https?:)?\/\/(?:www\.|mobile\.)?(?:x|twitter)\.com\//i;
+
+/** Paths on x.com that are not accounts. */
+const X_RESERVED = /^(search|intent|i|home|explore|share|hashtag|login|signup|settings|messages|notifications|compose|tos|privacy)$/i;
+
+/** The account an `x.com` / `twitter.com` link names, lower-cased, or undefined. */
+export function xHandleOf(href: string | undefined | null): string | undefined {
+  if (!href) return undefined;
+  let parsed: URL;
+  try {
+    parsed = new URL(href.trim());
+  } catch {
+    return undefined;
+  }
+  const host = parsed.hostname.toLowerCase().replace(/^(www|mobile)\./, '');
+  if (host !== 'x.com' && host !== 'twitter.com') return undefined;
+  const first = parsed.pathname.split('/').filter(Boolean)[0]?.replace(/^@/, '');
+  if (!first || X_RESERVED.test(first) || !/^[A-Za-z0-9_]{1,15}$/.test(first)) return undefined;
+  return first.toLowerCase();
+}
+
+/**
+ * The second level of a repository URL that names the repository as the
+ * site's own (2026-10-02): its releases and tags — a site points readers at
+ * its own changelog that way. A file, an issue or a pull request is not: docs
+ * link other teams' code (`OpenZeppelin/…/blob/…`) and bug reports as often
+ * as their own.
+ */
+const GITHUB_REPO_SECTIONS = new Set(['releases', 'tags']);
 
 /**
  * Repository and documentation links harvested from anchors.
@@ -475,6 +568,7 @@ class ProjectLinks {
   readonly docs = new Set<string>();
   readonly forges = new Map<string, ForgeRepoLink>();
   readonly security = new Set<string>();
+  readonly contracts = new Set<string>();
   private anchors = 0;
   private readonly baseHost: string | undefined;
 
@@ -508,6 +602,13 @@ class ProjectLinks {
     const host = parsed.hostname.toLowerCase().replace(/^www\./, '');
     const segments = parsed.pathname.split('/').filter(Boolean);
 
+    // A contract the site names on the chain's explorer (2026-10-02): kept as the address page, one per address.
+    const contract = explorerContractLink(resolved);
+    if (contract) {
+      if (this.contracts.size < MAX_LINKS_PER_KIND) this.contracts.add(contract.url);
+      return;
+    }
+
     // An audit report or bounty program, by the allow-list's shapes only (2026-09-28). It may also be a repository below.
     if (this.security.size < MAX_LINKS_PER_KIND && classifySecurityLink(resolved, this.baseUrl)) {
       parsed.hash = '';
@@ -517,9 +618,11 @@ class ProjectLinks {
     // Only `owner/repo` identifies a repository. A bare `github.com/org` link
     // names an organisation, not the project's code, and cannot be ingested.
     if (host === 'github.com') {
-      const [owner, repo] = segments;
+      const [owner, repo, section] = segments;
+      // A link to a repository's releases or tags names it too (2026-10-02, `GITHUB_REPO_SECTIONS`).
+      const deepLink = segments.length > 2 && section !== undefined && GITHUB_REPO_SECTIONS.has(section.toLowerCase());
       if (
-        segments.length === 2 &&
+        (segments.length === 2 || deepLink) &&
         owner !== undefined &&
         repo !== undefined &&
         !GITHUB_RESERVED_OWNERS.has(owner.toLowerCase()) &&

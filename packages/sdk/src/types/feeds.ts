@@ -19,16 +19,40 @@ export type HeyChainDay = {
   transactions?: number;
   transfers?: number;
   launches?: number;
+  /**
+   * Of `launches`, the records from a discovery source in the first 24 hours
+   * HEY read it (2026-10-02, additive): a source's first read takes in the
+   * tokens it had launched before. Absent on days rolled up before it was counted.
+   */
+  launchesFirstRead?: number;
+  /** True when first reads are at least half the day's launches: a backfill, not that day's launches (2026-10-02, additive). Absent when not measured. */
+  launchesBackfill?: boolean;
   projectsPublished?: number;
   ships?: number;
   buildersShipping?: number;
   /** Published projects HEY recorded as Verified Builders that day (2026-09-26): knowledge time. */
   buildersVerified?: number;
   chainObservedAt?: string;
+  /**
+   * What the day rests on (2026-10-02, additive; machine-layer rule 9): `hey`
+   * is `knowledge` — counted on the day HEY recorded it; `chain` is `observed`
+   * (read within days of the day) or `reconstructed_from_chain`, absent when
+   * there is no chain reading.
+   */
+  basis: { hey: 'knowledge'; chain?: 'observed' | 'reconstructed_from_chain' };
 };
 
 /** `GET /api/chain`: Robinhood Chain day by day, aggregates only. */
-export type HeyChain = { chainId: number; days: HeyChainDay[]; today?: string; lastFullDay?: string; volumeNote: string; disclaimer: string };
+export type HeyChain = {
+  chainId: number;
+  days: HeyChainDay[];
+  today?: string;
+  lastFullDay?: string;
+  volumeNote: string;
+  /** How launches are counted and what a backfill day is (2026-10-02, additive). */
+  launchesNote: string;
+  disclaimer: string;
+};
 
 /* ----------------------------------------------------------------- signals */
 
@@ -105,6 +129,8 @@ export type HeyThisWeek = {
     ships: number;
     projects: number;
     items: { project: HeyThisWeekProject; ships: number; latest: HeyThisWeekShip }[];
+    /** What `ships` counts (2026-10-02, additive): the weekly reports' rule, by id and in words. The window is rolling; a report's week runs Monday to Monday, UTC. */
+    rule: { id: string; counts: string };
   };
   newBuilders: { total: number; items: { project: HeyThisWeekProject; verifiedAt: string }[] };
   backToShipping: {

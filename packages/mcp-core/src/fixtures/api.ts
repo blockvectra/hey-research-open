@@ -567,8 +567,8 @@ export const diff: HeyDiff = {
 
 export const compare: HeyCompare = {
   projects: [
-    { slug: 'agentos', name: 'AgentOS', url: `${BASE}/project/agentos`, activityStatus: 'SHIPPING', lastMeaningfulShipAt: '2026-09-24T10:00:00.000Z', buildMomentum: 67.4, verifiedBuilder: true, sources: { verified: 2, total: 5 }, marketCapUsd: 208_594, valuationKind: 'fdv', velocity: { state: 'ACCELERATING', current: 9, previous: 4 } },
-    { slug: 'quiet-token', name: 'Quiet Token', url: `${BASE}/project/quiet-token`, activityStatus: 'UNKNOWN', verifiedBuilder: false, sources: { verified: 0, total: 1 }, marketCapUsd: 9_000 },
+    { slug: 'agentos', name: 'AgentOS', url: `${BASE}/project/agentos`, activityStatus: 'SHIPPING', lastMeaningfulShipAt: '2026-09-24T10:00:00.000Z', buildMomentum: 67.4, verifiedBuilder: true, sources: { verified: 2, total: 5 }, marketCapUsd: 208_594, valuationKind: 'fdv', velocity: { state: 'ACCELERATING', current: 9, previous: 4 }, category: { label: 'AI Agents · Utility', narrative: { slug: 'ai-agents', name: 'AI Agents' }, projectKind: 'UTILITY' }, buildMomentumConsistency: { score: 67, activeWeeks: 4, windowWeeks: 6 } },
+    { slug: 'quiet-token', name: 'Quiet Token', url: `${BASE}/project/quiet-token`, activityStatus: 'UNKNOWN', verifiedBuilder: false, sources: { verified: 0, total: 1 }, marketCapUsd: 9_000, category: { label: 'Meme', narrative: null, projectKind: 'MEME' } },
   ],
   missing: ['ghost'],
   ignoredSlugs: [],
@@ -586,10 +586,11 @@ export const ask: HeyAskAnswer = {
 
 export const chain: HeyChain = {
   chainId: 4663,
-  days: Array.from({ length: 40 }, (_, i) => ({ day: `2026-08-${String((i % 28) + 1).padStart(2, '0')}`, dexTrades: 1_000 + i, ships: 10, buildersShipping: 5, ...(i === 39 ? { buildersVerified: 2 } : {}) })),
+  days: Array.from({ length: 40 }, (_, i) => ({ day: `2026-08-${String((i % 28) + 1).padStart(2, '0')}`, dexTrades: 1_000 + i, ships: 10, buildersShipping: 5, basis: { hey: 'knowledge' as const, chain: 'observed' as const }, ...(i === 39 ? { buildersVerified: 2 } : {}) })),
   lastFullDay: '2026-09-25',
   today: '2026-09-26',
   volumeNote: 'Volume counts decoded DEX trades against the known quote assets.',
+  launchesNote: 'launches counts tokens on the day HEY first recorded them.',
   disclaimer: DISCLAIMER,
 };
 
@@ -610,6 +611,8 @@ export const weeklyReport: HeyWeeklyReport = {
   movers: [],
   signals: [],
   signalCounts: [],
+  shipsRule: { id: 'weekly-ships-v1', counts: 'Every ship record HEY held as a live claim on a published project.', inForceFrom: '2026-09-06T00:00:00.000Z', basis: 'generated_at', current: false },
+  shipsUnderCurrentRule: { ruleId: 'weekly-ships-v4', ships: 3, projectsShipping: 2, countedAt: '2026-10-02T00:00:00.000Z' },
   url: `${BASE}/reports/weekly/2026-W38`,
   disclaimer: DISCLAIMER,
 };

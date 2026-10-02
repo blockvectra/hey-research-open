@@ -191,6 +191,17 @@ export const DISCOVERY_GAP = {
   measuredMarketStatuses: ['ACTIVE_MARKET'],
   unmeasuredLaunchStages: ['CURVE'],
   /**
+   * A launch pool is not a market (hbm-v22, founder delegation 2026-10-02):
+   * a token ACTIVE_MARKET only as `launch_pool_trading` — its "liquidity" is
+   * its own supply sitting in the pool that launched it, at its last price —
+   * gets no gap, no Under the Radar and no Still Building, exactly as a launch
+   * curve does. 690 published projects held such a market on 2026-10-02, with
+   * 40 gaps, 15 of the 26 Under the Radar badges and 4 Still Building; the
+   * first Under the Radar card read "Active market … (launch pool inventory,
+   * not a market)". Every surface names it "Launch pool only".
+   */
+  unmeasuredReasonPrefixes: ['launch_pool'],
+  /**
    * A market active only because another pool of the same token holds it is
    * measured on that pool's reading (hbm-v21, founder ruling F1, 2026-10-01):
    * the gap, Under the Radar, Still Building and the valuation gate read the

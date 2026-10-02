@@ -19,7 +19,7 @@ import {
   unknownActivityReason,
   type UnknownActivityReason,
 } from '@hey/scoring/activity-words';
-import { TOKEN_MARKET_LABELS, type UnconfirmedMarketReason } from '@hey/scoring/market-status-words';
+import { isLaunchPoolReason, LAUNCH_POOL_ONLY_LABEL, TOKEN_MARKET_LABELS, type UnconfirmedMarketReason } from '@hey/scoring/market-status-words';
 import { RESEARCH_LEVEL_WORDS } from '@hey/scoring/research-level-words';
 
 import { cn } from './cn';
@@ -136,6 +136,9 @@ export function activityHelp(status: ActivityStatusValue): string {
  * records that building continued through a decline in attention, and implies
  * nothing about what happens next.
  */
+/** What the badge means, in one sentence: the badge's title, the glossary and the card's Term read it. */
+export const STILL_BUILDING_HELP = 'Market attention declined while meaningful building continued.';
+
 export function StillBuildingBadge({ className }: { className?: string }) {
   return (
     <span
@@ -143,7 +146,7 @@ export function StillBuildingBadge({ className }: { className?: string }) {
         'inline-flex items-center gap-1.5 rounded-full border border-gold-300 bg-gold-soft px-2.5 py-1 text-xs font-medium text-gold-dark',
         className,
       )}
-      title="Market attention declined while meaningful building continued."
+      title={STILL_BUILDING_HELP}
     >
       <Hammer aria-hidden="true" size={14} strokeWidth={1.9} />
       Still Building
@@ -259,8 +262,22 @@ const TONE: Record<MarketTone, string> = {
   muted: 'text-hey-muted',
 };
 
-export function TokenMarketChip({ status, className }: { status: TokenMarketStatusValue; className?: string }) {
-  const presentation = TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA;
+/**
+ * An active market that is only a launch pool (2026-10-02, outsider audit):
+ * "Launch pool only", muted, never "Active market" beside "launch pool
+ * inventory, not a market". The reason is the classifier's; without it the
+ * status's own label stands.
+ */
+const LAUNCH_POOL_ONLY_PRESENTATION = {
+  label: LAUNCH_POOL_ONLY_LABEL,
+  help: 'The only pool HEY reads is the one the token launched in: its "liquidity" is the token’s own supply at its last price, not depth. HEY does not measure a Discovery Gap, Under the Radar or Still Building on it.',
+  tone: 'muted' as MarketTone,
+};
+const marketPresentation = (status: TokenMarketStatusValue, reason?: string | null) =>
+  status === 'ACTIVE_MARKET' && isLaunchPoolReason(reason) ? LAUNCH_POOL_ONLY_PRESENTATION : (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA);
+
+export function TokenMarketChip({ status, reason, className }: { status: TokenMarketStatusValue; reason?: string | null; className?: string }) {
+  const presentation = marketPresentation(status, reason);
   return (
     <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', TONE[presentation.tone], className)} title={presentation.help} data-testid="token-market-chip">
       {presentation.label}
@@ -268,8 +285,8 @@ export function TokenMarketChip({ status, className }: { status: TokenMarketStat
   );
 }
 
-export function tokenMarketLabel(status: TokenMarketStatusValue): string {
-  return (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA).label;
+export function tokenMarketLabel(status: TokenMarketStatusValue, reason?: string | null): string {
+  return marketPresentation(status, reason).label;
 }
 
 /*
@@ -294,7 +311,7 @@ const TOKEN_MARKET_REASON_HELP: Readonly<Record<UnconfirmedMarketReason, string>
 export function tokenMarketHelp(status: TokenMarketStatusValue, reason?: string | null): string {
   const exact = reason ? (TOKEN_MARKET_REASON_HELP as Readonly<Record<string, string>>)[reason] : undefined;
   if (exact) return exact;
-  return (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA).help;
+  return marketPresentation(status, reason).help;
 }
 
 export type TokenVerificationValue = 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';

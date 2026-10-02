@@ -34,9 +34,13 @@ export type ContractCreationInput = ExplorerApi & {
 
 export type ContractCreation = {
   address: string;
-  /** The account that sent the creating transaction, lower-cased. */
+  /**
+   * The account that sent the creating transaction, lower-cased — the
+   * transaction's `from`, also when a contract ran CREATE2 for it (checked
+   * against the node for v4 hooks, 2026-10-02).
+   */
   creator: string;
-  /** The factory that created it, when one did. */
+  /** The contract that ran CREATE/CREATE2, when one did (a factory or a deterministic deployer). */
   factory?: string;
   txHash?: string;
   blockNumber?: number;

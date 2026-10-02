@@ -548,3 +548,39 @@ describe('lastCloseMark (full audit, 2026-09-30)', () => {
     expect(lastCloseMark([])).toBeNull();
   });
 });
+
+/*
+ * The provider's daily archive (2026-10-02): its candles keep their measured
+ * direction (the provider measured them, UI rule 13), are marked in the row,
+ * drawn inside a named band, and counted apart in the figure's sentence.
+ */
+describe('provider archive days on the daily chart', () => {
+  const archived = (day: string, open: number, close: number) => candle(day, open, close, { readings: 1, basis: 'provider_archive' });
+  const days: CandleDay[] = [
+    archived('2026-09-01', 1, 1.1),
+    archived('2026-09-02', 1.1, 1.0),
+    archived('2026-09-03', 1.0, 1.05),
+    archived('2026-09-04', 1.05, 1.07),
+    archived('2026-09-05', 1.07, 1.02),
+    candle('2026-09-06', 1.02, 1.04),
+    candle('2026-09-07', 1.04, 1.01),
+  ];
+
+  it('marks each archive row, keeps its direction, and names the run as one band', () => {
+    const built = buildChartModel(days, [], { todayUtc: TODAY })!;
+    const rows = built.model.rows;
+    expect(rows.slice(0, 5).every((row) => row.length === 9 && row[8] === 'a')).toBe(true);
+    expect(rows.slice(5).every((row) => row.length === 8)).toBe(true);
+    expect(rows[0]![7]).toBe('u');
+    expect(rows[1]![7]).toBe('d');
+    expect(built.model.archive).toEqual([[0, 4]]);
+    expect(built.summary).toMatch(/5 days drawn from the provider’s daily archive, not from HEY’s own readings\.$/);
+  });
+
+  it('draws no band and says nothing of an archive when every day is HEY’s own', () => {
+    const own = days.map((day) => ({ ...day, basis: undefined, readings: 24 }));
+    const built = buildChartModel(own, [], { todayUtc: TODAY })!;
+    expect(built.model.archive).toBeUndefined();
+    expect(built.summary).not.toMatch(/archive/);
+  });
+});

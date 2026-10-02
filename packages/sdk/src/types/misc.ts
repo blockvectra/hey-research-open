@@ -58,6 +58,14 @@ export type HeyBuilderRadarDay = { day: string; rank: number; overall: number; d
 
 /* ----------------------------------------------------------------- reports */
 
+/**
+ * The rule a report's "verified ships" were counted under (2026-10-02,
+ * additive). `basis` is `stored` when the report wrote it down and
+ * `generated_at` when it is placed by the report's generation time; compare
+ * two weeks' ships only where `id` matches.
+ */
+export type HeyWeeklyShipRule = { id: string; counts: string; inForceFrom: string; basis: 'stored' | 'generated_at'; current: boolean };
+
 /** `GET /api/reports/weekly`: the archive index; `url` is the JSON report, `page` the one people read. */
 export type HeyWeeklyIndex = {
   items: {
@@ -66,6 +74,7 @@ export type HeyWeeklyIndex = {
     final: boolean;
     headline: string;
     generatedAt: string;
+    shipsRule: HeyWeeklyShipRule;
     url: string;
     page: string;
   }[];
@@ -92,6 +101,12 @@ export type HeyWeeklyReport = {
   signalCounts: { kind: string; group: string; count: number }[];
   /** The report rule this payload was built under; absent on reports older than v2. */
   version?: number;
+  /** The ship rule the report stored when it was written (2026-10-02); absent on older reports. */
+  shipsRuleId?: string;
+  /** The rule `overview.ships` was counted under (2026-10-02, additive). */
+  shipsRule: HeyWeeklyShipRule;
+  /** Present only when that rule is not today's: the same window recounted under today's rule from today's records — never the week as published. */
+  shipsUnderCurrentRule?: { ruleId: string; ships: number; projectsShipping: number; countedAt: string };
   url: string;
   disclaimer: string;
 };
@@ -191,7 +206,8 @@ export type HeyStatus = {
   headline: string;
   build: string | null;
   worker: { heartbeatAgeSeconds: number | null; fresh: boolean };
-  catalog: { published: number; verifiedBuilders: number; indexed: number };
+  /** `verifiedBuilders` is the badge on every chain; `verifiedBuildersOnChain` its Robinhood Chain part and `asOf` when counted (2026-10-02, additive). */
+  catalog: { published: number; verifiedBuilders: number; indexed: number; verifiedBuildersOnChain?: number; asOf?: string };
   jobs: { pending: number; failed24h: number | null };
   /** Published tokens with a reading under a day, of those with a known pair. */
   market: { fresh: number; cohort: number } | null;
@@ -278,8 +294,13 @@ export type HeyCompare = {
     /** `current` is null with state `NOT_MEASURED` when HEY has not measured the project's building (2026-09-26). */
     velocity?: { state: string; current: number | null; previous: number | null };
     cadence?: { state: string; medianIntervalDays?: number };
+    /** The intelligence layer's twelve-week consistency: `activeWeeks` is null while HEY has watched the project for fewer than twelve weeks. Not the page's "CONSISTENCY"; that is `buildMomentumConsistency`. */
     consistency?: { activeWeeks: number | null; windowWeeks: number };
     marketAttention?: string;
+    /** The category every HEY card prints (additive, 2026-10-02): the primary narrative (null for none or the catch-all "Other"), then the kind; `label` is the card's words, e.g. "Infrastructure" or "Uncategorised". */
+    category: { label: string; narrative: { slug: string; name: string } | null; projectKind: string };
+    /** The Build Momentum component the project page prints as "CONSISTENCY" (additive, 2026-10-02): 0–100 rounded as printed, with the weeks it counts. Absent when Build Momentum is not measured. */
+    buildMomentumConsistency?: { score: number; activeWeeks?: number; windowWeeks?: number };
   }[];
   missing: string[];
   /** Slugs in the request that were malformed or past the fourth, and so were not compared (2026-09-26). */

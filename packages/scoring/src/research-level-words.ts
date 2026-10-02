@@ -44,3 +44,24 @@ export function buildNotReadWords(level: string | null | undefined): { answer: s
   }
   return { answer: 'Not researched yet', text: 'HEY indexed this record and has not read its sources.', reason: 'indexed_only' };
 }
+
+/**
+ * What the Verified Builder badge verified, in one line under the badge
+ * (outsider audit, 2026-10-02). A builder read "VERIFIED BUILDER" beside
+ * "nobody has yet proved they run it" and "Activity not measurable" on the
+ * same page and could not tell which claim the badge made. It makes one: HEY
+ * holds verified evidence of shipping from the project's own public sources.
+ * It says nothing about who runs the page — that is the claim, a separate
+ * check — and nothing about whether the project is shipping now.
+ *
+ * Undefined below VERIFIED_BUILDER: there is no badge to explain.
+ */
+export const VERIFIED_BUILDER_SCOPE_WORDS = {
+  unclaimed: 'HEY verified shipping evidence from the project’s own public sources; ownership of this page is not claimed yet.',
+  claimed: 'HEY verified shipping evidence from the project’s own public sources; the owner proved control of the project separately.',
+} as const;
+
+export function verifiedBuilderScopeWords(input: { researchLevel: string | null | undefined; isClaimed: boolean }): string | undefined {
+  if (input.researchLevel !== 'VERIFIED_BUILDER') return undefined;
+  return input.isClaimed ? VERIFIED_BUILDER_SCOPE_WORDS.claimed : VERIFIED_BUILDER_SCOPE_WORDS.unclaimed;
+}

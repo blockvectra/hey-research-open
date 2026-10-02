@@ -2,7 +2,7 @@ import { formatEventType, formatRelativeTime, plainText, truncateAtWord } from '
 
 /**
  * The card's latest-ship phrase (public UX review, 2026-09-28): what shipped,
- * in a few words, and when — "Release v0.2.14 · 2d ago", "100+ commits · this
+ * in a few words, and when — "Release v0.2.14 · 2d ago", "Code changes · this
  * week", "Contract deployed · 3d ago".
  *
  * The card printed the stored title and let CSS cut it, so a code week read
@@ -86,11 +86,17 @@ function weekWords(publishedAt: Date, now: Date): string {
   return formatRelativeTime(publishedAt, now);
 }
 
+/**
+ * "Code changes", not the title's count (2026-10-02, outsider audit). The
+ * count in a code week's stored title is the rolling window it was read over
+ * ("100+ commits since 2026-08-22"), so "100+ commits · this week" claimed a
+ * hundred commits in a week that may have held three. The card names the
+ * kind and the week; the week's own count and what changed are on the
+ * timeline (`codeWeekDetails`). A title with no commit summary in it only
+ * restates the status and stays silent.
+ */
 function commitWhat(title: string): string | undefined {
-  const match = COMMITS.exec(title);
-  if (!match) return undefined;
-  const count = match[1]!;
-  return `${count} ${count === '1' ? 'commit' : 'commits'}`;
+  return COMMITS.test(title) ? 'Code changes' : undefined;
 }
 
 function titleWhat(eventType: string, title: string): string {
@@ -127,4 +133,21 @@ export function cardShipPhrase(ship: CardShipPhraseInput, options: { now?: Date;
   if (!what || restatesStatus(what, options.statusLabel)) return undefined;
   const when = ship.eventType === 'CODE_ACTIVITY' ? weekWords(ship.publishedAt, now) : formatRelativeTime(ship.publishedAt, now);
   return { what, when };
+}
+
+/**
+ * A ship's title as a card prints it (2026-10-02, outsider audit). A code
+ * week's stored title is its rolling measurement ("Active development: 100+
+ * commits since 2026-08-22 …"), which read as the same commits counted in
+ * every week; a card names the fixed Monday–Sunday UTC week the ship is keyed
+ * on instead, from its own date (a code week is dated inside its week). A
+ * title a surface already worded by its week ("Code changes, week of …",
+ * `codeWeekTitle`) is kept; every other ship keeps its title.
+ */
+export function displayShipTitle(ship: { eventType: string; title: string; publishedAt: Date }): string {
+  const title = plainText(ship.title);
+  if (ship.eventType !== 'CODE_ACTIVITY' || title.startsWith('Code changes')) return title;
+  const monday = weekStart(ship.publishedAt);
+  const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+  return `Code changes, week of ${day(monday)} – ${day(monday + 6 * DAY_MS)}`;
 }

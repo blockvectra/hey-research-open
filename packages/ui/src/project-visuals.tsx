@@ -24,6 +24,11 @@ export function ShippingStreak({ weeks, className }: { weeks: number; className?
 /**
  * Builder activity over twelve weeks (UI/UX V2 section 32).
  * Meaningful events only, with the week's headline ship as its label.
+ *
+ * Labelled axes since 2026-10-02 (outsider audit): each bar is one fixed
+ * Monday–Sunday UTC week, the y axis is a count of meaningful ships with its
+ * top value printed, the x axis names the first and last week, and each bar
+ * with ships carries its own count — so the chart reads without a tooltip.
  */
 export function BuilderActivityChart({
   weeks,
@@ -33,40 +38,60 @@ export function BuilderActivityChart({
   className?: string;
 }) {
   const max = Math.max(...weeks.map((week) => week.ships), 1);
+  const first = weeks[0]?.week;
+  const last = weeks[weeks.length - 1]?.week;
 
   return (
     <figure className={className}>
-      <div
-        className="flex h-36 items-end gap-1.5"
-        role="img"
-        aria-label={`Meaningful ships per week over the last ${weeks.length} weeks`}
-      >
-        {weeks.map((week) => (
-          // `h-full` so the percentage height below resolves against the row
-          // rather than against a content-sized column, which rendered every
-          // bar as a hairline.
-          <div
-            key={week.week}
-            className="flex h-full flex-1 flex-col items-center justify-end gap-1.5"
-          >
+      <div className="flex gap-2">
+        {/* The y axis: the count the tallest bar stands for, and zero. */}
+        <div aria-hidden="true" className="flex h-36 shrink-0 flex-col justify-between pb-0 text-right text-[11px] tabular-nums text-hey-secondary">
+          <span>{max}</span>
+          <span>0</span>
+        </div>
+        <div
+          className="flex h-36 min-w-0 flex-1 items-end gap-1.5 border-b border-l border-hey-border"
+          role="img"
+          aria-label={`Meaningful ships per week over the last ${weeks.length} weeks, Monday to Sunday UTC${first && last ? `, weeks starting ${first} to ${last}` : ''}: ${weeks.map((week) => `${week.week} ${week.ships}`).join(', ')}`}
+        >
+          {weeks.map((week) => (
+            // `h-full` so the percentage height below resolves against the row
+            // rather than against a content-sized column, which rendered every
+            // bar as a hairline.
             <div
-              className={cn(
-                'w-full rounded-t-[3px]',
-                week.ships > 0 ? 'bg-hey-secondary' : 'bg-hey-border',
-              )}
-              style={{ height: week.ships > 0 ? `${(week.ships / max) * 100}%` : '4px' }}
-              title={
-                week.headline
-                  ? `Week of ${week.week}: ${week.ships} ships — ${week.headline}`
-                  : `Week of ${week.week}: no meaningful ships`
-              }
-            />
-          </div>
-        ))}
+              key={week.week}
+              className="flex h-full min-w-0 flex-1 flex-col items-center justify-end gap-0.5"
+            >
+              {week.ships > 0 ? (
+                <span aria-hidden="true" className="text-[10px] leading-none tabular-nums text-hey-secondary">
+                  {week.ships}
+                </span>
+              ) : null}
+              <div
+                className={cn(
+                  'w-full rounded-t-[3px]',
+                  week.ships > 0 ? 'bg-hey-secondary' : 'bg-hey-border',
+                )}
+                style={{ height: week.ships > 0 ? `${(week.ships / max) * 100}%` : '4px' }}
+                title={
+                  week.headline
+                    ? `Week of ${week.week} (Mon–Sun UTC): ${week.ships} ${week.ships === 1 ? 'ship' : 'ships'} — ${week.headline}`
+                    : `Week of ${week.week} (Mon–Sun UTC): no meaningful ships`
+                }
+              />
+            </div>
+          ))}
+        </div>
       </div>
+      {first && last ? (
+        <div aria-hidden="true" className="mt-1 flex justify-between pl-7 text-[11px] tabular-nums text-hey-secondary">
+          <span>{first}</span>
+          <span>{last}</span>
+        </div>
+      ) : null}
       <figcaption className="mt-2 text-[13px] text-hey-secondary">
-        Meaningful, source-backed updates per week. Commits are aggregated, not counted
-        individually.
+        Bars: meaningful, source-backed ships per week (count). Weeks run Monday to Sunday, UTC, labelled by their
+        Monday. Commits are aggregated, a code week counted once.
       </figcaption>
     </figure>
   );

@@ -414,7 +414,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           minVolume: z.number().positive().optional().describe('24h volume, USD.'),
           age: z.enum(AGES).optional().describe('Since the first pool opened.'),
           deployed: z.enum(AGES).optional().describe('Since the contract was deployed.'),
-          sort: z.enum(['activity', 'shipped', 'marketCap', 'newest', 'liquidity', 'volume24h']).optional().describe('Default activity; shipped = newest ship first.'),
+          sort: z.enum(['activity', 'shipped', 'shipped7d', 'shipped30d', 'marketCap', 'newest', 'liquidity', 'volume24h']).optional().describe('Default activity; shipped = newest ship first; shipped7d / shipped30d = most meaningful ships in the last 7 / 30 days.'),
           limit: z.number().int().min(1).max(48).optional().describe('Default 24.'),
           offset: z.number().int().min(0).optional().describe('The offset a previous answer gave.'),
         },

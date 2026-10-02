@@ -135,4 +135,54 @@ describe('GitHub commits adapter', () => {
     expect(result.status).toBe('error');
     expect(result.data).toBeUndefined();
   });
+
+  describe('automation and contributors (2026-10-02, outsider audit)', () => {
+    const commit = (sha: string, message: string, author: { name?: string; email?: string }, login?: string) => ({
+      sha,
+      commit: { message, author: { ...author, date: '2026-10-01T10:00:00Z' } },
+      author: login === undefined ? null : { login, type: 'User' },
+      parents: [{ sha: `p${sha}` }],
+    });
+
+    it('reads an account named like a bot as one (brodie-terminal-bot, committing as GitHub user "bot")', async () => {
+      const body = JSON.stringify([
+        commit('b1', 'chore: refresh ledgers 2026-10-01T17:09:57Z', { name: 'brodie-terminal-bot', email: 'bot@users.noreply.github.com' }, 'bot'),
+        commit('b2', 'update', { name: 'ci-bot' }),
+        commit('b3', 'update', { name: 'Release Bot', email: 'release-bot@example.com' }),
+        commit('h1', 'feat: chart', { name: 'Talbot', email: 'talbot@example.com' }, 'talbot'),
+        commit('h2', 'fix: abbot', { name: 'Abbot' }, 'abbot'),
+      ]);
+      const stub = stubFetch({ status: 200, body });
+      const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+      expect(result.data?.commits.filter((row) => row.isBot).map((row) => row.sha)).toEqual(['b1', 'b2', 'b3']);
+    });
+
+    it('drops only a dependency updater\'s own subject, not a person\'s chore(deps) commit', async () => {
+      const body = JSON.stringify([
+        commit('d1', 'chore(deps): bump lodash from 4.17.20 to 4.17.21', { name: 'Ada' }, 'ada'),
+        commit('d2', 'chore(deps): timebox age excludes for audit', { name: 'FJ' }, 'fj'),
+      ]);
+      const stub = stubFetch({ status: 200, body });
+      const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+      expect(result.data?.commits.map((row) => [row.sha, row.isBot])).toEqual([['d1', true], ['d2', false]]);
+    });
+
+    it('keys a contributor by login, else e-mail, else name — never one "unknown" for every unlinked commit', async () => {
+      const body = JSON.stringify([
+        commit('k1', 'a', { name: 'Ada', email: 'ADA@example.com' }, 'Ada'),
+        commit('k2', 'b', { name: 'Anyroute Contributor', email: 'one@anyroute.dev' }),
+        commit('k3', 'c', { name: 'Anyroute Contributor', email: 'two@anyroute.dev' }),
+        commit('k4', 'd', { name: 'Lin' }),
+      ]);
+      const stub = stubFetch({ status: 200, body });
+      const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+      expect(result.data?.commits.map((row) => row.authorKey)).toEqual(['ada', 'email:one@anyroute.dev', 'email:two@anyroute.dev', 'name:lin']);
+    });
+
+    it('asks for a later page when told to', async () => {
+      const stub = stubFetch({ status: 200, body: '[]' });
+      await adapter.fetch({ ...input, page: 3 }, testContext({ fetchImpl: stub.fetchImpl }));
+      expect(String(stub.requests[0]?.url)).toContain('page=3');
+    });
+  });
 });
