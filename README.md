@@ -236,8 +236,8 @@ that cannot answer in full says why and offers next steps, including "Did you me
 search matcher.
 
 One project is fully open in the Research Terminal for every reader (2026-10-03): every tab, the
-real data, no decoys — the console's choice, or the published project with the most the Terminal can
-draw, never HEY's own. Every other project's research stays behind the gate. HEY's own project's
+real data, no decoys — the console's choice, by default HEY's own project (since 2026-10-04, labelled
+as such), else the published project with the most the Terminal can draw. Every other project's research stays behind the gate. HEY's own project's
 row says "HEY’s own project — researched by the same rules" wherever it is listed. Each workspace
 opens on a coverage strip (Build, Market, Usage, Intraday — states, never a score); HEY Today folds a
 project's weeks of code into one line with "Show every row"; and, with the model layer on, the
