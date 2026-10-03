@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ACTIVITY,
   CONSISTENCY,
+  DEPLOY_BATCH,
   DISCOVERY_GAP,
   EVENT_BASE_WEIGHTS,
   HBM_WEIGHTS,
@@ -52,6 +53,8 @@ const RULES_DIGEST = createHash('sha256')
       VALUATION_PLAUSIBILITY,
       // A repository's full releases of one UTC day count once (hbm-v23).
       RELEASE_BURST,
+      // A project's follow-up deploys of one UTC second count once (hbm-v24).
+      DEPLOY_BATCH,
     }),
   )
   .digest('hex')
@@ -76,8 +79,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v23',
-      rules: '12cb1a6ee806d255',
+      version: 'hbm-v24',
+      rules: '220fbbf00efb5a26',
     });
   });
 });

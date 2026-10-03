@@ -6,6 +6,7 @@ import {
   deriveActivityStatus,
   meaningfulEvents,
   releaseRepositoryOf,
+  utcSecondIndex,
   type ScoredEvent,
 } from './activity';
 import { computeHbm } from './hbm';
@@ -155,6 +156,63 @@ describe('activity status', () => {
       expect(releaseRepositoryOf('GITHUB_RELEASE', 'github-release::9')).toBeUndefined();
       expect(releaseRepositoryOf('GITHUB_RELEASE', null)).toBeUndefined();
       expect(releaseRepositoryOf('FEATURE_RELEASE', 'github-release:a/b:1')).toBeUndefined();
+    });
+  });
+
+  describe('a deploy batch is one ship (hbm-v24, founder ruling 2026-10-03)', () => {
+    const deploy = (iso: string, overrides: Partial<ScoredEvent> = {}): ScoredEvent => ({
+      eventType: 'CONTRACT_DEPLOY_FOLLOWUP',
+      verificationStatus: 'PUBLICLY_VERIFIED',
+      publishedAt: new Date(iso),
+      sourceKind: 'CONTRACT',
+      ...overrides,
+    });
+    const batchNow = new Date('2026-10-03T12:00:00Z');
+    const count = (events: ScoredEvent[]) => meaningfulEvents(events, batchNow).length;
+
+    it('counts four follow-up deploys of one second once, in status and in Build Momentum', () => {
+      // universal-high-income's shape in production: four contracts, one deployer, one second.
+      const batch = ['2026-09-30T16:02:38Z', '2026-09-30T16:02:38Z', '2026-09-30T16:02:38Z', '2026-09-30T16:02:38Z'].map((iso) => deploy(iso));
+      expect(count(batch)).toBe(1);
+      expect(deriveActivityStatus({ events: batch, now: batchNow, hasSourceCoverage: true }).meaningfulEventCount).toBe(1);
+      expect(computeHbm({ events: batch, now: batchNow }).hbm).toBe(computeHbm({ events: [batch[0]!], now: batchNow }).hbm);
+      // A sub-second stamp is still its second.
+      expect(count([deploy('2026-09-30T16:02:38.000Z'), deploy('2026-09-30T16:02:38.900Z')])).toBe(1);
+    });
+
+    it('no longer holds ACTIVE on one batch alone past 30 days', () => {
+      // Two contracts in one second, 35 days back: two meaningful updates in 45 days before hbm-v24, one now.
+      const at = new Date(batchNow.getTime() - 35 * DAY).toISOString();
+      const result = deriveActivityStatus({ events: [deploy(at), deploy(at)], now: batchNow, hasSourceCoverage: true });
+      expect(result.status).toBe('QUIET');
+      expect(result.meaningfulEventCount).toBe(1);
+      // Two deploys a second apart are two deployments, and still ACTIVE.
+      const next = new Date(Date.parse(at) + 1000).toISOString();
+      expect(deriveActivityStatus({ events: [deploy(at), deploy(next)], now: batchNow, hasSourceCoverage: true }).status).toBe('ACTIVE');
+    });
+
+    it('counts seconds apart, and never folds another event type into a batch', () => {
+      // deepstate's 1 September run: 20:24:01, 20:24:03 and two at 20:24:04 are three seconds.
+      expect(count([deploy('2026-09-01T20:24:01Z'), deploy('2026-09-01T20:24:03Z'), deploy('2026-09-01T20:24:04Z'), deploy('2026-09-01T20:24:04Z')])).toBe(3);
+      // 16:02:38.999 and 16:02:39.000 are two seconds.
+      expect(count([deploy('2026-09-30T16:02:38.999Z'), deploy('2026-09-30T16:02:39.000Z')])).toBe(2);
+      // An upgrade, or a release, in the same second is its own ship.
+      expect(count([deploy('2026-09-30T16:02:38Z'), deploy('2026-09-30T16:02:38Z', { eventType: 'CONTRACT_UPGRADE' })])).toBe(2);
+      expect(count([deploy('2026-09-30T16:02:38Z', { eventType: 'CONTRACT_UPGRADE' }), deploy('2026-09-30T16:02:38Z', { eventType: 'CONTRACT_UPGRADE' })])).toBe(2);
+      expect(count([deploy('2026-09-30T16:02:38Z'), deploy('2026-09-30T16:02:38Z', { eventType: 'GITHUB_RELEASE', sourceKind: 'GITHUB' })])).toBe(2);
+    });
+
+    it('keeps a corroborated deploy for the batch; an uncorroborated one never displaces it', () => {
+      const kept = meaningfulEvents([deploy('2026-09-30T16:02:38Z'), deploy('2026-09-30T16:02:38.500Z', { verificationStatus: 'SELF_REPORTED' })], batchNow);
+      expect(kept).toHaveLength(1);
+      expect(kept[0]!.verificationStatus).toBe('PUBLICLY_VERIFIED');
+      // A withdrawn or unapproved deploy is no part of the count either way.
+      expect(count([deploy('2026-09-30T16:02:38Z', { moderationStatus: 'PENDING' })])).toBe(0);
+    });
+
+    it('keys on whole UTC seconds', () => {
+      expect(utcSecondIndex(new Date('1970-01-01T00:00:01.999Z'))).toBe(1);
+      expect(utcSecondIndex(new Date('2026-09-30T16:02:38.000Z'))).toBe(utcSecondIndex(new Date('2026-09-30T16:02:38.999Z')));
     });
   });
 

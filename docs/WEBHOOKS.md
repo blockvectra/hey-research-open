@@ -70,7 +70,10 @@ subscription that received it and was told it was gone.
 A later revision of an event you were sent is delivered again only when what
 it says changed (its summary, facts, evidence, time or precision) — not when
 it only gained an annotation, such as the release signal that restates a
-ship an hour later. Keep the highest `revision` per `event.id`.
+ship an hour later. Keep the highest `revision` per `event.id`. A revision is
+a correction to mirror, not news: HEY's own "what is new" surfaces (Today,
+What changed, the digests, alerts) date an event by its first arrival, which
+a revision keeps (founder ruling 2026-10-03). Delivery by `seq` is unchanged.
 
 ## What is never delivered
 

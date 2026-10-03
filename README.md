@@ -446,6 +446,14 @@ repositories on one day count as two, a release whose ship id names no repositor
 collapsed, and every release stays on the timeline. Chain feeds show the burst as one line ("27
 releases in owner/repo on 1 Oct") and `/signals` announces it once, by count.
 
+Since scoring `hbm-v24` (founder ruling, 2026-10-03) a deploy batch is one ship: a project's
+follow-up contract deployments recorded in the same UTC second count once — the newest
+corroborated one stands for the batch — in activity status, Build Momentum and every count of
+building. Deploys a second apart count apart, an upgrade is never part of a batch, and every
+contract stays on the timeline with its creating transaction. Chain feeds show the batch as one
+line ("4 contracts deployed by the project's deployer at 16:02:38 UTC on 30 Sep") and `/signals`
+announces it once, by count.
+
 A week of code activity has one title everywhere (2026-10-03): "Code changes, week of 2026-09-28 –
 2026-10-04", the fixed UTC week it is keyed on, on the ledger, the API, the partner card and every
 page; pages that read the week add its own commit count. "Week of" always names the Monday. Every
@@ -475,6 +483,12 @@ digest, a daily digest or one project's changes — double opt-in, one-click uns
 deletes the address, nothing else stored. Data checks (two of HEY's own readings disagreeing)
 fold under their own heading; "+N more" opens the kind's full list; "Today" is a UTC calendar
 day. Telegram alerts are not available yet.
+
+A correction is not news (2026-10-03): every "what is new" window — Today, What changed,
+`/updates`, the email digests and alerts — dates a change by when it *first* reached HEY, and a
+later revision (a repaired title, a return after a retraction) keeps that time, so history revised
+later never comes back as new and never alerts twice. `/api/changes` and webhooks still deliver
+each revision in ledger order, so a mirror receives the corrected content.
 
 ## For builders
 

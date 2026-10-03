@@ -124,6 +124,25 @@ export const RELEASE_BURST = {
   externalIdPrefix: 'github-release:',
 } as const;
 
+/**
+ * A deploy batch is one ship (hbm-v24, founder ruling 2026-10-03, "kira
+ * sekali" — count it once). A project's follow-up contract deployments
+ * recorded in the same UTC second count once — the newest corroborated one
+ * stands for the batch — in activity status, Build Momentum and every SQL
+ * count of building (`buildingEvidenceSql`), as a release day does
+ * (`RELEASE_BURST`). The key is the project and the second of the block time
+ * the ship is dated to: in production every same-second batch was one
+ * deployer's, each contract its own creating transaction (no two shared a
+ * hash), in one or two blocks. Deploys a second apart count apart; an upgrade
+ * is not a deploy and is never part of a batch. Every deploy stays on the
+ * timeline with its source.
+ */
+export const DEPLOY_BATCH = {
+  eventType: 'CONTRACT_DEPLOY_FOLLOWUP',
+  /** One counted follow-up deploy per project per this period. */
+  period: 'utc_second',
+} as const;
+
 /** PRD V4 section 13.2. */
 export const UNDER_THE_RADAR = {
   /** 45 until hbm-v5 (2026-09-13): on the honest published cohort only 16 projects cleared 45 with a live market; 30 admits 29 and still demands verified building. */

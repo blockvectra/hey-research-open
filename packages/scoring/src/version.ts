@@ -269,7 +269,28 @@
  * of 1, 342 of 2, 153 of 3, 109 of 4–5, 78 of 6–10 and 33 of 11 or more (537
  * ships on 16 projects).
  */
-export const SCORING_VERSION = 'hbm-v23' as const;
+/*
+ * hbm-v24 (founder ruling 2026-10-03, "kira sekali" — count it once): no
+ * weight, threshold or Build Momentum formula changes. A project's follow-up
+ * contract deployments (`CONTRACT_DEPLOY_FOLLOWUP`) recorded in the same UTC
+ * second count once — one deploy batch, the newest corroborated deploy
+ * standing for it — in activity status, Build Momentum, the streak, velocity
+ * and cadence (`collapseRepeatedEvidence`, `DEPLOY_BATCH`) and in every SQL
+ * count of building (`buildingEvidenceSql`'s deploy-batch keeper), exactly as
+ * hbm-v23 collapsed a repository's release day. The key is the project and
+ * the UTC second of the block time the ship is dated to. What did not change:
+ * deploys a second apart count apart, an upgrade is never part of a batch, and
+ * no ship is deleted or retracted — every deploy stays on the timeline with
+ * its creating transaction; only the count changes. Measured on production
+ * before the change (read-only, 2026-10-03): 461 standing follow-up deploys on
+ * 72 projects; 14 same-second batches held 36 of them (at most 6 per batch) on
+ * 9 projects. Every batch was one deployer's; no two deploys shared a creating
+ * transaction (each contract is its own transaction, in one or two blocks), so
+ * the transaction hash cannot be the key. Scripts also spill over neighbouring
+ * seconds (53 consecutive deploys 2–5 s apart, 86 at 5–15 s); a wider window
+ * would be a different ruling, not this one.
+ */
+export const SCORING_VERSION = 'hbm-v24' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

@@ -1,6 +1,6 @@
 import type { ActivityStatus, ShipEventType, ShipSourceKind, VerificationStatus } from '@hey/db';
 
-import { ACTIVITY, RELEASE_BURST } from './config';
+import { ACTIVITY, DEPLOY_BATCH, RELEASE_BURST } from './config';
 import { isMeaningful } from './significance';
 
 /**
@@ -141,6 +141,12 @@ export function isoWeekIndex(date: Date): number {
  * releases of one repository are one release day; two repositories on one
  * day are two. A release whose repository is not known is never collapsed.
  *
+ * And — since hbm-v24 (founder ruling 2026-10-03, "kira sekali") — one
+ * follow-up contract deployment per project per UTC second (`DEPLOY_BATCH`):
+ * a deploy script put up four contracts in one second and the project read
+ * ACTIVE on them. The input is one project's events, so the key is the second
+ * alone; deploys a second apart count apart.
+ *
  * The input is meaningful events (corroborated) newest first, so the kept
  * row is the newest corroborated one — the row `buildingEvidenceSql` keeps.
  */
@@ -162,7 +168,13 @@ function collapseKey(event: ScoredEvent): string | undefined {
   if (event.eventType === RELEASE_BURST.eventType && event.repository) {
     return `release-day:${event.repository.toLowerCase()}:${utcDayIndex(event.publishedAt)}`;
   }
+  if (event.eventType === DEPLOY_BATCH.eventType) return `deploy-batch:${utcSecondIndex(event.publishedAt)}`;
   return undefined;
+}
+
+/** Whole UTC seconds since the epoch: the deploy-batch key (hbm-v24). */
+export function utcSecondIndex(date: Date): number {
+  return Math.floor(date.getTime() / 1000);
 }
 
 /** Whole UTC days since the epoch: the release-day key (hbm-v23). */
@@ -172,7 +184,8 @@ export function utcDayIndex(date: Date): number {
 
 /**
  * The hbm-v11 name, kept for its callers: it applies every collapse the
- * scorer applies, the release day included (hbm-v23).
+ * scorer applies, the release day (hbm-v23) and the deploy batch (hbm-v24)
+ * included.
  */
 export const collapseSameWeekCodeActivity = collapseRepeatedEvidence;
 

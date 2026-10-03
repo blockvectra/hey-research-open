@@ -171,10 +171,11 @@ published, plus `contract.method_first_observed` and `contract.method_resumed`.
 
 HEY checks new changes against every rule about once a minute.
 
-- **Only news.** An alert fires on a change's first public appearance (or its
-  return after a retraction). A later correction or annotation of the same
-  change does not alert you again, and history HEY filled in after the fact is
-  never news.
+- **Only news.** An alert fires on a change's first public appearance. A later
+  correction or annotation of the same change does not alert you again, nor
+  does its return after a retraction (since 2026-10-03: a revision keeps the
+  change's first arrival, so it is never new again — the alert you already had
+  is restored instead), and history HEY filled in after the fact is never news.
 - **Once per rule and change.** However often HEY re-checks, one rule and one
   change make one notification.
 - **Retractions.** When HEY withdraws a change, its notifications are marked

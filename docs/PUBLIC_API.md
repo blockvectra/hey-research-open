@@ -472,6 +472,18 @@ does not know is never folded, and no ship is deleted or retracted — every rel
 record with its provenance. Only the count changes. No field changed
 shape; `scoringVersion` reads `hbm-v23` on a score written under this rule.
 
+### A project's contract deployments in one second count once (`hbm-v24`, 2026-10-03)
+
+A founder ruling. A project's follow-up contract deployments (`CONTRACT_DEPLOY_FOLLOWUP`) recorded
+in the same UTC second count as **one** deployment in activity status, Build Momentum, the shipping
+streak, velocity and cadence, and in every count of building — `meaningfulShips30d` and the
+weekly counts included; the newest corroborated deploy stands for the second, and is the one
+`latest_deployment` names. Four contracts a deployment script creates at once are one piece of work, not four. What
+did not change: deploys a second apart count apart, a contract upgrade is never part of a batch,
+and no ship is deleted or retracted — every deploy stays on the record with its creating
+transaction, and `GET /api/ships` and the change ledger still list each one. No field changed
+shape; `scoringVersion` reads `hbm-v24` on a score written under this rule.
+
 ### `$HEY`, HEY's own token: `heysOwnToken` (2026-09-30, additive)
 
 HEY Research Lab issues `$HEY`, and HEY researches it by the same rules as every project: no
@@ -1539,6 +1551,12 @@ names a project, so a project that leaves the catalogue is not disclosed by its 
 release's publication, a block, an unlock HoodLock scheduled); HEY's own reclassifications — a
 status moving, an ABI diff HEY noticed — carry `occurredAt: null` and `precision: "OBSERVED"`.
 `detectedAt` is when HEY first knew. `recordedAt` is when this revision entered the ledger.
+HEY's own "what is new" windows — HEY Today, the Terminal's What changed, `/updates`, the email
+digests, alerts — read when the event *first* reached HEY, which a later revision keeps (founder
+ruling 2026-10-03): a revision is delivered here and to webhooks with a new position, so a mirror
+receives the corrected content, but it is never new on those surfaces. A mirror that wants the
+same reading takes the earliest `recordedAt` it holds for a `live` id (`detectedAt` for
+`bootstrap` and `backfill` history).
 `precision` is one vocabulary everywhere: `EXACT`, `DATE` (a day only), `WEEK` (a code-activity
 week), `WINDOW` (inside `occurredAt`–`occurredUntil`, or ending at `occurredAt` for a HEY Signal's
 comparison window), `OBSERVED`, `SCHEDULED` (a future time the source fixed).

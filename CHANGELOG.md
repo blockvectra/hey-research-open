@@ -37,6 +37,13 @@ record.
 
 ## Unreleased (2026-10-02)
 
+- **A deploy batch is one ship (scoring `hbm-v24`, founder ruling 2026-10-03).** A project's
+  follow-up contract deployments recorded in the same UTC second count once, the newest
+  corroborated one standing for the batch, in activity status, Build Momentum and every count of
+  building; deploys a second apart count apart and an upgrade is never part of a batch. Every
+  contract stays on the timeline with its creating transaction. Chain feeds show a batch as one
+  line ("4 contracts deployed by the project's deployer at 16:02:38 UTC on 30 Sep") and `/signals`
+  announces it once, by count; `GET /api/ships` and the change ledger stay a record of every deploy.
 - **A release burst is one ship (scoring `hbm-v23`).** A repository's full GitHub releases of one
   UTC day count once, the newest corroborated one standing for the day, in activity status, Build
   Momentum and every count of building; prereleases keep their weekly rule, two repositories on
