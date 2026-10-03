@@ -6,6 +6,13 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **The Research Terminal guide, illustrated (2026-10-04).** `/docs/terminal` shows a real
+  screenshot of the live Terminal under each step: the Projects page, the two ways in, the
+  workspace on desktop and phone, the research summary and a receipt, every view, What changed,
+  Compare, the watchlist, the command palette and the More menu. Taken signed out on the sample
+  project; what a signed-out reader cannot open is shown locked. A picture in a document is drawn
+  with its size reserved, lazily, and opens the full-size file.
+
 - **Builders shipping Uniswap v4 hooks (2026-10-04).** New `/integrations/uniswap/hooks` and
   `GET /api/v4-hooks`: only hooks HEY ties to a published project (created by the account that
   launched its token, or listed by the project), each with its `v4hook:` id, newest deployment

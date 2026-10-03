@@ -248,7 +248,9 @@ The Research Terminal has a reader-facing guide at `/docs/terminal` (2026-10-04)
 what stays free, how to get in, a tour of every view, the command palette and keyboard shortcuts,
 how to read what it shows, and how to report a bug or ask for a feature. It is served only while
 the Terminal resolves, and a test holds it to the access figures, the workspace's views, the keys
-and the canonical sentences the code uses.
+and the canonical sentences the code uses. Each step carries a real screenshot of the live
+Terminal, taken signed out on the sample project (what a signed-out reader cannot open is shown
+locked, as it is), drawn without layout shift and linked to the full-size picture.
 
 Search, What changed and Compare say one thing (2026-10-01). The header type-ahead lists projects
 first, labels an empty page that shares a researched project's name, and folds launch records of
