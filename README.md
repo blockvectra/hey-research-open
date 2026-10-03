@@ -244,6 +244,12 @@ project's weeks of code into one line with "Show every row"; and, with the model
 Overview leads with a pre-answered Ask HEY brief for the most-opened projects, written ahead of time
 from HEY's records, cached by their hash and held to half the day's AI budget.
 
+The Research Terminal has a reader-facing guide at `/docs/terminal` (2026-10-04): what it is,
+what stays free, how to get in, a tour of every view, the command palette and keyboard shortcuts,
+how to read what it shows, and how to report a bug or ask for a feature. It is served only while
+the Terminal resolves, and a test holds it to the access figures, the workspace's views, the keys
+and the canonical sentences the code uses.
+
 Search, What changed and Compare say one thing (2026-10-01). The header type-ahead lists projects
 first, labels an empty page that shares a researched project's name, and folds launch records of
 one name into a single row that opens the search page (`emptyNamesake` and `moreLaunchRecords` on
