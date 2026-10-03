@@ -549,6 +549,15 @@ is recorded as an ordinary follow-up deployment, counting exactly like any other
 deploys; a hook a launch protocol or a factory created is context. Each attributed hook has an
 evidence id, `v4hook:<chainId>:<address>`.
 
+Since 2026-10-04 the hooks HEY ties to a published project are listed at
+https://heyresearch.xyz/integrations/uniswap/hooks and as data at `GET /api/v4-hooks`: each with the
+project's activity status, how it is tied and its receipt, when it was deployed and first used, the
+callbacks its address declares, and market context labelled as context — newest deployment first,
+never ranked. Every other hook is one aggregate count, never listed or grouped by who created it.
+The deployment of a project's hook is one ledger event that says it is a hook (`facts.v4Hook`), and
+a hook the project only declares gets its own canonical event; both reach What changed, alerts, RSS
+and webhooks like any contract deployment.
+
 ## Terms and privacy
 
 What HEY records about a reader, what it never stores and for how long:

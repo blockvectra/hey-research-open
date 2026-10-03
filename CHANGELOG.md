@@ -6,6 +6,16 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Builders shipping Uniswap v4 hooks (2026-10-04).** New `/integrations/uniswap/hooks` and
+  `GET /api/v4-hooks`: only hooks HEY ties to a published project (created by the account that
+  launched its token, or listed by the project), each with its `v4hook:` id, newest deployment
+  first, shown of total, market context labelled as context and never an order; every other hook is
+  one aggregate count. The ledger event of a project's hook deployment carries the additive facts
+  `v4Hook`, `contractKind` and `hookPermissions` and the hook's receipt; a declared hook gets one
+  `contract.followup_deployed` keyed by its `v4hook:` id, never counted as building. The "deploys a
+  contract" alert preset now includes `contract.followup_deployed`. Hook attribution reads hourly in
+  priority order within the same explorer budget.
+
 - **Building facts say one thing everywhere.** A code-activity ship's `title` (and its ledger
   `summary`, the partner card's `last_ship_title`, the builder card's latest ship) is the week's
   title, "Code changes, week of 2026-09-28 – 2026-10-04", never the rolling "Active development:
