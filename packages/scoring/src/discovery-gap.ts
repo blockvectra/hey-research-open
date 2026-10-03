@@ -413,6 +413,6 @@ export function evaluateStillBuilding(input: StillBuildingInput): StillBuildingR
     declinePercent,
     shipsSinceDecline,
     // Deliberately factual: an observation about the past, not a forecast.
-    reason: `Down ${declinePercent}% from the HEY-tracked high, with ${shipsSinceDecline} verified update(s) since.`,
+    reason: `Down ${declinePercent}% from the HEY-tracked high, with ${shipsSinceDecline} verified ${shipsSinceDecline === 1 ? 'update' : 'updates'} since.`,
   };
 }

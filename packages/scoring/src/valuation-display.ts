@@ -1,4 +1,4 @@
-import { DEAD_MARKET_STATUSES, marketIsLive, type TokenMarketStatusValue } from './token-market';
+import { DEAD_MARKET_STATUSES, marketIsLive, RESCUED_MARKET_REASON, type TokenMarketStatusValue } from './token-market';
 import { valuationKindOf, type ValuationKind } from './valuation-kind';
 import { VALUATION_NOT_PLAUSIBLE_WORDS, valuationImplausibleReason, valuationNotPlausibleSentence, type ValuationImplausibleReason } from './valuation-plausibility';
 
@@ -17,6 +17,9 @@ import { VALUATION_NOT_PLAUSIBLE_WORDS, valuationImplausibleReason, valuationNot
  *   1. A market that is not live (`marketIsLive`) prints no figure. A dead
  *      status or a dead reason is `no_active_market`; readings that disagree
  *      or that HEY does not believe are `unconfirmed` — neither live nor dead.
+ *   1b. A rescued market (`liquidity_in_another_pool`, 2026-10-03) is
+ *      `unconfirmed`: the reading followed is a nearly empty pool, and the
+ *      market is measured only on the pool that holds it (founder ruling F1).
  *   2. A valuation the reading cannot support (`valuationPlausibility`,
  *      round 4, 2026-09-30) is `not_plausible`, with its reason code: it
  *      is never printed and never FACT.
@@ -66,6 +69,15 @@ export function valuationDisplay(input: ValuationDisplayInput): ValuationDisplay
     const unsettled = !deadStatus && reason !== null && (UNSETTLED_MARKET_REASONS as readonly string[]).includes(reason);
     return { shown: false, state: unsettled ? 'unconfirmed' : 'no_active_market', reason: reason ?? status ?? 'market_not_live' };
   }
+  /*
+   * A rescued market (2026-10-03, full audit): the reading the surfaces hold
+   * follows a nearly empty pool while another pool — or only HEY's chain pool
+   * index — holds the market. Founder ruling F1 never measures such a market
+   * on the thin pool, and with no reading of the active pool it is not
+   * measured at all; atlantis-coin printed $365.9B, then $3.08B, beside the
+   * thin pool's $1,286. Neither is the market's valuation: unconfirmed.
+   */
+  if (reason === RESCUED_MARKET_REASON) return { shown: false, state: 'unconfirmed', reason };
   const implausible = valuationImplausibleReason(input.valuationImplausible);
   if (implausible) return { shown: false, state: 'not_plausible', reason: implausible };
   if (!positive(input.valueUsd)) return { shown: false, state: 'no_reading', reason: 'no_reading' };

@@ -78,6 +78,9 @@ describe('shared wording', () => {
 
   it('prints a time at the precision HEY knows it, and never invents one', () => {
     expect(atPrecision('2026-09-14T00:00:00.000Z', 'WEEK')).toBe('week of 2026-09-14');
+    // A week-precision record is dated inside its week: the label names the week's Monday (2026-10-03).
+    expect(atPrecision('2026-10-02T23:59:00.000Z', 'WEEK')).toBe('week of 2026-09-28');
+    expect(atPrecision('2026-09-20T23:59:00.000Z', 'WEEK')).toBe('week of 2026-09-14');
     expect(atPrecision('2026-09-14T10:30:00.000Z', 'EXACT')).toBe('2026-09-14 10:30 UTC');
     expect(atPrecision(null, 'OBSERVED', '2026-09-20T00:00:00Z')).toBe('no source time; HEY saw it 2026-09-20');
   });
@@ -139,6 +142,9 @@ describe('find_projects', () => {
     const text = renderProjects(fx.projectsPage, NOW);
     expect(text).toContain('Showing 2 of 17. For more, call find_projects again with the same arguments and offset=2.');
     expect(text).toContain('Query as HEY read it');
+    // Only unknown parameter names are ignored; an unreadable value is refused (full audit 2026-10-03).
+    expect(text).toContain('A parameter name HEY does not know is ignored; a value it cannot read is refused with the values it accepts.');
+    expect(text).not.toContain('ignored rather than refused');
     expect(text).toContain('STILL BUILDING (down 62% from the HEY-tracked high, 5 verified ships since)');
     expect(text).toContain(STILL_BUILDING_MEANING);
     expect(text).toMatch(TAGGED);
@@ -331,7 +337,7 @@ describe('get_project_snapshot', () => {
 
   it('opens on the Research Summary exactly as the API composed it: tags, reasons and evidence ids, never restated', () => {
     const summary = text.slice(text.indexOf('## Research summary'), text.indexOf('## Identity'));
-    expect(summary).toContain('- DERIVED Build: Shipping: 4 meaningful events in 30 days; latest release yesterday. Evidence: ship:2ac87a66-0000-0000-0000-000000000001.');
+    expect(summary).toContain('- DERIVED Build: Shipping: 4 meaningful events in 30 days; latest ship yesterday. Evidence: ship:2ac87a66-0000-0000-0000-000000000001.');
     // The summary restates the usage section of the same snapshot: the same calls, never a second reading.
     expect(summary).toContain(
       "- FACT Product usage: 4 of 4 watched contracts active · 1,842 calls in 7 days (532 calls to the contracts' own functions). Evidence: method:5b2d0000-0000-0000-0000-000000000001.",

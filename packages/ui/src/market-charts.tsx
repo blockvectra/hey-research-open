@@ -153,9 +153,16 @@ export function DailyBarsChart({
   secondaryLabel,
   className,
   testId,
+  partialDay,
 }: {
   points: readonly (DailyPoint & { secondary?: number })[];
   label: string;
+  /**
+   * The day still being counted (full audit, 2026-10-03): its bar is drawn hatched and outlined,
+   * named in the legend, its title and the chart's summary — a few hours of a day never reads as a
+   * collapse beside full days, and never by colour alone.
+   */
+  partialDay?: string | undefined;
   tone?: ChartTone;
   format?: (value: number) => string | undefined;
   /** What the first series is called when a second stacks under it ("buys" under "sells"). */
@@ -175,24 +182,31 @@ export function DailyBarsChart({
   const first = points[0]!;
   const last = points[points.length - 1]!;
   const colour = TONES[tone];
+  const hatch = `repeating-linear-gradient(135deg, ${colour.bar} 0 2px, transparent 2px 6px)`;
+  const partialShown = partialDay !== undefined && points.some((p) => p.day === partialDay);
   return (
     <div className={className} data-testid={testId}>
       <div
         className="flex h-[92px] items-end gap-[3px] border-b border-hey-border"
         role="img"
-        aria-label={`${label} by day: ${points.map((p) => `${p.day} ${format(p.value) ?? p.value}${p.secondary !== undefined ? ` and ${format(p.secondary) ?? p.secondary} ${secondaryLabel ?? ''}` : ''}`).join('; ')}`}
+        aria-label={`${label} by day: ${points.map((p) => `${p.day} ${format(p.value) ?? p.value}${p.secondary !== undefined ? ` and ${format(p.secondary) ?? p.secondary} ${secondaryLabel ?? ''}` : ''}${p.day === partialDay ? ' (today so far, still being counted)' : ''}`).join('; ')}`}
       >
         {points.map((p) => {
           const total = p.value + (p.secondary ?? 0);
+          const partial = p.day === partialDay;
           return (
-            <div key={p.day} className="flex h-full min-w-0 flex-1 flex-col justify-end">
-              <div className="flex w-full flex-col justify-end overflow-hidden rounded-t-[3px]" style={{ height: `${Math.max(2, (total / max) * 100)}%` }}>
+            <div key={p.day} className="flex h-full min-w-0 flex-1 flex-col justify-end" data-partial={partial ? '' : undefined}>
+              <div
+                className={partial ? 'flex w-full flex-col justify-end overflow-hidden rounded-t-[3px] border border-b-0 border-dashed' : 'flex w-full flex-col justify-end overflow-hidden rounded-t-[3px]'}
+                style={{ height: `${Math.max(2, (total / max) * 100)}%`, ...(partial ? { borderColor: colour.bar } : {}) }}
+              >
                 {/* `title` the attribute, not `<title>` the element: these bars are divs, and in
                     HTML that tag is metadata React 19 hoists into <head> rather than a tooltip. */}
                 <div
                   className="w-full"
-                  style={{ height: total > 0 ? `${(p.value / total) * 100}%` : '100%', background: `linear-gradient(180deg, ${colour.barTo} 0%, ${colour.bar} 100%)` }}
-                  title={`${p.day}: ${format(p.value) ?? p.value}${secondaryLabel ? ` ${primaryLabel ?? label.toLowerCase()}` : ''}`}
+                  style={{ height: total > 0 ? `${(p.value / total) * 100}%` : '100%', background: partial ? hatch : `linear-gradient(180deg, ${colour.barTo} 0%, ${colour.bar} 100%)` }}
+                  title={`${p.day}: ${format(p.value) ?? p.value}${secondaryLabel ? ` ${primaryLabel ?? label.toLowerCase()}` : ''}${partial ? ' — today so far, still being counted' : ''}`}
+                  data-testid={partial ? 'daily-bar-partial' : undefined}
                 />
                 {p.secondary !== undefined && total > 0 ? (
                   <div
@@ -214,6 +228,12 @@ export function DailyBarsChart({
             {primaryLabel ?? label.toLowerCase()}
             <span aria-hidden="true" className="ml-1 inline-block size-[7px] rounded-[2px]" style={{ background: SECONDARY }} />
             {secondaryLabel}
+          </span>
+        ) : null}
+        {partialShown ? (
+          <span className="flex items-center gap-1.5" data-testid="daily-bars-partial-legend">
+            <span aria-hidden="true" className="inline-block size-[8px] rounded-[2px] border border-dashed" style={{ borderColor: colour.bar, background: hatch }} />
+            today so far
           </span>
         ) : null}
         <span>{shortDay(last.day)}</span>

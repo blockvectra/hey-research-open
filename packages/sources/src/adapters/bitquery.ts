@@ -4,6 +4,7 @@ import { resolveNow, type SourceAdapter, type SourceContext, type SourceResult }
 import { SourceError } from '../errors';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
+import { isNftMarketplaceVenue } from '../nft-marketplaces';
 
 /**
  * A GraphQL `errors` answer as a typed source error (2026-09-24).
@@ -294,6 +295,8 @@ export function normalizeBitqueryTrades(rows: readonly Row[]): BitqueryTokenTrad
   for (const row of rows) {
     const address = row.Trade.Currency.SmartContract.toLowerCase();
     if (!ADDRESS.test(address)) continue;
+    // An NFT marketplace's fill is not a market reading (2026-10-03): its price is one NFT's, not a token's.
+    if (isNftMarketplaceVenue(row.Trade.Dex?.ProtocolName, row.Trade.Dex?.ProtocolFamily)) continue;
     const trades = whole(row.trades);
     const volume = toNumber(row.volume_usd) ?? 0;
     // The busiest venue is decided over the whole window, not the day: a token
@@ -500,6 +503,8 @@ export function normalizeBitqueryTradedTokens(rows: readonly z.infer<typeof disc
   for (const row of rows) {
     const address = row.Trade.Currency.SmartContract.toLowerCase();
     if (!ADDRESS.test(address)) continue;
+    // NFT marketplace sales never make a token look traded (2026-10-03): a collection is not a launch to discover.
+    if (isNftMarketplaceVenue(row.Trade.Dex?.ProtocolName, row.Trade.Dex?.ProtocolFamily)) continue;
     const current = byToken.get(address) ?? { reading: { contractAddress: address, trades: 0, traders: 0 }, venueTrades: new Map<string, number>() };
     const trades = whole(row.trades);
     current.reading.trades += trades;

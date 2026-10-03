@@ -133,6 +133,10 @@ describe('ProjectCard — fallbacks', () => {
     expect(html).toContain('DEX (Uniswap v4)');
     expect(html).not.toContain('>Unknown<');
     expect(html).not.toContain('launch page');
+    // A venue HEY cannot name is already "DEX": printed once, never "DEX (DEX)" (full audit, 2026-10-03).
+    const unnamed = render({ ...tokenBacked, launchedVia: { name: 'Unknown' }, marketVenue: 'DEX' });
+    expect(unnamed).not.toContain('DEX (DEX)');
+    expect(unnamed).toMatch(/>DEX<\/span>/);
     // A launch record wins: the venue is where it trades, not where it launched.
     expect(render({ ...tokenBacked, launchedVia: { name: 'Pons' }, marketVenue: 'Uniswap v4' })).not.toContain('DEX (');
     expect(marketLensLine({ ...tokenBacked, liquidityUsd: 12_000, launchStage: 'DEX', marketVenue: 'Uniswap v4', onchainEvents24h: 40 })).toBe('Liquidity $12K · in a Uniswap v4 pool · 40 on-chain events / 24 h');
@@ -286,11 +290,13 @@ describe('ProjectCard — tokenless', () => {
 
   it('shows kind, site and X account, and no ticker, market cap or contract address', () => {
     expect(html).toContain('Infrastructure');
-    // The last ship rides the builder line (public IA pass, 2026-09-28); the market slot says "No token" once.
+    // The last ship rides the builder line (public IA pass, 2026-09-28); the market slot says once that HEY tracks no token
+    // (2026-10-03: "No token tracked", never the absolute "No token" — a project may hold one HEY has not linked).
     expect(html).toContain('data-testid="card-last-ship"');
     expect(html).toContain('Shipped');
     expect(html).toContain('data-testid="no-token"');
-    expect(html).toContain('>No token<');
+    expect(html).toContain('>No token tracked<');
+    expect(html).not.toContain('>No token<');
     expect(html).toContain('Open indexer tooling');
     expect(html).toContain('hoodlens.example');
     expect(html).toContain('@hoodlens');

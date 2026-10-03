@@ -30,6 +30,29 @@ describe('BuilderActivityChart — labelled axes', () => {
   });
 });
 
+describe('BuilderActivityChart — weeks before HEY read the sources (2026-10-03, full audit)', () => {
+  // samyadeb-lendora: first read 2026-10-03, eleven weeks drawn as measured zeros before it.
+  const weeks = [
+    { week: '2026-09-14', ships: 0, notRead: true },
+    { week: '2026-09-21', ships: 0, notRead: true },
+    { week: '2026-09-28', ships: 1, headline: 'Code changes' },
+  ];
+  const html = renderToStaticMarkup(createElement(BuilderActivityChart, { weeks }));
+
+  it('draws them hatched as not yet read, never as zero bars', () => {
+    expect(html.match(/data-week-state="not-read"/g)).toHaveLength(2);
+    expect(html).toContain('not yet read');
+    expect(html).toMatch(/aria-label="[^"]*2026-09-14 not yet read, 2026-09-21 not yet read, 2026-09-28 1"/);
+    expect(html).toContain('2 weeks before HEY began reading');
+  });
+
+  it('says nothing about unread weeks when every week was read', () => {
+    const read = renderToStaticMarkup(createElement(BuilderActivityChart, { weeks: [{ week: '2026-09-28', ships: 0 }, { week: '2026-10-05', ships: 2 }] }));
+    expect(read).not.toContain('not yet read');
+    expect(read).not.toContain('data-week-state');
+  });
+});
+
 describe('a code week in the timeline', () => {
   it('lists up to three commit subjects, each linking to its commit', () => {
     const html = renderToStaticMarkup(

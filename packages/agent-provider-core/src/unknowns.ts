@@ -56,6 +56,20 @@ export const DO_NOT_CONCLUDE: Readonly<Record<AgentUnknownCategory, string>> = {
   UNKNOWN: 'HEY cannot say. A missing value is not negative evidence.',
 };
 
+/**
+ * The categories a list of unknowns holds, with their counts, in the fixed
+ * category order: "2 NOT_MEASURED, 1 NOT_VERIFIED". One wording for every
+ * answer that names them (full audit, 2026-10-03): `research_project` always
+ * said "(coverage gaps and unverified identity)", whatever the list held.
+ */
+export function unknownCategorySummary(unknowns: readonly { category: AgentUnknownCategory }[]): string {
+  const counts = new Map<AgentUnknownCategory, number>();
+  for (const unknown of unknowns) counts.set(unknown.category, (counts.get(unknown.category) ?? 0) + 1);
+  return AGENT_UNKNOWN_CATEGORIES.filter((category) => (counts.get(category) ?? 0) > 0)
+    .map((category) => `${counts.get(category)} ${category}`)
+    .join(', ');
+}
+
 export function doNotConclude(category: AgentUnknownCategory): AgentText {
   return heyText(DO_NOT_CONCLUDE[category]);
 }

@@ -149,6 +149,35 @@ Text with no description in it leaves the line empty rather than filling it with
 project with no line takes its own site's meta description through the same rule, logged. Words an
 owner typed are never rewritten.
 
+Data correctness after a full audit (2026-10-03). The integrity audit no longer counts a Robinhood
+stock token as an orphan (it belongs to no project by rule); a failing audit makes `/status`
+critical and names the failing checks, and `/api/status` adds `integrity.failing`,
+`catalog.hidden` and `catalog.hiddenAsOf` without changing any existing field. A verified
+contract's timeline entry reads "Contract source verified", never "Contract deployed". A
+description line keeps a dash before a closing emphasis mark, drops a mark left without its partner,
+and is empty for text whose words run together. A repository that says it is a third-party profile
+of someone else is never promoted into a project. Cards say "No token tracked" rather than "No
+token".
+
+Markets, the same day. A token that reads 0 decimals (an NFT collection) has no fungible market: no
+valuation, Discovery Gap, Under the Radar or Still Building, and NFT marketplaces such as Seaport are
+never read as a DEX. A market is never "Active" over a reading more than 36 hours old with no fresh
+trade record ("No current reading"). A market active only in another pool prints no valuation from
+the thin pool it follows. The Builder activity chart hatches weeks before HEY first read a project's
+sources as "not yet read", never zero. Holder figures say what they leave out and which supply they
+measure. A page under a publication hold says it is held and how the hold lifts, with no score,
+badge or Terminal link.
+
+One project, one page, and bounties HEY already answered (2026-10-03). A registry listing whose site
+or official X account a published page already holds (tokenless, or with a verified token) joins
+that page instead of opening a second one; an unverified token page, a "V2"/"V3" sibling or a
+launchpad's shared site still gets its own. Registry pages opened before that are held by one
+reviewed, reversible command (`pnpm data:duplicate-listings`, dry run by default) and their address
+points to the project's page. An open research bounty whose fact HEY has since verified by other
+evidence is no longer listed as open and cannot be claimed; the hourly sweep closes the
+treasury-funded ones nobody handed in work for (logged, reversible, no money moves), and handed-in
+work waiting more than seven days is flagged for review.
+
 ## Use the API
 
 No key needed for the read API. 120 requests a minute anonymously, more with a key. Every answer names its
@@ -298,8 +327,17 @@ as exhausted (from 80 % they see a warning) rather than learning it from the cal
 service_unavailable` with `retry-after` means HEY's database was busy for a moment; ask again
 (2026-09-30).
 
+A value a listing cannot read is refused, never dropped into a wider answer: an unknown `type` or
+`domain` on `/api/changes`, an unknown Radar `filter` on `/api/builders`, like an unknown `tab` or
+`sort` on `/api/projects`, is a `400 invalid_parameter` naming the values it accepts, and a change
+cursor past the end of the ledger is a `400 invalid_cursor`. Only an unknown parameter *name* is
+ignored. The OpenAPI document states each of those vocabularies as an enum (2026-10-03).
+
 **For an assistant** — fifteen read-only tools over the same API, hosted or on your machine, listed in the
-Official MCP Registry as `io.github.hey-research-lab/hey-research`:
+Official MCP Registry as `io.github.hey-research-lab/hey-research`. The research profile at
+`/mcp/research` is builder intelligence first: no market-move, Under the Radar or valuation tool,
+while `research_answer` there still carries its agent contract's market context, labelled context
+only:
 
 ```bash
 claude mcp add --transport http hey-research https://heyresearch.xyz/mcp
@@ -407,6 +445,13 @@ status, Build Momentum and every count of building. Prereleases keep their weekl
 repositories on one day count as two, a release whose ship id names no repository is never
 collapsed, and every release stays on the timeline. Chain feeds show the burst as one line ("27
 releases in owner/repo on 1 Oct") and `/signals` announces it once, by count.
+
+A week of code activity has one title everywhere (2026-10-03): "Code changes, week of 2026-09-28 –
+2026-10-04", the fixed UTC week it is keyed on, on the ledger, the API, the partner card and every
+page; pages that read the week add its own commit count. "Week of" always names the Monday. Every
+count of meaningful events — the snapshot, the agent answers, the Terminal — is the scorer's: a
+week HEY read as documentation only counts nowhere. Rows written before are rewritten by one logged,
+reversible command, `pnpm data:code-week-titles`.
 
 ## Following and what changed
 
@@ -635,6 +680,12 @@ Holding changes what a reader pays, when they see new research and how much API 
 them; $HEY worth at least $500 at the time of HEY's daily balance check, valued at HEY's own
 market reading, also opens the Research Terminal beta — kept while it stays at $450 or more, with
 one day of grace and a warning below that. It never buys a rank, a status or a score.
+
+The 2% creator tax paid to the treasury is spent in three equal parts: research bounties,
+infrastructure and data, platform operations — never a buyback. HEY's ledger records the HEY its
+research economy moves, with each transaction; the creator tax arrives in ETH and is not recorded
+there yet, so no monthly statement has been published. The advisory research-funding vote runs in
+rounds the founder opens by hand; none has been opened yet (2026-10-03).
 
 ## How this repository is produced
 

@@ -30,6 +30,11 @@ export type MarketChangeProps = {
   stale?: { age: string } | undefined;
   /** Print the window label after the figure. Default true. */
   showWindow?: boolean | undefined;
+  /**
+   * The window as printed, when the short label would mislead (full audit, 2026-10-03): a 90D range
+   * over 24 days of history prints "over 24 days (all HEY holds)", never a bare "24D".
+   */
+  windowLabel?: string | undefined;
   /** Type step for the figure. Default 'ui'. */
   size?: MarketChangeSize | undefined;
   className?: string | undefined;
@@ -125,6 +130,7 @@ export function MarketChange({
   window,
   stale,
   showWindow = true,
+  windowLabel,
   size = 'ui',
   className,
 }: MarketChangeProps): JSX.Element {
@@ -141,7 +147,7 @@ export function MarketChange({
       </span>
       {showWindow ? (
         <span aria-hidden="true" className="text-t-meta text-hey-secondary">
-          {window}
+          {windowLabel ?? window}
         </span>
       ) : null}
       {isStale ? (

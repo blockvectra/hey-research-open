@@ -16,13 +16,13 @@ An alert is a record of what changed. It is never a recommendation, and HEY
 sends **no price or trading alerts**.
 
 - [Presets](#presets)
+- [Asking for an alert in words](#asking-for-an-alert-in-words)
 - [What a rule is](#what-a-rule-is)
 - [What can never be an alert](#what-can-never-be-an-alert)
 - [Channels](#channels)
 - [Matching, dedupe and retractions](#matching-dedupe-and-retractions)
 - [The API](#the-api)
 - [Security](#security)
-- [Operating it](#operating-it)
 - [Not built](#not-built)
 
 ## Presets
@@ -61,8 +61,8 @@ has a confirmed address). One press follows the project and makes **one** rule:
   `unlock` (7 days), `integrity` (only where Market Integrity is published) and
   `status` — the meaningful ledger types only, never a price, market-movement
   or holder-derived type;
-- named "Projects you follow: what they ship and what changes", marked
-  `preset = 'followed'` in the table (the API reports `preset: null`);
+- named "Projects you follow: what they ship and what changes" (the API
+  reports it with `preset: null`);
 - every project followed later is covered by the same rule, and unfollowing a
   project stops its alerts — the matcher reads the watchlist when the event
   arrives;
@@ -78,6 +78,18 @@ watchlist's first visit) carries the same box.
 ahead — its documented meaning on `/api/changes` and every webhook — so no
 alert can come earlier without changing what that event means for every
 consumer.
+
+## Asking for an alert in words
+
+In the Research Terminal you can ask Ask HEY for an alert in a sentence —
+"alert me when HoodLock ships a release", in English or Malay. Ask HEY reads
+the sentence by fixed rules (no AI model) into one preset for one project and
+shows it as a proposal: what the alert would say, and that nothing is created
+until you confirm. **Only your press on "Confirm: create alert" makes the
+rule**, through the same form and the same checks as any other; the proposal
+alone creates nothing, and no model ever creates, changes or deletes a rule.
+Signed out, the proposal asks you to sign in first; with alerts switched off,
+it says so and offers nothing to confirm.
 
 ## What a rule is
 
@@ -131,66 +143,48 @@ published, plus `contract.method_first_observed` and `contract.method_resumed`.
   many of your rules matched it, with the rules named. The unread count is on
   the account page and on `/updates`.
 - **Email**, when you tick it and your address is confirmed through the same
-  double opt-in every HEY message uses. At most **one message an hour** per
-  reader, listing up to 20 events and how many more are in the inbox. Every
+  double opt-in every HEY message uses. An account signed in with GitHub or
+  with a wallet may add an address on [/watchlist](/watchlist#email);
+  [/account](/account) says where your alerts go. At most **one message an
+  hour**, listing up to 20 events and how many more are in the inbox. Every
   message carries a one-click unsubscribe that turns off alert email and
-  nothing else (mail kind `alerts`). With mail switched off, no confirmed
-  address, or alert email switched off, the notification is marked skipped —
-  turning mail on later does not send a backlog. Each run takes readers
-  oldest-waiting first and never one already mailed this hour (2026-09-28: the
-  first fifty by user id used to be re-picked and deferred every run, and
-  nobody past them was reached). The rows a message covers are marked
-  `sending` with its subject before the mailer is called, and `sending` is
-  final: a crash after the mail ledger recorded the message never mails them
-  again. Only rows left `sending` from an earlier hour with no ledger row for
-  that subject — they never reached the mailer — go back to pending.
-- **Webhook**, by naming one of **your own** webhook subscriptions. A rule never
-  holds a URL: the subscription already passed the destination checks and a
-  signed ping. The matcher queues a row in `webhook_deliveries` keyed
-  `(subscription, seq)` — the fan-out's own key — so a subscription that also
-  asks for the type is sent the event once, and the sender makes every check it
-  makes for any delivery (DNS pinning, no redirects, no credentials). When both
-  want the row, the earlier `next_attempt_at` wins while it is still PENDING
-  (2026-09-28), so an unlock rule's hold never delays the subscription's own
-  immediate delivery, whichever job ran first.
-- The two `contract.method_*` types are **shown in HEY only**: pushing them out
-  of HEY (email, webhook) is a founder decision that has not been made.
-- **Telegram** (2026-09-30), to a private chat you linked from **Account →
-  Telegram** (a ten-minute, single-use code the bot confirms by your display
-  name). One message per event however many of your rules matched it, paced to
-  a few a minute per chat; a burst of twenty or more becomes one message
-  pointing to your inbox. A retracted event is never sent, and one already
-  sent is edited to say it was withdrawn. Only the pushable types (the
-  webhook-deliverable set) are sent, like email. Off until the bot is
-  configured on the deployment; see [docs/TELEGRAM.md](TELEGRAM.md).
+  nothing else. With no confirmed address, or with alert email off, the alert
+  stays in your inbox and no mail is sent; switching email on later does not
+  send a backlog.
+- **Webhook**, by naming one of **your own** [webhook subscriptions](WEBHOOKS.md).
+  A rule never holds a URL: the subscription already passed HEY's destination
+  checks and a signed ping. A subscription that also asks for the same type is
+  sent the event once, not twice.
+- The two `contract.method_*` types are **shown in HEY only**: they are never
+  emailed or sent to a webhook.
+- **Telegram**, when HEY's Telegram bot is switched on: to a private chat you
+  linked from **Account → Telegram** (a ten-minute, single-use code the bot
+  confirms by your display name). One message per event however many of your
+  rules matched it, paced to a few a minute per chat; a burst of twenty or more
+  becomes one message pointing to your inbox. A retracted event is never sent,
+  and one already sent is edited to say it was withdrawn. Only the types that
+  can go to a webhook are sent, as with email. While the bot is off, the alert
+  form says "Telegram alerts are not available yet." and offers no Telegram box.
 - **Discord is not built** (see [Not built](#not-built)).
 
 ## Matching, dedupe and retractions
 
-One matcher, `MATCH_ALERTS`, every minute, one run at a time
-(`packages/domain/src/alerts/match.ts`):
+HEY checks new changes against every rule about once a minute.
 
-1. It reads `change_events` past its cursor (`alert_matcher_state`) in `seq`
-   order, under the projector's lock in shared mode — the webhook fan-out's
-   discipline, so a projector batch is never read half written.
-2. Public, `live` upserts that are an alert's news can match: the event's
-   first public appearance, or its return after a retraction. A later revision
-   — a content change or an annotation — is not news to an alert (2026-09-28:
-   it used to be, and was kept from notifying twice only by the
-   `(rule_id, event_id)` row, which retention deletes after 90 days, so a
-   revision after that told the reader again). `bootstrap` and `backfill`
-   history is never news. The webhook fan-out keeps its own predicate.
-3. `(rule_id, event_id)` is unique. A re-run, a crash between pages or two
-   workers at once land on the same row, and every refused repeat is counted
-   (`dedupe_total`).
-4. A retraction marks the event's notifications retracted, stops a pending
-   email, cancels a webhook delivery not yet sent and queues `event.retracted`
-   for one that was. The inbox then says the change was withdrawn and nothing
-   else about it. An event that comes back is un-retracted.
-5. The cursor moves in the same transaction as the notifications it wrote.
-
-A notification stores no text: the inbox, the API and the email render the
-ledger's newest public revision through `publicChangeEvent`.
+- **Only news.** An alert fires on a change's first public appearance (or its
+  return after a retraction). A later correction or annotation of the same
+  change does not alert you again, and history HEY filled in after the fact is
+  never news.
+- **Once per rule and change.** However often HEY re-checks, one rule and one
+  change make one notification.
+- **Retractions.** When HEY withdraws a change, its notifications are marked
+  withdrawn, an email not yet sent is stopped, a webhook delivery not yet sent
+  is cancelled, and a webhook that already received it is sent
+  `event.retracted`. The inbox then says the change was withdrawn and nothing
+  else about it.
+- **No stored copy.** A notification keeps no text of its own: the inbox, the
+  API and the email always show the change as the ledger says it now.
+- Read or withdrawn notifications older than 90 days are removed.
 
 ## The API
 
@@ -210,46 +204,32 @@ account's rule answers 404, exactly like one that does not exist.
 
 Refusals: `invalid_parameter`, `invalid_event_types` (with the reason per type),
 `unknown_projects`, `rule_limit` (409), `email_unconfirmed` (409),
-`telegram_unlinked` (409), `unknown_webhook`, `not_found`. The SDK types are `HeyAlertRule`,
-`HeyAlertList`, `HeyAlertNotifications` and friends. There is no MCP tool.
+`telegram_unlinked` (409), `unknown_webhook`, `not_found`. When alerts are
+switched off on a deployment, `/account/alerts` and `/api/alerts` answer 404.
+The SDK types are `HeyAlertRule`, `HeyAlertList`, `HeyAlertNotifications` and
+friends. There is no MCP tool.
 
 ## Security
 
-- **Ownership** is in the same predicate as the id on every read and write;
-  marking read touches only the caller's rows whatever ids are sent.
-- **No URL** is accepted anywhere in an alert. Outbound delivery goes only
-  through the account's own verified webhook subscriptions and the existing
-  sender (CLAUDE.md machine-layer rule 11).
+- **Ownership** is checked together with the id on every read and write;
+  marking read touches only your own rows whatever ids are sent.
+- **No URL** is accepted anywhere in an alert. Anything that leaves HEY goes
+  only to your own verified webhook subscriptions, your confirmed address or
+  your linked Telegram chat.
 - **Rate limits**, per account: 20 creates an hour, 120 changes, 300 read-marks;
   signed-in API reads 120 a minute; keyed calls also spend the key's bucket.
-- A cookie write from another origin is refused; HEY's forms are server actions,
-  which Next checks for origin.
-- **Audit**: every create, change and delete is an `audit_log` row naming what
-  changed, never an address.
-- **AI never creates an alert.** A copilot may propose one; only the reader,
-  submitting the form or calling the API with their own key, makes it. Rules
-  record their `origin` (`site` or `api`) and there is no `ai` value.
+- A cookie write from another site is refused.
+- **Audit**: every create, change and delete is recorded, naming what changed,
+  never an address.
+- **AI never creates an alert.** Ask HEY may propose one; only you, confirming
+  the form or calling the API with your own key, make it. Every rule records
+  whether it was made on the site or through the API; there is no third way.
 - An alert is a private reader choice: nothing here reaches activity status,
-  Build Momentum, the Discovery Gap, the Radar or any ranking
-  (`packages/domain/src/watchlist/neutrality.test.ts`).
-
-## Operating it
-
-- `HEY_ALERTS_ENABLED` — on unless `false`. Off, `/account/alerts` and
-  `/api/alerts` answer 404 and the entry points go; the matcher keeps running
-  over the rules that exist.
-- `/admin/webhooks#alerts` — rules, matches, dedupe hits, email and webhook
-  outcomes, failed channels, the matcher's backlog and lag
-  (`alertsHealth()` in `packages/domain/src/alerts/health.ts`).
-- Retention: read or retracted notifications older than 90 days are pruned a
-  bounded slice per run.
+  Build Momentum, the Discovery Gap, the Radar or any ranking, and a test
+  fails the build if it ever does.
 
 ## Not built
 
-- **Discord.** Founder-owned: it needs a Discord application with a bot token
-  kept as a server secret, and the same one-time linking Telegram uses
-  (2026-09-30) so HEY never sends to a channel nobody proved they own.
-- **Email for `contract.method_*` events** and **pushing** them at all: a
-  founder decision.
-- **Natural-language alert creation.** The copilot may later propose a rule
-  through `AlertService`; the reader confirms it. Nothing creates one silently.
+- **Discord.** It needs its own bot and the same one-time linking Telegram
+  uses, so HEY never sends to a channel nobody proved they own.
+- **Email, webhooks or Telegram for `contract.method_*` events**: not decided.

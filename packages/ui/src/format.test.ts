@@ -171,6 +171,33 @@ describe('Terminal price and date formats (redesign, 2026-09-26)', () => {
     expect(formatTerminalPrice(2.38e-12)).toBe('$0.0₁₁238');
   });
 
+  it('labels a price axis in one form for every tick (full audit, 2026-10-03)', async () => {
+    const { formatTerminalPriceTicks } = await import('./format');
+    // The $CHIT 1H axis printed "$0.0₄500" under "$0.000100".
+    expect(formatTerminalPriceTicks([0.00005, 0.0001, 0.00015, 0.0002, 0.00025, 0.0003])).toEqual([
+      '$0.000050',
+      '$0.000100',
+      '$0.000150',
+      '$0.000200',
+      '$0.000250',
+      '$0.000300',
+    ]);
+    // The largest tick needs a subscript: every tick counts the same zeros.
+    expect(formatTerminalPriceTicks([5e-10, 1e-9, 2e-9, 3e-9])).toEqual(['$0.0₈050', '$0.0₈100', '$0.0₈200', '$0.0₈300']);
+    // A step finer than three digits of the top gets the places it needs.
+    expect(formatTerminalPriceTicks([0.1, 0.1025, 0.105])).toEqual(['$0.1000', '$0.1025', '$0.1050']);
+    // From $1, as a single price prints; an impossible tick stays a dash.
+    expect(formatTerminalPriceTicks([1, 2, 3])).toEqual(['$1.00', '$2.00', '$3.00']);
+    expect(formatTerminalPriceTicks([0, 0.001, 0.002])).toEqual(['—', '$0.00100', '$0.00200']);
+    expect(formatTerminalPriceTicks([])).toEqual([]);
+    // Every label of an axis shares one notation.
+    for (const axis of [[0.00005, 0.0001], [2e-6, 4e-6, 6e-6], [0.02, 0.04, 0.06]]) {
+      const labels = formatTerminalPriceTicks(axis);
+      expect(new Set(labels.map((label) => /₀|₁|₂|₃|₄|₅|₆|₇|₈|₉/.test(label))).size, axis.join()).toBe(1);
+      expect(new Set(labels.map((label) => label.length)).size, axis.join()).toBe(1);
+    }
+  });
+
   it('never prints an unknown or impossible price as a number', async () => {
     const { formatTerminalPrice, formatTerminalPriceLong } = await import('./format');
     for (const value of [0, -1, Number.NaN, Number.POSITIVE_INFINITY]) {

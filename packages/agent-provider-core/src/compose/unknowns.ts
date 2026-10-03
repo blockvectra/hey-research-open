@@ -1,7 +1,7 @@
 import type { HeyProjectCoverage } from '@hey-research-lab/sdk';
 
 import { familyFreshness, SNAPSHOT_SOURCE_FAMILY, type RefreshTier } from '../freshness';
-import { AGENT_UNKNOWN_CATEGORIES, doNotConclude, type AgentUnknownCategory } from '../unknowns';
+import { AGENT_UNKNOWN_CATEGORIES, doNotConclude, unknownCategorySummary, type AgentUnknownCategory } from '../unknowns';
 import type { AgentClaim, AgentFreshness, AgentResponseOf } from '../schema';
 import { derivedText, externalText, heyText } from '../text';
 import { countOf, WORD_THING } from '../words';
@@ -75,7 +75,7 @@ export function composeUnknowns(ctx: AgentComposeContext, input: UnknownsInput):
     },
   ];
 
-  const summary = AGENT_UNKNOWN_CATEGORIES.filter((category) => counts[category] > 0).map((category) => `${counts[category]} ${category}`).join(', ');
+  const summary = unknownCategorySummary(unknowns);
   const answer =
     unknowns.length === 0
       ? derivedText(`HEY lists no gap for ${project.slug}: every applicable dimension is measured and current. Measured is not the same as complete; each figure keeps its own source and date.`)

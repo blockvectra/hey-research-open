@@ -522,7 +522,15 @@ than the protocol's page, the weekly `DEFI_IDENTITY_REVIEW` files one `DUPLICATE
 moderation flag on that record (the published-twin review path), never a merge. Declared GitHub
 organisations are still attached by `promote-listing.ts` as official `AUTHORITATIVE_LINK`
 sources (29 on production, all already on their page) — whether a registry-declared link keeps
-that tier is an open founder decision (audit D §6.1). Adapters:
+that tier is an open founder decision (audit D §6.1).
+
+A listing whose site host or official X account a published page already holds — a tokenless page,
+or one whose token is VERIFIED — is linked to that page and opens no second one (2026-10-03,
+`chooseListingOwner`); there its declared links fill gaps, and a declared site or X account that
+differs from the page's official one is attached as a candidate (`DISCOVERED`, not official). An
+unverified token page, a product-family sibling or a launchpad's shared site does not own a listing.
+Registry pages opened before are held by `pnpm data:duplicate-listings` (dry run; `--apply`;
+`--revert`), a reversible `duplicate_of_published_project` publication hold. Adapters:
 `packages/sources/src/adapters/defillama.ts`, `defillama-overview.ts`; domain
 `packages/domain/src/defi/`; CLI `pnpm --filter @hey/worker data:defi economics|identity|github-orgs`.
 

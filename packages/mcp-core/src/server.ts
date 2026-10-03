@@ -32,7 +32,7 @@ import {
 } from './render';
 import { renderBuildMarket, renderContract, renderCoverage, renderDiff, renderEvidence, renderExplainIndex, renderExplained, renderProjectContracts, renderSnapshot } from './render-machine';
 import { renderIdentitySearch } from './render-research';
-import { HEY_MCP_DEPRECATED_TOOLS, HEY_MCP_GATED_TOOLS, HEY_MCP_TOOLS, mcpToolsFor, PUBLIC_CHANGE_TYPES, type HeyMcpProfile, type HeyMcpToolName } from './tools';
+import { HEY_MCP_DEPRECATED_TOOLS, HEY_MCP_GATED_TOOLS, HEY_MCP_RESEARCH_PROFILE_SCOPE, HEY_MCP_TOOLS, mcpToolsFor, PUBLIC_CHANGE_TYPES, type HeyMcpProfile, type HeyMcpToolName } from './tools';
 import {
   AGENT_CAPABILITIES,
   AGENT_SCHEMA,
@@ -41,6 +41,7 @@ import {
   HEY_OWN_TOKEN_DISCLOSURE,
   QUOTED_TEXT_LEGEND,
   agentRequestUrl,
+  evidenceFamiliesFor,
   parseAgentRequest,
   renderAgentResponseText,
   type AgentIntelligenceResponse,
@@ -82,11 +83,11 @@ const CHANGE_TYPES_RESEARCH = PUBLIC_CHANGE_TYPES.filter((type) => !type.startsW
  * get_contract prints.
  */
 export const NOT_ADVICE =
-  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data. The only account any tool names is a contract\'s deployer: get_token_market names that token\'s deployer beside one token\'s supply-concentration summary (shares only), and get_contract (for one contract or a project\'s contracts) names the deployer with how many other tracked projects\' tokens the same account deployed — a count, never a profile, and HEY marks it a launch service only on its own shared-deployer rule. No other tool here returns holder data or anything about an address across tokens.';
+  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data. The only account any tool names is a contract\'s deployer: get_token_market names that token\'s deployer beside one token\'s supply-concentration summary (shares only), and get_contract (for one contract or a project\'s contracts) names the deployer with how many other tracked projects\' tokens the same account deployed — a count, never a profile, and HEY marks it a launch service only on its own shared-deployer rule. No tool here returns a holder\'s address or balance, or anything about an address across tokens. What they do return about holders is one token\'s concentration in counts and shares: get_token_market\'s summary, and the "supply in fewer hands" signal ("17 addresses now hold half the supply") that get_changes, ask_hey and the snapshot carry.';
 
 /** The research profile's version (round 4): it offers no market tool, so the only account named is get_contract's deployer. */
 export const NOT_ADVICE_RESEARCH =
-  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data. The only account any tool here names is a contract\'s deployer: get_contract names it with how many other tracked projects\' tokens the same account deployed — a count, never a profile. No tool here returns holder data, a market move or a valuation of its own; research_answer\'s market context is labelled context only.';
+  'HEY records public building activity. It is not investment advice, it does not predict or rank by price, and it holds no wallet data. The only account any tool here names is a contract\'s deployer: get_contract names it with how many other tracked projects\' tokens the same account deployed — a count, never a profile. No tool here returns a holder\'s address or balance, a market move or a valuation of its own; research_answer\'s market context is labelled context only, and its what_changed answer can count one token\'s "supply in fewer hands" change ("17 addresses now hold half the supply") — a count and a share, never an address.';
 
 /** The activity surfaces the site itself offers; held to the SDK's list, which the contract test holds to the domain's. */
 const SURFACES = [
@@ -282,7 +283,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         'HEY Research Lab is the builder-discovery layer for Robinhood Chain (chain id 4663).',
         'It answers: which projects are still building, what they shipped, what changed, and what HEY does not know. Market figures are context only; nothing here is a view on a token.',
         ...(research
-          ? ['This is the research profile: builder intelligence only. It offers no market-move, Under the Radar or valuation tool; the full set is at /mcp.']
+          ? [`This is the research profile: ${HEY_MCP_RESEARCH_PROFILE_SCOPE}. The full set is at /mcp.`]
           : []),
         '',
         'For one bounded answer to a research question, start with research_answer (research_project, what_changed, builder_status, verify_project, compare_builders, unknowns): answer first, tagged claims, freshness, unknowns, evidence ids.',
@@ -604,7 +605,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       'get_evidence',
       {
         ...describe('get_evidence', [
-          'Open one published record by its typed id — ship:, signal:, abi:, impl:, lock:, source:, claim:, state:, method:, sourcechange:, security: — as a receipt: what it claims, its source URL, when it happened',
+          `Open one published record by its typed id — ${evidenceFamiliesFor({ marketIntegrityPublic: Boolean(options.marketIntegrity) }).map((family) => `${family}:`).join(', ')} — as a receipt: what it claims, its source URL, when it happened`,
           'at what precision, when HEY knew, how it is backed. Ids come from the other tools. A withdrawn record says so.',
         ]),
         inputSchema: { id: z.string().regex(/^[a-z_]+:[A-Za-z0-9:._-]{1,200}$/).describe('A typed evidence id, e.g. "ship:2ac87a66-…".') },

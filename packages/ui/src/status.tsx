@@ -19,7 +19,14 @@ import {
   unknownActivityReason,
   type UnknownActivityReason,
 } from '@hey/scoring/activity-words';
-import { isLaunchPoolReason, LAUNCH_POOL_ONLY_LABEL, TOKEN_MARKET_LABELS, type UnconfirmedMarketReason } from '@hey/scoring/market-status-words';
+import {
+  isLaunchPoolReason,
+  LAUNCH_POOL_ONLY_LABEL,
+  NOT_FUNGIBLE_LABEL,
+  READING_NOT_CURRENT_LABEL,
+  TOKEN_MARKET_LABELS,
+  type UnconfirmedMarketReason,
+} from '@hey/scoring/market-status-words';
 import { RESEARCH_LEVEL_WORDS } from '@hey/scoring/research-level-words';
 
 import { cn } from './cn';
@@ -273,8 +280,29 @@ const LAUNCH_POOL_ONLY_PRESENTATION = {
   help: 'The only pool HEY reads is the one the token launched in: its "liquidity" is the token’s own supply at its last price, not depth. HEY does not measure a Discovery Gap, Under the Radar or Still Building on it.',
   tone: 'muted' as MarketTone,
 };
+/*
+ * Two reasons that name what the token or reading is (2026-10-03, full
+ * audit): an NFT collection is no fungible market, and a reading days old
+ * says nothing about the last day's trading.
+ */
+const NOT_FUNGIBLE_PRESENTATION = {
+  label: NOT_FUNGIBLE_LABEL,
+  help: 'The tracked token reads 0 decimals: an NFT collection or another token that is not fungible. A marketplace sale of it is not a fungible market, so HEY shows no valuation and measures no Discovery Gap, Under the Radar or Still Building on it.',
+  tone: 'muted' as MarketTone,
+};
+const READING_NOT_CURRENT_PRESENTATION = {
+  label: READING_NOT_CURRENT_LABEL,
+  help: 'HEY’s newest reading of this market is more than 36 hours old, so whether it traded in the last day is not known. The figures shown are that reading’s, with its date.',
+  tone: 'muted' as MarketTone,
+};
 const marketPresentation = (status: TokenMarketStatusValue, reason?: string | null) =>
-  status === 'ACTIVE_MARKET' && isLaunchPoolReason(reason) ? LAUNCH_POOL_ONLY_PRESENTATION : (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA);
+  reason === 'not_a_fungible_token'
+    ? NOT_FUNGIBLE_PRESENTATION
+    : reason === 'reading_not_current'
+      ? READING_NOT_CURRENT_PRESENTATION
+      : status === 'ACTIVE_MARKET' && isLaunchPoolReason(reason)
+        ? LAUNCH_POOL_ONLY_PRESENTATION
+        : (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA);
 
 export function TokenMarketChip({ status, reason, className }: { status: TokenMarketStatusValue; reason?: string | null; className?: string }) {
   const presentation = marketPresentation(status, reason);

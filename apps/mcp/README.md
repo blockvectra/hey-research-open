@@ -61,7 +61,7 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 | `HEY_API_URL` | Another HEY to read, e.g. `http://localhost:3000` when developing. Default `https://heyresearch.xyz`. Anything but https is refused except on localhost, because the key rides on every request. |
 | `HEY_API_KEY` | An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account). Lifts the anonymous rate limit; nothing is gated behind it. Sent as a bearer token, never logged. |
 | `HEY_MARKET_INTEGRITY` | Set to `public` only when the HEY you read publishes Market Integrity; `market_integrity` is offered only then. Unset, the server offers twelve tools. |
-| `HEY_MCP_PROFILE` | `research` serves the research profile (round 4): builder intelligence only — `research_answer`, `find_projects` by identity, `get_changes` without market events, `get_project_timeline`, `explain_fact`, `get_evidence`, `get_contract`. Unset, the full set. Hosted: `https://heyresearch.xyz/mcp/research`. |
+| `HEY_MCP_PROFILE` | `research` serves the research profile (round 4): builder intelligence first — `research_answer` (which still carries its contract's labelled market context), `find_projects` by identity, `get_changes` without market events, `get_project_timeline`, `explain_fact`, `get_evidence`, `get_contract`. Unset, the full set. Hosted: `https://heyresearch.xyz/mcp/research`. |
 
 ## The twelve tools
 
@@ -72,7 +72,7 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 | `get_changes` | The change ledger: what changed chain-wide or on one project, one event per change with its own time and precision, when HEY knew, and its evidence; a cursor to follow along. |
 | `get_project_timeline` | One project's evidence on one axis, paged with a cursor. |
 | `explain_fact` | Why HEY shows a figure: the rule, the source, the inputs, the lineage, the evidence ids. |
-| `get_evidence` | One typed evidence id (`ship:`, `signal:`, `abi:`, `impl:`, `lock:`, `source:`, `claim:`, `state:`) as a receipt. |
+| `get_evidence` | One typed evidence id (`ship:`, `signal:`, `abi:`, `impl:`, `lock:`, `source:`, `claim:`, `state:`, `integrity:` (while Market Integrity is public), `narrative:`, `method:`, `sourcechange:`, `security:`, `v4hook:`) as a receipt. |
 | `get_token_market` | One token's market from HEY's daily index, lifecycle, pools, supply concentration (shares only), contract checks; `include: ["moves"]` adds the valuation moves with what shipped before each. |
 | `get_contract` | A contract as a research entity — creation, deployer, verified source, proxy and implementation history, interface counts, activity. |
 | `project_diff` | What changed for one project between two dates, never a cause. |

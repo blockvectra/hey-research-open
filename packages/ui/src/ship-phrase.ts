@@ -1,4 +1,4 @@
-import { formatEventType, formatRelativeTime, plainText, truncateAtWord } from './format';
+import { CONTRACT_SOURCE_VERIFIED_LABEL, formatEventType, formatRelativeTime, isVerifiedContractShip, plainText, truncateAtWord } from './format';
 
 /**
  * The card's latest-ship phrase (public UX review, 2026-09-28): what shipped,
@@ -15,7 +15,7 @@ import { formatEventType, formatRelativeTime, plainText, truncateAtWord } from '
  * "Active development: 100+ commits since 2026-09-16 across 1 contributor");
  * `ship-phrase.test.ts` pins that shape.
  */
-export type CardShipPhraseInput = { eventType: string; title: string; publishedAt: Date };
+export type CardShipPhraseInput = { eventType: string; title: string; publishedAt: Date; sourceKind?: string };
 export type CardShipPhrase = { what: string; when: string };
 
 /** Longest "what" the card prints; a phone card has about this much beside the chip. */
@@ -96,7 +96,8 @@ function weekWords(publishedAt: Date, now: Date): string {
  * restates the status and stays silent.
  */
 function commitWhat(title: string): string | undefined {
-  return COMMITS.test(title) ? 'Code changes' : undefined;
+  // The week's stored title since 2026-10-03 ("Code changes, week of …"), or a legacy one with a commit count.
+  return title.startsWith('Code changes') || COMMITS.test(title) ? 'Code changes' : undefined;
 }
 
 function titleWhat(eventType: string, title: string): string {
@@ -105,9 +106,11 @@ function titleWhat(eventType: string, title: string): string {
   return cut.atWord ? cut.text : formatEventType(eventType);
 }
 
-function whatOf(eventType: string, rawTitle: string): string | undefined {
+function whatOf(eventType: string, rawTitle: string, sourceKind?: string): string | undefined {
   const title = plainText(rawTitle);
   if (eventType === 'CODE_ACTIVITY') return commitWhat(title);
+  // A verified contract is what the explorer did, not a deployment (`shipKindLabel`, 2026-10-03).
+  if (isVerifiedContractShip({ eventType, sourceKind })) return CONTRACT_SOURCE_VERIFIED_LABEL;
   const fixed = FIXED[eventType];
   if (fixed) return fixed;
   const prefix = VERSIONED[eventType];
@@ -129,7 +132,7 @@ const restatesStatus = (what: string, statusLabel?: string): boolean => {
  */
 export function cardShipPhrase(ship: CardShipPhraseInput, options: { now?: Date; statusLabel?: string } = {}): CardShipPhrase | undefined {
   const now = options.now ?? new Date();
-  const what = whatOf(ship.eventType, ship.title);
+  const what = whatOf(ship.eventType, ship.title, ship.sourceKind);
   if (!what || restatesStatus(what, options.statusLabel)) return undefined;
   const when = ship.eventType === 'CODE_ACTIVITY' ? weekWords(ship.publishedAt, now) : formatRelativeTime(ship.publishedAt, now);
   return { what, when };
@@ -137,12 +140,13 @@ export function cardShipPhrase(ship: CardShipPhraseInput, options: { now?: Date;
 
 /**
  * A ship's title as a card prints it (2026-10-02, outsider audit). A code
- * week's stored title is its rolling measurement ("Active development: 100+
- * commits since 2026-08-22 …"), which read as the same commits counted in
- * every week; a card names the fixed Monday–Sunday UTC week the ship is keyed
- * on instead, from its own date (a code week is dated inside its week). A
- * title a surface already worded by its week ("Code changes, week of …",
- * `codeWeekTitle`) is kept; every other ship keeps its title.
+ * week stored before 2026-10-03 carries its rolling measurement ("Active
+ * development: 100+ commits since 2026-08-22 …"), which read as the same
+ * commits counted in every week; a card names the fixed Monday–Sunday UTC
+ * week the ship is keyed on instead, from its own date (a code week is dated
+ * inside its week). A title already worded by its week ("Code changes, week
+ * of …", the stored title since then, `codeWeekStoredTitle`) is kept; every
+ * other ship keeps its title.
  */
 export function displayShipTitle(ship: { eventType: string; title: string; publishedAt: Date }): string {
   const title = plainText(ship.title);

@@ -77,7 +77,8 @@ export function BuildVsMarketChart({
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="h-auto w-full min-w-[640px]"
-          role="img"
+          // A group, not an image (full audit, 2026-10-03; axe nested-interactive): every bubble is a link a keyboard reaches.
+          role="group"
           aria-label={`Build momentum against market attention for ${data.length} projects. The top-left quadrant holds projects building more than the market currently notices.`}
         >
           {/* Quadrant fill: only the thesis quadrant is tinted. */}
@@ -124,7 +125,11 @@ export function BuildVsMarketChart({
           />
 
           {data.map((point) => (
-            <a key={point.slug} href={`/project/${point.slug}`}>
+            <a
+              key={point.slug}
+              href={`/project/${point.slug}`}
+              aria-label={`${point.name}${point.symbol ? ` (${tickerLabel(point.symbol)})` : ''}: ${activityLabel(point.activityStatus)}, Build Momentum ${formatBuildMomentum(point.buildMomentum)}, market attention ${describeAttention(point.marketAttention)}`}
+            >
               <circle
                 cx={x(point.marketAttention)}
                 cy={y(point.buildMomentum)}

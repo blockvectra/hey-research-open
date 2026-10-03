@@ -65,6 +65,7 @@ export * from './adapters/dexscreener-promotions';
 export * from './adapters/coingecko';
 export * from './adapters/coingecko-markets';
 export * from './adapters/bitquery';
+export * from './nft-marketplaces';
 export * from './adapters/bitquery-days';
 export * from './adapters/bitquery-ohlc';
 export * from './adapters/bitquery-contracts';

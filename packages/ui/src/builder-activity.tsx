@@ -113,7 +113,8 @@ export function BuilderActivityWeeks({
   const active = weeks.filter(Boolean).length;
 
   return (
-    <div className={cn('hey-scroll-x', className)}>
+    // Focusable and named (full audit, 2026-10-03): it scrolls sideways on a narrow column, so a keyboard must reach it.
+    <div className={cn('hey-scroll-x', className)} tabIndex={0} role="region" aria-label="Shipping weeks, scrolls sideways">
       <div
         className="flex min-w-full items-end gap-1.5"
         role="img"

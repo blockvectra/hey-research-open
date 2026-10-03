@@ -46,6 +46,13 @@ describe('MarketChange', () => {
     expect(spoken(html)).toBe('down 4.2 percent over 24 hours');
   });
 
+  it('prints a shorter history in words, never a bare "24D" under a 90D range (full audit, 2026-10-03)', () => {
+    const html = render({ pct: 396.2, window: '24 days, all the history HEY holds', windowLabel: 'over 24 days (all HEY holds)' });
+    expect(html).toContain('>over 24 days (all HEY holds)<');
+    expect(html).not.toContain('24D');
+    expect(spoken(html)).toBe('up 396 percent over 24 days, all the history HEY holds');
+  });
+
   it('prints a move that rounds to zero as flat 0.0%, with no arrow', () => {
     for (const pct of [-0.04, 0.049, 0]) {
       const html = render({ pct, window: '24h' });

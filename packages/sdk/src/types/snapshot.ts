@@ -158,7 +158,7 @@ export type HeyEvidenceReceipt =
       window?: { isoWeek: string; start: string; end: string; firstDay: string; lastDay: string; sourceUrl: string | null };
       /**
        * A code-activity ship (2026-10-02, additive): the same object as `HeyShip.codeWeek`. `summary`
-       * stays the stored legacy rolling title; `codeWeek.title` and `codeWeek.commits` are what HEY's
+       * is the week's stored title, without the count; `codeWeek.title` and `codeWeek.commits` are what HEY's
        * pages, CSV and feeds print, from one count.
        */
       codeWeek?: HeyCodeWeek;

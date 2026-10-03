@@ -143,6 +143,8 @@ describe('still building', () => {
     expect(result.eligible).toBe(true);
     expect(result.declinePercent).toBe(76);
     expect(result.shipsSinceDecline).toBe(3);
+    // A proper plural, never "update(s)" (full audit, 2026-10-03).
+    expect(result.reason).toBe('Down 76% from the HEY-tracked high, with 3 verified updates since.');
   });
 
   it('states the decline factually and never predicts recovery', () => {

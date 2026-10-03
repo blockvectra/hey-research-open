@@ -104,6 +104,40 @@ export function formatTerminalPrice(value: number): string {
   return `$0.0${subscript(-power - 1)}${mantissa.replace('.', '')}`;
 }
 
+/**
+ * A price axis's labels, in one form for every tick (full audit, 2026-10-03).
+ *
+ * `formatTerminalPrice` picks its form per value, so an axis from $0.00005 to
+ * $0.0003 printed `$0.0₄500` beside `$0.000100`: two notations, and the
+ * subscript tick read as larger than its neighbour. An axis takes its form and
+ * its places from the whole scale: below $1 the decimals that show the largest
+ * tick to three significant digits (more, up to six, if a tick needs them), every tick
+ * with the same places — `$0.000050`, `$0.000100` … `$0.000300`. When the
+ * largest tick itself needs a subscript (five or more zeros after the point),
+ * every tick counts the largest tick's zeros: `$0.0₈300`, `$0.0₈050`. From $1
+ * the ticks print as `formatTerminalPrice` does. A tick that is not a positive
+ * finite number is a dash, as there.
+ */
+export function formatTerminalPriceTicks(values: readonly number[]): string[] {
+  const positive = values.filter((value) => Number.isFinite(value) && value > 0);
+  if (positive.length === 0) return values.map(() => '—');
+  const max = Math.max(...positive);
+  if (max >= 1) return values.map((value) => formatTerminalPrice(value));
+  const maxPower = Math.floor(Math.log10(max) + 1e-9);
+  // Three significant digits of the largest tick, or more until every tick is exact (a 0.0025 step), at most six.
+  const exact = (value: number, at: number) => Math.abs(Math.round(value * 10 ** at) - value * 10 ** at) < 1e-6;
+  let places = -maxPower + 2;
+  while (places < Math.min(20, -maxPower + 6) && !positive.every((value) => exact(value, places))) places += 1;
+  // Zeros after the point before the largest tick's first digit; four or fewer read at a glance.
+  const zeros = -maxPower - 1;
+  return values.map((value) => {
+    if (!Number.isFinite(value) || value <= 0) return '—';
+    const fixed = value.toFixed(places);
+    if (zeros < 4) return `$${fixed}`;
+    return `$0.0${subscript(zeros)}${fixed.slice(2 + zeros)}`;
+  });
+}
+
 /** The same price written out in full (`$0.0000211`), for `aria-label` and `title`. */
 export function formatTerminalPriceLong(value: number): string {
   if (!Number.isFinite(value) || value <= 0) return '—';
@@ -235,6 +269,28 @@ export function formatEventType(eventType: string): string {
       .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
       .join(' ')
   );
+}
+
+/** What a verified-contract ship records: the explorer verified its source, not a deployment HEY saw. */
+export const CONTRACT_SOURCE_VERIFIED_LABEL = 'Contract source verified';
+
+/**
+ * A ship's kind by what happened (2026-10-03, full audit): the one place a
+ * surface picks the word under a ship. The explorer intake stores a verified
+ * contract as `CONTRACT_DEPLOY` from the `CONTRACT` source
+ * (`contracts/verified-ship.ts`; every such row on production is one), and the
+ * timeline printed "Contract deployed · 1h ago" for DigitalDon's VerdantToken,
+ * whose source was verified an hour ago and which was deployed earlier. A
+ * `CONTRACT_DEPLOY` a builder submitted keeps "Contract deployed": that is
+ * what the builder reported. Without its source kind a ship reads by its type.
+ */
+export function shipKindLabel(ship: { eventType: string; sourceKind?: string | null | undefined }): string {
+  return isVerifiedContractShip(ship) ? CONTRACT_SOURCE_VERIFIED_LABEL : formatEventType(ship.eventType);
+}
+
+/** A ship the explorer intake recorded for a contract's verified source (`verified-contract:` rows). */
+export function isVerifiedContractShip(ship: { eventType: string; sourceKind?: string | null | undefined }): boolean {
+  return ship.eventType === 'CONTRACT_DEPLOY' && ship.sourceKind === 'CONTRACT';
 }
 
 const KIND_LABELS: Record<string, string> = {

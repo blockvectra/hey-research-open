@@ -34,12 +34,15 @@ export function BuilderActivityChart({
   weeks,
   className,
 }: {
-  weeks: readonly { week: string; ships: number; headline?: string }[];
+  weeks: readonly { week: string; ships: number; headline?: string; notRead?: boolean }[];
   className?: string;
 }) {
   const max = Math.max(...weeks.map((week) => week.ships), 1);
   const first = weeks[0]?.week;
   const last = weeks[weeks.length - 1]?.week;
+  // Weeks before HEY first read the project's sources (2026-10-03): hatched "not yet read", never a zero bar.
+  const unread = weeks.filter((week) => week.notRead).length;
+  const spoken = (week: { week: string; ships: number; notRead?: boolean }) => `${week.week} ${week.notRead ? 'not yet read' : week.ships}`;
 
   return (
     <figure className={className}>
@@ -52,7 +55,7 @@ export function BuilderActivityChart({
         <div
           className="flex h-36 min-w-0 flex-1 items-end gap-1.5 border-b border-l border-hey-border"
           role="img"
-          aria-label={`Meaningful ships per week over the last ${weeks.length} weeks, Monday to Sunday UTC${first && last ? `, weeks starting ${first} to ${last}` : ''}: ${weeks.map((week) => `${week.week} ${week.ships}`).join(', ')}`}
+          aria-label={`Meaningful ships per week over the last ${weeks.length} weeks, Monday to Sunday UTC${first && last ? `, weeks starting ${first} to ${last}` : ''}: ${weeks.map(spoken).join(', ')}`}
         >
           {weeks.map((week) => (
             // `h-full` so the percentage height below resolves against the row
@@ -67,18 +70,27 @@ export function BuilderActivityChart({
                   {week.ships}
                 </span>
               ) : null}
-              <div
-                className={cn(
-                  'w-full rounded-t-[3px]',
-                  week.ships > 0 ? 'bg-hey-secondary' : 'bg-hey-border',
-                )}
-                style={{ height: week.ships > 0 ? `${(week.ships / max) * 100}%` : '4px' }}
-                title={
-                  week.headline
-                    ? `Week of ${week.week} (Mon–Sun UTC): ${week.ships} ${week.ships === 1 ? 'ship' : 'ships'} — ${week.headline}`
-                    : `Week of ${week.week} (Mon–Sun UTC): no meaningful ships`
-                }
-              />
+              {week.notRead ? (
+                <div
+                  data-week-state="not-read"
+                  className="h-full w-full rounded-t-[3px] border border-dashed border-hey-border"
+                  style={{ backgroundImage: 'repeating-linear-gradient(135deg, var(--hey-border-strong) 0 1px, transparent 1px 6px)' }}
+                  title={`Week of ${week.week} (Mon–Sun UTC): not yet read — HEY had not begun reading this project’s sources`}
+                />
+              ) : (
+                <div
+                  className={cn(
+                    'w-full rounded-t-[3px]',
+                    week.ships > 0 ? 'bg-hey-secondary' : 'bg-hey-border',
+                  )}
+                  style={{ height: week.ships > 0 ? `${(week.ships / max) * 100}%` : '4px' }}
+                  title={
+                    week.headline
+                      ? `Week of ${week.week} (Mon–Sun UTC): ${week.ships} ${week.ships === 1 ? 'ship' : 'ships'} — ${week.headline}`
+                      : `Week of ${week.week} (Mon–Sun UTC): no meaningful ships`
+                  }
+                />
+              )}
             </div>
           ))}
         </div>
@@ -92,6 +104,9 @@ export function BuilderActivityChart({
       <figcaption className="mt-2 text-[13px] text-hey-secondary">
         Bars: meaningful, source-backed ships per week (count). Weeks run Monday to Sunday, UTC, labelled by their
         Monday. Commits are aggregated, a code week counted once.
+        {unread > 0
+          ? ` Hatched: ${unread === 1 ? 'a week' : `${unread} weeks`} before HEY began reading this project’s sources — not yet read, not zero.`
+          : null}
       </figcaption>
     </figure>
   );

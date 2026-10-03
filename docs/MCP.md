@@ -4,8 +4,9 @@ HEY answers one question: **which projects on Robinhood Chain are still building
 they shipped, and which of them is nobody looking at?** That is the shape of a question
 someone asks an assistant, so HEY is an MCP server — twelve tools an assistant can call
 while answering, hosted at `https://heyresearch.xyz/mcp` or run beside the assistant, and a
-builder-intelligence-only **research profile** at `https://heyresearch.xyz/mcp/research`
-(round 4, 2026-09-30).
+**research profile** at `https://heyresearch.xyz/mcp/research` (round 4, 2026-09-30): builder
+intelligence first — no market-move, Under the Radar or valuation tool, and the ledger without market
+events; research_answer still carries the market context of HEY's agent contract (the valuation with its kind, source and reading date, and the market status), labelled context only and never a builder judgement (wording corrected 2026-10-03: it said "builder intelligence only").
 
 It holds no database and no credentials of its own: every tool reads the same
 [public API](PUBLIC_API.md) anyone can `curl`, through the typed SDK. That is the rule the
@@ -41,11 +42,7 @@ What the hosted endpoint is:
   it failed or was cut, how long it took and how large the answer was. Never the arguments,
   the question, or the answer's text.
 
-Operator settings, both optional: `MCP_ALLOWED_ORIGINS` (comma-separated https origins,
-default `https://claude.ai,https://heyresearch.xyz`) and `MCP_INTERNAL_API_URL` (the loopback
-address the tools read, default `http://127.0.0.1:$PORT`; anything but plain http on a
-loopback host is refused at start-up). `market_integrity` follows the site's own
-`HEY_MARKET_INTEGRITY` flag.
+`market_integrity` is offered only where the site itself publishes Market Integrity.
 
 ### Research profile (round 4, 2026-09-30)
 
@@ -148,7 +145,7 @@ days, the partner overlap rule). They are not served on the research profile, wh
 | `compare_projects` | The same comparison read (`loadCompare`) as `research_answer`'s `compare_builders`. | `research_answer` `{ capability: "compare_builders", projects }`; each project's market context is `get_token_market` |
 | `get_project_coverage` | `research_answer`'s `unknowns` restates the same coverage states, with what not to conclude. | `research_answer` `{ capability: "unknowns", project }` |
 
-The list in code is `HEY_MCP_DEPRECATED_TOOLS`; `/developers` prints it.
+`/developers` prints the list.
 
 ## Typed output (round 4, 2026-09-30)
 
@@ -168,7 +165,7 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
   (`dataOmitted: "over_64_kb"`) and `api` fetches it.
 - **The byte budget.** The tool list, output schemas included, stays under the old 22-tool
   list's 19,179 bytes on `/mcp` (19,051 on 2026-09-30) and under 11,000 on `/mcp/research`
-  (10,085): `HEY_MCP_TOOL_LIST_BUDGET`, one test per profile. Folding the three tools and
+  (10,085), held by one test per profile. Folding the three tools and
   dropping the `$schema` stamp the SDK adds to every schema paid for it; the budget was not
   lifted.
 
@@ -307,8 +304,8 @@ And never:
   entry goes live at the next `mcp-publisher publish`), the public repository and the agent
   guide. The npm package carries the same
   name as `mcpName`, which is how the registry verifies an npm package; it ships with the next MCP
-  release, and only then is the package added to the entry. Publishing needs the project's GitHub
-  login and is the founder's step — `docs/RELEASING.md`, "Official MCP Registry".
+  release, and only then is the package added to the entry. Publishing to the registry is a
+  manual step the lab takes.
 - **The handshake** names the server `hey-research`, titled `HEY Research Lab`, with
   `websiteUrl` the agent guide (`/developers/agents`). The MCP SDK in use (1.30) negotiates protocol
   versions up to `2025-11-25`; the current specification is `2026-07-28`.
@@ -317,7 +314,8 @@ And never:
   at `GET /api/hey/profile` (`hey.heyProfile()` in the SDK); no tool was added for it, and the
   server instructions say where it is.
 - **A2A** is a separate, task-oriented door (`/.well-known/agent-card.json`, `POST /api/a2a`) over
-  the same reads; this server stays tool-oriented. See `docs/PUBLIC_API.md`, "Agent discovery".
+  the same reads; this server stays tool-oriented. See "Agent discovery" in the
+  [public API](PUBLIC_API.md).
 
 ## How it is built
 

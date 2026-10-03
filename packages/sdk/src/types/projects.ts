@@ -214,10 +214,10 @@ export type HeyShip = {
 };
 
 /**
- * A code week by its fixed window (2026-10-02). `HeyShip.title` stays the
- * stored legacy rolling title ("100+ commits since …"), kept for existing
- * clients — it is not the week's count and can disagree with it; display
- * `title` here and count with `commits`. This names the
+ * A code week by its fixed window (2026-10-02). `HeyShip.title` is the
+ * week's title without a count since 2026-10-03 ("Code changes, week of
+ * …"; before, the rolling "100+ commits since …"); display `title` here and
+ * count with `commits`. This names the
  * Monday–Sunday UTC week the ship is keyed on, that week's own commit count
  * and up to three of its commits by the subject the repository gave them.
  */
@@ -378,6 +378,10 @@ export type HeyProjectDetail = HeyProject & {
     volume24hUsd?: number;
     peakLiquidityUsd?: number;
     pairCreatedAt?: string;
+    /** When the reading behind `liquidityUsd` and `volume24hUsd` was observed; `evaluatedAt` is when the status rule last ran (2026-10-03). */
+    readingObservedAt?: string;
+    /** Always `reading_pool`: the three pool figures describe the pool the status reading follows, not the token across every pool (2026-10-03). */
+    figuresScope?: 'reading_pool';
   };
   disclaimer: string;
 };

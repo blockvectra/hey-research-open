@@ -132,6 +132,16 @@ export const TOKEN_MARKET = {
    * set, or an aggregator's zero the chain's own reading contradicted.
    */
   removalConfirmDays: 2,
+  /**
+   * A reading this old no longer vouches for the last day's trading
+   * (2026-10-03, full audit). `ACTIVE_MARKET` says "traded in the last 24
+   * hours" and `no_volume_24h` says it did not; on a reading four days old
+   * (ten0r, read 09-29, "Active market" evaluated on 10-03) neither is known.
+   * The reading SLO is a day (`READING_SLO_MS`); half a day of slack keeps a
+   * healthy refresh cadence from flapping. A fresh decoded trade record still
+   * vouches for trading on its own.
+   */
+  currentReadingMaxHours: 36,
 } as const;
 
 /**
@@ -147,8 +157,15 @@ export const TOKEN_MARKET = {
  * token enters below `lowLiquidityUsd` ($5,000) as before, and one already
  * LOW_LIQUIDITY leaves only at `lowLiquidityExitUsd` ($6,000) or more; in
  * between it stays, reason `liquidity_below_exit_threshold`.
+ *
+ * token-market-2026-10-03 (full audit, ruling under the founder's
+ * delegation): a token that is not fungible — decimals 0, an NFT collection
+ * traded on an NFT marketplace — has no fungible market
+ * (`not_a_fungible_token`, a dead reason); and a reading older than
+ * `currentReadingMaxHours` no longer says the market traded, or did not, in
+ * the last day (`reading_not_current`).
  */
-export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-09-30' as const;
+export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-10-03' as const;
 
 /**
  * A drain HEY measured in one series of readings (2026-09-27). The sweep's SQL
@@ -240,6 +257,14 @@ export type TokenMarketEvidence = {
    * reading, on the entry line alone.
    */
   previousStatus?: TokenMarketStatusValue;
+  /**
+   * The token's decimals as HEY read them (2026-10-03, full audit): `0` is not
+   * a fungible token — an NFT collection (`sinjoh`'s PIGGY is YieldBankNFT,
+   * `ownerOf`/`tokenURI`, traded on Seaport) — so no reading of it is a
+   * fungible market, whatever price and supply it multiplies. Absent: not
+   * read, which decides nothing.
+   */
+  decimals?: number;
 };
 
 /**
@@ -336,6 +361,14 @@ const DAY_MS = 86_400_000;
 
 export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketClassification {
   const { latest, peakLiquidityUsd = 0, now } = evidence;
+  /*
+   * Not a fungible token, not a fungible market (2026-10-03, full audit): an
+   * NFT collection's "price × supply" is no valuation and its marketplace
+   * sales are no pool. Decided before any reading, so nothing it reports can
+   * make it a market; a dead reason, so no valuation, Discovery Gap, Under
+   * the Radar or Still Building is measured on it.
+   */
+  if (!tokenIsFungible(evidence.decimals)) return { status: 'INSUFFICIENT_DATA', reason: NOT_FUNGIBLE_REASON };
   const hadMarket = peakLiquidityUsd >= TOKEN_MARKET.removedMinPeakUsd;
   const stale = (at: Date) => now.getTime() - at.getTime() > TOKEN_MARKET.staleDays * DAY_MS;
 
@@ -369,11 +402,20 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
    */
   const freshTrades = evidence.trades && now.getTime() - evidence.trades.observedAt.getTime() <= DAY_MS ? evidence.trades.volume24hUsd : undefined;
   const volume = latest.volume24hUsd === undefined ? freshTrades : freshTrades === undefined ? latest.volume24hUsd : Math.max(latest.volume24hUsd, freshTrades);
+  /*
+   * Whether anything HEY holds speaks for the last day's trading (2026-10-03,
+   * full audit): the reading itself, inside `currentReadingMaxHours`, or a
+   * fresh decoded trade record. Otherwise a claim about the last 24 hours —
+   * traded, or did not — would be printed as current over an old reading.
+   */
+  const tradingCurrent =
+    freshTrades !== undefined || now.getTime() - latest.observedAt.getTime() <= TOKEN_MARKET.currentReadingMaxHours * 3_600_000;
+  const notCurrent: TokenMarketClassification = { status: 'INSUFFICIENT_DATA', reason: READING_NOT_CURRENT_REASON };
 
   if (latest.fdvUsd !== undefined && latest.fdvUsd > 0 && latest.liquidityUsd >= latest.fdvUsd * TOKEN_MARKET.ownSupplyShareOfFdv) {
     // A launch pool still holding the supply: trades are the only market fact it carries.
     if (volume !== undefined && volume > TOKEN_MARKET.inactiveVolumeUsd) {
-      return { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading' };
+      return tradingCurrent ? { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading' } : notCurrent;
     }
     // No volume figure from any reading is not "no trades" (reconciliation row 1, 2026-09-25):
     // it was the dead-market reason, applied to ~650 launch pools HEY never saw a volume for.
@@ -472,10 +514,34 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     // Already low, and not yet back at the exit line: the band holds it (2026-09-30).
     return { status: 'LOW_LIQUIDITY', reason: 'liquidity_below_exit_threshold' };
   }
+  if (!tradingCurrent) return notCurrent;
   if (volume !== undefined && volume <= TOKEN_MARKET.inactiveVolumeUsd) {
     return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
   }
   return { status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' };
+}
+
+/**
+ * The reason a token that is not fungible carries (2026-10-03): decimals 0,
+ * an NFT collection. A dead reason: no market, no valuation, nothing measured.
+ */
+export const NOT_FUNGIBLE_REASON = 'not_a_fungible_token' as const;
+
+/**
+ * The reason a status carries when the newest reading is older than
+ * `currentReadingMaxHours` and no fresh trade record speaks for the last day
+ * (2026-10-03). Not dead — the market may well trade — and not measured:
+ * neither "traded in the last 24 hours" nor "did not" is known.
+ */
+export const READING_NOT_CURRENT_REASON = 'reading_not_current' as const;
+
+/**
+ * Whether a token is fungible as far as HEY can tell (2026-10-03): decimals
+ * 0 is not — an NFT collection, or a token whose units cannot be split, which
+ * no "price × supply" values. Unknown decimals are never a trip wire.
+ */
+export function tokenIsFungible(decimals: number | null | undefined): boolean {
+  return decimals === null || decimals === undefined || decimals !== 0;
 }
 
 /**
@@ -547,9 +613,11 @@ export const DEAD_MARKET_STATUSES = ['NO_LIQUIDITY', 'LIQUIDITY_REMOVED', 'MARKE
  * - `readings_implausible` — the reading is one HEY does not believe
  *   (`liquidityImplausible`, 2026-09-25);
  * - `removal_unconfirmed` — dust where HEY saw a market held, and no drain
- *   measured yet: neither live nor removed (2026-09-27).
+ *   measured yet: neither live nor removed (2026-09-27);
+ * - `not_a_fungible_token` — decimals 0, an NFT collection: there is no
+ *   fungible market to be live (2026-10-03).
  */
-export const DEAD_MARKET_REASONS = ['launch_pool_no_trades', 'launch_pool_volume_unknown', 'pool_readings_disagree', 'readings_implausible', 'removal_unconfirmed'] as const;
+export const DEAD_MARKET_REASONS = ['launch_pool_no_trades', 'launch_pool_volume_unknown', 'pool_readings_disagree', 'readings_implausible', 'removal_unconfirmed', 'not_a_fungible_token'] as const;
 
 /**
  * Every reason the classifier can write, for vocabularies and parity tests.
@@ -578,6 +646,8 @@ export const TOKEN_MARKET_REASONS = [
   'liquidity_below_threshold',
   'liquidity_below_exit_threshold',
   'liquidity_and_volume',
+  'not_a_fungible_token',
+  'reading_not_current',
 ] as const;
 
 /**

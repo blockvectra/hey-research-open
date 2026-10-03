@@ -6,6 +6,17 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Building facts say one thing everywhere.** A code-activity ship's `title` (and its ledger
+  `summary`, the partner card's `last_ship_title`, the builder card's latest ship) is the week's
+  title, "Code changes, week of 2026-09-28 – 2026-10-04", never the rolling "Active development:
+  100+ commits since …"; `codeWeek.title` adds the week's own count. Field names and meanings are
+  unchanged; rows written before are rewritten by a logged, reversible command and the ledger
+  restates them as revisions that keep their first origin. "Week of" names the Monday. Meaningful
+  events in 30 days agree with the scorer on every surface (a documentation-only week counts
+  nowhere). RESUMED names the real break, ACTIVE on its 45-day path says so, and the status line
+  says "latest ship". `research_project` names the unknown categories it lists; an AI brief older
+  than the project's status or scoring version is hidden and asked again.
+
 - **Terminal audit: what a trader would screenshot.** A token a page took on a deploy record that
   no longer proves anything goes back to its launch record (logged in `identity_repairs`,
   reversible). "Same name, different contract": project pages, the Terminal, search and the

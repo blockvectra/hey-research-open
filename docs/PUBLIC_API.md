@@ -38,10 +38,12 @@ Base URL: `https://heyresearch.xyz`
 Dates are ISO 8601 in UTC. Responses are cached for 60 seconds, allow cross-origin reads
 (`access-control-allow-origin: *`), and are rate limited to 120 requests a minute per client without a key.
 
-**API keys (M13-E).** A signed-in reader with a linked wallet can create a key on `/account`. Send it as
-`authorization: Bearer hey_…` (or `x-api-key`). A key reads exactly the same data; it carries the account's
-holder tier, which sets a monthly allowance and a per-minute limit (`x-hey-tier`, `x-hey-monthly-remaining`
-on every keyed answer). A key with no holder tier has a monthly ceiling too; the figure is a setting the lab
+**API keys.** Any signed-in reader can create a key on `/account` while keys are open on the
+deployment; one active key per account. Send it as `authorization: Bearer hey_…` (or `x-api-key`).
+Every public read route takes one: one gate guards them all, and each belongs to one of the route
+groups listed under partner keys below. A key reads exactly the same data; it carries the account's holder tier
+(set from the wallet linked to the account, Free without one), which sets a monthly allowance and a
+per-minute limit (`x-hey-tier`, `x-hey-monthly-remaining` on every keyed answer). A key with no holder tier has a monthly ceiling too; the figure is a setting the lab
 edits on its console (since 2026-09-18), and the holder tiers sit above it. Keyed answers are `private, no-store`. A bad, revoked or expired key is `401 unauthorized`; a
 key the lab has suspended, or an account it has blocked, is `403 forbidden` with a `reason` (`key_suspended`,
 `account_suspended`, `account_blocked`) and a sentence saying whom to write to; a spent allowance is `429 quota`
@@ -60,7 +62,7 @@ key and the old one both work until the grace the lab chose ends. Answers are `p
 `x-hey-entitlement` (`partner`, `paid`, `internal`; account keys say `free`) and
 `x-hey-monthly-remaining`. A held partner is `403` with `reason` `partner_suspended`, `partner_blocked`
 or `key_suspended`; a revoked or expired partner key is `401`. No price or billing is attached to any
-class. Ask hi@heyresearch.xyz for one; the lab's console is `/admin/agent-partners`.
+class. Ask hi@heyresearch.xyz for one.
 
 A bulk route (2026-09-26: `/api/snapshots`, `/api/token/{chainId}?addresses=`, `/api/v1/scan?tokens=`)
 answers keyed requests only (`401 key_required` without one), privately, and charges **one request per
@@ -168,11 +170,11 @@ try {
 - **Every route has a method** (2026-09-26): `projects.snapshot`, `coverage`, `explain`,
   `history`, `diff` and `contracts`; `evidence.get`; `contracts.get`; the keyed bulk reads
   `snapshots.bulk`, `token.bulk` and `scanCards`; the partner `builderCard`; and
-  `search.suggest`. The full table is in `packages/sdk/README.md`.
+  `search.suggest`. The full table is in the SDK package's README.
 
 The MCP server (`@hey-research-lab/mcp`, hosted at `/mcp` since 2026-09-26) is this client with tool
-definitions around it; see `docs/MCP.md`. Releases of both come from the private repository,
-tagged `sdk-v*` / `mcp-v*`.
+definitions around it; see the [MCP server](MCP.md). Releases of both are tagged `sdk-v*` /
+`mcp-v*`.
 
 ## `GET /api/projects`
 
@@ -267,7 +269,11 @@ with a `reason` key) says whether the project itself ties the contract to the pr
 (`status` ACTIVE_MARKET, LOW_LIQUIDITY, NO_LIQUIDITY, TRADING_INACTIVE, LIQUIDITY_REMOVED,
 MARKET_ABANDONED or INSUFFICIENT_DATA, with `liquidityUsd`, `volume24hUsd`, `peakLiquidityUsd`,
 `pairCreatedAt`, `evaluatedAt`) describes the market HEY observed. Neither feeds a score; both are
-observations, never a verdict on the team.
+observations, never a verdict on the team. Additive since 2026-10-03: `readingObservedAt` is when
+the reading behind `liquidityUsd` and `volume24hUsd` was observed (`evaluatedAt` is when the status
+rule last ran, which can be days later), and `figuresScope` is always `reading_pool` — those pool
+figures describe the pool the status reading follows, while the project's `volume24h` is the card
+reading's figure and may count every pool, so the two can differ without contradicting each other.
 
 Every listed project with a token also carries `tokenMarket` (2026-09-25): `{ status, reason? }`,
 the same state the card shows. It is why a listing sometimes has no `marketCap` — a dead market's
@@ -373,12 +379,18 @@ is never Under the Radar. A thin market's attention percentile sits near the flo
 would measure the thinness, not the building. The project stays in the population the others
 are compared against, so no other project's gap moves.
 
+**A launch pool is not a measured market (`hbm-v22`, 2026-10-02).** A token whose market is
+`ACTIVE_MARKET` only as `launch_pool_trading` — its "liquidity" is its own supply sitting in the
+pool that launched it, at its last price — gets no Discovery Gap, no Under the Radar and no Still
+Building, exactly as a launch curve does. It is withheld as `market_too_thin`, and every HEY
+surface labels it "Launch pool only".
+
 When the gap is absent, `score.discoveryGapWithheld` says why. The same field is on the
 snapshot as `build.discoveryGapWithheld`, and the reason is never a zero:
 
 | Value | Meaning |
 |---|---|
-| `market_too_thin` | Not measured — market too thin: the market is live but not active, or only a launch curve. |
+| `market_too_thin` | Not measured — market too thin: the market is live but not active, only a launch curve, or active only as a launch pool ("Launch pool only", `hbm-v22`). |
 | `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
 | `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token. |
 | `active_pool_not_read` | Not measured — the market is active only because another pool of the same token holds the liquidity, and HEY holds no current reading of that pool (`hbm-v21`). |
@@ -401,9 +413,9 @@ as `NOT_MEASURED`.
 ### Why Still Building was not measured: `score.stillBuildingWithheld` (2026-09-30, additive)
 
 Since scoring version `hbm-v19` Still Building's drawdown is measured on the same markets as the
-Discovery Gap: an **active market** that is more than a launch curve. On a `LOW_LIQUIDITY`,
-`TRADING_INACTIVE` or `INSUFFICIENT_DATA` market, or a launch curve, a "decline" measures the
-thin market, not a market that fell while the team kept building, so the badge is not measured.
+Discovery Gap: an **active market** that is more than a launch curve — and, since `hbm-v22`, more
+than a launch pool. On a `LOW_LIQUIDITY`, `TRADING_INACTIVE` or `INSUFFICIENT_DATA` market, a
+launch curve or a launch pool, a "decline" measures the thin market, not a market that fell while the team kept building, so the badge is not measured.
 
 `score.stillBuilding` keeps its meaning — `false` whenever the badge is not held — and
 `score.stillBuildingWithheld` beside it says the `false` is "not measured", never "not met". The
@@ -411,7 +423,7 @@ same field is on the snapshot as `build.stillBuildingWithheld`:
 
 | Value | Meaning |
 |---|---|
-| `market_too_thin` | Not measured — market too thin: the market is live but not active, or only a launch curve. |
+| `market_too_thin` | Not measured — market too thin: the market is live but not active, only a launch curve, or active only as a launch pool ("Launch pool only", `hbm-v22`). |
 | `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
 | `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token. |
 | `valuation_not_plausible` | Not measured — the valuation gate withheld the current valuation (`hbm-v20`). |
@@ -449,15 +461,25 @@ finding. `NOT_HELD` still means measured and not met.
 SDK: `HeyStillBuildingState`. OpenAPI: `#/components/schemas/StillBuildingState`.
 `explain?fact=still_building` lists it among its inputs.
 
+### A repository's releases on one day count once (`hbm-v23`, 2026-10-03)
+
+A repository's full GitHub releases published on one UTC day count as **one** release day in
+activity status, Build Momentum, the shipping streak, velocity and cadence, and in every count of
+building — the newest corroborated release stands for the day. Twenty-seven releases cut seconds
+apart are one day of shipping, not twenty-seven. What did not change: prereleases keep their
+weekly collapse, two repositories on one day still count as two, a release whose repository HEY
+does not know is never folded, and no ship is deleted or retracted — every release stays on the
+record with its provenance. Only the count changes. No field changed
+shape; `scoringVersion` reads `hbm-v23` on a score written under this rule.
+
 ### `$HEY`, HEY's own token: `heysOwnToken` (2026-09-30, additive)
 
 HEY Research Lab issues `$HEY`, and HEY researches it by the same rules as every project: no
 ranking bonus and no demotion. Its card carries `heysOwnToken: true` — on `/api/projects`, the
 detail route, the snapshot's `identity`, `/api/builders` and `/api/this-week` — and every other
 project leaves the field out (never `false`). Print "HEY’s own token — researched by the same
-rules" beside it, as HEY's own cards do. The flag follows the one `$HEY` contract the machine
-identity names (`HEY_TOKEN_STATUS=live` and `HEY_TOKEN_ADDRESS`); before launch no card carries
-it. It is set after a page is ordered and is never a filter, a sort or a count. OpenAPI:
+rules" beside it, as HEY's own cards do. The flag follows the one `$HEY` contract HEY's machine
+identity names (`GET /api/hey/profile`); before launch no card carries it. It is set after a page is ordered and is never a filter, a sort or a count. OpenAPI:
 `#/components/schemas/HeysOwnToken`.
 
 ### Which lockers `pairLocked` reads: `tokenLock.pairLockScope` (2026-09-30, additive)
@@ -669,7 +691,7 @@ token's), `activity_applies_to_token` (2026-09-27: `false` exactly on `MISMATCH`
 project), and the disclaimer. `found: false` is a 200 for an unpublished token, for a chain HEY does
 not index (`reason: "chain"`) and, since 2026-09-27, for the zero address (`reason: "not_a_token"`,
 not metered); a malformed `token`, and the burn address, are a 400. `chain` defaults to 4663. Same limits and cache as
-`/api/token`; a database read only. Documented for bots in [INTEGRATIONS.md](INTEGRATIONS.md).
+`/api/token`; a database read only. Documented for bots in [Putting HEY in your bot](/developers/integrations).
 
 ## `GET /api/v1/builder?chain={chainId}&token={address}` (2026-09-20)
 
@@ -895,7 +917,7 @@ Momentum, the Discovery Gap, the Radar or any ordering.
 `GET /api/projects/{slug}/usage` summarises it below, and `links.usage` to that route.
 
 `security` (2026-09-28, additive; absent only when the read failed) — **security context: evidence,
-never a verdict** (`docs/SECURITY_CONTEXT.md`). An audit shows an audit took place; it is not a
+never a verdict**. An audit shows an audit took place; it is not a
 guarantee of safety. There is no score and no "safe". Each section carries a state — `MEASURED`,
 `NONE_FOUND` (a reading of the indexes in `readFrom` only), `NOT_READ` or `NOT_APPLICABLE` with a
 `reason` — and items only where something was found:
@@ -1000,7 +1022,7 @@ Never an input to activity status, Build Momentum, the Discovery Gap, Still Buil
 
 ### `snapshot.peerContext` (2026-09-28, additive)
 
-Peer context, rules `peers-v1` ([`docs/PEERS.md`](PEERS.md)): some of the project's published
+Peer context, rules `peers-v1`: some of the project's published
 figures placed among comparable projects — same type (primary narrative × meme/product), same
 metric definition, same window, measured figures only. `state` is `COMPUTED`, `NO_COHORT` (with
 `reason`: `no_primary_narrative`, `narrative_not_a_type`, `kind_not_classified`) or
@@ -1018,8 +1040,7 @@ peer context is never an input to anything. Absent only when the read failed. SD
 
 ### `GET /api/projects/{slug}/relationships` (2026-09-28)
 
-What is connected to one published project, and why HEY thinks so
-([`docs/RELATIONSHIPS.md`](RELATIONSHIPS.md)): first-degree `nodes` (project, token, contract,
+What is connected to one published project, and why HEY thinks so: first-degree `nodes` (project, token, contract,
 implementation, repository, package, domain, docs, launchpad, protocol registry, corroborating
 page — never an account) and `edges`, each `{ type, filter, from, to, label, state, evidence:
 [{id, url}], links: [{label, url}], observedAt }`. `state` is `verified`, `official`, `claimed`,
@@ -1266,9 +1287,10 @@ dollar floors. `limit` and `offset` are still capped, not refused.
 `commitsAtLeast` when it is a floor, `commitsUrl` (that week's commits on GitHub), up to three
 `highlights` (`subject`, `sha`, `committedAt`, `readAsCode`, `url` — the commits HEY read as
 changing code first; never a bot's, a merge's or a documentation-only one) and `title`, the one
-display title HEY prints. `title` on the ship itself stays the stored rolling measurement
-("100+ commits since …"), so two neighbouring weeks' titles can name overlapping spans; `codeWeek`
-never overlaps.
+display title HEY prints. `title` on the ship itself is the same week's title without the count
+("Code changes, week of 2026-09-28 – 2026-10-04", since 2026-10-03; it was the rolling measurement
+"Active development: 100+ commits since …" before, which named spans two neighbouring weeks could
+share). The field and its meaning — the ship's title — are unchanged; only its words are the week's.
 
 ## CSV exports (2026-10-02)
 
@@ -1339,6 +1361,15 @@ Added 2026-09-25, all optional and absent when HEY holds nothing:
   means the reading claims a large pool that almost nothing traded in and that HEY's own chain
   index does not find; its liquidity and highest liquidity are withheld too, here, in the list and
   detail endpoints, and from `sort=liquidity`, `minLiquidity` and the market-cap filters.
+  Since 2026-10-03 (token market rules `token-market-2026-10-03`): `not_a_fungible_token`
+  (`INSUFFICIENT_DATA`) is a token that reads 0 decimals — an NFT collection — and is not live
+  either, so no valuation is sent and no Discovery Gap, Under the Radar or Still Building is
+  measured on it; NFT-marketplace sales (Seaport and the like) are never read as DEX trades.
+  `reading_not_current` (`INSUFFICIENT_DATA`, live, not measured) means the newest reading is more
+  than 36 hours old and no decoded trade record from the last day speaks for the market, so HEY
+  claims neither "traded in the last day" nor "did not". A market active only in another pool
+  (`liquidity_in_another_pool`) sends no valuation (`valuationWithheld: liquidity_in_another_pool`):
+  the reading follows the thin pool, and founder ruling F1 never measures the market there.
 - `contract` — `deployer`, `deployerShared` (that deployer launched other projects HEY tracks: a
   launch service, not one team), `creationTx`, `createdAt`. A fact about the contract, never a label
   on a person.
@@ -1403,7 +1434,7 @@ They are figures the provider returns; nothing selects, stores or exposes an add
 
 What happened to the project's tracked token market, beside — never inside — its builder
 activity, and where the two stories disagree. `404` until HEY publishes Market Integrity
-(`HEY_MARKET_INTEGRITY=public`, fail closed). Read from HEY's stored evaluation (rules
+(fail closed). Read from HEY's stored evaluation (rules
 `mi-v4`); no provider is called and nothing is scored.
 
 - `builderActivity` — the activity status and last meaningful ship, as the project page says them.
@@ -1413,8 +1444,7 @@ activity, and where the two stories disagree. `404` until HEY publishes Market I
   `liquidityPeakDay` / `liquidityPeakSource` (the highest level held on two consecutive days, and
   the source that won that day), `liquidityNowUsd` / `liquidityNowDay` / `liquidityNowSource`,
   `liquidityChangePct`, `deteriorationStartDay`, `collapseDay`, `lastTradeDay`, `migration`,
-  `lockState`, `sourcesDisagree`; `exitPattern` only where HEY names one
-  (`HEY_MARKET_INTEGRITY_EXIT_LABELS`), always an evidence classification, never a finding about
+  `lockState`, `sourcesDisagree`; `exitPattern` only where HEY names one, always an evidence classification, never a finding about
   intent.
 - `conflicts[]` — builder × market conflicts, each with one plain sentence.
 - `events[]` — only what the current evaluation stands behind: `id` (`integrity:<tokenUuid>:<key>`,
@@ -1475,10 +1505,14 @@ No cursor, or `before=<cursor>`: newest first, `nextCursor` reads older (null at
 | `type` | comma list of event types (below) | |
 | `since`, `until` | the event's own time, `occurredAt` | events with no `occurredAt` are left out; tombstones always pass |
 | `detectedSince` | starts a sync at the first event **recorded** at or after the instant | not combinable with a cursor |
-| `after` / `before` | a cursor this API issued | anything else is **400 `invalid_cursor`** |
+| `after` / `before` | a cursor this API issued | anything else — a position past the end of the ledger included — is **400 `invalid_cursor`** |
 | `limit` | 1–100, default 50 | |
 
-An unknown filter value is dropped and the `query` echo leaves it out, like every listing.
+A filter value HEY cannot read — an unknown `type` or `domain`, a malformed `project` or
+`contract`, an unreadable date — is refused with **400 `invalid_parameter`**, naming each value
+and, for a vocabulary, every value it accepts (`errors[].allowed`), as `/api/projects` and
+`/api/ships` do (2026-10-03). It used to be dropped, which widened the answer to every change in
+the ledger. A parameter name HEY does not know is still ignored.
 
 ### The event
 
@@ -1569,7 +1603,7 @@ HEY can POST the change ledger's public events to an endpoint an API account reg
 event `/api/changes` serves, signed with HMAC-SHA256 over `<timestamp>.<raw body>`. Keyed only;
 answers are `private, no-store`. The full contract — event types, payload, signature, retries,
 the SSRF rules a callback URL must pass, and TypeScript/curl examples — is in
-[`docs/WEBHOOKS.md`](WEBHOOKS.md).
+[Webhooks](WEBHOOKS.md).
 
 | Route | What it does |
 |---|---|
@@ -1582,11 +1616,11 @@ the SSRF rules a callback URL must pass, and TypeScript/curl examples — is in
 
 Webhooks and cursor polling of `/api/changes?after=` are the supported ways to follow HEY. A
 server-sent stream is not offered: the ledger is written every five minutes, so a stream could be
-no fresher than polling (see `docs/WEBHOOKS.md`).
+no fresher than polling (see [Webhooks](WEBHOOKS.md)).
 
 ## Research boards: `/api/boards` (2026-09-28)
 
-A Terminal account's own saved boards ([`docs/BOARDS.md`](BOARDS.md)): published projects in order,
+A Terminal account's own saved boards: published projects in order,
 panels from a fixed list, a window. An API key or the reader's own session (writes same-origin
 only); the account must be admitted to the Terminal (else `403`). Answers are `private, no-store`;
 another account's board is `404`.
@@ -1603,7 +1637,7 @@ the API never returns a share token. No MCP tool.
 
 ## Research Desks: `/api/desks` (2026-09-30)
 
-A Research Desk is the public view of a board its owner published ([`docs/BOARDS.md`](BOARDS.md#research-desks)).
+A Research Desk is the public view of a board its owner published.
 Keyless, the public read budget, `no-store` (an unpublished desk is a `404` the moment it is taken
 down). Never the board's note, the owner's account, watchlist or alerts.
 
@@ -1879,7 +1913,7 @@ loopback address, as the caller — so every limit, key tier, quota and hold on 
 them unchanged, and they can say nothing this API does not. An `Origin` outside the allowlist is
 refused, the body is capped at 64 KB, and 60 JSON-RPC calls a minute per address bound handshake
 spam. Every answer tags its lines FACT, DERIVED or UNKNOWN and links the JSON route it was rendered
-from. The tools, resources and prompts are in `docs/MCP.md`.
+from. The tools, resources and prompts are in the [MCP server](MCP.md) document.
 
 ## Agent discovery (2026-09-28)
 
@@ -1944,7 +1978,7 @@ never says staking, deflationary or buyback as something `$HEY` does.
 
 ### `POST /api/receipts/validate`
 
-Stateless and read-only: the body is an AgentResearchReceipt (`docs/AGENT_RESEARCH_RECEIPTS.md`), at
+Stateless and read-only: the body is an [AgentResearchReceipt](AGENT_RESEARCH_RECEIPTS.md), at
 most 64 KB. The answer lists shape errors with their paths, the subject project's status, and each
 cited HEY reference as `exists`, `revised` (a change event HEY has revised since the cited
 revision), `project_exists` (a snapshot: the project is published; its `asOf` is not verified and
@@ -2077,6 +2111,13 @@ The same material is also published as RSS, for a reader rather than a script:
 /api/status           HEY's own freshness and health
 ```
 
+`/api/status`, additively (2026-10-03): a failing integrity audit makes `verdict` `critical`, and
+`integrity.failing` lists the failing checks as `{ check, label }` (the check id and its plain
+words). `catalog.indexed` keeps its meaning — the hidden launch records, approved rows HEY has not
+published — and is not the catalogue's "indexed" (every approved row); `catalog.hidden` carries the
+same figure under the catalogue's word, and `catalog.hiddenAsOf` is when the hourly summary counted
+it. `catalog.asOf` dates only `published`, `verifiedBuilders` and `verifiedBuildersOnChain`.
+
 ## Implementation
 
 Paths under `apps/web/` and `packages/domain/` are in HEY's **private** repository and are
@@ -2099,8 +2140,8 @@ named here so a reader of that repository can find them; they are not part of th
   over `packages/mcp-core`; `apps/web/src/lib/mcp-tool-schema.test.ts` holds the tool schemas to the
   parameters the parsers read
 
-Every route here reads HEY's own database and makes no third-party call (CLAUDE.md
-architecture rules 13–14) — with one deliberate exception, `POST /api/scan`, which exists to
+Every route here reads HEY's own database and makes no third-party call — with one deliberate
+exception, `POST /api/scan`, which exists to
 read an address HEY has never seen and says so in its own section above. Every filter goes
 through the same query layer the pages use, so a count returned here and a count shown on a
 page cannot disagree.

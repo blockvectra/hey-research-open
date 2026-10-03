@@ -1,6 +1,10 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
+import { shipKindLabel } from './format';
 import { CARD_SHIP_WHAT_MAX, cardShipPhrase, displayShipTitle } from './ship-phrase';
+import { BuildTimeline } from './timeline';
 
 const now = new Date('2026-09-28T12:00:00Z'); // a Monday
 
@@ -29,6 +33,31 @@ describe('cardShipPhrase (public UX review, 2026-09-28)', () => {
   it('names a deploy by its kind', () => {
     expect(cardShipPhrase({ eventType: 'CONTRACT_DEPLOY', title: 'Deployed 0x0000000000000000000000000000000000000001', publishedAt: new Date('2026-09-25T12:00:00Z') }, { now })).toEqual({ what: 'Contract deployed', when: '3d ago' });
     expect(cardShipPhrase({ eventType: 'CONTRACT_DEPLOY_FOLLOWUP', title: 'x', publishedAt: now }, { now })?.what).toBe('New contract deployed');
+  });
+
+  /*
+   * Full audit, 2026-10-03: DigitalDon's "Verified contract source:
+   * VerdantToken" read "Contract deployed · 1h ago" — the explorer verified
+   * its source an hour ago; HEY saw no deployment. The explorer intake stores
+   * it as CONTRACT_DEPLOY from the CONTRACT source.
+   */
+  it('names a verified contract by what happened, not as a deployment', () => {
+    const verified = { eventType: 'CONTRACT_DEPLOY', sourceKind: 'CONTRACT', title: 'Verified contract source: VerdantToken', publishedAt: new Date('2026-09-28T11:00:00Z') };
+    expect(cardShipPhrase(verified, { now })).toEqual({ what: 'Contract source verified', when: '1h ago' });
+    expect(shipKindLabel(verified)).toBe('Contract source verified');
+    // A deployment a builder reported is still a deployment.
+    expect(shipKindLabel({ eventType: 'CONTRACT_DEPLOY', sourceKind: 'BUILDER_SUBMISSION' })).toBe('Contract deployed');
+    expect(shipKindLabel({ eventType: 'CONTRACT_DEPLOY' })).toBe('Contract deployed');
+    expect(shipKindLabel({ eventType: 'CONTRACT_DEPLOY_FOLLOWUP', sourceKind: 'CONTRACT' })).toBe('New contract');
+
+    const html = renderToStaticMarkup(
+      createElement(BuildTimeline, {
+        items: [{ id: 's1', title: verified.title, eventType: verified.eventType, sourceKind: verified.sourceKind, publishedAt: verified.publishedAt, verificationStatus: 'PUBLICLY_VERIFIED' }],
+        now,
+      }),
+    );
+    expect(html).toContain('Contract source verified');
+    expect(html).not.toContain('Contract deployed');
   });
 
   it('cuts a long title at a word, never inside one', () => {
@@ -67,6 +96,8 @@ describe('cardShipPhrase (public UX review, 2026-09-28)', () => {
     // The reviewed ship: 19:56 on Sunday. A release under a day old is an elapsed time; a code week is last week.
     expect(cardShipPhrase({ eventType: 'GITHUB_RELEASE', title: 'v1.2.0', publishedAt: new Date('2026-09-27T19:56:00Z') }, { now: morning })?.when).toBe('12h ago');
     expect(cardShipPhrase({ eventType: 'CODE_ACTIVITY', title: 'Active development: 12 commits since 2026-09-21 across 2 contributors', publishedAt: new Date('2026-09-27T19:56:00Z') }, { now: morning })?.when).toBe('last week');
+    // The week's stored title since 2026-10-03 reads as code changes too, never as a bare date.
+    expect(cardShipPhrase({ eventType: 'CODE_ACTIVITY', title: 'Code changes, week of 2026-09-21 – 2026-09-27', publishedAt: new Date('2026-09-27T19:56:00Z') }, { now: morning })).toEqual({ what: 'Code changes', when: 'last week' });
     // 33 hours and two UTC dates back: "2d ago", as the MCP and the summary say "2 days ago".
     expect(cardShipPhrase({ eventType: 'GITHUB_RELEASE', title: 'v1.1.0', publishedAt: new Date('2026-09-26T23:50:00Z') }, { now: morning })?.when).toBe('2d ago');
   });

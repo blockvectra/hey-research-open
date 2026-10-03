@@ -3,13 +3,13 @@ import type { ReactNode } from 'react';
 import { cn } from './cn';
 import { emailSafe } from './email-safe';
 import {
-  formatEventType,
   formatMarketSource,
   formatProjectKind,
   formatRelativeTime,
   formatUsdCompact,
   formatVerification,
   oneLineDescription,
+  shipKindLabel,
   staleReadingAge,
   tickerLabel,
 } from './format';
@@ -40,8 +40,8 @@ import { BrandNotice, type BrandNoticeData } from './brand-notice';
  * building, what did it ship, what is it, what is the market, how do I check
  * it. The status leads the body at its own size (UI rule 4); the latest
  * signal is one line from the canonical latest meaningful ship; the market
- * row reads `valuationDisplay` and nothing else. A tokenless project says
- * "No token" in the market slot and links its own site there.
+ * row reads `valuationDisplay` and nothing else. A project with no token HEY
+ * tracks says "No token tracked" in the market slot and links its own site there.
  *
  * What is deliberately absent: momentum and gap scores, ship counts, commit
  * strips, holder / volume / liquidity figures, wallet analytics and second
@@ -135,6 +135,8 @@ export type ProjectCardShip = {
   verificationStatus: string;
   /** The public source behind the claim; the card links it when there is one. */
   sourceUrl?: string;
+  /** Where the evidence came from; it decides the kind's word for a verified contract (`shipKindLabel`). */
+  sourceKind?: string;
 };
 
 /**
@@ -286,7 +288,8 @@ export function ProjectCard({
         ) : (project.launchedVia?.name ?? 'Unknown') === 'Unknown' && project.marketVenue ? (
           // No launch record, but a pool: say where the token trades, never where it launched.
           <span className="truncate text-hey-secondary" title={`HEY did not observe the launch; the token trades on ${project.marketVenue}.`}>
-            DEX ({project.marketVenue})
+            {/* A venue HEY cannot name is "DEX" already (`venueLabel`): print it once, never "DEX (DEX)" (full audit, 2026-10-03). */}
+            {project.marketVenue === 'DEX' ? 'DEX' : `DEX (${project.marketVenue})`}
           </span>
         ) : (
           <span className="truncate text-hey-secondary">{project.launchedVia?.name ?? 'Unknown'}</span>
@@ -383,7 +386,7 @@ export function ProjectCard({
             className="min-w-0 grow basis-[9rem] text-[13px] leading-5"
             data-testid="card-latest-signal"
             data-ship-id={latest.id}
-            title={`${formatEventType(latest.eventType)}: ${latestTitle}`}
+            title={`${shipKindLabel(latest)}: ${latestTitle}`}
           >
             {/* Wraps at a word when the card is narrow; never an ellipsis in the middle of one. */}
             <span className="font-medium text-hey-ink">{emailSafe(latestPhrase.what)}</span>{' '}
@@ -443,7 +446,7 @@ export function ProjectCard({
           </p>
           <p className="mt-1 flex min-w-0 flex-wrap items-center gap-x-3 gap-y-0.5 text-[12.5px]">
             <span className="text-hey-secondary" data-testid="ship-type">
-              {formatEventType(ship.eventType)}
+              {shipKindLabel(ship)}
             </span>
             <span
               data-testid="ship-verification"
@@ -544,10 +547,14 @@ export function ProjectCard({
           /*
            * No token: said once, in the slot a market would take, with the
            * project's own site as its reference — a builder without a token
-           * is a complete card, not an empty one.
+           * is a complete card, not an empty one. "No token tracked", the
+           * market status's own words (2026-10-03, full audit): USDBT's card
+           * read "No token" under its own "The first community token you can
+           * actually spend" — HEY links none of the launch records carrying its
+           * ticker, which says what HEY tracks, not that no token exists.
            */
           <p className="flex min-w-0 items-baseline justify-between gap-3 text-[13.5px]" data-testid="no-token">
-            <span className="shrink-0 text-hey-secondary">No token</span>
+            <span className="shrink-0 text-hey-secondary" title="HEY tracks no token for this project.">No token tracked</span>
             {project.websiteUrl ? (
               <ExternalRef href={project.websiteUrl} label={`Open ${project.name} website`} data-testid="website">
                 {hostOf(project.websiteUrl)}

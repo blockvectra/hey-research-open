@@ -6,6 +6,15 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (status, 2026-10-03)
+
+- `HeyStatus.integrity.failing?: { check, label }[]`, additively: the checks the newest integrity audit failed, by id and plain words. A failing audit now makes `verdict` `critical` (it read `warn` beside a failing run); `integrity.verdict` keeps its meaning.
+- `HeyStatus.catalog.hidden?` and `hiddenAsOf?`, additively. `catalog.indexed` keeps its meaning — the hidden launch records, approved rows HEY has not published, as `/status` has always labelled it; it is not the catalogue's "indexed" (every approved row). `hidden` is the same figure under the catalogue's word, and `hiddenAsOf` dates it by the hourly summary that counted it: `asOf` dates only `published`, `verifiedBuilders` and `verifiedBuildersOnChain`.
+
+### Added (token market, 2026-10-03)
+
+- `HeyProjectDetail.tokenMarket.readingObservedAt?` and `figuresScope?: 'reading_pool'`, additively. `readingObservedAt` dates the reading behind `liquidityUsd` and `volume24hUsd` (`evaluatedAt` is when the status rule last ran); `figuresScope` says those pool figures describe the pool the status reading follows, not the token's `volume24h`. New `tokenMarket.reason` values `not_a_fungible_token` (decimals 0: no fungible market, no valuation) and `reading_not_current` (the newest reading is over 36 hours old), and a rescued market's (`liquidity_in_another_pool`) valuation is withheld; treat an unknown reason as a code you have no words for.
+
 ### Added (follow → alerts, 2026-10-03)
 
 - `HeyAlertPresetId` gains `deploy` (`contract.deployed`: a contract the project deployed, never a serial launcher's follow-up) and `status` (`build.status_changed`, `build.dormant` and `build.resumed`: an activity status move, measured from building), additively. `GET /api/alerts` lists them among `presets`. No existing id changes meaning; treat an unknown preset id as a label you do not have words for.

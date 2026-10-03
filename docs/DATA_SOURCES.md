@@ -20,7 +20,7 @@ depends on a live API.
 > `combined` both returned real trades. Every Bitquery document in the codebase
 > had been pinned to `realtime` since the 403 of 2026-09-12, and two adapter
 > tests asserted it, so the add-on went unread. The queries now take a dataset,
-> defaulting to `combined`; `data:trade-days-backfill` walks history with
+> defaulting to `combined`; a one-time history backfill reads the
 > `archive`.
 
 ## Adapters
@@ -31,11 +31,11 @@ depends on a live API.
 | `geckoterminal` | Fallback market context | 5 min | Same normalized shape as DEX Screener |
 | `geckoterminal-ohlcv` (hour, minute) | 1h and 15m candles for the Terminal chart, a bounded token set (2026-09-29) | 15 min | Per-pool OHLC with per-bar volume; only bars that traded are listed, so a missing bar stays missing; own key `geckoterminal-intraday` 1,440/day inside the provider's 7,000; context only |
 | `bitquery-ohlc` | 15m bars (1h added up from them) for every live market and what Terminal readers open, from decoded trades against USDG/WETH/ETH (2026-10-03) | 1 min | One realtime cube, a hundred tokens a request, five points; a quarter with no trade has no bar; an answer that fills the row limit is split, never stored; own key `bitquery-intraday` 480/day, points under `bitquery-points`; GeckoTerminal reads such a token's history once and never overwrites its bars; context only |
-| `geckoterminal-ohlcv` (day, archive) | A token's daily OHLC and per-day volume back to its pool's first trade, for the days HEY never read (2026-10-02) | 6 h | One-time, resumable backfill into `token_market_archive_days` (basis `provider_archive`), never `token_market_days`; no liquidity or valuation in the archive; own key `geckoterminal-archive` 600/day on the history lane a minute apart; display context only — see `docs/MARKET_ARCHIVE_BACKFILL.md` |
+| `geckoterminal-ohlcv` (day, archive) | A token's daily OHLC and per-day volume back to its pool's first trade, for the days HEY never read (2026-10-02) | 6 h | One-time, resumable backfill into `token_market_archive_days` (basis `provider_archive`), never `token_market_days`; no liquidity or valuation in the archive; own key `geckoterminal-archive` 600/day on the history lane a minute apart; display context only |
 | `blockscout` | Contract metadata, verification, deployment evidence | 1 h | Holder endpoints are deliberately not implemented |
 | `rpc-contract` | `eth_getCode` existence check | 1 h | Lightweight verification only; HEY runs no node |
 | `github-repo` | Repository activity window | 30 min | Stars are display context, never a score input |
-| `github-releases` | Releases → `GITHUB_RELEASE` ShipEvents (M4) | 30 min | Drafts excluded; stable `externalId` for dedupe; budget 6,000 req/day |
+| `github-releases` | Releases → `GITHUB_RELEASE` ShipEvents | 30 min | Drafts excluded; stable `externalId` for dedupe; budget 6,000 req/day |
 | `github-commits` | Human commits in the window → one capped `CODE_ACTIVITY` ShipEvent per repository per ISO week | 30 min | Bots, dependency bumps and merge churn excluded; budget 6,000 req/day |
 | `website` | Page metadata + feed discovery | 6 h | SSRF guarded, 2 MB cap, HTML content-type only, socket pinned to the checked address; `DISCOVER_SITE_FEEDS` sweeps registered WEBSITE and DOCS sources, ten a tick |
 | `feed` | RSS/Atom/changelog entries | 2 h | Max 50 entries; summaries tag-stripped |
@@ -43,11 +43,11 @@ depends on a live API.
 | `coingecko-markets` | Price, market cap, FDV, volume for up to 250 CoinGecko ids per call | 1 h | Matched to tokens by `(chain, address)` from the registry; a `0` figure is absent; source `coingecko` |
 | `virtuals-market` | The launchpad's curve/pool valuation for a batch of 25 agents, in VIRTUAL | 1 h | Holder fields never leave the payload; converted with a same-run CoinGecko rate; source `virtuals` |
 | `bitquery` | Decoded DEX and launchpad trades for up to 100 contracts per GraphQL request: last price, day's volume and trade count, venue (Market Lens, 2026-09-12) | 1 h |
-| `bitquery-discovery` | The week's traded tokens network-wide, by volume, 1,000 token×venue rows a page: symbol, name, decimals, venue, trades, volume, distinct-trader count (2026-09-12) | 1 h | Paid (Pro plan, points-metered), `BITQUERY_API_KEY` on the worker only; `Holders` is queried for the token-distribution map rule 1 allows (2026-09-14), `Balances` is not; FDV = price × the ERC-20 supply stored on `tokens`; source `bitquery`; budget `bitquery` 4,000 req/day, paced at 60/min against the plan's documented 90 |
-| `robinhood-stock-assets` / `robinhood-stock-price` | Tokenized-equity assets, multipliers and raw underlying bid/ask | 1 h / 60 s | Off by default (`HEY_STOCK_TOKEN_PRICES_ENABLED`); price only, no market cap; source `robinhood-stock-api` |
+| `bitquery-discovery` | The week's traded tokens network-wide, by volume, 1,000 token×venue rows a page: symbol, name, decimals, venue, trades, volume, distinct-trader count (2026-09-12) | 1 h | Paid (Pro plan, points-metered), its key held by the worker only; `Holders` is queried for the token-distribution map rule 1 allows (2026-09-14), `Balances` is not; FDV = price × the ERC-20 supply stored on `tokens`; source `bitquery`; budget `bitquery` 4,000 req/day, paced at 60/min against the plan's documented 90 |
+| `robinhood-stock-assets` / `robinhood-stock-price` | Tokenized-equity assets, multipliers and raw underlying bid/ask | 1 h / 60 s | Off unless switched on for the deployment; price only, no market cap; source `robinhood-stock-api` |
 | launchpad | Interface + registry only | — | No provider ships until its access is public, documented and permitted |
 | `github-deployments` | Newest deployment to an environment named production (2026-09-27) | 30 min | ETag; name, time and commit only; context, never a ship; budget 1,000/day |
-| `github-pulls` | Merged pull requests of an already-read repository (2026-09-29) | 30 min | ETag; number, merge time and whether automation opened it — never a title or a person; display context on the Terminal chart's code lane, never a ship; budget 3,000/day |
+| `github-pulls` | Merged pull requests of an already-read repository (2026-09-29) | 30 min | ETag; number, merge time and whether automation opened it — never a title or a person; display context on the Terminal chart's code lane, never a ship; budget 3,000/day. Read when due (2026-10-03): a watched, Terminal-opened (14 days) or active-market project every 2 h from the whole budget, any other every 72 h inside a share (2,000) spread evenly over the UTC day — the budget had run out by ~06:00 UTC daily |
 | `depsdev-packageversions` / `-package` / `-version` / `-project` | Packages naming an official repository, their versions, the latest version's links and provenance, the repository's Scorecard checks (2026-09-27) | 1 h | Keyless deps.dev v3; no stars, forks or aggregate score; budget `depsdev` 2,000/day |
 | `osv-querybatch` / `osv-vuln` | Advisories about accepted packages' published versions (2026-09-27) | 1 h | Keyless; context, never a verdict or a score; budget `osv` 500/day |
 | `open-dev-data` | Which Open Dev Data (Electric Capital crypto-ecosystems taxonomy) ecosystems list a repository HEY already attributes (2026-09-28) | 7 d | One conditional archive request a week (ETag, 304 when unchanged); migrations replayed as their own tool does; data CC BY 4.0, "Open Dev Data by Electric Capital"; candidates for a person, never an attribution, ship or score; budget `open-dev-data` 4/day |
@@ -68,7 +68,7 @@ The instance's API (`robinhoodchain.blockscout.com/api/*`) answers scripts with 
 so explorer reads (the verified-contract sync, the on-chain claim's creator lookup) go to the
 Blockscout PRO API (`api.blockscout.com`, its Etherscan-style `/v2/api?module=…&action=…` form —
 `listcontracts` with a `verified_at_start_timestamp` floor, `getcontractcreation` — with `chain_id=4663`) when
-`RH_BLOCKSCOUT_API_KEY` is set; the free starter plan (100K credits a day, 5 requests a second)
+HEY holds a PRO key; the free starter plan (100K credits a day, 5 requests a second)
 covers HEY's volume. Without a key the reads still target the instance and degrade honestly.
 The key is only ever a query parameter on the request; every echoed URL is redacted.
 
@@ -133,13 +133,20 @@ Redirects are followed manually with a cap of 5 hops, and **every hop is re-vali
 against the same rules. Letting the runtime follow redirects would hide the intermediate
 URLs, so a public address could redirect into a private one unchecked.
 
+**DNS rebinding is covered.** The guard resolves the hostname and checks every address it
+returns; the connection is then pinned to exactly those addresses, so a DNS record that changes
+between the check and the request cannot point the fetch at a private address. The same pinning
+guards site reads, the logo fetch and webhook delivery. TLS still verifies against the hostname.
+
+**`robots.txt` is honoured where HEY reads more than the page it was given.** When HEY reads an
+official site's well-known files — sitemap, `llms.txt`, `security.txt`, a linked OpenAPI
+description — it reads `robots.txt` first: a disallow for HEY or for every crawler stops the read
+of that file, a disallow of the whole site stops every read, and an unreachable `robots.txt`
+counts as a full disallow until it answers. Everything else is a page a builder or HEY registered
+— a project's website, docs or feed — read one page per call; HEY never crawls a site.
+
 ### Known limitations
 
-- **DNS rebinding is not covered.** The guard validates the literal host; a hostname that
-  *resolves* to a private address needs connection-time IP pinning. Tracked for M9.
-- **`robots.txt` and terms-aware crawling are not implemented.** PRD V4 section 27 requires
-  this for website/docs *ingestion*, which is M4. The M2 adapters fetch only URLs a builder
-  or admin has explicitly registered, one page per call, never crawling.
 - **Feed entries are capped at 50 per fetch**, newest-first as the provider orders them.
 - **`redirect: 'manual'` relies on Node/undici semantics**, where the 3xx response and its
   `Location` header are readable. Adapters run in the worker, not in a browser context.
@@ -154,7 +161,7 @@ excludes Robinhood); data is used for HEY's own display and API with provider at
 resold. What is asked: `DEXTradeByTokens` only — price, volume, trade count, venue — in two windows per
 request: the day (volume, trade count) and the week (the last trade's price for a token that
 traded recently but not today). What is never
-asked: holders, balances, wallets (CLAUDE.md product rule 1). Discovery (`DISCOVER_BITQUERY_TRADES`,
+asked: holders, balances, wallets — HEY builds no wallet analytics. Discovery (`DISCOVER_BITQUERY_TRADES`,
 daily, up to 10 pages per 7-day slice over 30 days; the manual script defaults to 12): every token that traded this week with twenty or more traders becomes a named
 `token_candidates` row and is chain-verified by the trade; promotion and the quality gate decide
 what becomes a page, exactly as for every other source. The market job (`REFRESH_MARKET_BITQUERY`,
@@ -164,9 +171,9 @@ market status reads it as `trades_observed` / `no_trades_24h`, never as liquidit
 
 Since 2026-09-13 Bitquery also fills HEY's own daily index. The realtime dataset holds only four
 or five days and the Pro plan charges a flat five points a cube on it, so HEY reads daily and keeps
-what it reads: `REFRESH_TRADE_DAYS` (daily; every published token, a hundred a request, the last
+what it reads: the daily trade read (daily; every published token, a hundred a request, the last
 four UTC days — trades by direction, USD volume, the day's last price, transfers; ~60 requests a
-day) writes the trade columns of `token_market_days`, and `REFRESH_CHAIN_DAYS` (every 6 h) writes
+day) writes the trade columns of `token_market_days`, and the chain read (every 6 h) writes
 the chain half of `chain_activity_days` (DEX trades, pools, tokens traded, volume against USDG /
 WETH / ETH only, transactions, transfers). The budget is 4,000 requests a day and the steady state
 is about a thousand, roughly 9,500 of the plan's ~33,000 daily points.
@@ -203,7 +210,7 @@ test forbids `From`, `Sender`, `Transaction`, `Holder` and `Balance` in the docu
 `contract_method_coverage` window per contract says which days were read, so a missing day is
 "no call" only inside it. Its budget key is `bitquery-methods`, capped at 87 requests a day — under
 5 % of the plan's million points a month at the measured 19 points a request — and a one-off
-archive backfill (`data:contract-methods --backfill`, dry run first) reads the same document from
+archive backfill reads the same document from
 the `combined` dataset under `bitquery-methods-archive`. The public name of this evidence is
 `decoded_calls`; function names stay on Terminal surfaces (founder decision F3).
 
@@ -232,7 +239,7 @@ means "moved recently", never "related".
 
 Reviewed and not added (2026-09-12): CoinMarketCap (duplicates CoinGecko's role as
 corroboration); Exa and X (social volume is not building activity); rh-scan.com (undocumented, unlicensed; founder decision).
-Alchemy/QuickNode are a dedicated RPC endpoint (`RH_RPC_URL`), not a data source. DefiLlama token
+Alchemy/QuickNode are a dedicated RPC endpoint, not a data source. DefiLlama token
 addresses were on this list on 2026-09-12 (none on chain 4663 then); by 2026-09-27 52 protocols
 declared a `robinhood:0x…` token, and they are read as identity candidates for review (above).
 

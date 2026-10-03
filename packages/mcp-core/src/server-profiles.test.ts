@@ -7,7 +7,7 @@ import { HeyClient } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
 import { createHeyMcpServer, MCP_API_ANSWER_SCHEMA, type HeyMcpOptions } from './server';
-import { HEY_MCP_DEPRECATED_TOOLS, HEY_MCP_TOOL_LIST_BUDGET, mcpToolsFor, type HeyMcpProfile } from './tools';
+import { HEY_MCP_DEPRECATED_TOOLS, HEY_MCP_RESEARCH_PROFILE_SCOPE, HEY_MCP_TOOL_LIST_BUDGET, mcpToolsFor, type HeyMcpProfile } from './tools';
 
 /**
  * Round 4 (2026-09-30): one registry, two profiles; typed output on every
@@ -83,6 +83,9 @@ describe('one registry, two profiles', () => {
     const handshake = gated.client.getInstructions() ?? '';
     expect(handshake).toContain('research profile');
     expect(handshake).not.toContain('get_token_market');
+    // It says what research_answer still carries (full audit 2026-10-03), never "builder intelligence only".
+    expect(handshake).toContain(HEY_MCP_RESEARCH_PROFILE_SCOPE);
+    expect(handshake).not.toMatch(/builder intelligence only/i);
   });
 
   it('the research profile reads the ledger without market events unless a type is named', async () => {

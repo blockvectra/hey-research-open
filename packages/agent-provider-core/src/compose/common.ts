@@ -97,7 +97,21 @@ export function changeEvidence(baseUrl: string, evidence: readonly { id: string;
  * The web app passes the domain's own parser; this is the fallback shape
  * check for a pure caller.
  */
-const EVIDENCE_FAMILIES = new Set(['ship', 'signal', 'abi', 'impl', 'lock', 'source', 'claim', 'state', 'integrity', 'narrative', 'method', 'sourcechange', 'security', 'v4hook']);
+/**
+ * Every typed evidence id family `/api/evidence/{id}` resolves, for the
+ * packages that cannot import the domain (MCP, pure callers). The web app's
+ * `agent-contract-parity.test.ts` holds it equal to the domain's
+ * `EVIDENCE_FAMILIES` (`evidence/ids.ts`), the one definition, so the MCP
+ * `get_evidence` description and llms.txt cannot list fewer (full audit
+ * 2026-10-03: they listed 11 and 9 of 14). `integrity` resolves only while
+ * HEY publishes Market Integrity.
+ */
+export const HEY_EVIDENCE_FAMILIES = ['ship', 'signal', 'abi', 'impl', 'lock', 'source', 'claim', 'state', 'integrity', 'narrative', 'method', 'sourcechange', 'security', 'v4hook'] as const;
+/** The families as a reader lists them: `integrity:` only where Market Integrity is public. */
+export function evidenceFamiliesFor(options: { marketIntegrityPublic: boolean }): readonly string[] {
+  return HEY_EVIDENCE_FAMILIES.filter((family) => options.marketIntegrityPublic || family !== 'integrity');
+}
+const EVIDENCE_FAMILIES: ReadonlySet<string> = new Set(HEY_EVIDENCE_FAMILIES);
 export function looksLikeEvidenceId(id: string): boolean {
   const family = id.split(':')[0] ?? '';
   return EVIDENCE_FAMILIES.has(family) && /^[a-z][a-z0-9]*:[A-Za-z0-9:._-]{1,220}$/.test(id) && !/:(added|removed|restored|unavailable|changed)$/.test(id);

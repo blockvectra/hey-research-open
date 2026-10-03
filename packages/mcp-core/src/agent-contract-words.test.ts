@@ -107,6 +107,10 @@ describe('counted words in the agent contract, swept with 0, 1 and 2', () => {
         check(response);
         expect(response.answer.text).toContain(`${countOf(events, WORD_MEANINGFUL_EVENT)} in 30 days`);
         expect(response.answer.text).toContain(`HEY lists ${countOf(response.unknowns.length, WORD_THING)} it does not know`);
+        // The categories the list holds, counted (full audit, 2026-10-03), never a fixed "(coverage gaps and unverified identity)".
+        const categories = [...new Set(response.unknowns.map((unknown) => unknown.category))];
+        for (const category of categories) expect(response.answer.text).toContain(`${response.unknowns.filter((unknown) => unknown.category === category).length} ${category}`);
+        expect(response.answer.text).not.toContain('coverage gaps and unverified identity');
         expect(response.claims.find((claim) => claim.id === 'build.meaningful_events_30d')?.statement.text).toBe(`${countOf(events, WORD_MEANINGFUL_BUILDING_EVENT)} in the last 30 days.`);
       }
     }

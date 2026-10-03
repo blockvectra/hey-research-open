@@ -209,12 +209,26 @@ export type HeyStatus = {
   /** The build that wrote the summary `capturedAt` dates (additive, 2026-10-02); null without one. */
   summaryBuild: string | null;
   worker: { heartbeatAgeSeconds: number | null; fresh: boolean };
-  /** `verifiedBuilders` is the badge on every chain; `verifiedBuildersOnChain` its Robinhood Chain part and `asOf` when counted (2026-10-02, additive). */
-  catalog: { published: number; verifiedBuilders: number; indexed: number; verifiedBuildersOnChain?: number; asOf?: string };
+  /**
+   * `verifiedBuilders` is the badge on every chain; `verifiedBuildersOnChain` its Robinhood Chain part and `asOf` when counted (2026-10-02, additive).
+   * `indexed` is the hidden launch records (approved rows HEY has not published), as /status has always labelled it — not the
+   * catalogue's "indexed" (every approved row). `hidden` carries the same figure under the catalogue's word and `hiddenAsOf`
+   * dates it: the hourly summary's capture time, not `asOf` (both additive, 2026-10-03).
+   */
+  catalog: {
+    published: number;
+    verifiedBuilders: number;
+    indexed: number;
+    hidden?: number;
+    hiddenAsOf?: string;
+    verifiedBuildersOnChain?: number;
+    asOf?: string;
+  };
   jobs: { pending: number; failed24h: number | null };
   /** Published tokens with a reading under a day, of those with a known pair. */
   market: { fresh: number; cohort: number } | null;
-  integrity: { verdict: 'ok' | 'warn' | 'fail' | 'unknown'; ranAt: string | null };
+  /** `failing` (additive, 2026-10-03): the checks the newest audit failed, by id and plain words; a failing audit makes `verdict` critical. */
+  integrity: { verdict: 'ok' | 'warn' | 'fail' | 'unknown'; ranAt: string | null; failing?: { check: string; label: string }[] };
   /** Keyed API calls this month, across every account; calls without a key are not counted. */
   api: { month: string; requests: number; accounts: number; previousMonth: { month: string; requests: number; accounts: number } } | null;
   sources: HeyStatusSource[];

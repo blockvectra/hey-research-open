@@ -5,7 +5,7 @@ import { cn } from './cn';
  *
  * One circle per holder, area proportional to the share of supply, a line
  * where two of them moved the token between each other in the last few days.
- * Server-rendered SVG, a `<title>` on everything, a `role="img"` summary, an
+ * Server-rendered SVG, a `<title>` on everything, a `role="group"` summary, an
  * honest empty state: the same recipe as every other chart in this package,
  * with no client bundle and no charting dependency.
  *
@@ -141,7 +141,8 @@ export function BubbleMap({
         viewBox={`${box.x} ${box.y} ${box.width} ${box.height}`}
         className="mx-auto block h-auto w-full"
         style={{ maxWidth: Math.round(box.width) }}
-        role="img"
+        // A group, not an image (full audit, 2026-10-03; axe nested-interactive): the circles' links sit inside it, out of the tab order.
+        role="group"
         aria-label={`Token distribution, largest first: ${nodes
           .slice(0, 10)
           .map(
@@ -203,8 +204,9 @@ export function BubbleMap({
           );
           /*
            * The link is out of the tab order (accessibility audit, 2026-09-22):
-           * `role="img"` prunes the anchors from the accessibility tree, but they
-           * stay focusable. The same addresses are real links in `BubbleList`.
+           * `aria-hidden` keeps the anchors out of the accessibility tree; the
+           * drawing is a `role="group"`, not an image, so no link sits inside an
+           * image (2026-10-03). The same addresses are real links in `BubbleList`.
            */
           return href ? (
             <a key={node.address} href={href} tabIndex={-1} aria-hidden="true" target="_blank" rel="noreferrer" className="transition-opacity hover:opacity-75">
@@ -228,12 +230,12 @@ export function BubbleMap({
                 <text x={node.x} y={node.y - node.r * 0.1} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(28, Math.max(12, node.r * 0.42))} fontWeight={600}>
                   {pct(node.sharePct)}%
                 </text>
-                <text x={node.x} y={node.y + node.r * 0.32} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(13, Math.max(9, node.r * 0.19))} fill="var(--hey-secondary)">
+                <text x={node.x} y={node.y + node.r * 0.32} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(13, Math.max(9, node.r * 0.19))} fill="var(--hey-ink)" fontWeight={500} data-rank-label="">
                   #{node.rank}
                 </text>
               </g>
             ) : node.r >= 26 ? (
-              <text key={node.address} x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(13, Math.max(8, node.r * 0.62))} fill="var(--hey-secondary)">
+              <text key={node.address} x={node.x} y={node.y} textAnchor="middle" dominantBaseline="central" fontSize={Math.min(13, Math.max(8, node.r * 0.62))} fill="var(--hey-ink)" fontWeight={500} data-rank-label="">
                 {node.rank}
               </text>
             ) : null,

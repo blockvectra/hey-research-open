@@ -21,6 +21,15 @@ describe('bubble map (redesign, 2026-09-26)', () => {
     expect(source).not.toMatch(/drop-shadow|feGaussianBlur/);
   });
 
+  it('draws rank labels in ink, and is a group rather than an image around its links (full audit, 2026-10-03)', () => {
+    // The secondary token over the hatch and the subtle fill read below 4.5:1 in dark.
+    expect(source).not.toMatch(/fill="var\(--hey-secondary\)"/);
+    expect(source.match(/data-rank-label=""/g)).toHaveLength(2);
+    // axe nested-interactive: an image's children are presentational, and the circles carry links.
+    expect(source).not.toMatch(/role="img"/);
+    expect(source).toMatch(/role="group"/);
+  });
+
   it('never colours a cluster with builder green or a warning tone', () => {
     for (const colour of CLUSTER_COLOURS) {
       expect(colour).not.toMatch(/status-|accent|market-/);

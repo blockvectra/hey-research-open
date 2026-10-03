@@ -24,13 +24,26 @@ import type { HeyChangeType } from '@hey-research-lab/sdk';
 /**
  * The profiles one registry serves (round 4, 2026-09-30, founder decision):
  * `full` at `/mcp` (unchanged), and `research` at `/mcp/research` —
- * builder intelligence only: no market moves, no Under the Radar or other
- * market-attention surface, no valuation. A tool names the profiles it is
+ * builder intelligence first: no market-move, Under the Radar or other
+ * market-attention tool, no valuation tool (`HEY_MCP_RESEARCH_PROFILE_SCOPE`
+ * says what `research_answer` still carries). A tool names the profiles it is
  * offered on; a research-profile tool may take fewer arguments there
  * (`find_projects` without market filters, `get_changes` without market
  * events), never more.
  */
 export const HEY_MCP_PROFILES = ['full', 'research'] as const;
+
+/**
+ * What the research profile is, in one sentence every surface prints (full
+ * audit 2026-10-03). llms.txt, the agent card, the OpenAPI document and the
+ * guides said "builder intelligence only" while `research_answer` there
+ * returns the agent contract's `market.valuation` claim and `marketContext`
+ * — deliberately: the contract's project answer carries its market context,
+ * labelled context only (`contextOnly: true`), never a builder judgement.
+ * The words now say that instead of promising less than the tool returns.
+ */
+export const HEY_MCP_RESEARCH_PROFILE_SCOPE =
+  "builder intelligence first: no market-move, Under the Radar or valuation tool, and the ledger without market events; research_answer still carries the market context of HEY's agent contract (the valuation with its kind, source and reading date, and the market status), labelled context only and never a builder judgement";
 export type HeyMcpProfile = (typeof HEY_MCP_PROFILES)[number];
 
 /** Where each profile is served, relative to the site's origin. */

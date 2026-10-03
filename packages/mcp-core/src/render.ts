@@ -180,6 +180,15 @@ export function ago(iso: string, now: Date = new Date()): string {
   return months === 1 ? 'a month ago' : `${months} months ago`;
 }
 
+/** The Monday of the UTC ISO week an ISO timestamp falls in, as `YYYY-MM-DD`; undefined when it does not parse. */
+function mondayOf(iso: string): string | undefined {
+  const at = new Date(iso);
+  if (Number.isNaN(at.getTime())) return undefined;
+  const day = new Date(Date.UTC(at.getUTCFullYear(), at.getUTCMonth(), at.getUTCDate()));
+  day.setUTCDate(day.getUTCDate() - ((day.getUTCDay() + 6) % 7));
+  return day.toISOString().slice(0, 10);
+}
+
 /**
  * A time at the precision HEY knows it (2026-09-26): "week of 2026-09-14"
  * for a week of code activity, a date for a date, and "HEY saw it on …" when
@@ -192,7 +201,8 @@ export function atPrecision(iso: string | null | undefined, precision: string, o
     case 'EXACT':
       return `${iso.slice(0, 16).replace('T', ' ')} UTC`;
     case 'WEEK':
-      return `week of ${date}`;
+      // The week's Monday (UTC ISO week), never the day inside it the record is dated (2026-10-03).
+      return `week of ${mondayOf(iso) ?? date}`;
     case 'WINDOW':
       return `window ending ${date}`;
     case 'SCHEDULED':
@@ -300,14 +310,21 @@ export function projectLine(project: HeyProject, now?: Date): string {
 }
 
 /**
- * The query as HEY read it (2026-09-17). The listing routes drop an
- * unrecognised filter rather than refusing it, and echo what they understood;
- * printing the echo is how a model notices that a filter it invented did
- * nothing.
+ * The query as HEY read it (2026-09-17). The listing routes echo what they
+ * understood; printing the echo is how a model notices that a parameter it
+ * invented did nothing.
+ *
+ * What is ignored and what is refused (full audit 2026-10-03): since
+ * 2026-10-02 (`/api/projects`, `/api/ships`) and 2026-10-03 (`/api/changes`)
+ * a value HEY cannot read is a 400 `invalid_parameter` naming the values it
+ * accepts, which the tool reports as an error. Only a parameter name HEY does
+ * not know is ignored. The note said every unrecognised filter was ignored.
  */
+export const QUERY_ECHO_RULE = 'A parameter name HEY does not know is ignored; a value it cannot read is refused with the values it accepts.';
+
 export function queryEcho(query: Record<string, unknown> | undefined): string {
-  if (!query) return 'A filter HEY does not recognise is ignored rather than refused.';
-  return `Query as HEY read it: ${JSON.stringify(query)}. A filter HEY does not recognise is ignored rather than refused.`;
+  if (!query) return QUERY_ECHO_RULE;
+  return `Query as HEY read it: ${JSON.stringify(query)}. ${QUERY_ECHO_RULE}`;
 }
 
 /**

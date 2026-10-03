@@ -1,7 +1,7 @@
 import {
   formatMonthTick,
   formatShortDate,
-  formatTerminalPrice,
+  formatTerminalPriceTicks,
   formatTerminalPriceLong,
   formatUsdCompact,
 } from './format';
@@ -95,7 +95,7 @@ export type ChartEventPrecision = 'EXACT' | 'DATE' | 'WEEK' | 'WINDOW' | 'OBSERV
  * objects, so no surface keeps event logic of its own.
  */
 export type ChartEvent = {
-  /** The record's typed public id (`ship:<uuid>`, `abi:<uuid>`, `lock:<id>`, `method:<uuid>`...). */
+  /** The record's typed public id (`ship:<uuid>`, `abi:<uuid>`, `lock:<chainId>:<lockId>`, `method:<uuid>`...). */
   id: string;
   /** The instant the event is placed at (ISO): the source's time, or HEY's observation for OBSERVED. */
   at: string;
@@ -789,11 +789,13 @@ export function buildChartModel(
     ...range.map((d) => (typeof d.volume === 'number' && d.volume > 0 ? d.volume : 0)),
   );
 
+  const tickLabels = formatTerminalPriceTicks(ticks);
   const model: ChartModel = {
     rows,
     lo: domainLo,
     hi: domainHi,
-    ticks: ticks.map((v) => [v, formatTerminalPrice(v)] as [number, string]),
+    // One form for the whole axis (full audit, 2026-10-03): never `$0.0₄500` beside `$0.000100`.
+    ticks: ticks.map((v, i) => [v, tickLabels[i]!] as [number, string]),
     months,
     gapRuns: namedRuns,
     gapTicks: gapRuns.map(([a, b]) => [a, b] as [number, number]),

@@ -76,7 +76,7 @@ ship an hour later. Keep the highest `revision` per `event.id`.
 
 | Not delivered | Why |
 |---|---|
-| `market_integrity.event` where HEY does not publish Market Integrity | not published there (founder decision F5); where it is published (`HEY_MARKET_INTEGRITY=public`) it is subscribable, `GET /api/webhooks` lists it in `eventTypes`, and an exit-pattern classification is delivered only where HEY names one. Publishing is never pushed as news: events already recorded enter the ledger as `backfill`. |
+| `market_integrity.event` where HEY does not publish Market Integrity | not published there (founder decision F5); where it is published it is subscribable, `GET /api/webhooks` lists it in `eventTypes`, and an exit-pattern classification is delivered only where HEY names one. Publishing is never pushed as news: events already recorded enter the ledger as `backfill`. |
 | `market.distribution_changed` | derived from holder data (founder decision). |
 | `market.liquidity_moved`, `market.volume_spike` | market movement is context, not a change a project made; HEY sends no trading alerts. |
 | `build.code_activity`, `build.slowing`, `contract.source_unverified`, `contract.usage_changed`, `contract.method_first_observed`, `contract.method_resumed`, `research.owner_verified`, `research.narrative_assigned` | on `/api/changes`; not pushed. |
@@ -224,16 +224,14 @@ curl -sS -H "authorization: Bearer $KEY" "https://heyresearch.xyz/api/webhooks/$
 | `invalid_destination` | 400 | the URL breaks a rule below (`detail.reason`) |
 | `subscription_disabled` | 409 | ping a disabled subscription: re-enable it first |
 | `payload_too_large` | 413 | a body over 16 KB |
-| `webhooks_unavailable` | 503 | this deployment cannot sign (no `WEBHOOK_MASTER_KEY`) |
+| `webhooks_unavailable` | 503 | webhooks are switched off on this deployment: it cannot sign |
 | `rate_limited` | 429 | per account: 10 creates, 10 rotations, 30 pings, 60 changes an hour |
 
 ### From an alert rule
 
-An alert rule (`docs/ALERTS.md`) may name one of the account's own
-subscriptions as a channel. Its matches are queued on the same
-`(subscription, seq)` key the fan-out uses — so a subscription that also asks
-for the type receives the event once — and sent by the same sender with every
-check below. A rule never carries a URL of its own, and only while the
+An [alert rule](ALERTS.md) may name one of the account's own subscriptions as
+a channel. A subscription that also asks for the same type receives the event
+once, not twice, and every delivery passes every check below. A rule never carries a URL of its own, and only while the
 subscription is ACTIVE; the two in-HEY-only types (`contract.method_*`) are
 never sent.
 
@@ -260,11 +258,3 @@ response and is replaced on each deploy, which drops long connections; and
 keyed machine demand does not yet justify holding connections open. It will
 be revisited when the producer runs in under a minute and keyed demand
 exists.
-
-## Operating it
-
-- **Environment.** `WEBHOOK_MASTER_KEY` (web and worker; `openssl rand -hex 32`, at least 32 characters; unset means webhooks are off). Changing it changes every subscriber's secret — rotate each afterwards and tell the owners. `WEBHOOK_DENY_ADDRESSES`: the origin server's public addresses, comma-separated.
-- **Worker.** `DELIVER_WEBHOOKS` runs every minute where the master key is set: fan-out (queue new public events per subscription, under the projector's lock in shared mode so the ledger is never read half-written), send what is due, prune settled deliveries older than 30 days. A ping or a redelivery wakes it at once.
-- **Console.** `/admin/webhooks` (admin): endpoints by status, 24 h delivered/retrying/dead/cancelled, latency p50/p95, event types, disabled endpoints with reasons, and an audited **Redeliver** on a dead delivery. It warns when the oldest due delivery has waited more than ten minutes.
-- **Audit.** Create, change, rotate, delete, auto-disable and redeliver are `audit_log` rows (`webhook.subscription.*`, `webhook.delivery.redelivered`).
-- **A controlled live test** (production): `HEY_API_KEY=hey_… scripts/webhook-live-test.sh https://<your receiver> --wait-release 30` does the steps below — create, wait for the ping, watch for a release, delete — without printing the key or the secret. By hand: with a receiver you control (for example a one-off request-inspection URL you created yourself), create a subscription for `build.release` with your key, watch `GET /api/webhooks/{id}/deliveries` show the ping `SUCCEEDED` and the subscription `ACTIVE`, wait for the next release (`/api/changes?type=build.release` shows when one lands; delivery follows within the projector's five minutes plus a minute), verify the signature with the secret from the create answer, then point the receiver at a 500 and watch `RETRYING` on `/admin/webhooks`, and delete the subscription. Never paste the secret or your key into a shared log.

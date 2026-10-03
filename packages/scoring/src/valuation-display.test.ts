@@ -24,7 +24,8 @@ describe('valuationDisplay', () => {
     for (const status of statuses) {
       for (const reason of [...TOKEN_MARKET_REASONS, null]) {
         const display = valuationDisplay({ valueUsd: 10_000, fdvUsd: 10_000, marketStatus: status, marketReason: reason });
-        expect(display.shown, `${status}/${reason}`).toBe(marketIsLive(status as never, reason));
+        // A rescued market is live, and its valuation still unconfirmed: the reading follows the thin pool (2026-10-03, F1).
+        expect(display.shown, `${status}/${reason}`).toBe(marketIsLive(status as never, reason) && reason !== 'liquidity_in_another_pool');
       }
     }
   });

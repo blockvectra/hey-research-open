@@ -132,7 +132,10 @@ describe('the HEY MCP server', () => {
     expect(instructions).not.toMatch(/The one exception is get_token_market/i);
     expect(instructions).toMatch(/get_token_market names that token's deployer/i);
     expect(instructions).toMatch(/get_contract .* names the deployer with how many other tracked projects' tokens the same account deployed/i);
-    expect(instructions).toMatch(/No other tool here returns holder data/i);
+    // Exactly what is exposed (full audit 2026-10-03): ask_hey and get_changes carry the concentration signal.
+    expect(instructions).not.toMatch(/No other tool here returns holder data/i);
+    expect(instructions).toMatch(/No tool here returns a holder's address or balance/i);
+    expect(instructions).toMatch(/one token's concentration in counts and shares: get_token_market's summary, and the "supply in fewer hands" signal/i);
     const contract = (await (await connect(fixtures)).listTools()).tools.find((tool) => tool.name === 'get_contract')!;
     expect(contract.description).toContain("with a count of other tracked projects' tokens it deployed");
     expect(instructions).toMatch(/Absent means HEY does not know/i);

@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from './cn';
-import { formatEventType, formatRelativeTime, formatVerification, plainText, readableSummary, shortenHexInText, type ReadableSummary } from './format';
+import { formatRelativeTime, formatVerification, plainText, readableSummary, shipKindLabel, shortenHexInText, type ReadableSummary } from './format';
 
 /**
  * Build Timeline (PRD V4 section 11 and the autonomous brief section 11).
@@ -14,6 +14,8 @@ export type TimelineItem = {
   title: string;
   summary?: string;
   eventType: string;
+  /** Where the evidence came from; it decides the kind's word for a verified contract (`shipKindLabel`). */
+  sourceKind?: string;
   publishedAt: Date;
   verificationStatus: string;
   sourceUrl?: string;
@@ -80,7 +82,7 @@ export function BuildTimeline({
           </div>
 
           <p className="mt-1 text-xs text-hey-secondary">
-            {formatEventType(item.eventType)}
+            {shipKindLabel(item)}
             <span aria-hidden="true"> · </span>
             {/* Evidence quality is always visible, never implied. */}
             <span>{formatVerification(item.verificationStatus)}</span>
