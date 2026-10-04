@@ -1,0 +1,24 @@
+{
+  "id": 1234567,
+  "slug": "hey-research-lab",
+  "node_id": "A_kwDOABCDEF",
+  "owner": {
+    "login": "hey-research-lab",
+    "id": 180000001,
+    "type": "Organization"
+  },
+  "name": "HEY Research Lab",
+  "html_url": "https://github.com/apps/hey-research-lab",
+  "client_id": "Iv23liTESTCLIENTID",
+  "client_secret": "test-client-secret-should-never-leave-the-adapter",
+  "webhook_secret": "test-webhook-secret-from-github-0123456789",
+  "pem": "placeholder-private-key-for-tests-only-not-a-pem-placeholder-private-key-for-tests-only-not-a-pem-placeholder-private-key-for-tests-only-not-a-pem-placeholder-private-key-for-tests-only-not-a-pem-",
+  "permissions": {
+    "metadata": "read",
+    "contents": "read"
+  },
+  "events": [
+    "push",
+    "release"
+  ]
+}

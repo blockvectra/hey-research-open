@@ -22,7 +22,7 @@ export type HttpRequest = {
   headers?: Record<string, string>;
   /** Conditional-request headers are added when the caller has prior validators. */
   conditional?: boolean;
-  method?: 'GET' | 'POST';
+  method?: 'GET' | 'POST' | 'PUT';
   body?: string;
   /** Reject responses whose content type is not in this list. */
   allowedContentTypes?: readonly string[];

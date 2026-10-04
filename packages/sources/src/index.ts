@@ -29,6 +29,8 @@ export * from './adapters/geckoterminal-info';
 export * from './adapters/geckoterminal-ohlcv';
 export * from './adapters/geckoterminal-pools';
 export * from './adapters/github';
+export * from './adapters/github-app';
+export * from './adapters/github-app-webhook';
 export * from './adapters/github-commits';
 export * from './adapters/github-pulls';
 export * from './adapters/github-commit-detail';

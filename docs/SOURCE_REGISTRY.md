@@ -602,6 +602,16 @@ discovery: `packages/domain/src/builders/discover-code.ts`; candidates carry
 | Authority | `github_deploy_record` (OFFICIAL_SELF): ties a token to its project and verifies it (`deploy_record_in_own_repo`); never a source row, a ship or a score |
 | Verified | 2026-09-30 probe over all 2,232 official repositories: 260 hold a chain-4663 record file, 132 name a contract on the chain, 29 name a token HEY holds (~146 ties) |
 
+#### The HEY GitHub App (2026-10-05, docs/GITHUB_APP.md)
+
+| | |
+| --- | --- |
+| Inbound | GitHub's signed webhook deliveries to `POST /api/github/webhook`: `installation`, `installation_repositories`, `release`, `push`, `pull_request` (badge mode only). HMAC SHA-256 checked before parsing; Zod schemas in `packages/sources/src/adapters/github-app-webhook.ts` (fixtures `github-webhook-*.json`) |
+| Outbound | Worker only: `POST /app/installations/{id}/access_tokens` (app JWT, `github-app-token`, token held in memory); the opt-in badge pull request (`GET /repos/{o}/{r}`, `/pulls?state=open`, `/readme`, `/git/ref/heads/{default}`, `POST /git/refs`, `PUT /contents/{readme}`, `POST /pulls`; `github-app-pr`). One admin-only exchange at setup: `POST /app-manifests/{code}/conversions` |
+| Purpose | A faster read of a repository HEY already follows (a release or default-branch push queues the existing `REFRESH_GITHUB`); proof of repository control for a claim; an opt-in README badge PR |
+| Authority | A delivery writes no source row and no ship: the read it queues is `github_repo`, under the same rules as polling. Both budget keys are `PLUMBING`. An install corroborates ownership exactly as the GitHub sign-in claim does |
+| Never | a ship, a score, a status or an order; a URL from a payload fetched; a commit message, release body, login of the installer or e-mail stored; a push to a default branch |
+
 ### npm registry (2026-09-05)
 
 | | |

@@ -1,0 +1,10 @@
+{
+  "zen": "Keep it logically awesome.",
+  "hook_id": 1,
+  "hook": {
+    "type": "App",
+    "events": [
+      "installation"
+    ]
+  }
+}

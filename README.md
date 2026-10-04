@@ -720,6 +720,16 @@ README badge, the website embed and the canonical links. Every sentence is gener
 recorded — no price, no forecast, and a figure HEY did not measure is left out, never shown as 0.
 HEY posts nothing for you.
 
+### The HEY GitHub App (optional)
+
+When HEY's GitHub App is live, a builder can install it on the project's repository from the claim page or the
+share pack. Installing it proves the HEY page is yours (for the HEY account that started the install, when your
+own GitHub account installed it), and HEY re-reads the repository a minute after you publish a release or push to
+your default branch — the same rules decide what counts as shipping; the app never counts anything by itself.
+Read-only by default (Metadata and Contents read). An optional pull request adding the badge to your README is
+opened only when you press for it, on a new branch, and never on your default branch. It never changes a status, a
+score or an order.
+
 ### Live widgets (Embed Kit)
 
 A live builder widget for any site — activity status, the latest ship, meaningful ships in 30

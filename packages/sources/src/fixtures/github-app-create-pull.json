@@ -1,0 +1,12 @@
+{
+  "number": 18,
+  "state": "open",
+  "html_url": "https://github.com/use-agent-os/agentos/pull/18",
+  "title": "Add the HEY Research badge to the README",
+  "head": {
+    "ref": "hey-research/badge"
+  },
+  "base": {
+    "ref": "main"
+  }
+}

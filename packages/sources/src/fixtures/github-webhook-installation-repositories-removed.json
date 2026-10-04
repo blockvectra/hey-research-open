@@ -1,0 +1,42 @@
+{
+  "action": "removed",
+  "installation": {
+    "id": 55500011,
+    "account": {
+      "login": "use-agent-os",
+      "id": 170000001,
+      "type": "Organization",
+      "avatar_url": "https://avatars.githubusercontent.com/u/170000001"
+    },
+    "repository_selection": "selected",
+    "permissions": {
+      "metadata": "read",
+      "contents": "read"
+    },
+    "events": [
+      "installation",
+      "installation_repositories",
+      "push",
+      "release"
+    ],
+    "app_id": 1234567,
+    "app_slug": "hey-research"
+  },
+  "repository_selection": "selected",
+  "repositories_added": [],
+  "repositories_removed": [
+    {
+      "id": 812345678,
+      "full_name": "use-agent-os/agentos",
+      "name": "agentos",
+      "private": false
+    }
+  ],
+  "requester": null,
+  "sender": {
+    "login": "builder-octo",
+    "id": 9000001,
+    "type": "User",
+    "email": null
+  }
+}

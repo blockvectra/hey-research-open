@@ -1,0 +1,32 @@
+{
+  "action": "suspend",
+  "installation": {
+    "id": 55500011,
+    "account": {
+      "login": "use-agent-os",
+      "id": 170000001,
+      "type": "Organization",
+      "avatar_url": "https://avatars.githubusercontent.com/u/170000001"
+    },
+    "repository_selection": "selected",
+    "permissions": {
+      "metadata": "read",
+      "contents": "read"
+    },
+    "events": [
+      "installation",
+      "installation_repositories",
+      "push",
+      "release"
+    ],
+    "app_id": 1234567,
+    "app_slug": "hey-research",
+    "suspended_at": "2026-10-05T12:00:00Z"
+  },
+  "sender": {
+    "login": "builder-octo",
+    "id": 9000001,
+    "type": "User",
+    "email": null
+  }
+}

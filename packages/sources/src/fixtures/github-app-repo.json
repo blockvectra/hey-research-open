@@ -1,0 +1,16 @@
+{
+  "id": 812345678,
+  "node_id": "R_kgDOMBkxyz",
+  "name": "agentos",
+  "full_name": "use-agent-os/agentos",
+  "private": false,
+  "owner": {
+    "login": "use-agent-os",
+    "id": 170000001,
+    "type": "Organization"
+  },
+  "html_url": "https://github.com/use-agent-os/agentos",
+  "default_branch": "main",
+  "archived": false,
+  "stargazers_count": 42
+}

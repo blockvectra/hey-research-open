@@ -74,6 +74,31 @@ const evmAddress = z
  * - AI is disabled by default and must never be required (CLAUDE.md cost rules 13-15);
  * - Redis is intentionally absent from the schema (architecture rule 11).
  */
+const PEM_BLOCK = /^-----BEGIN (?:RSA )?PRIVATE KEY-----\n[A-Za-z0-9+/=\n]+\n-----END (?:RSA )?PRIVATE KEY-----\n?$/;
+
+/**
+ * The GitHub App's private key as one PEM block (2026-10-05). An env file
+ * holds one line, so the key may arrive as the PEM with its newlines escaped
+ * (`\n`), or as the whole PEM base64-encoded — what HEY's setup page prints.
+ * Anything that is not a private-key PEM after either reading is refused.
+ */
+export function normaliseGithubAppPrivateKey(raw: string): string | undefined {
+  const trimmed = raw.trim();
+  const candidates = [trimmed.replace(/\\n/g, '\n').replace(/\r\n/g, '\n')];
+  if (/^[A-Za-z0-9+/=]+$/.test(trimmed)) {
+    try {
+      candidates.push(atob(trimmed).replace(/\r\n/g, '\n').trim());
+    } catch {
+      // Not base64: the PEM reading above is the only one.
+    }
+  }
+  for (const candidate of candidates) {
+    const pem = `${candidate.trim()}\n`;
+    if (PEM_BLOCK.test(pem)) return pem;
+  }
+  return undefined;
+}
+
 /** Signing secrets shorter than this are refused in production; `openssl rand -hex 32` gives 64. */
 export const MIN_SESSION_SECRET_LENGTH = 32;
 
@@ -196,6 +221,38 @@ export const serverEnvSchema = z
       clientId: optionalString,
       clientSecret: optionalString,
       publicApiToken: optionalString,
+    }),
+
+    /*
+     * The HEY GitHub App (2026-10-05, docs/GITHUB_APP.md). Off unless all four
+     * are set: with any missing, the install paths are hidden, the webhook
+     * answers 404 and the worker reads with the plain token as before.
+     *
+     *  - GITHUB_APP_ID: the app's numeric id (the JWT issuer).
+     *  - GITHUB_APP_SLUG: the app's URL name, for `github.com/apps/<slug>`.
+     *  - GITHUB_APP_PRIVATE_KEY: the app's private key, as the PEM GitHub
+     *    gives or that PEM base64-encoded on one line. Worker only in use;
+     *    never logged, never stored, never sent to a browser.
+     *  - GITHUB_APP_WEBHOOK_SECRET: the HMAC secret GitHub signs deliveries
+     *    with. At least 20 characters.
+     *  - HEY_GITHUB_APP_BADGE_PR_ENABLED: the opt-in README badge pull
+     *    request. Off by default; it also needs the app's contents and pull
+     *    request write permissions, which the default manifest does not ask for.
+     */
+    githubApp: z.object({
+      appId: optionalString.pipe(z.string().regex(/^\d{1,12}$/, 'GITHUB_APP_ID must be the app’s numeric id.').optional()),
+      slug: optionalString.pipe(z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/, 'GITHUB_APP_SLUG must be the app’s URL name (lowercase letters, digits, dashes).').optional()),
+      privateKey: optionalString.transform((value, ctx) => {
+        if (value === undefined) return undefined;
+        const pem = normaliseGithubAppPrivateKey(value);
+        if (!pem) {
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'GITHUB_APP_PRIVATE_KEY must be the app’s PEM private key, or that PEM base64-encoded on one line.' });
+          return z.NEVER;
+        }
+        return pem;
+      }),
+      webhookSecret: optionalString.pipe(z.string().min(20, 'GITHUB_APP_WEBHOOK_SECRET must be at least 20 characters.').optional()),
+      badgePrEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
     }),
 
     storage: z.object({
@@ -701,6 +758,13 @@ function shapeEnv(raw: RawEnv) {
       clientSecret: raw.GITHUB_CLIENT_SECRET,
       publicApiToken: raw.GITHUB_PUBLIC_API_TOKEN,
     },
+    githubApp: {
+      appId: raw.GITHUB_APP_ID,
+      slug: raw.GITHUB_APP_SLUG,
+      privateKey: raw.GITHUB_APP_PRIVATE_KEY,
+      webhookSecret: raw.GITHUB_APP_WEBHOOK_SECRET,
+      badgePrEnabled: raw.HEY_GITHUB_APP_BADGE_PR_ENABLED,
+    },
     storage: {
       endpoint: raw.S3_ENDPOINT,
       bucket: raw.S3_BUCKET,
@@ -809,6 +873,11 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'github.clientId': 'GITHUB_CLIENT_ID',
   'github.clientSecret': 'GITHUB_CLIENT_SECRET',
   'github.publicApiToken': 'GITHUB_PUBLIC_API_TOKEN',
+  'githubApp.appId': 'GITHUB_APP_ID',
+  'githubApp.slug': 'GITHUB_APP_SLUG',
+  'githubApp.privateKey': 'GITHUB_APP_PRIVATE_KEY',
+  'githubApp.webhookSecret': 'GITHUB_APP_WEBHOOK_SECRET',
+  'githubApp.badgePrEnabled': 'HEY_GITHUB_APP_BADGE_PR_ENABLED',
   'storage.endpoint': 'S3_ENDPOINT',
   'storage.bucket': 'S3_BUCKET',
   'storage.accessKeyId': 'S3_ACCESS_KEY_ID',
@@ -935,6 +1004,29 @@ export function resetServerEnvCache(): void {
  */
 export function isBuilderAuthConfigured(env: ServerEnv): boolean {
   return Boolean(env.sessionSecret && env.github.clientId && env.github.clientSecret);
+}
+
+/**
+ * The HEY GitHub App is configured (2026-10-05, docs/GITHUB_APP.md): its id,
+ * URL name, private key and webhook secret are all set. Off, every install
+ * path is hidden, `/api/github/webhook` answers 404 and nothing changes for
+ * the worker's reads.
+ */
+export function isGithubAppConfigured(env: ServerEnv): boolean {
+  return Boolean(env.githubApp.appId && env.githubApp.slug && env.githubApp.privateKey && env.githubApp.webhookSecret);
+}
+
+/** The opt-in README badge pull request: the app configured and the founder's flag on. Off by default. */
+export function isGithubAppBadgePrEnabled(env: ServerEnv): boolean {
+  return isGithubAppConfigured(env) && env.githubApp.badgePrEnabled;
+}
+
+/** Where a builder installs the app, with HEY's single-use state; undefined while the app is not configured. */
+export function githubAppInstallUrl(env: ServerEnv, state: string): string | undefined {
+  if (!isGithubAppConfigured(env)) return undefined;
+  const url = new URL(`https://github.com/apps/${env.githubApp.slug as string}/installations/new`);
+  url.searchParams.set('state', state);
+  return url.toString();
 }
 
 /**

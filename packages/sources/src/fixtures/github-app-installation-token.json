@@ -1,0 +1,9 @@
+{
+  "token": "ghs_16C7e42F292c6912E7710c838347Ae178B4a",
+  "expires_at": "2026-10-05T13:00:00Z",
+  "permissions": {
+    "metadata": "read",
+    "contents": "read"
+  },
+  "repository_selection": "selected"
+}
