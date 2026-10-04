@@ -677,6 +677,19 @@ Discovery Gap or the Radar** (`packages/domain/src/footprint/neutrality.test.ts`
 | Verified | 2026-09-28, commit `7d8ef3ad`: 805 migrations replayed (24 undated files skipped, as theirs skips them), 7,670 ecosystems, 676,024 repositories, 0 replay errors; no Robinhood Chain ecosystem (`Robinhood` is the company, one repository) |
 | Reliability | A community taxonomy: a lead and a question, never identity, corroboration, a ship or building. "Not listed" is a reading of this one index |
 
+#### Uniswap hooklist — Uniswap's public hook registry
+
+| | |
+| --- | --- |
+| Base URL | `https://api.github.com/repos/Uniswap/hooklist/commits/main` (`Accept: application/vnd.github.sha`, conditional on its ETag) and `https://raw.githubusercontent.com/Uniswap/hooklist/<commit>/hooklist.json` |
+| Licence | None: the repository carries no licence file (checked 2026-10-04). HEY stores only factual fields and links to each entry's file; it never stores or republishes the descriptions |
+| Format | One JSON file per hook, `hooks/<chain>/<address>.json` (`schema.json`: `hook.{address, chain, chainId, name, description, deployer, verifiedSource, auditUrl}`, fourteen `flags`, `properties.{dynamicFee, upgradeable, requiresCustomSwapData, vanillaSwap, swapAccess}`), regenerated into `hooklist.json` (4,942 hooks on 21 chains, 6.2 MB, at `c6ada11`, 2026-10-01). Entries come from GitHub issues: a workflow generates each file from the verified source and a maintainer merges it |
+| Purpose | For Robinhood Chain hooks: the listed name, the listing's `verifiedSource`, the flags and properties as listed, the file path and commit (`v4_hooklist_entries`); shown beside attributed hooks and on their receipts, and counted against the hooks HEY reads from the chain |
+| Not used | `description` (generated prose), `deployer` (an account), `auditUrl`; every other chain |
+| Budget | `uniswap-hooklist` 6/day; one request a day, 304 when unchanged, two when the list moved |
+| Verified | 2026-10-04: 1,173 Robinhood Chain entries; 1,152 are hooks HEY read in a pool, 21 are not (no pool initialised with them through HEY's read up to block 79,605,230); listed flags agreed with every address's bits |
+| Reliability | A third-party listing, authority `uniswap_hooklist` (DISCOVERY, context only): never identity, attribution of a hook to a project, corroboration, a ship or building. Where its flags and the address disagree both are kept and shown |
+
 ### Official project websites and docs
 
 | | |

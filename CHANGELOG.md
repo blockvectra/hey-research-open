@@ -13,6 +13,16 @@ record.
   project; what a signed-out reader cannot open is shown locked. A picture in a document is drawn
   with its size reserved, lazily, and opens the full-size file.
 
+- **Uniswap v4 hooks: one card per project, Uniswap's hooklist as context (2026-10-04).**
+  `/integrations/uniswap/hooks` shows one card per published project with its hooks inside, the
+  project with the newest hook deployment first; the answer counts hooks and projects. Additive on
+  `GET /api/v4-hooks`: `projects[]`, `aggregate.listedProjects`, `filter.excludedNoFigureProjects`,
+  `items[].listing` and `hooklist` (coverage). A daily, conditional read of Uniswap's public hooklist
+  keeps the listed name, flags, properties, file path and commit for Robinhood Chain hooks — never
+  descriptions or deployer accounts — shown as a labelled third-party listing beside attributed
+  hooks and on their receipts, with both readings when its flags and the address disagree. Never an
+  attribution, a ship or a score. Migration `0223_uniswap_hooklist`.
+
 - **Builders shipping Uniswap v4 hooks (2026-10-04).** New `/integrations/uniswap/hooks` and
   `GET /api/v4-hooks`: only hooks HEY ties to a published project (created by the account that
   launched its token, or listed by the project), each with its `v4hook:` id, newest deployment

@@ -81,6 +81,7 @@ export * from './adapters/npm';
 export * from './adapters/depsdev';
 export * from './adapters/open-dev-data';
 export * from './adapters/open-dev-data-taxonomy';
+export * from './adapters/uniswap-hooklist';
 export * from './tar';
 export * from './adapters/osv';
 export * from './adapters/provider-host';

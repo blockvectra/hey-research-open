@@ -250,7 +250,12 @@ how to read what it shows, and how to report a bug or ask for a feature. It is s
 the Terminal resolves, and a test holds it to the access figures, the workspace's views, the keys
 and the canonical sentences the code uses. Each step carries a real screenshot of the live
 Terminal, taken signed out on the sample project (what a signed-out reader cannot open is shown
-locked, as it is), drawn without layout shift and linked to the full-size picture.
+locked, as it is), drawn without layout shift and linked to the full-size picture. Since the same
+day's redesign it reads as a guide rather than a document: the answer and one primary action
+(open the sample project), three cards to start from, a table of contents, the access rules as
+short rows, the tour as one card per view whose screenshot and fuller explanation open in an
+accessible dialog, and the reading rules as definitions — about a quarter of its old length at
+rest, with the words still in one markdown file.
 
 Search, What changed and Compare say one thing (2026-10-01). The header type-ahead lists projects
 first, labels an empty page that shares a researched project's name, and folds launch records of
@@ -565,6 +570,15 @@ never ranked. Every other hook is one aggregate count, never listed or grouped b
 The deployment of a project's hook is one ledger event that says it is a hook (`facts.v4Hook`), and
 a hook the project only declares gets its own canonical event; both reach What changed, alerts, RSS
 and webhooks like any contract deployment.
+
+The list shows one card per published project, its hooks inside, the project with the newest hook
+deployment first (`GET /api/v4-hooks` adds the same grouping as `projects[]`). HEY also reads
+Uniswap's public hooklist (github.com/Uniswap/hooklist) once a day, conditionally, as context: for a
+listed hook it shows "Listed in Uniswap's hooklist as <name>", linked to the file at the commit it
+read, and both readings when the listed flags and the address disagree. It keeps the name, flags,
+properties, path and commit only — never the list's descriptions or deployer accounts — and a listing
+never ties a hook to a project. Coverage is counts: how many listed hooks HEY has seen in a pool, and
+why the rest are missing (HEY finds a hook when a pool is created with it).
 
 ## Terms and privacy
 
