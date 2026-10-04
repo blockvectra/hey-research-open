@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { hasData } from '../adapter';
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createRpcBlockNumberAdapter, createRpcBlockTimestampAdapter, createRpcBlockTimestampBatchAdapter, createRpcLogCountAdapter, isLogWindowTooLarge } from './rpc-logs';
+import { createRpcBlockNumberAdapter, createRpcBlockTimestampAdapter, createRpcBlockTimestampBatchAdapter, createRpcLogCountAdapter, createRpcTransactionTargetBatchAdapter, isLogWindowTooLarge } from './rpc-logs';
 
 const RPC = 'https://rpc.example/';
 const TOKEN = '0xB33eb16782776b4D738c0Fd643577cb0284Db610';
@@ -85,5 +85,34 @@ describe('rpc block batch', () => {
       testContext({ fetchImpl: stub.fetchImpl }),
     );
     expect(result.status).not.toBe('fresh');
+  });
+});
+
+describe('rpc transaction targets (2026-10-04)', () => {
+  const POOL_FACTORY_TX = '0xcc0715f8fd6ccd32dd54c4937a9b30bfe6f3de089eb3a7e5e8cee6ee138e05f1';
+  const DIRECT_TX = '0x64619f716672c4247faa95e81686719cbee2658628aac3dd1ddd1d768e788d69';
+  const UNKNOWN_TX = `0x${'ab'.repeat(32)}`;
+
+  it('keeps only where each transaction was sent, by hash, and leaves an unknown transaction out', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('rpc-gettransactionbyhash-batch.json') });
+    const result = await createRpcTransactionTargetBatchAdapter().fetch(
+      { rpcUrl: RPC, txHashes: [POOL_FACTORY_TX, DIRECT_TX.toUpperCase().replace('0X', '0x'), UNKNOWN_TX] },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+    expect(result.status).toBe('fresh');
+    expect([...result.data!.targets]).toEqual([
+      [POOL_FACTORY_TX, '0xbe183de7bb93346a41769c44f47cb588d164df2d'],
+      [DIRECT_TX, '0x8366a39cc670b4001a1121b8f6a443a643e40951'],
+    ]);
+    // Nothing but the target leaves the adapter: no sender, no input.
+    expect(JSON.stringify([...result.data!.targets])).not.toMatch(/3bcd53b331b6054b4c0e45a26ad58a142d910ade/);
+    const body = JSON.parse(String(stub.requests[0]?.init?.body)) as { method: string; params: unknown[] }[];
+    expect(body).toHaveLength(3);
+    expect(body[1]).toMatchObject({ method: 'eth_getTransactionByHash', params: [DIRECT_TX] });
+  });
+
+  it('refuses a batch with something that is not a transaction hash before asking', () => {
+    expect(createRpcTransactionTargetBatchAdapter().canHandle({ rpcUrl: RPC, txHashes: ['0x1234'] })).toBe(false);
+    expect(createRpcTransactionTargetBatchAdapter().canHandle({ rpcUrl: RPC, txHashes: [] })).toBe(false);
   });
 });

@@ -598,6 +598,16 @@ against the project's own material, the confirmation is audited and reversible, 
 apart from chain proof; it never counts as shipping, and HEY's own reading of the chain supersedes it.
 Neither is a ledger event. Who created a hook or a factory is compared in memory and never stored.
 
+Since 2026-10-04 the list is wider and fills faster. HEY reads 1,400 hook creation records a day,
+leaving the other explorer work what its own record says it needs, and reads last the hooks whose
+first pool was created through a launchpad's own factory (the chain's node says so; they are still
+read). A hook one of a project's qualified linked addresses created — the deployer of its token or of
+a contract it lists, the signer of its verified on-chain claim, a treasury it published, its launch
+or liquidity manager — is listed as "Created by an address linked to the project", the relationship
+named, never the address, and never counted as shipping. Builders' own submissions to Uniswap's
+hooklist that name a project's official website are shown to HEY's moderators as leads to confirm by
+review; HEY keeps only the hook address and the website host from them.
+
 ## Terms and privacy
 
 What HEY records about a reader, what it never stores and for how long:

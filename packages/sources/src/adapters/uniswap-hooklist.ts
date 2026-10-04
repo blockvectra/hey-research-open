@@ -268,3 +268,219 @@ export function createUniswapHooklistAdapter(): SourceAdapter<UniswapHooklistInp
     },
   };
 }
+
+/* ── Builders' own submissions (2026-10-04) ────────────────────────────── */
+
+/**
+ * The hooklist's submissions: the public issues labelled `submission` in
+ * Uniswap/hooklist, one per hook a builder asked to have listed (titled "hook:
+ * <name> on Robinhood Chain" for this chain), each carrying the chain, the hook
+ * address, the hook's name, a description in the builder's words — often with
+ * the project's website — an optional deployer and an optional audit link. The
+ * list's workflow then writes the hook's file from the verified source.
+ *
+ * What leaves this adapter, per issue of the chain asked for: the issue's
+ * number, when it was last updated (for paging), the hook address and the
+ * website hosts its text names — nothing else. Never the title, the
+ * description, the submitter's account or the deployer it states (an account;
+ * machine-layer rule 12), and never an audit link. A pull request is not a
+ * submission. Hosts that are nobody's own website (code hosts, social networks,
+ * explorers, Uniswap's own) are dropped here.
+ */
+export const UNISWAP_HOOKLIST_SUBMISSION_LABEL = 'submission';
+/** Issues a page asks for (GitHub's largest page). */
+export const UNISWAP_HOOKLIST_SUBMISSIONS_PER_PAGE = 100;
+/** Hosts kept from one submission at most: a description naming more is a list of links, not a project's site. */
+export const UNISWAP_HOOKLIST_SUBMISSION_MAX_HOSTS = 5;
+
+/** Hosts that are never a project's own website, by suffix. */
+const NOT_A_PROJECT_SITE = [
+  'github.com',
+  'githubusercontent.com',
+  'gitlab.com',
+  'uniswap.org',
+  'uniswap.com',
+  'x.com',
+  'twitter.com',
+  't.me',
+  'telegram.me',
+  'discord.gg',
+  'discord.com',
+  'medium.com',
+  'youtube.com',
+  'linktr.ee',
+  'blockscout.com',
+  'etherscan.io',
+  'sourcify.dev',
+  'robinhood.com',
+  'robinhoodchain.blockscout.com',
+  'dexscreener.com',
+  'geckoterminal.com',
+  'coingecko.com',
+  'example.com',
+];
+
+const issueSchema = z.object({
+  number: z.number().int().positive(),
+  title: z.string().max(1_000),
+  body: z.string().max(200_000).nullable().optional(),
+  updated_at: z.string().min(1),
+  pull_request: z.unknown().optional(),
+});
+const issuesSchema = z.array(z.unknown()).max(UNISWAP_HOOKLIST_SUBMISSIONS_PER_PAGE * 2);
+
+export type UniswapHooklistSubmission = {
+  issueNumber: number;
+  /** Lower-cased. */
+  hookAddress: string;
+  /** Website hosts the submission names, lower-cased, without `www.`, nobody's-site hosts dropped; may be empty. */
+  hosts: string[];
+};
+
+export type UniswapHooklistSubmissionsPage = {
+  /** Issues on the page, every chain and pull requests included: a short page is the last one. */
+  issuesOnPage: number;
+  /** The newest and oldest `updated_at` on the page (the pass's watermark and its stopping point); null on an empty page. */
+  newestUpdatedAt: Date | null;
+  oldestUpdatedAt: Date | null;
+  /** The chain's submissions on the page that name a hook, with their update time. */
+  submissions: (UniswapHooklistSubmission & { updatedAt: Date })[];
+  /** Issues on the page that failed the schema and were skipped. */
+  invalid: number;
+};
+
+const SECTION = /^#{2,4}\s+(.+?)\s*$/gm;
+const URL_IN_TEXT = /https?:\/\/[^\s<>()[\]{}"'`|\\^]+/gi;
+const HOOK_IN_TEXT = /0x[a-fA-F0-9]{40}/;
+
+/** The issue form's sections, by heading (lower-cased), each its text. */
+function sections(body: string): Map<string, string> {
+  const out = new Map<string, string>();
+  const heads = [...body.matchAll(SECTION)];
+  heads.forEach((head, index) => {
+    const start = (head.index ?? 0) + head[0].length;
+    const end = index + 1 < heads.length ? (heads[index + 1]!.index ?? body.length) : body.length;
+    out.set(head[1]!.trim().toLowerCase(), body.slice(start, end).trim());
+  });
+  return out;
+}
+
+function siteHost(raw: string): string | undefined {
+  try {
+    const url = new URL(raw.replace(/[.,;:!?]+$/, ''));
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') return undefined;
+    const host = url.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '');
+    if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(host)) return undefined;
+    if (NOT_A_PROJECT_SITE.some((suffix) => host === suffix || host.endsWith(`.${suffix}`))) return undefined;
+    return host;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The facts HEY keeps from one submission issue (pure), or null when it is not
+ * one of `chainName`'s submissions naming a hook. The chain is the form's
+ * "Chain" answer, or the title when the form has none. The hook is the form's
+ * "Hook Address", or the first address in the title. Hosts come from every
+ * section but the hook address, the deployer, the audit link and the chain.
+ */
+export function uniswapHooklistSubmissionFacts(issue: { number: number; title: string; body?: string | null; pull_request?: unknown }, chainName: string): UniswapHooklistSubmission | null {
+  if (issue.pull_request !== undefined && issue.pull_request !== null) return null;
+  const body = issue.body ?? '';
+  const parts = sections(body);
+  const chain = parts.get('chain')?.split('\n')[0]?.trim().toLowerCase();
+  const onChain = chain !== undefined && chain !== '' ? chain === chainName : new RegExp(`\\b${chainName}\\b`, 'i').test(issue.title);
+  if (!onChain) return null;
+  const hook = (HOOK_IN_TEXT.exec(parts.get('hook address') ?? '') ?? HOOK_IN_TEXT.exec(issue.title))?.[0]?.toLowerCase();
+  if (!hook || /^0x0{40}$/.test(hook)) return null;
+  const skipped = new Set(['hook address', 'deployer address', 'deployer', 'audit url', 'audit', 'chain']);
+  const text = parts.size === 0 ? body : [...parts].filter(([heading]) => !skipped.has(heading)).map(([, value]) => value).join('\n');
+  const hosts: string[] = [];
+  for (const match of text.matchAll(URL_IN_TEXT)) {
+    const host = siteHost(match[0]);
+    if (host && !hosts.includes(host)) hosts.push(host);
+    if (hosts.length >= UNISWAP_HOOKLIST_SUBMISSION_MAX_HOSTS) break;
+  }
+  return { issueNumber: issue.number, hookAddress: hook, hosts };
+}
+
+export type UniswapHooklistSubmissionsInput = { chainId: number; page: number; baseUrl?: string; token?: string };
+
+/**
+ * One page of the hooklist's submissions, the most recently updated first,
+ * narrowed to one chain's facts. The first page is conditional on the ETag the
+ * caller passes in its context (304 when no submission moved).
+ */
+export function createUniswapHooklistSubmissionsAdapter(): SourceAdapter<UniswapHooklistSubmissionsInput, UniswapHooklistSubmissionsPage> {
+  return {
+    name: 'uniswap-hooklist-submissions',
+    canHandle: (input) => UNISWAP_HOOKLIST_CHAIN_NAMES[input.chainId] !== undefined && Number.isInteger(input.page) && input.page >= 1,
+    fetch(input: UniswapHooklistSubmissionsInput, ctx: SourceContext): Promise<SourceResult<UniswapHooklistSubmissionsPage>> {
+      const chain = UNISWAP_HOOKLIST_CHAIN_NAMES[input.chainId];
+      if (!chain) throw new SourceError('INVALID_RESPONSE', `the hooklist has no chain name for chain ${input.chainId}`);
+      const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
+      const query = new URLSearchParams({
+        labels: UNISWAP_HOOKLIST_SUBMISSION_LABEL,
+        state: 'all',
+        sort: 'updated',
+        direction: 'desc',
+        per_page: String(UNISWAP_HOOKLIST_SUBMISSIONS_PER_PAGE),
+        page: String(input.page),
+      });
+      // Only the first page is conditional: a later page's ETag would describe a page that shifts every day.
+      const paged: SourceContext = { ...ctx };
+      if (input.page !== 1) {
+        delete paged.etag;
+        delete paged.lastModified;
+      }
+      return performSourceFetch(
+        paged,
+        {
+          url: `${base}/repos/${UNISWAP_HOOKLIST_REPOSITORY}/issues?${query.toString()}`,
+          headers: {
+            accept: 'application/vnd.github+json',
+            'x-github-api-version': '2022-11-28',
+            ...(input.token ? { authorization: `Bearer ${input.token}` } : {}),
+          },
+          allowedContentTypes: ['application/json', 'application/vnd.github+json'],
+          maxBytes: 4 * 1024 * 1024,
+          ...(input.page !== 1 ? { conditional: false as const } : {}),
+        },
+        {
+          schema: issuesSchema,
+          parse: (body) => JSON.parse(body) as unknown,
+          normalize: (raw): UniswapHooklistSubmissionsPage => {
+            const submissions: (UniswapHooklistSubmission & { updatedAt: Date })[] = [];
+            let invalid = 0;
+            let newest: Date | null = null;
+            let oldest: Date | null = null;
+            for (const item of raw) {
+              const parsed = issueSchema.safeParse(item);
+              if (!parsed.success) {
+                invalid += 1;
+                continue;
+              }
+              const updatedAt = new Date(parsed.data.updated_at);
+              if (Number.isNaN(updatedAt.getTime())) {
+                invalid += 1;
+                continue;
+              }
+              if (!newest || updatedAt > newest) newest = updatedAt;
+              if (!oldest || updatedAt < oldest) oldest = updatedAt;
+              const facts = uniswapHooklistSubmissionFacts(parsed.data, chain);
+              if (facts) submissions.push({ ...facts, updatedAt });
+            }
+            return { issuesOnPage: raw.length, newestUpdatedAt: newest, oldestUpdatedAt: oldest, submissions, invalid };
+          },
+          cacheTtlSeconds: 0,
+        },
+      );
+    },
+  };
+}
+
+/** `https://github.com/Uniswap/hooklist/issues/<n>`: the submission a person can open. */
+export function uniswapHooklistIssueUrl(issueNumber: number): string {
+  return `${UNISWAP_HOOKLIST_URL}/issues/${issueNumber}`;
+}

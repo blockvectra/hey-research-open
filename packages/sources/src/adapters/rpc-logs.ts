@@ -200,3 +200,66 @@ export function createRpcBlockTimestampAdapter(): SourceAdapter<RpcBlockInput, B
     },
   };
 }
+
+export type RpcTransactionTargetInput = { rpcUrl: string; txHashes: readonly string[] };
+
+/**
+ * The contract each transaction was sent to, by lower-cased hash (2026-10-04).
+ * Only the `to` field is kept — never the sender, the input or the value — and
+ * a transaction the node does not answer for, or one that created a contract
+ * (`to` null), is absent: absent means unread, never "sent nowhere".
+ */
+export type TransactionTargets = { targets: ReadonlyMap<string, string> };
+
+const TX_HASH = /^0x[0-9a-f]{64}$/;
+const TARGET_ADDRESS = /^0x[0-9a-f]{40}$/;
+
+/**
+ * Many transactions' targets in one request (2026-10-04, Uniswap v4 hooks):
+ * which contract the transaction that first initialised a pool with a hook was
+ * sent to. A batch of `eth_getTransactionByHash` calls in one POST, like the
+ * block-time batch above; the node counts the calls, so the caller keeps a
+ * batch to a hundred. Used to order a work queue, never as attribution.
+ */
+export function createRpcTransactionTargetBatchAdapter(): SourceAdapter<RpcTransactionTargetInput, TransactionTargets> {
+  return {
+    name: 'rpc-tx-batch',
+    canHandle(input) {
+      return Boolean(input.rpcUrl) && input.txHashes.length > 0 && input.txHashes.every((hash) => TX_HASH.test(hash.toLowerCase()));
+    },
+    fetch(input, ctx: SourceContext): Promise<SourceResult<TransactionTargets>> {
+      const hashes = input.txHashes.map((hash) => hash.toLowerCase());
+      const calls = hashes.map((hash, index) => ({ jsonrpc: '2.0', id: index, method: 'eth_getTransactionByHash', params: [hash] }));
+      return performSourceFetch(
+        ctx,
+        {
+          url: input.rpcUrl,
+          method: 'POST' as const,
+          body: JSON.stringify(calls),
+          headers: { 'content-type': 'application/json' },
+          conditional: false as const,
+        },
+        {
+          schema: batchSchema,
+          parse: (raw) => JSON.parse(raw) as unknown,
+          cacheTtlSeconds: NO_CACHE,
+          normalize: (raw): TransactionTargets => {
+            const targets = new Map<string, string>();
+            for (const entry of raw) {
+              const index = typeof entry.id === 'number' ? entry.id : Number(entry.id);
+              const hash = hashes[index];
+              if (hash === undefined || entry.error) continue;
+              const tx = entry.result as { hash?: unknown; to?: unknown } | null;
+              if (!tx || typeof tx.to !== 'string') continue;
+              // The node's answer must be the transaction asked for.
+              if (typeof tx.hash === 'string' && tx.hash.toLowerCase() !== hash) continue;
+              const to = tx.to.toLowerCase();
+              if (TARGET_ADDRESS.test(to)) targets.set(hash, to);
+            }
+            return { targets };
+          },
+        },
+      );
+    },
+  };
+}

@@ -4,6 +4,9 @@ import { readFixture, stubFetch, testContext } from '../testing';
 import {
   createUniswapHooklistAdapter,
   createUniswapHooklistHeadAdapter,
+  createUniswapHooklistSubmissionsAdapter,
+  uniswapHooklistIssueUrl,
+  uniswapHooklistSubmissionFacts,
   UNISWAP_HOOKLIST_FLAGS,
   UNISWAP_HOOKLIST_MAX_INVALID,
   uniswapHooklistEntries,
@@ -132,5 +135,63 @@ describe('the hooklist at a commit', () => {
     expect(uniswapHooklistFileUrl(COMMIT, 'hooks/robinhood/0x0022e098b9baf3c758496092b312126ec84780cc.json')).toBe(
       `https://github.com/Uniswap/hooklist/blob/${COMMIT}/hooks/robinhood/0x0022e098b9baf3c758496092b312126ec84780cc.json`,
     );
+  });
+});
+
+/*
+ * Builders' own submissions (2026-10-04). The fixture is five issues shaped as
+ * the GitHub API returns them — two Robinhood Chain submissions in the issue
+ * form, one with no form sections, one on another chain and the list's own
+ * pull request — with every description replaced by fixture text: HEY keeps no
+ * issue text, and the fixture does not republish the builders' words either.
+ */
+describe('the hooklist submissions (2026-10-04)', () => {
+  const page = readFixture('uniswap-hooklist-submissions.json');
+
+  it('keeps per Robinhood Chain submission only the number, the hook and the website hosts, and pages by update', async () => {
+    const stub = stubFetch({ status: 200, body: page, headers: { 'content-type': 'application/json; charset=utf-8', etag: 'W/"page-one"' } });
+    const result = await createUniswapHooklistSubmissionsAdapter().fetch({ chainId: 4663, page: 1, token: 'ghp_test' }, testContext({ fetchImpl: stub.fetchImpl, etag: 'W/"before"' }));
+    expect(result.status).toBe('fresh');
+    expect(result.etag).toBe('W/"page-one"');
+    expect(result.data).toEqual({
+      issuesOnPage: 5,
+      newestUpdatedAt: new Date('2026-10-03T08:02:11Z'),
+      oldestUpdatedAt: new Date('2026-09-29T09:00:00Z'),
+      invalid: 0,
+      submissions: [
+        { issueNumber: 10499, hookAddress: '0x7d309a342f12e7f788ccf992740e5c482d4b6044', hosts: ['floor.top'], updatedAt: new Date('2026-10-03T08:02:11Z') },
+        { issueNumber: 10496, hookAddress: '0xcb6c4fe8be76538e865489818e1b420aa4fd2840', hosts: ['boundlaunch.com'], updatedAt: new Date('2026-10-02T23:10:00Z') },
+        { issueNumber: 10463, hookAddress: '0xe7c4c3b075c317c3473866afbc1516ccb863a0cc', hosts: [], updatedAt: new Date('2026-10-01T12:00:00Z') },
+      ],
+    });
+    // No text, no account, no deployer, no audit link leaves the adapter.
+    const out = JSON.stringify(result.data);
+    for (const word of ['Fixture text', 'fixture-submitter', 'fee1dead', 'audits.example-auditor.io', 'github.com/example', 't.me', 'FloorHook', 'blockscout']) expect(out).not.toContain(word);
+    const request = stub.requests[0]!;
+    expect(request.url).toBe('https://api.github.com/repos/Uniswap/hooklist/issues?labels=submission&state=all&sort=updated&direction=desc&per_page=100&page=1');
+    expect(new Headers(request.init?.headers).get('authorization')).toBe('Bearer ghp_test');
+    expect(new Headers(request.init?.headers).get('if-none-match')).toBe('W/"before"');
+  });
+
+  it('answers 304 on an unchanged first page, and never sends a validator for a later page', async () => {
+    const stub = stubFetch({ status: 304, body: '' });
+    const first = await createUniswapHooklistSubmissionsAdapter().fetch({ chainId: 4663, page: 1 }, testContext({ fetchImpl: stub.fetchImpl, etag: 'W/"page-one"' }));
+    expect(first.status).toBe('not_modified');
+    const later = stubFetch({ status: 200, body: '[]', headers: { 'content-type': 'application/json' } });
+    const second = await createUniswapHooklistSubmissionsAdapter().fetch({ chainId: 4663, page: 3 }, testContext({ fetchImpl: later.fetchImpl, etag: 'W/"page-one"' }));
+    expect(second.data).toMatchObject({ issuesOnPage: 0, submissions: [], newestUpdatedAt: null });
+    expect(new Headers(later.requests[0]!.init?.headers).get('if-none-match')).toBeNull();
+  });
+
+  it('reads the chain from the form, else the title; the hook from the form, else the title; drops nobody’s-site hosts', () => {
+    expect(uniswapHooklistSubmissionFacts({ number: 1, title: 'hook: X on Robinhood Chain', body: '### Chain\n\nbase\n\n### Hook Address\n\n0x1111111111111111111111111111111111111111' }, 'robinhood')).toBeNull();
+    expect(uniswapHooklistSubmissionFacts({ number: 2, title: 'hook: 0x2222222222222222222222222222222222222222 (robinhood)', body: 'See https://www.example-project.xyz/app, https://x.com/team.' }, 'robinhood')).toEqual({
+      issueNumber: 2,
+      hookAddress: '0x2222222222222222222222222222222222222222',
+      hosts: ['example-project.xyz'],
+    });
+    expect(uniswapHooklistSubmissionFacts({ number: 3, title: 'hook: Y on Robinhood Chain', body: '### Chain\n\nrobinhood\n\n### Hook Address\n\nnone' }, 'robinhood')).toBeNull();
+    expect(uniswapHooklistSubmissionFacts({ number: 4, title: 'Add Y hook on robinhood', body: '', pull_request: {} }, 'robinhood')).toBeNull();
+    expect(uniswapHooklistIssueUrl(10499)).toBe('https://github.com/Uniswap/hooklist/issues/10499');
   });
 });

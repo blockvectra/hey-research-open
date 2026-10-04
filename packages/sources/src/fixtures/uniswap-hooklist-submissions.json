@@ -1,0 +1,58 @@
+[
+  {
+    "url": "https://api.github.com/repos/Uniswap/hooklist/issues/10499",
+    "number": 10499,
+    "title": "hook: FloorHook on Robinhood Chain",
+    "user": { "login": "fixture-submitter-one", "id": 1001 },
+    "labels": [{ "name": "submission" }],
+    "state": "open",
+    "created_at": "2026-10-03T07:49:26Z",
+    "updated_at": "2026-10-03T08:02:11Z",
+    "body": "### Chain\n\nrobinhood\n\n### Hook Address\n\n0x7d309A342f12e7f788CCF992740E5C482D4B6044\n\n### Hook Name\n\nFloorHook\n\n### Description\n\nFixture text: a fee hook for the desk's coin pools. Site: https://floor.top/ and source on https://github.com/example/floor-hook, chat at https://t.me/example.\n\n### Deployer Address\n\n0x00000000000000000000000000000000fee1dead\n\n### Audit URL\n\nhttps://audits.example-auditor.io/floor.pdf"
+  },
+  {
+    "url": "https://api.github.com/repos/Uniswap/hooklist/issues/10496",
+    "number": 10496,
+    "title": "hook: BoundHook (BOUND launchpad) on Robinhood Chain",
+    "user": { "login": "fixture-submitter-two", "id": 1002 },
+    "labels": [{ "name": "submission" }],
+    "state": "open",
+    "created_at": "2026-10-02T22:59:39Z",
+    "updated_at": "2026-10-02T23:10:00Z",
+    "body": "### Chain\n\nrobinhood\n\n### Hook Address\n\n0xcb6c4fe8be76538e865489818e1b420aa4fd2840\n\n### Hook Name\n\nBoundHook\n\n### Description\n\nFixture text: guards pools created by the launchpad (https://www.boundlaunch.com). Verified on https://robinhoodchain.blockscout.com/address/0xcb6c4fe8be76538e865489818e1b420aa4fd2840.\n\n### Deployer Address\n\n_No response_\n\n### Audit URL\n\n_No response_"
+  },
+  {
+    "url": "https://api.github.com/repos/Uniswap/hooklist/issues/10463",
+    "number": 10463,
+    "title": "hook: 0xe7c4C3b075C317C3473866Afbc1516Ccb863a0cC on robinhood",
+    "user": { "login": "fixture-submitter-three", "id": 1003 },
+    "labels": [{ "name": "submission" }],
+    "state": "closed",
+    "created_at": "2026-10-01T10:00:00Z",
+    "updated_at": "2026-10-01T12:00:00Z",
+    "body": "Fixture text with no form sections and no website."
+  },
+  {
+    "url": "https://api.github.com/repos/Uniswap/hooklist/issues/10450",
+    "number": 10450,
+    "title": "hook: SomeHook on Base",
+    "user": { "login": "fixture-submitter-four", "id": 1004 },
+    "labels": [{ "name": "submission" }],
+    "state": "open",
+    "created_at": "2026-09-30T10:00:00Z",
+    "updated_at": "2026-09-30T11:00:00Z",
+    "body": "### Chain\n\nbase\n\n### Hook Address\n\n0x1111111111111111111111111111111111111111\n\n### Description\n\nFixture text: https://another-chain.example.org"
+  },
+  {
+    "url": "https://api.github.com/repos/Uniswap/hooklist/issues/10500",
+    "number": 10500,
+    "title": "Add FloorHook hook on robinhood",
+    "user": { "login": "hooklist-generator[bot]", "id": 1005 },
+    "labels": [],
+    "state": "open",
+    "created_at": "2026-10-03T08:00:00Z",
+    "updated_at": "2026-09-29T09:00:00Z",
+    "pull_request": { "url": "https://api.github.com/repos/Uniswap/hooklist/pulls/10500" },
+    "body": "Closes #10499"
+  }
+]
