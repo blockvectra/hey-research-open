@@ -587,6 +587,17 @@ account). HEY's own read of the creator still decides every attribution. Listed 
 project's name — never on generic words such as launch, meme, token, swap or hook — are shown to
 HEY's own moderators as leads, never publicly.
 
+Since 2026-10-04 the list names every project shipping a hook that HEY can tie to it, each hook
+labelled by what the tie rests on: "Proven on chain", "Listed by the project", "Made by the
+project's factory" or "Confirmed by HEY's review". A hook a factory contract created is listed under
+a project only when HEY ties the factory itself to it — the factory is the project's own follow-up
+deployment, read from the chain, or the project's official contract listing names it — and then once
+per project, as a count with a few examples: instances are the factory's product in use, never
+counted as the project's shipping. A hook can also be confirmed by HEY's review: a person checks it
+against the project's own material, the confirmation is audited and reversible, and it is labelled
+apart from chain proof; it never counts as shipping, and HEY's own reading of the chain supersedes it.
+Neither is a ledger event. Who created a hook or a factory is compared in memory and never stored.
+
 ## Terms and privacy
 
 What HEY records about a reader, what it never stores and for how long:
