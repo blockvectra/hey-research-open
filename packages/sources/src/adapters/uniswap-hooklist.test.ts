@@ -14,7 +14,8 @@ import {
  * Uniswap hooklist contract tests (2026-10-04). The fixture is six real
  * entries of `hooklist.json` at commit c6ada11 (2026-10-01) — two on another
  * chain, four on Robinhood Chain — with every description emptied and the one
- * deployer replaced by a placeholder: HEY stores neither, and the fixture
+ * deployer replaced by a placeholder: HEY stores neither (the deployer is
+ * compared in memory, never kept), and the fixture
  * does not republish the generated prose either.
  */
 const COMMIT = 'c6ada11a89041095957cae00f845a5fab2776408';
@@ -72,17 +73,40 @@ describe('the hooklist at a commit', () => {
     expect(snapshot.entries.find((entry) => entry.name === 'MidasRWAHook')?.properties.swapAccess).toBe('governance');
   });
 
-  it('never carries a description, a deployer or an audit link', async () => {
+  /*
+   * Since 2026-10-04 (founder: the list is a source of leads, never proof) the
+   * listed deployer is handed over in memory as `claimedDeployer`, for one
+   * comparison with HEY's deployer records; the description and the audit link
+   * are still never read.
+   */
+  it('never carries a description or an audit link, and hands the claimed deployer over only as a claim', async () => {
     const withText = (JSON.parse(aggregate) as { hook: Record<string, unknown> }[]).map((entry) => ({
       ...entry,
-      hook: { ...entry.hook, description: 'Generated prose HEY must not keep.', deployer: `0x${'ab'.repeat(20)}`, auditUrl: 'https://audits.example/report.pdf' },
+      hook: { ...entry.hook, description: 'Generated prose HEY must not keep.', deployer: `0x${'AB'.repeat(20)}`, auditUrl: 'https://audits.example/report.pdf' },
     }));
     const snapshot = uniswapHooklistEntries(withText, 4663, COMMIT);
     const text = JSON.stringify(snapshot);
     expect(text).not.toContain('Generated prose');
-    expect(text).not.toContain('ab'.repeat(20));
     expect(text).not.toContain('audits.example');
-    for (const entry of snapshot.entries) expect(Object.keys(entry).sort()).toEqual(['address', 'chainId', 'flags', 'name', 'path', 'properties', 'verifiedSource']);
+    for (const entry of snapshot.entries) {
+      expect(Object.keys(entry).sort()).toEqual(['address', 'chainId', 'claimedDeployer', 'flags', 'name', 'path', 'properties', 'verifiedSource']);
+      expect(entry.claimedDeployer).toBe(`0x${'ab'.repeat(20)}`);
+    }
+  });
+
+  it('reads an empty, zero or malformed deployer as no claim', () => {
+    const entries = JSON.parse(aggregate) as { hook: Record<string, unknown> }[];
+    const robinhood = entries.filter((entry) => entry.hook.chainId === 4663);
+    const variants = ['', '   ', `0x${'0'.repeat(40)}`, 'deployer.eth', '0x1234'].map((deployer, index) => ({
+      ...robinhood[index % robinhood.length]!,
+      hook: { ...robinhood[index % robinhood.length]!.hook, address: `0x${String(index + 1).padStart(40, '7')}`, deployer },
+    }));
+    const snapshot = uniswapHooklistEntries(variants, 4663, COMMIT);
+    expect(snapshot.entries).toHaveLength(5);
+    for (const entry of snapshot.entries) expect(entry.claimedDeployer).toBeUndefined();
+    // The fixture's two placeholder deployers are claims; the empty ones are not.
+    const fixture = uniswapHooklistEntries(entries, 4663, COMMIT);
+    expect(fixture.entries.filter((entry) => entry.claimedDeployer).map((entry) => entry.name).sort()).toEqual(['CreatorFeeHookV1', 'MidasRWAHook']);
   });
 
   it('skips and counts a malformed entry and a duplicate, and fails when most of the chain is unreadable', () => {

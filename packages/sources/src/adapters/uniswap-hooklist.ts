@@ -22,9 +22,14 @@ import { GITHUB_DEFAULT_BASE_URL } from './github';
  *   name, `verifiedSource`, the flags and the properties as listed, the
  *   file's path and the commit HEY read it at;
  * - never the `description` (generated prose, in a repository that carries no
- *   licence file: HEY links to the file instead of republishing it), never
- *   `deployer` (an account; machine-layer rule 12) and never `auditUrl`
- *   (security context has its own reader and rules).
+ *   licence file: HEY links to the file instead of republishing it) and never
+ *   `auditUrl` (security context has its own reader and rules);
+ * - the optional `deployer` (a submitter's claim about who created the hook)
+ *   is handed to the caller as `claimedDeployer`, in memory only, for one
+ *   comparison with the token deployers HEY already records (founder,
+ *   2026-10-04: the list is a source of leads, never proof). It is an account:
+ *   no caller may write it (machine-layer rule 12; `hooklist.ts` keeps only the
+ *   comparison's outcome).
  *
  * Two requests, the first conditional (measured 2026-10-04): the head commit
  * of `main` as a bare sha (`application/vnd.github.sha`, with an ETag whose
@@ -50,6 +55,7 @@ export const UNISWAP_HOOKLIST_MAX_INVALID = 25;
 const CACHE_TTL_SECONDS = 24 * 60 * 60;
 const COMMIT = /^[0-9a-f]{40}$/;
 const ADDRESS = /^0x[a-fA-F0-9]{40}$/;
+const ZERO_ADDRESS = /^0x0{40}$/;
 
 /** The fourteen flag names the hooklist schema uses (`schema.json`), in Hooks.sol bit order, high to low. */
 export const UNISWAP_HOOKLIST_FLAGS = [
@@ -83,7 +89,7 @@ const propertiesSchema = z.object({
   swapAccess: z.string().min(1).max(40).optional(),
 });
 
-/** One entry as the schema defines it. Unknown keys are ignored; `description`, `deployer` and `auditUrl` are never read. */
+/** One entry as the schema defines it. Unknown keys are ignored; `description` and `auditUrl` are never read. */
 const entrySchema = z.object({
   hook: z.object({
     address: z.string().regex(ADDRESS),
@@ -91,6 +97,8 @@ const entrySchema = z.object({
     chainId: z.number().int().positive(),
     name: z.string().trim().min(1).max(100),
     verifiedSource: z.boolean(),
+    // Optional and often empty; anything but an address is no claim, never a failed entry.
+    deployer: z.string().max(100).optional(),
   }),
   flags: flagsSchema,
   properties: propertiesSchema,
@@ -120,6 +128,13 @@ export type UniswapHooklistEntry = {
   properties: UniswapHooklistProperties;
   /** The entry's own file in the repository: `hooks/<chain>/<address>.json`. */
   path: string;
+  /**
+   * The listing's `deployer`, lower-cased, when it is an address: a
+   * submitter's claim, never verified by the list. In memory only — compared
+   * with HEY's deployer records and dropped; never persisted (machine-layer
+   * rule 12).
+   */
+  claimedDeployer?: string;
 };
 
 export type UniswapHooklistSnapshot = {
@@ -164,6 +179,7 @@ export function uniswapHooklistEntries(raw: readonly unknown[], chainId: number,
     }
     seen.add(address);
     const props = parsed.data.properties;
+    const claimed = parsed.data.hook.deployer?.trim() ?? '';
     entries.push({
       chainId,
       address,
@@ -178,6 +194,7 @@ export function uniswapHooklistEntries(raw: readonly unknown[], chainId: number,
         ...(props.swapAccess === undefined ? {} : { swapAccess: props.swapAccess }),
       },
       path: `hooks/${chain}/${address}.json`,
+      ...(ADDRESS.test(claimed) && !ZERO_ADDRESS.test(claimed) ? { claimedDeployer: claimed.toLowerCase() } : {}),
     });
   }
   if (invalidEntries > UNISWAP_HOOKLIST_MAX_INVALID) {

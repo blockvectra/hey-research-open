@@ -580,6 +580,13 @@ properties, path and commit only — never the list's descriptions or deployer a
 never ties a hook to a project. Coverage is counts: how many listed hooks HEY has seen in a pool, and
 why the rest are missing (HEY finds a hook when a pool is created with it).
 
+The hooklist is also a source of leads for HEY's own attribution, never proof: a listed hook is read
+ahead of unlisted ones in HEY's creation-read queue, first when the listing's claimed deployer equals
+a published project's recorded token deployer (compared in memory; only the outcome is kept, never the
+account). HEY's own read of the creator still decides every attribution. Listed names that match a
+project's name — never on generic words such as launch, meme, token, swap or hook — are shown to
+HEY's own moderators as leads, never publicly.
+
 ## Terms and privacy
 
 What HEY records about a reader, what it never stores and for how long:
