@@ -103,6 +103,8 @@ export function BuildTimeline({
                   href={item.sourceUrl}
                   rel="nofollow noopener noreferrer"
                   target="_blank"
+                  // Counted as an evidence open by the page's one listener (`ValueClicks`, 2026-10-05).
+                  data-evidence="ship"
                   className="inline-block text-sm text-hey-ink underline decoration-hey-border-strong underline-offset-4 transition-colors hover:decoration-hey-ink"
                 >
                   View evidence

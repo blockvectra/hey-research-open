@@ -136,7 +136,16 @@ own notice. A QUIET or DORMANT status that lost the builder source it rests on i
 source linked". Search lists an issuer's own token as its own row, above lookalikes.
 
 A token a page took on a deploy record that no longer proves anything goes back to its own launch
-record, logged and reversible. When published projects share a name or a ticker on different
+record, logged and reversible.
+
+A repository that only names a token is never that token's project and never verifies it
+(2026-10-05). A tracker, radar, bot or dashboard names the tokens it watches in its code and prints
+them on its site; neither is the token's word. A builder's repository pairs with a launch record only
+when the launch record itself declared that repository or its owner, or a deploy record proves the
+deployment — and an address file without the creating transaction proves nothing about a contract
+twenty or more GitHub accounts name (a launchpad's token, a protocol's position manager, a platform
+token used as collateral). Links made the old way go back to their launch record with its own site,
+docs and X account, logged and reversible. When published projects share a name or a ticker on different
 contracts, the project page, the Terminal, search and the type-ahead say so in one line, with what
 each project's own site or deploy record names — never which one is "real". `/signals` lists
 projects with Robinhood Chain evidence first within each group.
@@ -289,7 +298,9 @@ curl -H "x-hey-integration: my-bot/1.0.0" "https://heyresearch.xyz/api/v1/builde
 Builder status in HEY's words, verified builder, the latest meaningful ship with its evidence id,
 meaningful ships in 30 days (`null`, never 0, when not measured), the latest builder-side change and
 signal, the token's market state as context, a badge and `project_link` — the page to link, labelled
-so HEY can count your click-through. The fields, the rules of use and eight tested examples
+so HEY can count your click-through. Since 2026-10-05 the latest ship also carries `evidence_link`
+(its receipt page, labelled the same way), and partner answers are `private, max-age=60`: every call
+reaches HEY and is counted, never served from a shared cache. The fields, the rules of use and eight tested examples
 (Telegram, Discord, a trading terminal, a DEX, a launchpad, an explorer, a directory, an AI agent)
 are at [heyresearch.xyz/developers/partners](https://heyresearch.xyz/developers/partners) and in
 [docs/PUBLIC_API.md](docs/PUBLIC_API.md).
@@ -307,6 +318,15 @@ for await (const project of hey.projects.items({ tab: 'still-building' })) {
   console.log(project.slug, project.lastShippedAt ?? 'no ship recorded');
 }
 ```
+
+The developers page opens on a fifteen-minute quickstart (2026-10-05): the curl against a live
+contract, the typed `hey.builderCard(4663, token)` with `new HeyClient({ integration: 'my-product/1.0.0' })`,
+and a small React panel that prints nothing when HEY has no answer — with how evidence ids resolve
+(`GET /api/evidence/{id}`) and the rate limits the deployment enforces. HEY counts an integration as in
+use when an identified caller (a key, or a declared `x-hey-integration` name) is answered on two or
+more distinct days and five or more times within seven days; a name sent with no key is only
+observed until then, and the example names in these docs (`my-product`, `your-product`) and `hey-`
+names are never counted. That count is traffic, never an input to any project's status or rank.
 
 A listed project with a token carries `tokenMarket` — the market state the card shows — and the
 single-project route sends everything the listing does. `/api/projects/{slug}/market` adds the
@@ -404,6 +424,28 @@ From the domain alone, with no JavaScript and no cookies:
 | `https://heyresearch.xyz/api/agent` | The agent contract: `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns` — the same answer on REST, MCP (`research_answer`) and A2A |
 | `https://heyresearch.xyz/developers/robinhood-agents` | HEY for Robinhood Agents: the questions, the four interfaces, the evidence model and privacy. Integration readiness; HEY Research Lab is not currently an official Robinhood Agent App. A demo that answers four questions from live data is at `/lab/robinhood-agent` |
 
+**Start in one minute** — each of these was run against production before it was documented; no
+key, no account, no install for the hosted doors:
+
+```bash
+claude mcp add --transport http hey-research https://heyresearch.xyz/mcp        # Claude Code, hosted
+# any MCP client, hosted:  { "mcpServers": { "hey-research": { "type": "http", "url": "https://heyresearch.xyz/mcp" } } }
+# any MCP client, local:   { "mcpServers": { "hey-research": { "command": "npx", "args": ["-y", "@hey-research-lab/mcp"] } } }
+
+# REST end to end: find a project that shipped this week, read it, open the evidence behind it
+BASE=https://heyresearch.xyz
+SLUG=$(curl -s "$BASE/api/projects?tab=shipping-now&limit=1" | jq -r '.items[0].slug')
+ID=$(curl -s "$BASE/api/projects/$SLUG/snapshot" | jq -r '[.summary.lines[].evidence[]?.id][0]')
+curl -s "$BASE/api/evidence/$ID" | jq '{id, summary, sourceUrl, verification}'
+```
+
+The same flow in TypeScript, with A2A and a raw MCP call, is on
+[`/developers/agents`](https://heyresearch.xyz/developers/agents). Name your software (an MCP
+`clientInfo` name, or `x-hey-integration: <name>/<version>` on REST and A2A) so HEY can tell an
+agent's use from a registry probe when it counts use — your own name, not the `my-agent` of the
+examples, which HEY files as a test client; it changes no answer. The hosted endpoint
+answers JSON to a client that accepts `application/json` alone (2026-10-05).
+
 An agent that forms a thesis can record it as an
 [AgentResearchReceipt](docs/AGENT_RESEARCH_RECEIPTS.md) — neutral, for any project, checked but
 never stored or endorsed by HEY. HEY gives no trade instructions and runs no agents of its own.
@@ -487,7 +529,9 @@ of what changed on the projects you follow is one switch away (off by default, t
 address only, nothing on a quiet day). `/updates` is the public "What changed": the
 change ledger grouped by meaning, and, signed in, what changed on your projects since you were
 last here first. Every row, alert email and Telegram alert opens the change on the project's
-page, with its source.
+page, with its source. An alert email's links carry `utm_medium=email&utm_campaign=alert`
+(2026-10-05), so HEY can count that an alert brought a reader back — a count of returns, never
+who returned.
 
 Without an account (2026-10-02): `/feed/updates.xml` and `/project/<slug>/feed.xml` carry the
 public change ledger, each item dated by the event's own date and keyed on its ledger id, and
@@ -522,6 +566,24 @@ only facts HEY holds (a sentence is dropped rather than filled when a fact is un
 evidence id and source, and never promotional language. `GET /api/share/<subject>` returns the
 same composition as JSON.
 
+## Where a shared link lands
+
+A project page opened from a HEY badge, widget, partner card, shared link, the Telegram bot or an
+agent's answer says so in one quiet line, in fixed words that never repeat what the link carried,
+with HEY's thesis and a way to the Research Terminal's open sample project. The campaign labels the
+link carried are counted once and then removed from the address bar, so a copied link does not
+carry them on. Counts are per day-bound tab session; nothing joins two days or a visit to an account.
+
+A project's whole research summary can be shared too ("Share this research", subject
+`research:<slug>`): a post that carries the building lines and never a market figure, and a
+citation that lists every summary line with its tag (Fact, Derived, Unknown), when HEY read it,
+and each evidence id with its page and its receipt, ending in a link back labelled
+`utm_source=cite`. A weekly builder recap (`recap:<slug>`) states the canonical 7-day count of
+meaningful development events and the newest meaningful ship, and exists only for a measured week
+with at least one. Usage resuming after a silence (`contract.method_resumed`) is shareable as usage,
+never as building. `/researchers` walks the path: search, the summary, building beside the market,
+the evidence, the citation. Nobody is paid, rewarded or ranked for sharing.
+
 ## Event research
 
 `/events/<slug>` answers "What actually changed on Robinhood Chain during <event>?" from HEY's
@@ -543,6 +605,13 @@ come from the provider's daily archive of the same pool (GeckoTerminal's OHLCV, 
 apart from HEY's own readings): every such row says "provider archive", with the source and when HEY
 read it, and the archive never supplies a liquidity or a valuation. It is display context only — no
 status, score, gap, badge, signal or order reads it.
+
+HEY also runs this across its whole record, for its own use (rules `before-attention-v1`): every
+meaningful ship it knew of at the time, set against quiet builders on the same days. T0 is when HEY
+first held the work, never the source's date; work HEY read late or the change ledger took as
+backfill is excluded and counted; every exclusion, every unmeasured window and both tails of the case
+studies are shown. It is an analysis, never a forecast or a market signal, and nothing that decides a
+status, a score or an order may read it.
 
 ## Uniswap on Robinhood Chain
 
@@ -641,6 +710,15 @@ The link's `utm_source=badge` lets HEY count a click from your README as the bad
 and nothing more.
 
 `?theme=dark` and `?style=pill` are the other two looks. [docs/BADGES.md on the site](https://heyresearch.xyz/docs/badges).
+
+### Share pack for builders
+
+Every verified builder's page has a share pack at `https://heyresearch.xyz/project/<slug>/share`:
+what HEY verified (status, latest ship and its evidence, the sources HEY reads as yours), the claim
+link, a ready X post, a Telegram message, a plain text for a token page or social terminal, the
+README badge, the website embed and the canonical links. Every sentence is generated from what HEY
+recorded — no price, no forecast, and a figure HEY did not measure is left out, never shown as 0.
+HEY posts nothing for you.
 
 ### Live widgets (Embed Kit)
 

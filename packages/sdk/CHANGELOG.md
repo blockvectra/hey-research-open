@@ -6,6 +6,11 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (Partner Card evidence link, 2026-10-05)
+
+- `HeyPartnerShip.evidence_link`, additively: the latest meaningful ship's reader receipt page (`/evidence/ship:<uuid>`) with the card's attribution labels, as `project_link` carries them — the card's one "Evidence" link. `evidence_id` and `url` keep their meaning.
+- `/api/v1/builder` and `/api/v1/scan` answers are now `cache-control: private, max-age=60` (they were `public, s-maxage=60` without the integration header). No field changed; a client may still keep an answer a minute.
+
 ### Added (status, 2026-10-03)
 
 - `HeyStatus.integrity.failing?: { check, label }[]`, additively: the checks the newest integrity audit failed, by id and plain words. A failing audit now makes `verdict` `critical` (it read `warn` beside a failing run); `integrity.verdict` keeps its meaning.

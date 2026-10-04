@@ -814,7 +814,7 @@ in `/openapi.json`). Additive only; no existing field changes meaning. Explicit 
 | Route | Added | Meaning |
 |---|---|---|
 | `/api/v1/builder` | `verified_builder` | the catalogue marks the project a verified builder (the scan card's `verified_builder`) |
-| | `latest_meaningful_ship` | `{title, url, timestamp, kind, evidence_id}`: the newest counted ship dated no later than now; `null` when none |
+| | `latest_meaningful_ship` | `{title, url, timestamp, kind, evidence_id, evidence_link}`: the newest counted ship dated no later than now; `evidence_link` (2026-10-05) is its reader receipt page with the card's attribution labels; `null` when none |
 | | `meaningful_ships_30d` | the scan card's `meaningful_ships_30d`; `null` (never 0) when building is not measured and none is held |
 | | `latest_change`, `latest_change_state` | the newest builder-story ledger event (`{id, type, summary, occurred_at, precision, detected_at, evidence_id, url}`); state `recorded`, `none_recorded` or `unavailable` (ledger not run or unreadable: unknown, not none). Market, usage, coverage-churn and narrative events are left out |
 | | `latest_signal` | `{id, kind, label, headline, observed_at, evidence_id, url}`: the newest standing signal that is not a market-group kind, an address-day count or a new page; `null` when none |

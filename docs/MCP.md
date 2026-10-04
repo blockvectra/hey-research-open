@@ -29,7 +29,13 @@ What the hosted endpoint is:
 
 - **Stateless and read-only.** Each `POST` is answered on its own, as JSON; there is no
   session id and no server-sent event stream. `GET` and `DELETE` answer `405`, which is also
-  the liveness check; the site's health is `GET /api/health`.
+  the liveness check; the site's health is `GET /api/health`. Because the answer is always
+  JSON, a client whose `Accept` is `application/json`, `*/*` or absent is answered too
+  (2026-10-05; the transport otherwise asks for `text/event-stream` as well and answered 406); a
+  client that accepts only an event stream is refused. A `tools/call` needs no `initialize`
+  first, but send one with your `clientInfo` name: it is how HEY tells an agent from a registry
+  probe when it counts use. The name is a self-declaration, never an identity, and changes no
+  answer.
 - **Metered as you.** The tools read the public API on the server's own loopback address,
   forwarding your address and — only to that loopback address — your key. The API's
   per-minute limit (120 a minute per address, a key's tier otherwise), monthly quota and

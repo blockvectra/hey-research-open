@@ -16,6 +16,31 @@
       "mimeType": "image/png"
     }
   ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "registryBaseUrl": "https://registry.npmjs.org",
+      "identifier": "@hey-research-lab/mcp",
+      "version": "0.1.2",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "HEY_API_KEY",
+          "description": "Optional HEY API key: lifts the anonymous rate limit and nothing else.",
+          "isRequired": false,
+          "isSecret": true
+        },
+        {
+          "name": "HEY_MCP_PROFILE",
+          "description": "Optional: research for the research profile (builder intelligence first); default full.",
+          "isRequired": false,
+          "isSecret": false
+        }
+      ]
+    }
+  ],
   "remotes": [
     {
       "type": "streamable-http",

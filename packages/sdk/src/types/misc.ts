@@ -405,6 +405,8 @@ export type HeyPartnerShip = {
   kind: string;
   /** `ship:<uuid>`; resolve at `/api/evidence/{id}`. */
   evidence_id: string;
+  /** The evidence receipt as a reader's page, with the card's attribution labels: link this one as "Evidence" (2026-10-05). */
+  evidence_link: string;
 };
 
 /** One change-ledger event on the partner card (2026-09-30). */

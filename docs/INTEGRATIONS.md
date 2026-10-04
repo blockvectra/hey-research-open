@@ -10,7 +10,8 @@ GET https://heyresearch.xyz/api/token/4663/{contractAddress}
 ```
 
 No key. No account. No signup. **120 requests a minute** per client, cached 60 seconds at the
-edge, and readable from a browser as well as a server — `access-control-allow-origin: *` is set
+edge (the two partner cards, `/api/v1/builder` and `/api/v1/scan`, are `private, max-age=60` since
+2026-10-05 so every partner call is attributed and counted), and readable from a browser as well as a server — `access-control-allow-origin: *` is set
 and the preflight is answered.
 
 Try it now, on a project that is shipping:
