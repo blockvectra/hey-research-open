@@ -529,7 +529,11 @@ of what changed on the projects you follow is one switch away (off by default, t
 address only, nothing on a quiet day). `/updates` is the public "What changed": the
 change ledger grouped by meaning, and, signed in, what changed on your projects since you were
 last here first. Every row, alert email and Telegram alert opens the change on the project's
-page, with its source. An alert email's links carry `utm_medium=email&utm_campaign=alert`
+page, with its source. The HEY Telegram bot (2026-10-05) answers a lookup the way a card does:
+a bold title with the status as text ("🟢 Shipping"), one canonical sentence, one short line per
+fact, one "context, not a verdict" note, and buttons to the project, its evidence, a share and —
+in your own linked chat — Watch. `/start` opens with a banner and a menu; groups get text and
+public links only. An alert email's links carry `utm_medium=email&utm_campaign=alert`
 (2026-10-05), so HEY can count that an alert brought a reader back — a count of returns, never
 who returned.
 

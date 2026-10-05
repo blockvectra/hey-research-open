@@ -35,6 +35,21 @@ const EMOJI = new RegExp(
   'u',
 );
 
+/*
+ * The one named exception (founder, 2026-10-05): the Telegram bot is a chat,
+ * not HEY's interface, and the founder asked for its status chip as text with
+ * an emoji ("🟢 Shipping") and emoji buttons. Its whole vocabulary lives in
+ * these two files — the bot's renderer and the alert words the worker sends —
+ * and `apps/web/src/lib/telegram/render.test.ts` holds every message and button
+ * to that fixed set. Exact paths, so nothing else in the tree can borrow it; a
+ * new file needing an emoji is a product decision, not a line here.
+ */
+const CHAT_VOCABULARY = new Set(
+  ['apps/web/src/lib/telegram/render.ts', 'packages/domain/src/telegram/words.ts'].map((path) =>
+    join(REPO_ROOT, path),
+  ),
+);
+
 function sourceFiles(dir: string): string[] {
   const out: string[] = [];
   for (const entry of readdirSync(dir)) {
@@ -66,6 +81,7 @@ describe('no emoji in production UI', () => {
 
     for (const root of present) {
       for (const file of sourceFiles(join(REPO_ROOT, root))) {
+        if (CHAT_VOCABULARY.has(file)) continue;
         const contents = readFileSync(file, 'utf8');
         contents.split('\n').forEach((line, index) => {
           if (EMOJI.test(line)) offenders.push(`${file}:${index + 1} ${line.trim().slice(0, 60)}`);
@@ -74,5 +90,10 @@ describe('no emoji in production UI', () => {
     }
 
     expect(offenders).toEqual([]);
+  });
+
+  it('keeps the chat exception to files that exist, so a rename cannot widen it silently', () => {
+    if (!existsSync(join(REPO_ROOT, 'apps/web'))) return;
+    for (const file of CHAT_VOCABULARY) expect(existsSync(file), file).toBe(true);
   });
 });
