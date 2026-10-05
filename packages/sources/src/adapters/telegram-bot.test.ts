@@ -115,3 +115,55 @@ describe('inbound updates', () => {
     expect(parseTelegramUpdate('nonsense')).toEqual({ ok: false, reason: 'malformed' });
   });
 });
+
+describe('the viral-loop surface (2026-10-05): Guest Mode, inline mode, groups', () => {
+  const parse = (name: string) => parseTelegramUpdate(JSON.parse(readFixture(name)) as unknown);
+
+  it('parses a Guest Mode summons with the message it replied to, and keeps no name or title', () => {
+    const guest = parse('telegram-update-guest.json');
+    expect(guest).toMatchObject({
+      ok: true,
+      update: {
+        kind: 'guest_message',
+        guest: { guest_query_id: 'AAHdF6IQAAAAAN0XohDhrOrc', text: '@HeyResearchBot research this', reply_to_message: { text: 'anyone looked at 0xa0a0000000000000000000000000000000000001 ?' } },
+      },
+    });
+    const json = JSON.stringify(guest);
+    for (const kept of ['reader_name', 'Reader', 'Some trading chat', 'Other']) expect(json).not.toContain(kept);
+  });
+
+  it('parses an inline query and a chosen inline result, without the reader’s name or language', () => {
+    expect(parse('telegram-update-inline.json')).toEqual({
+      ok: true,
+      update: { updateId: 900000011, kind: 'inline_query', inline: { id: '4815162342', from: { id: 333333333, is_bot: false }, query: '$AOS', offset: '', chat_type: 'supergroup' } },
+    });
+    expect(parse('telegram-update-chosen-inline.json')).toMatchObject({ ok: true, update: { kind: 'chosen_inline_result', chosen: { result_id: 'p:agentos', query: '$AOS' } } });
+    // Telegram's own ceilings: a query over 256 characters is not one Telegram sent.
+    expect(parseTelegramUpdate({ update_id: 9, inline_query: { id: '1', from: { id: 1, is_bot: false }, query: 'x'.repeat(257), offset: '' } })).toEqual({ ok: false, reason: 'malformed', updateId: 9 });
+  });
+
+  it('parses the bot being added to a group, and a group becoming a supergroup', () => {
+    expect(parse('telegram-update-group-added.json')).toMatchObject({ ok: true, update: { kind: 'my_chat_member', member: { chat: { type: 'supergroup' }, old_chat_member: { status: 'left' }, new_chat_member: { status: 'member' } } } });
+    expect(parse('telegram-update-migrate.json')).toMatchObject({ ok: true, update: { kind: 'message', message: { chat: { id: -4012345678, type: 'group' }, migrate_to_chat_id: -1004012345678 } } });
+  });
+
+  it('reads a group’s admins as user ids only, and BotFather’s settings from getMe', async () => {
+    const admins = await adapter.fetch({ token: TOKEN, method: 'getChatAdministrators', chatId: -1001234567890 }, testContext({ fetchImpl: stubFetch({ status: 200, body: readFixture('telegram-chat-administrators.json') }).fetchImpl }));
+    expect(admins.data).toEqual({ method: 'getChatAdministrators', adminUserIds: [222222222, 555555555] });
+    expect(JSON.stringify(admins.data)).not.toMatch(/first_name|"Admin"|"Mod"|can_delete/);
+    const me = await adapter.fetch({ token: TOKEN, method: 'getMe' }, testContext({ fetchImpl: stubFetch({ status: 200, body: readFixture('telegram-get-me-guest.json') }).fetchImpl }));
+    expect(me.data).toEqual({ method: 'getMe', id: 7000000001, username: 'HeyResearchBot', canJoinGroups: true, canReadAllGroupMessages: false, supportsInlineQueries: true, supportsGuestQueries: true });
+    // An older getMe says nothing of Guest Mode: unknown stays absent, never false.
+    const old = await adapter.fetch({ token: TOKEN, method: 'getMe' }, testContext({ fetchImpl: stubFetch({ status: 200, body: readFixture('telegram-get-me.json') }).fetchImpl }));
+    expect(old.data).not.toHaveProperty('supportsGuestQueries');
+  });
+
+  it('sets the descriptions within Telegram’s ceilings', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('telegram-true.json') });
+    const set = await adapter.fetch({ token: TOKEN, method: 'setMyShortDescription', shortDescription: 'Research any Robinhood Chain project.' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(set.data).toEqual({ method: 'setMyShortDescription', done: true });
+    expect(JSON.parse(String(stub.requests[0]!.init?.body))).toEqual({ short_description: 'Research any Robinhood Chain project.' });
+    expect(adapter.canHandle({ token: TOKEN, method: 'setMyShortDescription', shortDescription: 'x'.repeat(121) })).toBe(false);
+    expect(adapter.canHandle({ token: TOKEN, method: 'setMyDescription', description: 'x'.repeat(513) })).toBe(false);
+  });
+});

@@ -540,7 +540,18 @@ page, with its source. The HEY Telegram bot (2026-10-05) answers a lookup the wa
 a bold title with the status as text ("🟢 Shipping"), one canonical sentence, one short line per
 fact, one "context, not a verdict" note, and buttons to the project, its evidence, a share and —
 in your own linked chat — Watch. `/start` opens with a banner and a menu; groups get text and
-public links only. An alert email's links carry `utm_medium=email&utm_campaign=alert`
+public links only. Since 2026-10-05 the bot travels between chats: type `@HeyResearch_Bot $TOKEN`
+in any chat for a selectable research card (inline mode), mention it in a chat it is not in
+(Telegram's Guest Mode) — or reply "research this" to a message naming a contract or ticker —
+and "Add HEY to a group" puts it in your own. In a group it stays quiet unless asked; its admins
+can have it watch projects and send the group's meaningful builder changes (at most three
+messages a day) or one daily digest. Never price, never a group's conversation, never anyone's
+private watchlist. `/telegram` (2026-10-06) is a small page with one way in — Try HEY in
+Telegram — the commands, inline mode, Guest Mode, the group watch and what HEY keeps; it exists
+only while the bot is switched on. HEY counts how the bot spreads as groups added, groups
+activated by someone outside HEY's staff and groups that come back on two or more days — never
+people, never a chat's messages — and keeps a link from one group's card to a new group (measured)
+apart from a mere coincidence in time (estimated); neither is called a referral. An alert email's links carry `utm_medium=email&utm_campaign=alert`
 (2026-10-05), so HEY can count that an alert brought a reader back — a count of returns, never
 who returned.
 
