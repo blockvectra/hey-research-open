@@ -220,7 +220,12 @@ curl "https://heyresearch.xyz/api/v1/scan?chain=4663&token=0xB33eb16782776b4D738
 ```
 
 A token HEY has no published page for answers `200` with `found: false`, so a bot prints nothing
-rather than guessing.
+rather than guessing. Asking is still counted (2026-10-05): the partner card, the builder card,
+`/api/token/…`, the agent contract's `verify_project` and `unknowns`, A2A's `investigate_contract`
+and the MCP tools that read through them record the address once per caller a day (crawlers and
+HEY's own traffic left out), and a scheduled, budgeted job reads DEX Screener's listing for asked
+contracts that declare no website, so the site check and the quality gate have something to judge.
+Asking never publishes.
 
 A person asks the same question at [heyresearch.xyz/scan](https://heyresearch.xyz/scan), or inside
 the Research Terminal at `/terminal/scan`, where the ⌘K palette offers it for any address HEY does
@@ -231,6 +236,8 @@ to follow it; anything unresearched says "Builder not established yet." and what
 readers keep asking about is summed per record (`research_demand`) and decides only what HEY
 researches next — an hourly, capped sweep queues the canonical site, contract-source and
 quality-gate jobs for the most-asked under-researched records — never a status, score or rank.
+One contract is read live at most six times a UTC day, and a repeat scan within thirty minutes of
+a live read answers from what that read recorded, dated, with when a fresh read is available.
 
 The Research Terminal answers questions (2026-10-01). A reader previewing it is told what Terminal
 access opens as questions about the project in view — full timeline, build evidence, usage history,

@@ -254,7 +254,8 @@ export function identityBand(input: ScanEvidenceInput): EvidenceBand {
           factor('creation', 'Creation record readable', readState(input.creationRecord), 8),
           factor(
             'sole-deployer',
-            'Deployer has launched no other project HEY tracks',
+            // "Among projects HEY publishes" (2026-10-05, audit P2-4): the deployer index holds published projects only.
+            'No other project from this deployer among projects HEY publishes',
             input.otherProjectsFromDeployer === undefined
               ? 'unreadable'
               : input.otherProjectsFromDeployer === 0
