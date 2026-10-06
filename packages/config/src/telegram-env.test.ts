@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isTelegramBotEnabled, parseServerEnv, safeParseServerEnv, telegramBotUrl } from './env';
+import { isTelegramBotEnabled, parseServerEnv, safeParseServerEnv, telegramBotUrl, telegramMiniAppShortName } from './env';
 
 /**
  * The HEY Telegram bot's configuration (2026-09-30, docs/TELEGRAM.md): off
@@ -55,6 +55,18 @@ describe('telegram bot configuration', () => {
       const parsed = safeParseServerEnv({ ...configured, [key]: value });
       expect(parsed.ok, `${key}=${value}`).toBe(false);
       if (!parsed.ok) expect(parsed.variables).toContain(key);
+    }
+  });
+
+  it('names the Mini App only when the bot is on and the short name is set (2026-10-06)', () => {
+    expect(telegramMiniAppShortName(parseServerEnv(configured))).toBeUndefined();
+    expect(telegramMiniAppShortName(parseServerEnv({ ...configured, TELEGRAM_MINIAPP_SHORT_NAME: 'research' }))).toBe('research');
+    const { HEY_TELEGRAM_BOT_ENABLED: _flag, ...off } = configured;
+    expect(telegramMiniAppShortName(parseServerEnv({ ...off, TELEGRAM_MINIAPP_SHORT_NAME: 'research' }))).toBeUndefined();
+    for (const value of ['re', 're/search', 'research app', 'a'.repeat(31), 'https://t.me/x/research']) {
+      const parsed = safeParseServerEnv({ ...configured, TELEGRAM_MINIAPP_SHORT_NAME: value });
+      expect(parsed.ok, value).toBe(false);
+      if (!parsed.ok) expect(parsed.variables).toContain('TELEGRAM_MINIAPP_SHORT_NAME');
     }
   });
 });

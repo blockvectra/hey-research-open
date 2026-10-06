@@ -1,0 +1,8 @@
+{
+  "ok": true,
+  "result": {
+    "type": "web_app",
+    "text": "Open HEY",
+    "web_app": { "url": "https://heyresearch.xyz/tg/app" }
+  }
+}

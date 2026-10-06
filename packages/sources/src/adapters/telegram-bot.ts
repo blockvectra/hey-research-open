@@ -32,7 +32,17 @@ export const TELEGRAM_MESSAGE_MAX = 4096;
  * Telegram's own "switch to inline" — pressing it puts `@<bot> <query>` back in
  * the reader's input field (Bot API `switch_inline_query_current_chat`).
  */
-export type TelegramInlineButton = { text: string; callback_data: string } | { text: string; url: string } | { text: string; switch_inline_query_current_chat: string };
+/**
+ * And (2026-10-06, the Mini App) a `web_app` button: "Available only in private
+ * chats between a user and the bot" (Bot API `InlineKeyboardButton.web_app`),
+ * opening the HTTPS Web App it names. Groups, inline cards and Guest Mode use
+ * the Mini App's t.me direct link as an ordinary `url` button instead.
+ */
+export type TelegramInlineButton =
+  | { text: string; callback_data: string }
+  | { text: string; url: string }
+  | { text: string; switch_inline_query_current_chat: string }
+  | { text: string; web_app: { url: string } };
 export type TelegramReplyMarkup = { inline_keyboard: TelegramInlineButton[][] };
 
 type WithToken = { token: string };
@@ -50,7 +60,18 @@ export type TelegramBotCall = WithToken &
     /** The admins of a group the bot is in (2026-10-05): who may change the group's watch. Read at change time, never stored. */
     | { method: 'getChatAdministrators'; chatId: number }
     | { method: 'getMe' }
+    /**
+     * The bot's menu button in private chats (2026-10-06): `MenuButtonWebApp` opens the Mini App by
+     * its HTTPS URL; `MenuButtonCommands` opens the bot's command list (2026-10-07: what HEY sets,
+     * so the commands stay one press away); `MenuButtonDefault` hands the button back to Telegram's
+     * default. Without a `chat_id` it is the default for every private chat.
+     */
+    | { method: 'setChatMenuButton'; menuButton: TelegramMenuButton }
+    | { method: 'getChatMenuButton' }
   );
+
+/** The menu buttons HEY sets (Bot API `MenuButtonWebApp`, `MenuButtonCommands`, `MenuButtonDefault`). */
+export type TelegramMenuButton = { type: 'web_app'; text: string; url: string } | { type: 'commands' } | { type: 'default' };
 
 /** The command-menu scopes HEY sets (Bot API `BotCommandScope`): everyone, private chats, every group, and every group's admins. */
 export type TelegramCommandScope = 'default' | 'all_private_chats' | 'all_group_chats' | 'all_chat_administrators';
@@ -59,7 +80,9 @@ export type TelegramBotMethod = TelegramBotCall['method'];
 
 export type TelegramBotResult =
   | { method: 'sendMessage' | 'editMessageText'; messageId: number; chatId: number }
-  | { method: 'deleteMessage' | 'setWebhook' | 'setMyCommands' | 'setMyDescription' | 'setMyShortDescription'; done: true }
+  | { method: 'deleteMessage' | 'setWebhook' | 'setMyCommands' | 'setMyDescription' | 'setMyShortDescription' | 'setChatMenuButton'; done: true }
+  /** What the menu button is now: its type and, for a Web App, its text and URL (both HEY's own). */
+  | { method: 'getChatMenuButton'; type: string; text?: string; url?: string }
   | { method: 'getWebhookInfo'; url: string; pendingUpdates: number; lastErrorAt?: Date; lastErrorMessage?: string; allowedUpdates?: string[] }
   /** The user ids of the group's creator and administrators, and nothing else about them. */
   | { method: 'getChatAdministrators'; adminUserIds: number[] }
@@ -96,6 +119,12 @@ const meResult = z.object({
   supports_inline_queries: z.boolean().optional(),
   supports_guest_queries: z.boolean().optional(),
 });
+/** A MenuButton: its type, and a Web App's text and URL. */
+const menuButtonResult = z.object({
+  type: z.string().max(32),
+  text: z.string().max(256).optional(),
+  web_app: z.object({ url: z.string().max(2048) }).optional(),
+});
 /** A ChatMember: only its status and its user's id are read. */
 const adminsResult = z.array(z.object({ status: z.string().max(32), user: z.object({ id: z.number().int(), is_bot: z.boolean() }) })).max(500);
 
@@ -110,7 +139,10 @@ function envelopeFor(method: TelegramBotMethod) {
     case 'setMyCommands':
     case 'setMyDescription':
     case 'setMyShortDescription':
+    case 'setChatMenuButton':
       return z.object({ ok: z.literal(true), result: doneResult });
+    case 'getChatMenuButton':
+      return z.object({ ok: z.literal(true), result: menuButtonResult });
     case 'getChatAdministrators':
       return z.object({ ok: z.literal(true), result: adminsResult });
     case 'getWebhookInfo':
@@ -151,8 +183,11 @@ function bodyOf(call: TelegramBotCall): Record<string, unknown> {
       return { short_description: call.shortDescription };
     case 'getChatAdministrators':
       return { chat_id: call.chatId };
+    case 'setChatMenuButton':
+      return { menu_button: call.menuButton.type === 'web_app' ? { type: 'web_app', text: call.menuButton.text, web_app: { url: call.menuButton.url } } : { type: call.menuButton.type } };
     case 'getWebhookInfo':
     case 'getMe':
+    case 'getChatMenuButton':
       return {};
   }
 }
@@ -169,7 +204,12 @@ function normalize(call: TelegramBotCall, result: unknown): TelegramBotResult {
     case 'setMyCommands':
     case 'setMyDescription':
     case 'setMyShortDescription':
+    case 'setChatMenuButton':
       return { method: call.method, done: true };
+    case 'getChatMenuButton': {
+      const button = result as z.infer<typeof menuButtonResult>;
+      return { method: 'getChatMenuButton', type: button.type, ...(button.text ? { text: button.text } : {}), ...(button.web_app ? { url: button.web_app.url } : {}) };
+    }
     case 'getChatAdministrators': {
       const members = result as z.infer<typeof adminsResult>;
       // The creator and the administrators; a restricted or left member is never one, whatever else it says.
@@ -216,6 +256,8 @@ export function createTelegramBotAdapter(): SourceAdapter<TelegramBotCall, Teleg
       if (!TOKEN_SHAPE.test(call.token)) return false;
       if ((call.method === 'sendMessage' || call.method === 'editMessageText') && (call.text.length === 0 || call.text.length > TELEGRAM_MESSAGE_MAX)) return false;
       if (call.method === 'setWebhook' && !call.url.startsWith('https://')) return false;
+      // Telegram opens only an HTTPS Web App; a menu button's text is one short label.
+      if (call.method === 'setChatMenuButton' && call.menuButton.type === 'web_app' && (!call.menuButton.url.startsWith('https://') || call.menuButton.text.length === 0 || call.menuButton.text.length > 64)) return false;
       // Telegram's own ceilings (setMyDescription 512, setMyShortDescription 120).
       if (call.method === 'setMyDescription' && call.description.length > 512) return false;
       if (call.method === 'setMyShortDescription' && call.shortDescription.length > 120) return false;

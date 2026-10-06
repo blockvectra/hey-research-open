@@ -54,6 +54,8 @@ const TELEGRAM_BOT_TOKEN_PATTERN = /^\d{6,}:[A-Za-z0-9_-]{20,}$/;
 const TELEGRAM_WEBHOOK_SECRET_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;
 /** A bot username: 5-32 characters, ending in "bot". */
 const TELEGRAM_BOT_USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{1,28}[Bb][Oo][Tt]$/;
+/** The Mini App's short name, as BotFather's /newapp asks for it (2026-10-06): Latin letters, digits and underscores, 3-30 characters. */
+const TELEGRAM_MINIAPP_SHORT_NAME_PATTERN = /^[A-Za-z0-9_]{3,30}$/;
 
 /**
  * `Name <local@domain>` — the display name is required, so no message ever
@@ -612,6 +614,12 @@ export const serverEnvSchema = z
         botToken: optionalString,
         webhookSecret: optionalString,
         botUsername: optionalString,
+        /**
+         * The Mini App's short name (2026-10-06, docs/TELEGRAM.md "The Mini App"): set
+         * only after the founder registered it in BotFather (`/newapp`). Unset, the bot
+         * links no Mini App and `telegram:bot setup` leaves the menu button alone.
+         */
+        miniAppShortName: optionalString,
       })
       .superRefine((telegram, context) => {
         if (telegram.botToken && !TELEGRAM_BOT_TOKEN_PATTERN.test(telegram.botToken)) {
@@ -622,6 +630,9 @@ export const serverEnvSchema = z
         }
         if (telegram.botUsername && !TELEGRAM_BOT_USERNAME_PATTERN.test(telegram.botUsername)) {
           context.addIssue({ code: z.ZodIssueCode.custom, path: ['botUsername'], message: 'TELEGRAM_BOT_USERNAME is the bot\'s username without @, ending in "bot"' });
+        }
+        if (telegram.miniAppShortName && !TELEGRAM_MINIAPP_SHORT_NAME_PATTERN.test(telegram.miniAppShortName)) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['miniAppShortName'], message: 'TELEGRAM_MINIAPP_SHORT_NAME is the Mini App short name from BotFather /newapp: 3-30 of A-Z, a-z, 0-9 and _' });
         }
         if (!telegram.enabled) return;
         for (const [key, name] of [
@@ -824,6 +835,7 @@ function shapeEnv(raw: RawEnv) {
       botToken: raw.TELEGRAM_BOT_TOKEN,
       webhookSecret: raw.TELEGRAM_WEBHOOK_SECRET,
       botUsername: raw.TELEGRAM_BOT_USERNAME,
+      miniAppShortName: raw.TELEGRAM_MINIAPP_SHORT_NAME,
     },
     searchConsole: {
       credentialsJson: raw.GOOGLE_SEARCH_CONSOLE_CREDENTIALS,
@@ -926,6 +938,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'telegram.botToken': 'TELEGRAM_BOT_TOKEN',
   'telegram.webhookSecret': 'TELEGRAM_WEBHOOK_SECRET',
   'telegram.botUsername': 'TELEGRAM_BOT_USERNAME',
+  'telegram.miniAppShortName': 'TELEGRAM_MINIAPP_SHORT_NAME',
   'searchConsole.credentialsJson': 'GOOGLE_SEARCH_CONSOLE_CREDENTIALS',
   'searchConsole.site': 'GOOGLE_SEARCH_CONSOLE_SITE',
   'webhooks.masterKey': 'WEBHOOK_MASTER_KEY',
@@ -1107,6 +1120,15 @@ export function isTelegramBotEnabled(env: ServerEnv): boolean {
 /** The bot's public link, `https://t.me/<username>`, or undefined while the bot is off. */
 export function telegramBotUrl(env: ServerEnv): string | undefined {
   return isTelegramBotEnabled(env) ? `https://t.me/${env.telegram.botUsername as string}` : undefined;
+}
+
+/**
+ * The Mini App's short name (2026-10-06, docs/TELEGRAM.md "The Mini App"), only while the bot is
+ * on and the founder has named it: what the bot's direct links (`t.me/<bot>/<short name>`) and the
+ * menu button wait for. Undefined, nothing links the Mini App.
+ */
+export function telegramMiniAppShortName(env: ServerEnv): string | undefined {
+  return isTelegramBotEnabled(env) && env.telegram.miniAppShortName ? env.telegram.miniAppShortName : undefined;
 }
 
 /** Telegram ops alerts are on when both the bot token and the chat id are set. */

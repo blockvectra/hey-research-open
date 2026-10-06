@@ -548,7 +548,12 @@ can have it watch projects and send the group's meaningful builder changes (at m
 messages a day) or one daily digest. Never price, never a group's conversation, never anyone's
 private watchlist. `/telegram` (2026-10-06) is a small page with one way in — Try HEY in
 Telegram — the commands, inline mode, Guest Mode, the group watch and what HEY keeps; it exists
-only while the bot is switched on. HEY counts how the bot spreads as groups added, groups
+only while the bot is switched on. The HEY Mini App (2026-10-06) is the same research inside
+Telegram: open it from the bot's menu button or a card's "Full research", search a project,
+`$TICKER` or contract, and read its builder status first, then its latest ship and evidence, its
+recent ships and the market's state as context; Share sends the bot's research card to a chat,
+Watch opens the bot on that project. It is read-only, takes your Telegram theme, keeps nothing
+about who opened it, and works as an ordinary page outside Telegram. HEY counts how the bot spreads as groups added, groups
 activated by someone outside HEY's staff and groups that come back on two or more days — never
 people, never a chat's messages — and keeps a link from one group's card to a new group (measured)
 apart from a mere coincidence in time (estimated); neither is called a referral. An alert email's links carry `utm_medium=email&utm_campaign=alert`

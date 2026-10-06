@@ -167,3 +167,36 @@ describe('the viral-loop surface (2026-10-05): Guest Mode, inline mode, groups',
     expect(adapter.canHandle({ token: TOKEN, method: 'setMyDescription', description: 'x'.repeat(513) })).toBe(false);
   });
 });
+
+describe('the Mini App (2026-10-06): the menu button and web_app buttons', () => {
+  it('sets the private chats’ menu button to the Mini App by its HTTPS URL, and reads it back', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('telegram-true.json') });
+    const set = await adapter.fetch({ token: TOKEN, method: 'setChatMenuButton', menuButton: { type: 'web_app', text: 'Open HEY', url: 'https://heyresearch.xyz/tg/app' } }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(set.data).toEqual({ method: 'setChatMenuButton', done: true });
+    // No chat_id: the default for every private chat (Bot API setChatMenuButton).
+    expect(JSON.parse(String(stub.requests[0]!.init?.body))).toEqual({ menu_button: { type: 'web_app', text: 'Open HEY', web_app: { url: 'https://heyresearch.xyz/tg/app' } } });
+    const reset = stubFetch({ status: 200, body: readFixture('telegram-true.json') });
+    await adapter.fetch({ token: TOKEN, method: 'setChatMenuButton', menuButton: { type: 'default' } }, testContext({ fetchImpl: reset.fetchImpl }));
+    expect(JSON.parse(String(reset.requests[0]!.init?.body))).toEqual({ menu_button: { type: 'default' } });
+    const commands = stubFetch({ status: 200, body: readFixture('telegram-true.json') });
+    await adapter.fetch({ token: TOKEN, method: 'setChatMenuButton', menuButton: { type: 'commands' } }, testContext({ fetchImpl: commands.fetchImpl }));
+    expect(JSON.parse(String(commands.requests[0]!.init?.body))).toEqual({ menu_button: { type: 'commands' } });
+    const read = await adapter.fetch({ token: TOKEN, method: 'getChatMenuButton' }, testContext({ fetchImpl: stubFetch({ status: 200, body: readFixture('telegram-menu-button-web-app.json') }).fetchImpl }));
+    expect(read.data).toEqual({ method: 'getChatMenuButton', type: 'web_app', text: 'Open HEY', url: 'https://heyresearch.xyz/tg/app' });
+  });
+
+  it('refuses a Web App Telegram would refuse: not HTTPS, or no label', () => {
+    expect(adapter.canHandle({ token: TOKEN, method: 'setChatMenuButton', menuButton: { type: 'web_app', text: 'Open HEY', url: 'http://heyresearch.xyz/tg/app' } })).toBe(false);
+    expect(adapter.canHandle({ token: TOKEN, method: 'setChatMenuButton', menuButton: { type: 'web_app', text: '', url: 'https://heyresearch.xyz/tg/app' } })).toBe(false);
+    expect(adapter.canHandle({ token: TOKEN, method: 'setChatMenuButton', menuButton: { type: 'default' } })).toBe(true);
+  });
+
+  it('carries a web_app button in a message’s keyboard as the Bot API names it', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('telegram-send-message.json') });
+    await adapter.fetch(
+      { token: TOKEN, method: 'sendMessage', chatId: 1, text: 'x', replyMarkup: { inline_keyboard: [[{ text: 'Full research', web_app: { url: 'https://heyresearch.xyz/tg/app?p=agentos' } }]] } },
+      testContext({ fetchImpl: stub.fetchImpl }),
+    );
+    expect(JSON.parse(String(stub.requests[0]!.init?.body)).reply_markup).toEqual({ inline_keyboard: [[{ text: 'Full research', web_app: { url: 'https://heyresearch.xyz/tg/app?p=agentos' } }]] });
+  });
+});
