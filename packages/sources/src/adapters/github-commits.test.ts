@@ -122,6 +122,14 @@ describe('GitHub commits adapter', () => {
     await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
 
     expect(stub.requests[0]?.url).toContain('since=2026-08-25T00%3A00%3A00.000Z');
+    expect(stub.requests[0]?.url).not.toContain('until=');
+  });
+
+  it('bounds a week’s listing with until when asked (2026-10-07)', async () => {
+    const stub = stubFetch({ status: 200, body: '[]' });
+    await adapter.fetch({ ...input, until: new Date('2026-08-31T23:59:59.999Z') }, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(stub.requests[0]?.url).toContain('since=2026-08-25T00%3A00%3A00.000Z&until=2026-08-31T23%3A59%3A59.999Z');
   });
 
   it('rejects owner and repo values that are not path segments', () => {

@@ -1,6 +1,6 @@
 import type { ActivityStatus, ShipEventType, ShipSourceKind, VerificationStatus } from '@hey/db';
 
-import { ACTIVITY, DEPLOY_BATCH, RELEASE_BURST } from './config';
+import { ACTIVITY, DEPLOY_BATCH, RELEASE_BURST, RESUMED_COVERAGE } from './config';
 import { isMeaningful } from './significance';
 
 /**
@@ -33,6 +33,16 @@ export type ScoredEvent = {
    * it from the ship's external id.
    */
   repository?: string | null;
+  /**
+   * When HEY began reading the source this event was recorded from
+   * (hbm-v25, `RESUMED_COVERAGE`): the earliest attachment
+   * (`project_sources.created_at`) of the sources its evidence names. A
+   * comeback is RESUMED only when every ship in it was covered from the start
+   * of the gap. Null or absent — HEY cannot say when it began reading — and
+   * the event never carries a comeback; it counts for everything else as
+   * before.
+   */
+  coveredFrom?: Date | null;
 };
 
 /**
@@ -59,12 +69,23 @@ export type ActivityInput = {
   hasSourceCoverage: boolean;
 };
 
+/**
+ * Why a comeback the dates alone would call RESUMED is not (hbm-v25):
+ * `coverage_began_during_gap` — a comeback ship came from a source HEY began
+ * reading after the gap began, so HEY did not observe the gap;
+ * `coverage_unknown` — HEY cannot say when it began reading a comeback ship's
+ * source. Never a judgement on the project: the gap is simply not one HEY saw.
+ */
+export type ResumedWithheldReason = 'coverage_began_during_gap' | 'coverage_unknown';
+
 export type ActivityResult = {
   status: ActivityStatus;
   lastMeaningfulShipAt?: Date;
   meaningfulEventCount: number;
   /** Plain-language reason, shown in the methodology view. */
   reason: string;
+  /** Set only when a comeback was not read as RESUMED because HEY was not covering the gap (hbm-v25). */
+  resumedWithheld?: ResumedWithheldReason;
 };
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -206,10 +227,7 @@ export function deriveActivityStatus(input: ActivityInput): ActivityResult {
   }
 
   const ageDays = daysBetween(latest.publishedAt, input.now);
-  const base = {
-    lastMeaningfulShipAt: latest.publishedAt,
-    meaningfulEventCount: meaningful.length,
-  };
+  let resumedWithheld: ResumedWithheldReason | undefined;
 
   // Resumption is checked before recency so a comeback reads as RESUMED rather
   // than simply SHIPPING (PRD V4 section 10).
@@ -227,14 +245,38 @@ export function deriveActivityStatus(input: ActivityInput): ActivityResult {
     if (previous) {
       const gapDays = daysBetween(previous.publishedAt, latest.publishedAt);
       if (gapDays >= ACTIVITY.dormancyGapDays) {
-        return {
-          ...base,
-          status: 'RESUMED',
-          reason: `Resumed building after ${Math.floor(gapDays)} days without observed activity.`,
-        };
+        /*
+         * Only a gap HEY watched is a gap (hbm-v25, 2026-10-07): every ship
+         * of the comeback must come from a source HEY was reading when the
+         * gap began. A repository attached during the gap read its first
+         * commits as a "return" — 11 of 16 RESUMED projects in production
+         * were exactly that. Read over the comeback's events before the
+         * collapse, so a week kept from one repository cannot hide another
+         * repository HEY began reading late.
+         */
+        const horizon = input.now.getTime() + FUTURE_DATE_TOLERANCE_MS;
+        const comeback = input.events.filter(
+          (event) => isMeaningful(event) && event.publishedAt.getTime() >= comebackStart && event.publishedAt.getTime() <= horizon,
+        );
+        resumedWithheld = comebackCoverageWithheld(comeback, previous.publishedAt);
+        if (resumedWithheld === undefined) {
+          return {
+            lastMeaningfulShipAt: latest.publishedAt,
+            meaningfulEventCount: meaningful.length,
+            status: 'RESUMED',
+            reason: `Resumed building after ${Math.floor(gapDays)} days without observed activity.`,
+          };
+        }
       }
     }
   }
+
+  // A withheld comeback falls through to the ordinary recency rule and says why (hbm-v25).
+  const base = {
+    lastMeaningfulShipAt: latest.publishedAt,
+    meaningfulEventCount: meaningful.length,
+    ...(resumedWithheld === undefined ? {} : { resumedWithheld }),
+  };
 
   if (ageDays <= ACTIVITY.shippingWithinDays) {
     return { ...base, status: 'SHIPPING', reason: `Shipped ${describeAge(ageDays)}.` };
@@ -281,6 +323,27 @@ export function deriveActivityStatus(input: ActivityInput): ActivityResult {
     // Never "dead" or "abandoned": HEY reports what it observed, nothing more.
     reason: `No meaningful updates observed for ${Math.floor(ageDays)} days.`,
   };
+}
+
+/**
+ * Why HEY did not watch a comeback's gap, or undefined when it did (hbm-v25,
+ * `RESUMED_COVERAGE`): every comeback ship must carry a `coveredFrom` at or
+ * before `gapStart`, the last counted update before the gap. A source that
+ * began during the gap is named before an unknown one — it is the stronger
+ * fact. Deterministic: dates in, a reason out.
+ */
+export function comebackCoverageWithheld(comeback: readonly ScoredEvent[], gapStart: Date): ResumedWithheldReason | undefined {
+  if (!RESUMED_COVERAGE.requireCoverageThroughGap) return undefined;
+  let unknown = false;
+  for (const event of comeback) {
+    const from = event.coveredFrom;
+    if (from === undefined || from === null || Number.isNaN(from.getTime())) {
+      if (RESUMED_COVERAGE.unknownCoverageWithholds) unknown = true;
+      continue;
+    }
+    if (from.getTime() > gapStart.getTime()) return 'coverage_began_during_gap';
+  }
+  return unknown ? 'coverage_unknown' : undefined;
 }
 
 function describeAge(days: number): string {

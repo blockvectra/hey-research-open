@@ -6,6 +6,21 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **HEY's own feeds are never a release feed (2026-10-07).** A feed on HEY's own host
+  (`/feed/updates.xml`, `/feed/ships.xml`, `/feed/this-week.xml`, a project's `feed.xml`) is never
+  registered or read as a project's release feed, and a feed entry that links to a HEY page is never
+  a ship, for any project (`isHeyOwnUrl`, `isNotAReleaseFeedUrl` in the feed-kind rules). HEY's
+  updates feed had been registered as a source of HEY's own project and read its changes back as
+  HEY's ships; those were withdrawn through the change ledger as retractions, each row kept as
+  context. Migration `0232_hey_own_feeds_not_release_feeds`.
+- **Code weeks HEY never listed in full are read, never guessed (2026-10-07).** A weekly code
+  summary written before commits were recorded (2026-09-27) carried no "fully listed" flag or
+  per-day count, so its week stayed unread and counted as building however automated it was. HEY
+  now lists, once, each such week's own commits (inside the 60 days that can move an activity
+  status), marks automation as it always does, and decides the week with the same classifier; a
+  week of only automated commits stops counting and the project is rescored. A week GitHub cannot
+  list stays unread and keeps counting. `codeSubstance` fields are unchanged.
+
 - **The Research Terminal guide, illustrated (2026-10-04).** `/docs/terminal` shows a real
   screenshot of the live Terminal under each step: the Projects page, the two ways in, the
   workspace on desktop and phone, the research summary and a receipt, every view, What changed,
@@ -64,6 +79,12 @@ record.
 
 ## Unreleased (2026-10-02)
 
+- **Resumed only inside HEY's coverage (scoring `hbm-v25`, 2026-10-07).** A comeback is Resumed
+  building only when every ship in it was read from a source HEY was already reading when the gap
+  began; a repository attached during the gap, or a ship whose source HEY cannot name, reads
+  Shipping or Active by the ordinary rule instead, with `resumedWithheld`
+  (`coverage_began_during_gap`, `coverage_unknown`) on the score and in `/explain`. The 14-day
+  window and the 60-day gap are unchanged.
 - **A deploy batch is one ship (scoring `hbm-v24`, founder ruling 2026-10-03).** A project's
   follow-up contract deployments recorded in the same UTC second count once, the newest
   corroborated one standing for the batch, in activity status, Build Momentum and every count of

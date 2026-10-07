@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { createFeedAdapter } from './adapters/feed';
-import { isCommentEntry, isNotAReleaseFeedUrl } from './feed-kind';
+import { HEY_OWN_DOMAINS, isCommentEntry, isHeyOwnUrl, isNotAReleaseFeedUrl } from './feed-kind';
 import { extractHtmlMetadata } from './html';
 import { stubFetch, testContext } from './testing';
 
@@ -39,6 +39,78 @@ describe('isNotAReleaseFeedUrl', () => {
       expect(isNotAReleaseFeedUrl(url), url).toBe(false);
     }
     expect(isNotAReleaseFeedUrl(undefined)).toBe(false);
+  });
+});
+
+/**
+ * HEY's own feeds (2026-10-07): `/feed/updates.xml` was registered as a
+ * source of HEY's own project and fed every ship HEY recorded back to it.
+ */
+describe('a feed on HEY\'s own host is never a release feed', () => {
+  const HEY_FEEDS = [
+    'https://heyresearch.xyz/feed/updates.xml',
+    'https://heyresearch.xyz/feed/ships.xml',
+    'https://heyresearch.xyz/feed/this-week.xml',
+    'http://heyresearch.xyz/feed/updates.xml',
+    'https://www.heyresearch.xyz/feed/updates.xml',
+    'https://heyresearch.xyz/feed/updates.xml/',
+    'https://heyresearch.xyz/feed/ships.xml?limit=10',
+    'https://HEYRESEARCH.XYZ/feed/this-week.xml',
+    'https://heyresearch.xyz./feed/updates.xml',
+    'https://heyresearch.xyz:443/feed/updates.xml',
+    'https://heyresearch.xyz/project/gloam/feed.xml',
+    'https://heyresearch.xyz/feed',
+    'https://staging.heyresearch.xyz/feed/updates.xml',
+    ' https://heyresearch.xyz/feed/updates.xml ',
+  ];
+
+  it('names every HEY feed, whatever its scheme, www, case, port or trailing slash', () => {
+    for (const url of HEY_FEEDS) {
+      expect(isHeyOwnUrl(url), url).toBe(true);
+      expect(isNotAReleaseFeedUrl(url), url).toBe(true);
+    }
+  });
+
+  it('names a HEY page too: an entry that links to one is never a project\'s ship', () => {
+    expect(isHeyOwnUrl('https://heyresearch.xyz/project/gloam')).toBe(true);
+    expect(isHeyOwnUrl('https://heyresearch.xyz/evidence/ship:00000000-0000-0000-0000-000000000000')).toBe(true);
+  });
+
+  it('adds the deployment\'s own host from APP_URL, port and all', () => {
+    expect(isNotAReleaseFeedUrl('http://localhost:3100/feed/updates.xml')).toBe(false);
+    expect(isNotAReleaseFeedUrl('http://localhost:3100/feed/updates.xml', ['localhost:3100'])).toBe(true);
+    expect(isNotAReleaseFeedUrl('http://localhost:3000/feed/updates.xml', ['localhost:3100'])).toBe(false);
+    expect(isHeyOwnUrl('https://www.hey.example/feed/ships.xml', ['hey.example'])).toBe(true);
+    expect(isHeyOwnUrl('https://hey.example:443/feed/ships.xml', ['hey.example'])).toBe(true);
+  });
+
+  it('leaves look-alike hosts and other sites alone', () => {
+    for (const url of [
+      'https://evilheyresearch.xyz/feed/updates.xml',
+      'https://heyresearch.xyz.example.com/feed/updates.xml',
+      'https://heyresearch.xy/feed/updates.xml',
+      'https://example.com/feed/updates.xml',
+      'https://example.com/?ref=heyresearch.xyz',
+      'https://github.com/hey-research-lab/hey-research-open/releases.atom',
+      'ftp://heyresearch.xyz/feed/updates.xml',
+      'not a url',
+    ]) {
+      expect(isHeyOwnUrl(url), url).toBe(false);
+    }
+    expect(isNotAReleaseFeedUrl('https://example.com/feed/updates.xml')).toBe(false);
+    expect(isHeyOwnUrl(undefined)).toBe(false);
+    expect(HEY_OWN_DOMAINS).toEqual(['heyresearch.xyz']);
+  });
+
+  it('is never registered from a page that advertises it', () => {
+    const page = `<html><head>
+      <link rel="alternate" type="application/rss+xml" href="/feed/">
+      <link rel="alternate" type="application/rss+xml" title="What changed" href="https://heyresearch.xyz/feed/updates.xml">
+      <link rel="alternate" type="application/rss+xml" title="Ships" href="https://www.heyresearch.xyz/feed/ships.xml">
+    </head><body></body></html>`;
+    expect(extractHtmlMetadata(page, 'https://example.com/').feedUrls).toEqual(['https://example.com/feed/']);
+    // HEY's own homepage advertises no release feed of HEY's either.
+    expect(extractHtmlMetadata('<link rel="alternate" type="application/rss+xml" href="/feed/updates.xml">', 'https://heyresearch.xyz/').feedUrls).toEqual([]);
   });
 });
 

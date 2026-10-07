@@ -12,6 +12,7 @@ import {
   MARKET_CONTEXT_WEIGHTS,
   RECENCY,
   RELEASE_BURST,
+  RESUMED_COVERAGE,
   SIGNIFICANCE_DIMENSIONS,
   SOURCE_DIVERSITY,
   STILL_BUILDING,
@@ -55,6 +56,8 @@ const RULES_DIGEST = createHash('sha256')
       RELEASE_BURST,
       // A project's follow-up deploys of one UTC second count once (hbm-v24).
       DEPLOY_BATCH,
+      // A comeback is RESUMED only inside HEY's coverage of its sources (hbm-v25).
+      RESUMED_COVERAGE,
     }),
   )
   .digest('hex')
@@ -79,8 +82,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v24',
-      rules: '220fbbf00efb5a26',
+      version: 'hbm-v25',
+      rules: '013e50468fafa762',
     });
   });
 });

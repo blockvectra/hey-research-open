@@ -290,7 +290,27 @@
  * seconds (53 consecutive deploys 2–5 s apart, 86 at 5–15 s); a wider window
  * would be a different ruling, not this one.
  */
-export const SCORING_VERSION = 'hbm-v24' as const;
+/*
+ * hbm-v25 (2026-10-07, founder delegation, production audit "Resumed only
+ * inside HEY's coverage"): no weight, threshold or Build Momentum formula
+ * changes. A comeback is RESUMED only when every ship in it was read from a
+ * source HEY was already reading when the gap began (`RESUMED_COVERAGE`,
+ * `comebackCoverageWithheld`): each ship's `coveredFrom` — the earliest
+ * `project_sources.created_at` its evidence names — at or before the last
+ * counted update before the gap. A source attached during the gap, or a ship
+ * whose source HEY cannot name (an on-chain ship, evidence written before
+ * 2026-09-25 carried its source id), withholds the comeback: the status falls
+ * through to the ordinary recency rule (SHIPPING or ACTIVE) and
+ * `components.resumedWithheld` says why (`coverage_began_during_gap`,
+ * `coverage_unknown`). What did not change: the 14-day comeback window, the
+ * 60-day gap, every other status and Build Momentum. Measured on production
+ * (2026-10-07 audit): 11 of 16 RESUMED projects were false comebacks — the
+ * "return" was the first code HEY ever recorded, within 8 days of the
+ * repository being attached (agent-wormhole: "Resumed after 61 days" on a
+ * repository with commits on 13 days in that gap, attached on 09-19; the
+ * first read pages back only until the newest week is covered).
+ */
+export const SCORING_VERSION = 'hbm-v25' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

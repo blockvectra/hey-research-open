@@ -484,6 +484,19 @@ and no ship is deleted or retracted — every deploy stays on the record with it
 transaction, and `GET /api/ships` and the change ledger still list each one. No field changed
 shape; `scoringVersion` reads `hbm-v24` on a score written under this rule.
 
+### Resumed only on a gap HEY watched (`hbm-v25`, 2026-10-07)
+
+A delegated ruling. `RESUMED` keeps its meaning — shipping again after 60 or more days without
+observed activity — and is now claimed only where HEY was observing: every ship of the comeback
+must come from a source HEY was already reading when the gap began (the earliest attachment of the
+sources its evidence names, at or before the last update before the gap). A repository HEY began
+reading during the gap, or a ship whose source HEY cannot name, is not a comeback: the project reads
+`SHIPPING` or `ACTIVE` by the ordinary rule, so `GET /api/chain/comebacks` and `build.resumed` carry
+fewer projects. `explain?fact=activity.status` lists the reason among its inputs as
+`resumedWithheld` (`coverage_began_during_gap`, `coverage_unknown`) and its rule text says the gap
+must be one HEY watched. No field changed shape; `scoringVersion` reads `hbm-v25` on a score written
+under this rule.
+
 ### `$HEY`, HEY's own token: `heysOwnToken` (2026-09-30, additive)
 
 HEY Research Lab issues `$HEY`, and HEY researches it by the same rules as every project: no

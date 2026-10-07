@@ -230,19 +230,96 @@ describe('activity status', () => {
 
   /** Backlog M5 test 3. */
   it('is RESUMED when building restarts after a gap of 60 days or more', () => {
-    const result = derive([ship(3), ship(120)]);
+    // The source was read from before the gap began (hbm-v25).
+    const result = derive([ship(3, { coveredFrom: daysAgo(200) }), ship(120)]);
 
     expect(result.status).toBe('RESUMED');
     expect(result.reason).toContain('Resumed building');
+    expect(result.resumedWithheld).toBeUndefined();
   });
 
   it('is RESUMED when the comeback ships twice on the same day (hbm-v7)', () => {
     // Measured between the two newest events, a release plus a docs update on
     // the comeback day read as SHIPPING; the gap is to the last event before
     // the comeback cluster.
-    const result = derive([ship(1), ship(1, { eventType: 'DOCS_UPDATE' }), ship(108)]);
+    const covered = daysAgo(200);
+    const result = derive([ship(1, { coveredFrom: covered }), ship(1, { eventType: 'DOCS_UPDATE', coveredFrom: covered }), ship(108)]);
     expect(result.status).toBe('RESUMED');
     expect(result.reason).toContain('107 days');
+  });
+
+  describe('resumed only inside HEY coverage (hbm-v25, 2026-10-07)', () => {
+    const code = (days: number, coveredFrom: Date | null | undefined): ScoredEvent => ({
+      eventType: 'CODE_ACTIVITY',
+      verificationStatus: 'SOURCE_LINKED',
+      sourceKind: 'GITHUB',
+      publishedAt: daysAgo(days),
+      ...(coveredFrom === undefined ? {} : { coveredFrom }),
+    });
+
+    it('is not RESUMED when the comeback came from a source attached during the gap', () => {
+      // agent-wormhole's shape: a deploy 61 days back, a repository attached 8 days ago, its first code read as a return.
+      const events = [code(5, daysAgo(8)), ship(66, { eventType: 'CONTRACT_DEPLOY_FOLLOWUP', sourceKind: 'CONTRACT', coveredFrom: null })];
+      const result = derive(events);
+      expect(result.status).toBe('SHIPPING');
+      expect(result.reason).toBe('Shipped 5 days ago.');
+      expect(result.resumedWithheld).toBe('coverage_began_during_gap');
+      expect(result.lastMeaningfulShipAt).toEqual(daysAgo(5));
+      expect(result.meaningfulEventCount).toBe(2);
+    });
+
+    it('is still RESUMED for a genuine gap inside coverage', () => {
+      const result = derive([code(5, daysAgo(300)), code(120, daysAgo(300))]);
+      expect(result.status).toBe('RESUMED');
+      expect(result.reason).toBe('Resumed building after 115 days without observed activity.');
+      expect(result.resumedWithheld).toBeUndefined();
+    });
+
+    it('counts coverage that began on the day of the last update before the gap', () => {
+      expect(derive([code(5, daysAgo(120)), code(120, daysAgo(300))]).status).toBe('RESUMED');
+      expect(derive([code(5, daysAgo(119)), code(120, daysAgo(300))]).status).toBe('SHIPPING');
+    });
+
+    it('is not RESUMED when HEY cannot say when it began reading the comeback source', () => {
+      for (const unknown of [null, undefined, new Date(Number.NaN)]) {
+        const result = derive([code(5, unknown), code(120, daysAgo(300))]);
+        expect(result.status).toBe('SHIPPING');
+        expect(result.resumedWithheld).toBe('coverage_unknown');
+      }
+    });
+
+    it('needs every ship of the comeback covered, before the weekly collapse', () => {
+      // Two repositories in one ISO week (5 and 6 days back are Thursday and Wednesday of one week): the
+      // collapse keeps one row, but the repository HEY began reading late still withholds the comeback.
+      const old = daysAgo(300);
+      const late = daysAgo(10);
+      const both = derive([code(5, old), code(6, late), code(120, old)]);
+      expect(both.status).toBe('SHIPPING');
+      expect(both.resumedWithheld).toBe('coverage_began_during_gap');
+      // Anywhere in the 14-day comeback window, not only the newest day.
+      const spread = derive([code(2, old), ship(13, { coveredFrom: null }), code(120, old)]);
+      expect(spread.resumedWithheld).toBe('coverage_unknown');
+      // A source that began during the gap is named before an unknown one.
+      expect(derive([code(2, null), code(9, late), code(120, old)]).resumedWithheld).toBe('coverage_began_during_gap');
+    });
+
+    it('falls through to ACTIVE when the withheld comeback is older than a week', () => {
+      const result = derive([code(12, daysAgo(14)), code(100, daysAgo(300))]);
+      expect(result.status).toBe('ACTIVE');
+      expect(result.resumedWithheld).toBe('coverage_began_during_gap');
+    });
+
+    it('never looks at coverage when there is no comeback to judge', () => {
+      expect(derive([code(5, null), code(20, null)]).resumedWithheld).toBeUndefined();
+      expect(derive([code(40, null)]).resumedWithheld).toBeUndefined();
+      expect(derive([code(5, null)]).status).toBe('SHIPPING');
+    });
+
+    it('ignores coverage of ships that do not count', () => {
+      // A low-information code week is not building, so it is not part of the comeback either.
+      const result = derive([code(5, daysAgo(300)), { ...code(4, null), codeSubstance: 'LOW_INFORMATION' }, code(120, daysAgo(300))]);
+      expect(result.status).toBe('RESUMED');
+    });
   });
 
   it('is UNKNOWN, not QUIET, when HEY has no source to observe (hbm-v7)', () => {

@@ -74,6 +74,12 @@ export type GithubCommitsPage = {
 export type GithubCommitsInput = GithubRepoInput & {
   /** Only commits after this instant are requested. */
   since: Date;
+  /**
+   * Only commits up to this instant (2026-10-07): a code week HEY never
+   * listed in full is re-read as its own Monday–Sunday window
+   * (`ships/code-week-relist.ts`). Absent, the listing runs to the newest commit.
+   */
+  until?: Date;
   perPage?: number;
   /** 1-based page of the listing (2026-10-02): the caller follows a truncated week back. */
   page?: number;
@@ -129,6 +135,7 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
       // Encoded rather than concatenated, so parameter values cannot alter the URL.
       const query = new URLSearchParams({
         since: input.since.toISOString(),
+        ...(input.until ? { until: input.until.toISOString() } : {}),
         per_page: String(perPage),
         ...(input.page !== undefined && input.page > 1 ? { page: String(Math.floor(input.page)) } : {}),
       });

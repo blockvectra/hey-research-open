@@ -150,6 +150,15 @@ contracts, the project page, the Terminal, search and the type-ahead say so in o
 each project's own site or deploy record names — never which one is "real". `/signals` lists
 projects with Robinhood Chain evidence first within each group.
 
+Whose repository it is, re-checked (2026-10-07). A repository HEY's GitHub search attached to a page
+only because another repository by the same owner was already matched — before the ownership gate
+existed — is scored again by today's gate: unless its homepage is on the project's own domain or the
+project's own site links it, it stays on the page as context and its weeks stop counting
+(`pnpm data:recheck-search-owners`, dry run by default). When two published pages carry one
+repository, a page whose token the project's own site names (VERIFIED) holds it over a page whose
+token it does not; otherwise the page HEY saw first, as before (`pnpm data:shared-repo-holders`).
+Nothing is deleted; each change is logged.
+
 A card's one line is a description, never a README (2026-10-03). Provider text — a listing, a
 launchpad form, a repository's README — passes through one deterministic rule (`descriptionLine`):
 Markdown, label headings, addresses, URLs and bot commands go; instructions, chat, relay
@@ -490,8 +499,9 @@ account (`*-bot`, bot e-mails) or from an automated stream — one templated mes
 clock, or carrying its own changing timestamp or figures — is kept on the record and never counted;
 a CI-only commit is maintenance; a week of 25 or more commits counts as building only when 3 of a
 10-commit sample change code (`commit-substance-v3`). Date-stamped automated tags
-(`data-2026-10-01`, `backend-202610010354-6802318`) are rolling tags; a sitemap, an oEmbed card or
-a comments feed is never a release feed, and a reader's comment is never a ship. A launch pool is
+(`data-2026-10-01`, `backend-202610010354-6802318`) are rolling tags; a sitemap, an oEmbed card,
+a comments feed or (since 2026-10-07) any feed on HEY's own host is never a release feed, and a
+reader's comment or a HEY page is never a ship. A launch pool is
 "Launch pool only", never a measured market: no Discovery Gap, Under the Radar or Still Building.
 A project with no repository, changelog or feed linked reads "No builder source linked", never
 Dormant. Sources are read on their project's current tier, HOT first. `/ships`, `/this-week` and
@@ -515,6 +525,13 @@ building. Deploys a second apart count apart, an upgrade is never part of a batc
 contract stays on the timeline with its creating transaction. Chain feeds show the batch as one
 line ("4 contracts deployed by the project's deployer at 16:02:38 UTC on 30 Sep") and `/signals`
 announces it once, by count.
+
+Since scoring `hbm-v25` (2026-10-07) Resumed building is called only on a gap HEY watched: every
+ship of the comeback must come from a source HEY was already reading when the gap began — the
+earliest attachment of the sources its evidence names, at or before the last update before the
+gap. A repository HEY began reading during the gap, or a ship whose source HEY cannot name, is not a
+return: the project reads Shipping or Active by the ordinary rule, and the score says why
+(`resumedWithheld`). The 14-day window and the 60-day gap are unchanged.
 
 A week of code activity has one title everywhere (2026-10-03): "Code changes, week of 2026-09-28 –
 2026-10-04", the fixed UTC week it is keyed on, on the ledger, the API, the partner card and every

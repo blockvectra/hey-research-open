@@ -143,6 +143,26 @@ export const DEPLOY_BATCH = {
   period: 'utc_second',
 } as const;
 
+/**
+ * Resumed only inside HEY's coverage (hbm-v25, 2026-10-07, founder
+ * delegation, production audit). "Resumed after N days without observed
+ * activity" is a claim that HEY was looking through those N days. A comeback
+ * counts only when every ship in it was read from a source HEY was already
+ * reading when the gap began — each ship's `coveredFrom` (the earliest
+ * `project_sources.created_at` its evidence names) at or before the last
+ * update before the gap. A source attached during the gap, or a ship whose
+ * source HEY cannot name, makes the gap one HEY did not observe: the status
+ * falls through to the ordinary recency rule and `resumedWithheld` says why.
+ * Measured on production (2026-10-07): 11 of 16 RESUMED projects were the
+ * first code HEY ever read, within 8 days of the repository being attached.
+ */
+export const RESUMED_COVERAGE = {
+  /** Every comeback ship's source must have been read from the start of the gap. */
+  requireCoverageThroughGap: true,
+  /** A ship whose coverage start HEY does not know never carries a comeback. */
+  unknownCoverageWithholds: true,
+} as const;
+
 /** PRD V4 section 13.2. */
 export const UNDER_THE_RADAR = {
   /** 45 until hbm-v5 (2026-09-13): on the honest published cohort only 16 projects cleared 45 with a live market; 30 admits 29 and still demands verified building. */
