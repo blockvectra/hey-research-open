@@ -6,6 +6,26 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **A repository the project's site links, with no owner tie, goes to review (2026-10-08).** A link
+  from the project's own website says the site points at the code, not that the project wrote it. Such
+  a repository now counts toward building only when something ties it to the project: its owner is
+  the project's name or domain, its homepage is on the project's domain, it names the project's
+  contract, it carries a deployer's Robinhood Chain marker, or a person confirmed it. Otherwise it stays
+  on the page with its provenance as context (`contextReason: site_link_without_owner_tie`) and its
+  ships do not count until a moderator confirms it. A token's site that linked a research lab's public
+  repository had made its page a Verified Builder on the lab's commits.
+
+- **CI build-stamp tags and data feeds are not ships (2026-10-08).** A GitHub release cut from a
+  CI build stamp — a word stem with a run number and an attempt (`server-image-1234-1`), or
+  `build-<n>` / `ci-<n>` — is a rolling tag, kept as context (`rolling_tag`); versions such as
+  `v1.2.3`, `1.2.3-rc.1`, `release-2024-10` and `app-1.4.0` stay releases. A feed whose recent
+  entries are one templated stream of changing figures, dates and tickers ("USDT Adds $482.55M On
+  The Week"), read with the same templates as automated commits, is a data feed: the source is
+  held as context (`data_feed`), never coverage, and every entry is kept as context, never a ship.
+  A date, a version or a sequence number is never a figure, so dated changelogs, release feeds and
+  numbered newsletters stay ship sources; no market figure decides anything. Ships already counted
+  were withdrawn through the change ledger as retractions, each row kept. Migration
+  `0233_data_feeds_and_ci_build_stamps`.
 - **HEY's own feeds are never a release feed (2026-10-07).** A feed on HEY's own host
   (`/feed/updates.xml`, `/feed/ships.xml`, `/feed/this-week.xml`, a project's `feed.xml`) is never
   registered or read as a project's release feed, and a feed entry that links to a HEY page is never

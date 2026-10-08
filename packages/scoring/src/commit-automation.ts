@@ -61,21 +61,44 @@ export type CommitAutomation = {
 const AUTOMATED_SUBJECT = /^(\[(bot|auto|automated|automation)\]|(auto|automated)[- ](commit|update|updated|sync|generated|deploy|build|refresh)\b|🤖)/iu;
 
 /**
- * A subject with what changes from run to run set aside: ISO timestamps and
- * dates, 0x addresses and hashes, long hex strings and numbers each become a
- * placeholder; case and whitespace are folded.
+ * One step of a subject template: every match of `pattern` becomes
+ * `replacement`. Written once, in the regular-expression subset JavaScript
+ * and PostgreSQL read the same way — no `\b` (PostgreSQL reads it as a
+ * backspace), word edges as look-arounds, digits as `[0-9]` — so a SQL twin
+ * can apply the same steps (`ships/data-feed.ts`, 2026-10-08). Applied with
+ * the global flag, in order.
+ */
+export type TemplateStep = { readonly pattern: string; readonly replacement: string };
+
+/** Not a word character on either side: JavaScript's `\b` around a run of word characters, on lower-cased text. */
+export const EDGE_BEFORE = '(?<![a-z0-9_])';
+export const EDGE_AFTER = '(?![a-z0-9_])';
+
+/**
+ * What changes from run to run, set aside, on a trimmed and lower-cased
+ * subject: ISO timestamps and dates, clock times, 0x addresses and hashes,
+ * long hex strings and numbers each become a placeholder.
+ */
+export const SUBJECT_TEMPLATE_STEPS: readonly TemplateStep[] = [
+  { pattern: '[0-9]{4}-[0-9]{2}-[0-9]{2}([t ][0-9]{2}:[0-9]{2}(:[0-9]{2}([.][0-9]+)?)?(z|[+-][0-9]{2}:?[0-9]{2})?)?', replacement: '<time>' },
+  { pattern: `${EDGE_BEFORE}[0-9]{1,2}:[0-9]{2}(:[0-9]{2})?${EDGE_AFTER}`, replacement: '<time>' },
+  { pattern: `${EDGE_BEFORE}0x[0-9a-f]{6,}${EDGE_AFTER}`, replacement: '<hex>' },
+  // A hash has letters and digits; a run of digits alone is a number below.
+  { pattern: `${EDGE_BEFORE}(?=[0-9a-f]*[a-f])(?=[0-9a-f]*[0-9])[0-9a-f]{7,64}${EDGE_AFTER}`, replacement: '<hex>' },
+  { pattern: '[-+]?[0-9][0-9,]*([.][0-9]+)?(e[-+]?[0-9]+)?', replacement: '<n>' },
+];
+
+/** Apply template steps, in order, each with the global flag. */
+export function applyTemplateSteps(text: string, steps: readonly TemplateStep[]): string {
+  return steps.reduce((value, step) => value.replace(new RegExp(step.pattern, 'g'), step.replacement), text);
+}
+
+/**
+ * A subject with what changes from run to run set aside
+ * (`SUBJECT_TEMPLATE_STEPS`); case and whitespace are folded.
  */
 export function commitSubjectTemplate(message: string): string {
-  return message
-    .trim()
-    .toLowerCase()
-    .replace(/\d{4}-\d{2}-\d{2}([t ]\d{2}:\d{2}(:\d{2}(\.\d+)?)?(z|[+-]\d{2}:?\d{2})?)?/g, '<time>')
-    .replace(/\b\d{1,2}:\d{2}(:\d{2})?\b/g, '<time>')
-    .replace(/\b0x[0-9a-f]{6,}\b/g, '<hex>')
-    // A hash has letters and digits; a run of digits alone is a number below.
-    .replace(/\b(?=[0-9a-f]*[a-f])(?=[0-9a-f]*\d)[0-9a-f]{7,64}\b/g, '<hex>')
-    .replace(/[-+]?\d[\d,]*(\.\d+)?(e[-+]?\d+)?/g, '<n>')
-    .replace(/\s+/g, ' ');
+  return applyTemplateSteps(message.trim().toLowerCase(), SUBJECT_TEMPLATE_STEPS).replace(/\s+/g, ' ');
 }
 
 const median = (values: readonly number[]): number => {
