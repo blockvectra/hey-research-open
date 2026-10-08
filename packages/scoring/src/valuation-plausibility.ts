@@ -22,7 +22,18 @@
  *     it never decides alone: a reading that really trades — openzaps, $125K a
  *     day on a $194K pool the index holds $2 of — is not caught. Rule 3
  *     needs the caller's chain evidence and is not yet a scorer input
- *     (`VALUATION_CHAIN_EVIDENCE`).
+ *     (`VALUATION_CHAIN_EVIDENCE`); or
+ *  4. another source's price for the same token, its newest reading within
+ *     a day of this one, is more than `VALUATION_SOURCES_DISAGREE.maxPriceRatio`
+ *     (10×) away from the reading's (`sources_disagree`, 2026-10-09 red-team
+ *     F1). USDB's chosen reading — decoded on-chain trades at $0.018, so its
+ *     own trade close agreed and rule 3 stayed silent — valued it at $182M
+ *     and held #2 on Explore's valuation order while CoinGecko and
+ *     GeckoTerminal priced it near $1 the same day. Below 10× the figure
+ *     stays and is labelled "sources disagree" (`marketSourcesDisagree`, 2×);
+ *     at 10× HEY cannot say which figure is the market, so it publishes
+ *     neither as the valuation. Like rule 3 it needs the caller's other-source
+ *     readings and is not a scorer input.
  *
  * An implausible valuation is never labelled FACT and never used as an input
  * anywhere a valuation is used: the card, the project page, the Terminal,
@@ -76,13 +87,26 @@ export const VALUATION_CHAIN_EVIDENCE = {
   indexMaxTurnover: 0.001,
 } as const;
 
+/**
+ * Rule 4's thresholds (2026-10-09 red-team F1). Apart from the others for
+ * rule 3's reason: it fires only when a caller passes the other sources'
+ * prices, and the scorer does not. Withhold only, never awards.
+ */
+export const VALUATION_SOURCES_DISAGREE = {
+  /** Another source's price more than this many times away from the reading's withholds its valuation. */
+  maxPriceRatio: 10,
+  /** … each other source's newest reading within this long of the reading (`MARKET_SOURCES_DISAGREE.windowMs`). */
+  windowMs: 24 * 60 * 60 * 1000,
+} as const;
+
 /** The rules' version, carried by the explain engine's valuation rule. */
-export const VALUATION_PLAUSIBILITY_VERSION = 'valuation-plausibility-2026-10-09' as const;
+export const VALUATION_PLAUSIBILITY_VERSION = 'valuation-plausibility-2026-10-09b' as const;
 
 export const VALUATION_IMPLAUSIBLE_REASONS = [
   'valuation_over_liquidity',
   'unlisted_over_ceiling',
   'chain_evidence_contradicts',
+  'sources_disagree',
 ] as const;
 export type ValuationImplausibleReason = (typeof VALUATION_IMPLAUSIBLE_REASONS)[number];
 
@@ -108,6 +132,8 @@ export type ValuationPlausibilityInput = {
   chainTradePriceUsd?: number | null | undefined;
   /** HEY's chain pool index liquidity for the token near the reading (rule 3); absent when HEY has none. */
   chainIndexLiquidityUsd?: number | null | undefined;
+  /** Each other source's newest price within a day of the reading (rule 4); absent or empty when HEY holds none. */
+  otherSourcePricesUsd?: readonly (number | null | undefined)[] | null | undefined;
 };
 
 export type ValuationPlausibility =
@@ -134,6 +160,7 @@ export function valuationPlausibility(input: ValuationPlausibilityInput): Valuat
     return { plausible: false, reason: 'valuation_over_liquidity' };
   }
   if (chainEvidenceContradicts(input)) return { plausible: false, reason: 'chain_evidence_contradicts' };
+  if (otherSourcesDisagree(input)) return { plausible: false, reason: 'sources_disagree' };
   if (
     input.chainId === VALUATION_PLAUSIBILITY.chainId &&
     value > VALUATION_PLAUSIBILITY.unlistedCeilingUsd &&
@@ -174,6 +201,21 @@ export function chainEvidenceContradicts(
   );
 }
 
+/**
+ * Rule 4 (2026-10-09 red-team F1): another source's price is more than 10×
+ * away from the reading's. Unknown is never a trip wire: a missing price on
+ * either side decides nothing.
+ */
+export function otherSourcesDisagree(
+  input: Pick<ValuationPlausibilityInput, 'priceUsd' | 'otherSourcePricesUsd'>,
+): boolean {
+  if (!positive(input.priceUsd)) return false;
+  const price = input.priceUsd;
+  return (input.otherSourcePricesUsd ?? []).some(
+    (other) => positive(other) && Math.max(price / other, other / price) > VALUATION_SOURCES_DISAGREE.maxPriceRatio,
+  );
+}
+
 /** A stored or transported reason read back: one of the list, or undefined for anything else. */
 export function valuationImplausibleReason(value: unknown): ValuationImplausibleReason | undefined {
   return typeof value === 'string' &&
@@ -191,6 +233,7 @@ export const VALUATION_IMPLAUSIBLE_WORDS: Readonly<Record<ValuationImplausibleRe
   valuation_over_liquidity: `it is at least ${VALUATION_PLAUSIBILITY.maxLiquidityMultiple.toLocaleString('en-US')}× the liquidity measured in the same reading`,
   unlisted_over_ceiling: `it is above $${VALUATION_PLAUSIBILITY.unlistedCeilingUsd / 1_000_000_000}B on a Robinhood Chain token that no listing HEY reads carries (HEY reads CoinGecko)`,
   chain_evidence_contradicts: `HEY's own chain readings contradict it more than ${VALUATION_CHAIN_EVIDENCE.contradictionMultiple}×: the price of the token's decoded on-chain trades, or the liquidity in HEY's chain pool index on a day the reading barely traded`,
+  sources_disagree: `another source priced the token more than ${VALUATION_SOURCES_DISAGREE.maxPriceRatio}× away from this reading within a day, so HEY cannot say which figure is the market`,
 };
 
 /** "Valuation not plausible from the readings HEY has: <reason>." — one sentence, for tooltips, the API and agents. */

@@ -81,6 +81,7 @@ export const VALUATION_NOT_PLAUSIBLE_CODES = [
   'valuation_over_liquidity',
   'unlisted_over_ceiling',
   'chain_evidence_contradicts',
+  'sources_disagree',
 ] as const;
 
 const VALUATION_NOT_PLAUSIBLE_REASON_WORDS: Readonly<
@@ -89,6 +90,7 @@ const VALUATION_NOT_PLAUSIBLE_REASON_WORDS: Readonly<
   valuation_over_liquidity: 'at least 10,000× the liquidity measured in the same reading',
   unlisted_over_ceiling: 'above $10B on a Robinhood Chain token that no listing HEY reads carries',
   chain_evidence_contradicts: "contradicted more than 10× by HEY's own chain readings (its decoded trades' price, or its chain pool index on a day the reading barely traded)",
+  sources_disagree: 'more than 10× away from another source\'s price for the same token within a day, so HEY cannot say which figure is the market',
 };
 
 /** Whether an API `valuationWithheld` code is the valuation gate's (not plausible) rather than a market's. */

@@ -120,7 +120,7 @@ describe('ProjectCard — fallbacks', () => {
     const html = render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false, tokenMarketStatus: 'ACTIVE_MARKET', onchainEvents24h: 1204 });
     expect(html).toContain('data-testid="card-context-line"');
     expect(html).toContain('Traded today · 1,204 on-chain events / 24 h');
-    expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'launch_pool_no_trades' })).toBe('Launch pool, no trades yet');
+    expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'launch_pool_no_trades' })).toBe('Launch pool, no trades in the last day');
     expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', onchainEvents24h: 1 })).toBe('No trades today · 1 on-chain event / 24 h');
     expect(tradeContextLine({ ...tokenBacked })).toBeUndefined();
     // Not under a status HEY could read, and never on a tokenless card.
@@ -145,6 +145,42 @@ describe('ProjectCard — fallbacks', () => {
     expect(formatPercentChange(-12.04)).toBe('−12.0%');
     expect(formatPercentChange(1234.5)).toBe('+1,235%');
     expect(formatPercentChange(undefined)).toBeUndefined();
+  });
+
+  it('names a launch pool that traded "Launch pool only" and prints none of its figures as a market (RT2-01, 2026-10-09)', () => {
+    const launchPool = {
+      ...tokenBacked,
+      tokenMarketStatus: 'ACTIVE_MARKET',
+      tokenMarketReason: 'launch_pool_trading',
+      marketCapUsd: 4_800_000,
+      liquidityUsd: 2_400_000,
+      volume24hUsd: 3_100,
+      buys24h: 12,
+      sells24h: 9,
+      priceChange24hPct: 38,
+      launchStage: 'CURVE',
+    } as ProjectCardData;
+    const html = render(launchPool);
+    expect(html).toContain('data-valuation-state="launch_pool_only"');
+    expect(html).toContain('>Launch pool only<');
+    expect(html).not.toContain('$4.8M');
+    expect(html).not.toContain('Market cap');
+    const lens = renderToStaticMarkup(createElement(ProjectCard, { project: launchPool, marketLens: true }));
+    expect(lens).not.toContain('$2.4M');
+    // The pool's trades are measured and stay; its "liquidity" is the token's own supply and does not.
+    expect(marketLensLine(launchPool)).toBe('Launch pool only · 24 h volume $3.1K · 12 buys · 9 sells · on the launch curve');
+    expect(tradeContextLine(launchPool)).toBe('Launch pool only · traded today');
+    // A measured active market keeps its figures.
+    const measured = { ...launchPool, tokenMarketReason: 'liquidity_and_volume' } as ProjectCardData;
+    expect(render(measured)).toContain('$4.8M');
+    expect(marketLensLine(measured)).toContain('Liquidity $2.4M');
+    expect(tradeContextLine(measured)).toBe('Traded today');
+  });
+
+  it('a launch pool with no trades in the last day says just that, never "no trades yet" (RT2-06, 2026-10-09)', () => {
+    const quiet = { ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'launch_pool_no_trades' } as ProjectCardData;
+    expect(marketLensLine(quiet)).toBe('Launch pool, no trades in the last day');
+    expect(marketLensLine(quiet)).not.toContain('yet');
   });
 
   it('prints no figure and no dead-market claim for readings HEY does not settle (2026-09-25)', () => {

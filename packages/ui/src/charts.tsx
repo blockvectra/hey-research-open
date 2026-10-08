@@ -15,7 +15,8 @@ export type ScatterDatum = {
   name: string;
   symbol?: string;
   activityStatus: ActivityStatusValue;
-  buildMomentum: number;
+  /** Null when HEY has not measured it (2026-10-09 red-team F4): such a point has no height and is not drawn. */
+  buildMomentum: number | null;
   marketAttention: number;
   marketCapUsd?: number;
   /** Which measure `marketCapUsd` is (2026-09-25); the tooltip names it, and an FDV is never called a market cap. */
@@ -39,12 +40,19 @@ const STATUS_FILL: Record<string, string> = {
  * the top-left quadrant is the product's whole thesis made visible.
  */
 export function BuildVsMarketChart({
-  data,
+  data: all,
   className,
 }: {
   data: readonly ScatterDatum[];
   className?: string;
 }) {
+  /*
+   * A point whose Build Momentum HEY has not measured has no place on the Y
+   * axis (2026-10-09 red-team F4): drawn at the floor it read "Activity
+   * unknown · Build Momentum 0". It is left out and counted in the caption.
+   */
+  const data = all.filter((point): point is ScatterDatum & { buildMomentum: number } => point.buildMomentum !== null);
+  const unplaced = all.length - data.length;
   const width = 960;
   const height = 520;
   const pad = { top: 28, right: 28, bottom: 52, left: 62 };
@@ -173,6 +181,9 @@ export function BuildVsMarketChart({
         Each bubble is a project; size reflects its valuation (market cap, or fully diluted
         valuation where no circulating figure exists) and colour reflects activity status.
         Position describes what has happened, not what will.
+        {unplaced > 0
+          ? ` ${unplaced} ${unplaced === 1 ? 'project is' : 'projects are'} not placed: Build Momentum not measured.`
+          : null}
       </figcaption>
     </figure>
   );

@@ -6,6 +6,10 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Cards and prices (2026-10-09).** A card whose token trades only in its launch pool reads "Launch
+  pool only" and prints neither valuation nor liquidity; a quiet launch pool reads "no trades in the
+  last day". A tiny price counts its zeros in a subscript (`$0.0₈267`), never exponent form. No API
+  field changes.
 - **Coverage states (2026-10-09, additive).** `/api/projects/{slug}/coverage` adds `MAPPING_BLOCKED`
   (a candidate HEY holds that nothing ties to the project; three reasons that read `NO_SOURCE`) and
   `PARTIAL` (part of a dimension measured), and `cause` on an unavailable or deferred read
@@ -27,6 +31,17 @@ record.
   definition; a `/search` with no published project records what it showed instead of `zero`
   (`launch_records`, `issuer_tokens`, `foreign_address`, `answered`); route analytics template
   identifiers. `$HEY` profile: an open perk with nothing behind it reads `statusReason: open_none_yet`.
+
+- **Red-team repair (2026-10-09).** A valuation another source prices more than 10× away within a
+  day is withheld with `valuationWithheld: sources_disagree` (additive code) and leaves the valuation
+  sort, filter and count. An earlier liquidity figure now carries its own reading's `source` and is
+  absent when HEY cannot name it. The snapshot carries `market.sourcesDisagree` (additive), and the
+  MCP prints such a valuation DERIVED, never FACT. A rescued market's valuation is withheld on Pulse, in `/market`
+  `days[]` (`marketCapCloseWithheld: liquidity_in_another_pool`) and in the around-event read, as on
+  the card; Pulse no longer prints "Build Momentum 0" for a project HEY has not measured. A closed
+  weekly report whose stored DEX volume sums a withheld day reads with no total and
+  `chain.dexVolumeWithheldDays`. A project whose own description names Robinhood Chain now counts as
+  built on it (Explore's default lens and the rankings); a chain id in a config file still does not.
 
 - **Follow → alert → return, repaired (2026-10-09).** Alerts: two presets, `ship` (`build.ship`) and
   `code` (`build.code_activity`, shown in the HEY inbox only; never emailed, sent to a webhook or to

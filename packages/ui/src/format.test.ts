@@ -171,6 +171,24 @@ describe('Terminal price and date formats (redesign, 2026-09-26)', () => {
     expect(formatTerminalPrice(2.38e-12)).toBe('$0.0₁₁238');
   });
 
+  it('prints a public token price below a millionth with its zeros counted, never in exponent form (RT2-05, 2026-10-09)', async () => {
+    const { formatTokenPrice } = await import('./format');
+    // The market page of a launch-pool token printed "$2.67e-9".
+    expect(formatTokenPrice(2.67e-9)).toBe('$0.0₈267');
+    expect(formatTokenPrice(1e-6)).toBe('$0.0₅100');
+    expect(formatTokenPrice(1e-7)).toBe('$0.0₆100');
+    expect(formatTokenPrice(1e-8)).toBe('$0.0₇100');
+    expect(formatTokenPrice(1e-9)).toBe('$0.0₈100');
+    expect(formatTokenPrice(1e-10)).toBe('$0.0₉100');
+    expect(formatTokenPrice(1e-11)).toBe('$0.0₁₀100');
+    expect(formatTokenPrice(1e-12)).toBe('$0.0₁₁100');
+    for (let power = 6; power <= 12; power += 1) expect(formatTokenPrice(3.21 * 10 ** -power)).not.toMatch(/e/i);
+    // The forms that never needed it are unchanged.
+    expect(formatTokenPrice(0.0123)).toBe('$0.0123');
+    expect(formatTokenPrice(0.5)).toBe('$0.500');
+    expect(formatTokenPrice(1234.5)).toBe('$1234.50');
+  });
+
   it('labels a price axis in one form for every tick (full audit, 2026-10-03)', async () => {
     const { formatTerminalPriceTicks } = await import('./format');
     // The $CHIT 1H axis printed "$0.0₄500" under "$0.000100".

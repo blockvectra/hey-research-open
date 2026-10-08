@@ -45,6 +45,15 @@ describe('the Pulse chart tooltip', () => {
     const { marketCapUsd: _drop, ...rest } = point({});
     expect(renderToStaticMarkup(createElement(BuildVsMarketChart, { data: [rest] }))).toContain('Valuation not available');
   });
+
+  it('never draws an unmeasured Build Momentum as 0: the point is left out and counted (2026-10-09 red-team F4)', () => {
+    const html = renderToStaticMarkup(
+      createElement(BuildVsMarketChart, { data: [point({}), point({ slug: 'unread', name: 'Unread', activityStatus: 'UNKNOWN', buildMomentum: null })] }),
+    );
+    expect(html).not.toContain('Unread');
+    expect(html).not.toContain('Build Momentum 0');
+    expect(html).toContain('1 project is not placed: Build Momentum not measured.');
+  });
 });
 
 describe('the map tooltip', () => {

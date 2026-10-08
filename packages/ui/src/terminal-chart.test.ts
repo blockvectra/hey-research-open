@@ -13,7 +13,7 @@ import {
   type CandleDay,
   type ChartEvent,
 } from './terminal-chart';
-import { LANE_COUNT_ROOM, LANE_HIT_HALF, codeFacts, lastCloseMark, laneRooms, sinceEventMove, type ChartRow } from './terminal-chart-client';
+import { LANE_COUNT_ROOM, LANE_HIT_HALF, codeFacts, lastCloseMark, laneRooms, sinceEventMove, sinceEventWords, type ChartRow } from './terminal-chart-client';
 import { DailyCandleChart } from './terminal-chart-view';
 
 const TODAY = '2026-09-26';
@@ -595,8 +595,21 @@ describe('sinceEventMove', () => {
   const model = { rows: [row('2026-09-20', 1), row('2026-09-21', 2), row('2026-09-22', 4), row('2026-09-23', 5)], latest: 3 } as unknown as Parameters<typeof sinceEventMove>[0];
 
   it("anchors on a dated event's own column, whatever column is hovered", () => {
-    expect(sinceEventMove(model, [{ i: 1, p: 'EXACT' }])).toEqual({ pct: 150, at: 1 });
-    expect(sinceEventMove(model, [{ i: 0, p: 'DATE' }, { i: 2, p: 'EXACT' }])).toEqual({ pct: 25, at: 2 });
+    expect(sinceEventMove(model, [{ i: 1, p: 'EXACT' }])).toEqual({ pct: 150, at: 1, to: 3 });
+    expect(sinceEventMove(model, [{ i: 0, p: 'DATE' }, { i: 2, p: 'EXACT' }])).toEqual({ pct: 25, at: 2, to: 3 });
+  });
+
+  /*
+   * Red team RT2-11 (2026-10-09): the readout said "close since 11 Sep" and
+   * ended, unnamed, on the last complete day while the rightmost candle was
+   * today's, still forming. It names both ends.
+   */
+  it('ends on the latest complete day, not a forming candle, and names both ends', () => {
+    const forming: ChartRow = ['2026-09-24', 5, 9, 5, 9, 10, 1, 'p'];
+    const withToday = { ...model, rows: [...(model as unknown as { rows: ChartRow[] }).rows, forming], latest: 3, today: '2026-09-24' } as unknown as Parameters<typeof sinceEventMove>[0];
+    const move = sinceEventMove(withToday, [{ i: 1, p: 'EXACT' }])!;
+    expect(move).toEqual({ pct: 150, at: 1, to: 3 });
+    expect(sinceEventWords(withToday, move)).toBe('close since 21 Sep to 23 Sep');
   });
 
   it('prints nothing for a week, a window or an observation, and nothing on the latest column', () => {

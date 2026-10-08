@@ -447,7 +447,7 @@ export const tokenMarket: HeyTokenMarket = {
   marketStatus: 'ACTIVE_MARKET',
   verification: 'VERIFIED',
   contract: { deployer: '0xdep0000000000000000000000000000000000001', deployerShared: true, createdAt: '2026-08-01T12:00:00.000Z', creationTx: '0xtx' },
-  pools: { day: '2026-09-24', observedAt: '2026-09-24T23:00:00Z', pools: 2, liquidityUsd: 40_000, depthOnePctUsd: 350, dominantPoolShare: 0.82 },
+  pools: { day: '2026-09-24', observedAt: '2026-09-24T23:00:00Z', pools: 2, liquidityUsd: 40_000, depthOnePctUsd: 350, dominantPoolShare: 82.4 },
   distribution: { day: '2026-09-24', observedAt: '2026-09-24T20:00:00Z', holdersTotal: 1_830, top10SharePct: 41.24, top50SharePct: 63.9, burnedSharePct: 5, pooledSharePct: 12.4 },
   current: { priceUsd: 0.000208, marketCapUsd: 208_594, valuationKind: 'fdv', fdvUsd: 208_594, liquidityUsd: 41_000, liquidityKind: 'market', volume24hUsd: 3_800, source: 'dexscreener', observedAt: '2026-09-25T20:00:00.000Z' },
   days: [

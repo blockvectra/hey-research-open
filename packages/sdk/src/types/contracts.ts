@@ -250,7 +250,13 @@ export type HeyMarketContractExtras = {
   };
 };
 
-export type HeyPoolStructure = { livePoolCount?: number; dominantPoolShare?: number; poolFirstSeenDay?: string; structureCollectedFrom?: string };
+export type HeyPoolStructure = {
+  livePoolCount?: number;
+  /** The largest pool's share of measured pool liquidity, as a percentage (0–100, one decimal) — not a 0–1 fraction. */
+  dominantPoolShare?: number;
+  poolFirstSeenDay?: string;
+  structureCollectedFrom?: string;
+};
 
 export type HeyLifecycleExtras = {
   launchStageObservedAt?: string;

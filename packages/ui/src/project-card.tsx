@@ -17,7 +17,7 @@ import { valuationDisplay, valuationDisplayLabel, valuationHiddenSentence, VALUA
 import { projectCategory } from './project-category';
 import { ProjectLogo } from './project-logo';
 import { cardShipPhrase, displayShipTitle } from './ship-phrase';
-import { ActivityChip, activityPresentation, type ActivityStatusValue, unknownActivityReason, StillBuildingBadge, TokenVerificationChip, tokenVerificationHelp, tokenVerificationLabel } from './status';
+import { ActivityChip, activityPresentation, type ActivityStatusValue, isLaunchPoolOnlyMarket, LAUNCH_POOL_ONLY_PRESENTATION, unknownActivityReason, StillBuildingBadge, TokenVerificationChip, tokenVerificationHelp, tokenVerificationLabel } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
 import { TokenLockChip, type TokenLockFacts } from './token-lock';
 import { BrandNotice, type BrandNoticeData } from './brand-notice';
@@ -217,7 +217,16 @@ export function ProjectCard({
     marketReason: project.tokenMarketReason,
     valuationImplausible: project.valuationImplausible,
   });
-  const staleAge = valuation.shown ? staleReadingAge(project.marketCapObservedAt, now) : undefined;
+  /*
+   * A launch pool that traded (`launch_pool_trading`, 2026-10-09 red team
+   * RT2-01): the classifier calls it ACTIVE_MARKET, so `valuationDisplay`
+   * shows its figure, and the card printed "Market cap $X" over the token's
+   * own supply at its last price on the homepage, Explore and the token view.
+   * The card names it "Launch pool only", as the chip and the page do, and
+   * prints no figure; the API's `publishedValuation` is unchanged.
+   */
+  const launchPoolOnly = isLaunchPoolOnlyMarket(project.tokenMarketStatus, project.tokenMarketReason);
+  const staleAge = valuation.shown && !launchPoolOnly ? staleReadingAge(project.marketCapObservedAt, now) : undefined;
   const hasToken = Boolean(project.token);
   // What HEY does know about a token it cannot read building from (2026-09-13): trades and on-chain events, as context under the cap.
   const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
@@ -496,13 +505,21 @@ export function ProjectCard({
               */}
               <span
                 className="text-hey-secondary"
-                {...(valuation.shown && valuation.kind === 'fdv'
+                {...(valuation.shown && !launchPoolOnly && valuation.kind === 'fdv'
                   ? { title: FDV_HELP }
                   : {})}
               >
-                {terms?.valuation ? terms.valuation(valuationDisplayLabel(valuation, 'card'), valuation.shown ? valuation.kind : undefined) : valuationDisplayLabel(valuation, 'card')}
+                {terms?.valuation
+                  ? terms.valuation(launchPoolOnly ? 'Valuation' : valuationDisplayLabel(valuation, 'card'), valuation.shown && !launchPoolOnly ? valuation.kind : undefined)
+                  : launchPoolOnly
+                    ? 'Valuation'
+                    : valuationDisplayLabel(valuation, 'card')}
               </span>
-              {valuation.shown ? (
+              {launchPoolOnly ? (
+                <span className="text-hey-muted" data-valuation-state="launch_pool_only" title={LAUNCH_POOL_ONLY_PRESENTATION.help}>
+                  {LAUNCH_POOL_ONLY_PRESENTATION.label}
+                </span>
+              ) : valuation.shown ? (
                 <span className="font-semibold tabular-nums text-hey-ink" {...(marketSource ? { title: `via ${marketSource}` } : {})}>
                   {formatUsdCompact(valuation.usd)}
                   {/* Stale is not current (2026-09-28): a reading older than a day says how old, as the Terminal does. */}
@@ -613,6 +630,13 @@ export function EmptyState({ title, hint }: { title: string; hint?: string }) {
   );
 }
 
+/*
+ * `launch_pool_no_trades` means nothing traded in the launch pool in the last
+ * day (`TOKEN_MARKET_REASON_WORDS`), not that it never traded (2026-10-09, red
+ * team RT2-06): the card said "no trades yet" over a pool with a trade history.
+ */
+const LAUNCH_POOL_NO_TRADES_WORDS = 'Launch pool, no trades in the last day';
+
 const STAGE_WORDS: Record<NonNullable<ProjectCardData['launchStage']>, string> = {
   CURVE: 'on the launch curve',
   GRADUATED: 'graduated from its curve',
@@ -630,9 +654,14 @@ export function marketLensLine(project: ProjectCardData): string {
   const liquidity = formatUsdCompact(project.liquidityUsd);
   const volume = formatUsdCompact(project.volume24hUsd);
   if (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') {
-    parts.push('Launch pool, no trades yet');
+    parts.push(LAUNCH_POOL_NO_TRADES_WORDS);
   } else if (project.tokenMarketReason === 'launch_pool_volume_unknown') {
     parts.push('Launch pool, trading unknown');
+  } else if (isLaunchPoolOnlyMarket(project.tokenMarketStatus, project.tokenMarketReason)) {
+    // The pool's "liquidity" is the token's own supply, never a depth figure (RT2-01); its trades are real and stay.
+    parts.push(LAUNCH_POOL_ONLY_PRESENTATION.label);
+    if (volume) parts.push(`24 h volume ${volume}`);
+    if (project.buys24h !== undefined && project.sells24h !== undefined) parts.push(`${project.buys24h.toLocaleString('en-US')} buys · ${project.sells24h.toLocaleString('en-US')} sells`);
   } else if (project.tokenMarketReason === 'readings_implausible') {
     parts.push('Reported liquidity not confirmed');
   } else if (project.tokenMarketReason === 'pool_readings_disagree') {
@@ -670,8 +699,9 @@ const eventsPhrase = (count: number): string => `${count.toLocaleString('en-US')
  */
 export function tradeContextLine(project: ProjectCardData): string | undefined {
   const parts: string[] = [];
-  if (project.tokenMarketStatus === 'ACTIVE_MARKET') parts.push('Traded today');
-  else if (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') parts.push('Launch pool, no trades yet');
+  if (isLaunchPoolOnlyMarket(project.tokenMarketStatus, project.tokenMarketReason)) parts.push(`${LAUNCH_POOL_ONLY_PRESENTATION.label} · traded today`);
+  else if (project.tokenMarketStatus === 'ACTIVE_MARKET') parts.push('Traded today');
+  else if (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') parts.push(LAUNCH_POOL_NO_TRADES_WORDS);
   else if (project.tokenMarketReason === 'launch_pool_volume_unknown') parts.push('Launch pool, trading unknown');
   else if (project.tokenMarketStatus === 'TRADING_INACTIVE') parts.push('No trades today');
   if (project.onchainEvents24h !== undefined) parts.push(eventsPhrase(project.onchainEvents24h));

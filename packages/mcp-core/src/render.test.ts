@@ -243,6 +243,23 @@ describe('get_project_snapshot', () => {
     expect(text).not.toMatch(/market cap|\$0\b/);
   });
 
+  it('never renders a valuation FACT beside sources that disagree (2026-10-09 red-team F2)', () => {
+    const market = {
+      marketCap: { usd: 2_489_661_474, source: 'dexscreener', observedAt: '2026-10-08T12:00:00.000Z', kind: 'fdv' as const },
+      tokenMarket: { status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' },
+      url: fx.snapshot.market!.url,
+    };
+    const agreed = renderSnapshot({ ...fx.snapshot, market }, NOW);
+    expect(agreed.split('\n').filter((line) => line.startsWith('- FACT') && line.includes('(dexscreener, 2026-10-08)'))).toHaveLength(1);
+    const disagreed = renderSnapshot(
+      { ...fx.snapshot, market: { ...market, sourcesDisagree: { source: 'coingecko', priceUsd: 3598.5, observedAt: '2026-10-08T10:00:00.000Z' } } },
+      NOW,
+    );
+    expect(disagreed).toContain('sources disagree: coingecko priced it at $3598.5 on 2026-10-08');
+    expect(disagreed).toMatch(/- DERIVED (FDV|fully diluted|valuation)/i);
+    expect(disagreed.split('\n').filter((line) => line.startsWith('- FACT') && /dexscreener, 2026-10-08/.test(line))).toEqual([]);
+  });
+
   it('says why a Discovery Gap is not measured when the API says so, never a zero (hbm-v18)', () => {
     const thin = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, discoveryGapWithheld: 'market_too_thin' } }, NOW);
     expect(thin).toContain('- UNKNOWN Discovery Gap: not measured — market too thin (market_too_thin)');
@@ -544,7 +561,9 @@ describe('get_token_market', () => {
     expect(text).toContain('the launchpad (virtuals) says it launched 2026-08-01 — the launchpad\'s claim');
     expect(text).toContain('2026-09-24 not indexed');
     expect(text).toContain('largest 10 balances hold 41.2%');
-    expect(text).toContain('the largest pool holds 82% of measured pool liquidity');
+    // The API's own 0–100 scale (2026-10-09 red-team F13): never "8240%" or "10000%".
+    expect(text).toContain('the largest pool holds 82.4% of measured pool liquidity');
+    expect(text).not.toMatch(/holds \d{3,}%/);
     expect(text).toContain('no address but the contract’s deployer is named');
   });
 
@@ -704,6 +723,10 @@ describe('chain_overview', () => {
     expect(text).toMatch(/^DERIVED overview: .* Still Building · .* Under the Radar/m);
     expect(text).not.toMatch(/^FACT overview: .*(Still Building|Under the Radar|back to shipping)/m);
     expect(text).toContain(STILL_BUILDING_MEANING);
+    // A week holding a withheld chain-volume day says so and prints no total (2026-10-09 red-team F5).
+    const withheld = renderWeeklyReport({ ...fx.weeklyReport, chain: { days: 7, dexTrades: 700, dexVolumeWithheldDays: 1 } });
+    expect(withheld).toContain('volume withheld (1 day more than 10× the trailing median)');
+    expect(withheld).not.toMatch(/\$[\d.]+[KMB]? volume/);
   });
 
   it('unlocks: SCHEDULED with proof and id, shown of total, HoodLock only', () => {

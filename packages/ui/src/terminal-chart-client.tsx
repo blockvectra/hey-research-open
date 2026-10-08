@@ -432,11 +432,16 @@ export function codeFacts(model: Pick<ChartModel, 'code' | 'tf'>, at: number, ev
  * observed has no day to measure from, so none is printed. The newest dated
  * event in view anchors; undefined when none, when its column has no close,
  * or when it is the latest column.
+ *
+ * `to` is the column the move ends on (2026-10-09, red team RT2-11): the
+ * latest complete one, which is not the rightmost candle while today is
+ * still forming, so the readout names both ends ("close since 11 Sep to
+ * 7 Oct", `sinceEventWords`).
  */
 export function sinceEventMove(
   model: ChartModel,
   events: readonly Pick<LaneEvent, 'i' | 'p'>[],
-): { pct: number; at: number } | undefined {
+): { pct: number; at: number; to: number } | undefined {
   const dated = events.filter((event) => event.p === 'EXACT' || event.p === 'DATE');
   if (dated.length === 0) return undefined;
   const anchor = Math.max(...dated.map((event) => event.i));
@@ -444,7 +449,12 @@ export function sinceEventMove(
   const from = model.rows[anchor] ? close(model.rows[anchor]!) : null;
   const to = close(model.rows[model.latest]);
   if (from === null || to === null || from <= 0) return undefined;
-  return { pct: (to / from - 1) * 100, at: anchor };
+  return { pct: (to / from - 1) * 100, at: anchor, to: model.latest };
+}
+
+/** "close since 11 Sep to 7 Oct": the move's two ends, as `rowWhen` names a column (RT2-11). */
+export function sinceEventWords(model: Pick<ChartModel, 'today' | 'rows'>, move: { at: number; to: number }): string {
+  return `close since ${rowWhen(model, model.rows[move.at]![0])} to ${rowWhen(model, model.rows[move.to]![0])}`;
 }
 
 function Readout({
@@ -526,7 +536,7 @@ function Readout({
   // Anchored on the event's own day, never the hovered column; none for a week or an observation (B21).
   const sinceMove = sinceEventMove(model, events);
   const since = sinceMove?.pct;
-  const sinceDate = sinceMove ? rowWhen(model, model.rows[sinceMove.at]![0]) : undefined;
+  const sinceWords = sinceMove ? sinceEventWords(model, sinceMove) : undefined;
   return (
     <div
       className="hey-chart-readout grid gap-0.5 text-t-ui tabular-nums text-hey-ink"
@@ -565,7 +575,7 @@ function Readout({
               {since !== undefined ? (
                 <span className="inline-flex items-baseline gap-1">
                   <MarketChange pct={since} window="since event" showWindow={false} size="meta" />{' '}
-                  close since {sinceDate}, observed, not caused
+                  {sinceWords}, observed, not caused
                 </span>
               ) : null}
             </>

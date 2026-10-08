@@ -68,9 +68,16 @@ function span(seconds: number): string {
  * workspace header, on the Market tab, inside the candle chart, and on the
  * public market page — and the four had already drifted, so $1234.5 printed
  * as `$1234.50` in the Terminal and `$1,234.5` one click away.
+ *
+ * Never in exponent form (2026-10-09, red team RT2-05): below $1 it is
+ * `formatTerminalPrice`'s figure, so a price of 2.67e-9 prints `$0.0₈267`
+ * — the zeros counted in a subscript, as the Terminal prints it — never
+ * `$2.67e-9`. A figure that is not a positive finite number keeps its old
+ * form.
  */
 export function formatTokenPrice(value: number): string {
-  return value >= 1 ? `$${value.toFixed(2)}` : `$${value.toPrecision(3)}`;
+  if (value >= 1) return `$${value.toFixed(2)}`;
+  return Number.isFinite(value) && value > 0 ? formatTerminalPrice(value) : `$${value.toPrecision(3)}`;
 }
 
 const SUBSCRIPT_DIGITS = '₀₁₂₃₄₅₆₇₈₉';

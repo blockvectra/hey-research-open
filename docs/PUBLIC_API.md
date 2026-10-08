@@ -291,7 +291,10 @@ Such a valuation is never sent as a figure and never enters `sort=marketCap`, `h
 `current` carry `valuationWithheld` too, additively. Since 2026-10-09 the gate has a third reason,
 additively: `chain_evidence_contradicts` — the reading is more than 10× away from HEY's own chain
 readings of the token (the price of its decoded on-chain trades, or its chain pool index's
-liquidity on a day the reading traded under 0.1% of its own).
+liquidity on a day the reading traded under 0.1% of its own). And a fourth, additively, the same
+day: `sources_disagree` — another source's newest price for the token within a day of the reading
+is more than 10× away from it, so HEY cannot say which figure is the market (below 10× the figure
+stays and the dossier's `market.sourcesDisagree` names the other source).
 
 `launchedVia` is present only when HEY observed the launch. "Unknown" and "Independent" are
 how the *card* says provenance is missing; the API omits the field instead, so nothing reads
@@ -310,6 +313,9 @@ Additive: no field was removed or renamed, and every new one is absent where HEY
 - **`liquidity` is the figure the page prints.** When the current reading carries no liquidity
   — a reading decoded from on-chain trades has none — it is the token's last recorded depth, with
   its own `observedAt` and no `source`. It used to be absent while the page showed a figure.
+  Since 2026-10-09 that earlier figure carries its own reading's `source` too, and is absent when
+  HEY can no longer name that source: it is never sent beside another provider's valuation under
+  that provider's name.
 - **Provenance on every market figure.** `liquidity`, `volume24h` and `trades24h` carry the
   reading's `source` and `observedAt` whether or not the reading has a valuation; they were keyed
   off the market cap and went out bare without one.
@@ -341,6 +347,8 @@ Additive, except where a figure the docs already promised to withhold was still 
   the reason code instead.
 - **The daily series withholds too.** On `/market` `days[]`, a market that is not live today sends
   no `marketCapCloseUsd`; **`marketCapCloseWithheld`** names the reason on each day that held one.
+  Since 2026-10-09 a rescued market (`liquidity_in_another_pool`) withholds it too, as the card,
+  the dossier and the around-event read's `valuation` field do.
   A market whose figures HEY does not believe (`readings_implausible`) sends no daily liquidity
   either (**`liquidityCloseWithheld`**). **`liquidityCloseKind`** (`market` or `launch_inventory`)
   says what a day's liquidity is.
@@ -857,7 +865,9 @@ provider. A slug that is not published answers `404`; a renamed one `308`s to it
 The important state of one project in one read: `identity` (with `firstRecordedByHeyAt`),
 `build` (activity status, `activityMeasured`, Build Momentum only where measured, Still Building
 with its evidence, Discovery Gap, velocity, cadence), `market` (the card's own fields and gates,
-with `valuationWithheld` for a market that is not live; absent without a token), `onchain`,
+with `valuationWithheld` for a market that is not live, and since 2026-10-09 the dossier's
+`sourcesDisagree` beside a published valuation another source prices more than 2× away; absent
+without a token), `onchain`,
 `contracts` (a link), `verification` (token verification, owner verified, source counts), `locks`
 (`tokenLock` and its coverage, HoodLock only), `integrity` (`WITHHELD` while Market Integrity is
 unpublished, `MEASURED` with its route once HEY publishes it), `latestChanges`, `freshness`, `coverage`, `evidenceSummary`, `links` to every detailed
@@ -1818,6 +1828,12 @@ A line that restates a change-ledger event has `source` set to its evidence rece
 (`…/api/evidence/sourcechange:<uuid>`, `…/api/evidence/method:<uuid>`); a coverage state decides a
 line's tag (measured or not applicable is `FACT`, anything else `UNKNOWN`), and "none found" is said
 as a reading of the one index HEY asked. No section is stronger than the object the API publishes.
+
+Since 2026-10-09 three questions are answered by global Ask HEY's own reads for the project, routed
+by its router: "what shipped" (the ships that count toward activity status — code weeks included, a
+release day and a deploy batch once — not only releases), "is the contract used" (usage) and "what
+happened around the last release" (the Observed before / after read). That section leads, with the
+copilot's question as its `question`, and stands in for the brief section it answers better.
 
 ## `GET /api/chain/contract-changes?days=30` (2026-09-24)
 

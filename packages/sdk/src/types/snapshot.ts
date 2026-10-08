@@ -453,6 +453,8 @@ export type HeyProjectSnapshot = {
      * plausible from the readings HEY has (round 4, 2026-09-30). The list's `valuationWithheld`.
      */
     valuationWithheld?: string;
+    /** Another source's price within a day more than 2× from the chosen reading's (2026-10-09, additive): the valuation is then not FACT. */
+    sourcesDisagree?: { source: string; priceUsd: number; observedAt: string };
     liquidity?: NonNullable<HeyProject['liquidity']>;
     volume24h?: NonNullable<HeyProject['volume24h']>;
     priceChange24hPct?: number;

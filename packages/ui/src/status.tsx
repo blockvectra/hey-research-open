@@ -275,11 +275,20 @@ const TONE: Record<MarketTone, string> = {
  * inventory, not a market". The reason is the classifier's; without it the
  * status's own label stands.
  */
-const LAUNCH_POOL_ONLY_PRESENTATION = {
+export const LAUNCH_POOL_ONLY_PRESENTATION = {
   label: LAUNCH_POOL_ONLY_LABEL,
   help: 'The only pool HEY reads is the one the token launched in: its "liquidity" is the token’s own supply at its last price, not depth. HEY does not measure a Discovery Gap, Under the Radar or Still Building on it.',
   tone: 'muted' as MarketTone,
 };
+/**
+ * Whether a market is a launch pool that traded (`launch_pool_trading`), the
+ * one launch-pool reason the classifier calls ACTIVE_MARKET. The chip, the
+ * card's valuation slot and its Market Lens line read this one test
+ * (2026-10-09, red team RT2-01): the card printed the pool's valuation and
+ * "Liquidity" as a measured market.
+ */
+export const isLaunchPoolOnlyMarket = (status: string | null | undefined, reason: string | null | undefined): boolean =>
+  status === 'ACTIVE_MARKET' && isLaunchPoolReason(reason);
 /*
  * Two reasons that name what the token or reading is (2026-10-03, full
  * audit): an NFT collection is no fungible market, and a reading days old
@@ -300,7 +309,7 @@ const marketPresentation = (status: TokenMarketStatusValue, reason?: string | nu
     ? NOT_FUNGIBLE_PRESENTATION
     : reason === 'reading_not_current'
       ? READING_NOT_CURRENT_PRESENTATION
-      : status === 'ACTIVE_MARKET' && isLaunchPoolReason(reason)
+      : isLaunchPoolOnlyMarket(status, reason)
         ? LAUNCH_POOL_ONLY_PRESENTATION
         : (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA);
 

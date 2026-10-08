@@ -26,9 +26,13 @@ export type AroundCell =
    * ("3D"): the screen-reader sentence says "over 3 days" for a three-day
    * span, never a fixed "over 7 days" (2026-10-09 outsider audit AOP-08).
    */
-  | { kind: 'move'; pct: number; partial?: string | undefined; window?: string | undefined }
-  /** A measured level, already in words ("$1.2K/day", "1,240/day"). */
-  | { kind: 'value'; text: string; partial?: string | undefined }
+  | { kind: 'move'; pct: number; partial?: string | undefined; window?: string | undefined; dates?: string | undefined }
+  /**
+   * A measured level, already in words ("$1.2K/day", "1,240/day"). `dates`
+   * (both kinds, RT2-10, 2026-10-09) names the days a cell covers where no
+   * column heading does: the event's own move ("27 Sep–4 Oct closes").
+   */
+  | { kind: 'value'; text: string; partial?: string | undefined; dates?: string | undefined }
   /** Nothing to print: `reason` in words; `withheld` when HEY holds a figure it will not state. */
   | { kind: 'missing'; reason: string; withheld?: boolean | undefined };
 
@@ -143,6 +147,7 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
                     ) : (
                       <span title={row.around.reason}>—</span>
                     )}
+                    {row.around.kind !== 'missing' && row.around.dates ? <span data-testid="around-event-day-dates">· {row.around.dates}</span> : null}
                   </span>
                 ) : null}
               </th>

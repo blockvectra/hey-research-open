@@ -12,6 +12,7 @@ import {
   VALUATION_IMPLAUSIBLE_WORDS,
   VALUATION_NOT_PLAUSIBLE_WORDS,
   VALUATION_PLAUSIBILITY,
+  VALUATION_SOURCES_DISAGREE,
   valuationImplausibleReason,
   valuationNotPlausibleSentence,
   valuationPlausibility,
@@ -200,6 +201,44 @@ describe('the valuation plausibility gate (round 4, 2026-09-30)', () => {
     });
   });
 
+  describe('rule 4: another source prices the token more than 10× away within a day (2026-10-09 red-team F1)', () => {
+    // Production's chosen USDB reading on 2026-10-08: decoded on-chain trades,
+    // whose own trade close agrees with it, so rule 3 is silent.
+    const usdb = {
+      fdvUsd: 182_378_305.43,
+      volume24hUsd: 185.75,
+      priceUsd: 0.018238,
+      chainTradePriceUsd: 0.018238,
+      chainId: RH,
+      listing: 'listed' as const,
+    };
+
+    it('withholds USDB: CoinGecko and GeckoTerminal priced it near $1 the same day', () => {
+      expect(valuationPlausibility(usdb)).toEqual({ plausible: true });
+      expect(valuationPlausibility({ ...usdb, otherSourcePricesUsd: [0.9458, 1.0416] })).toEqual({
+        plausible: false,
+        reason: 'sources_disagree',
+      });
+    });
+
+    it('trips in either direction, only past 10× (below it the figure stays, labelled "sources disagree")', () => {
+      expect(VALUATION_SOURCES_DISAGREE.maxPriceRatio).toBe(10);
+      expect(valuationPlausibility({ marketCapUsd: 1_000_000, priceUsd: 1, otherSourcePricesUsd: [10.01] }).plausible).toBe(false);
+      expect(valuationPlausibility({ marketCapUsd: 1_000_000, priceUsd: 10.01, otherSourcePricesUsd: [1] }).plausible).toBe(false);
+      expect(valuationPlausibility({ marketCapUsd: 1_000_000, priceUsd: 10, otherSourcePricesUsd: [1, 5] })).toEqual({ plausible: true });
+    });
+
+    it('unknown is never a trip wire: no price, no other source or a zero price leaves it silent', () => {
+      expect(valuationPlausibility({ ...usdb, priceUsd: undefined, otherSourcePricesUsd: [1] })).toEqual({ plausible: true });
+      expect(valuationPlausibility({ ...usdb, otherSourcePricesUsd: [] })).toEqual({ plausible: true });
+      expect(valuationPlausibility({ ...usdb, otherSourcePricesUsd: [0, null, undefined, Number.NaN] })).toEqual({ plausible: true });
+    });
+
+    it('only withholds: a reading with no valuation is never touched', () => {
+      expect(valuationPlausibility({ priceUsd: 1, otherSourcePricesUsd: [1_000] })).toEqual({ plausible: true });
+    });
+  });
+
   it('reads back only its own reason codes', () => {
     for (const reason of VALUATION_IMPLAUSIBLE_REASONS)
       expect(valuationImplausibleReason(reason)).toBe(reason);
@@ -212,6 +251,7 @@ describe('the valuation plausibility gate (round 4, 2026-09-30)', () => {
     expect(VALUATION_IMPLAUSIBLE_WORDS.valuation_over_liquidity).toContain('10,000×');
     expect(VALUATION_IMPLAUSIBLE_WORDS.unlisted_over_ceiling).toContain('$10B');
     expect(VALUATION_IMPLAUSIBLE_WORDS.chain_evidence_contradicts).toContain('10×');
+    expect(VALUATION_IMPLAUSIBLE_WORDS.sources_disagree).toContain('10×');
     for (const reason of VALUATION_IMPLAUSIBLE_REASONS) {
       const sentence = valuationNotPlausibleSentence(reason);
       expect(sentence.startsWith(VALUATION_NOT_PLAUSIBLE_WORDS)).toBe(true);

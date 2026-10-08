@@ -464,7 +464,8 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
       pool.pools === undefined ? undefined : `${pool.pools} ${pool.pools === 1 ? 'pool' : 'pools'}`,
       pool.liquidityUsd === undefined ? undefined : `liquidity ${money(pool.liquidityUsd)}`,
       pool.depthOnePctUsd === undefined ? undefined : `about ${money(pool.depthOnePctUsd)} can be sold before the price moves 1%`,
-      pool.dominantPoolShare === undefined ? undefined : `the largest pool holds ${Math.round(pool.dominantPoolShare * 100)}% of measured pool liquidity`,
+      // Already a percentage, 0–100 with one decimal (docs/PUBLIC_API.md): ×100 printed "10000%" (2026-10-09 red-team F13).
+      pool.dominantPoolShare === undefined ? undefined : `the largest pool holds ${Math.round(pool.dominantPoolShare * 10) / 10}% of measured pool liquidity`,
     ].filter((v): v is string => v !== undefined);
     if (pools.length > 0) lines.push(`FACT pools (read from the chain, ${pool.day}): ${pools.join(', ')}.`);
   }
@@ -585,7 +586,7 @@ export function renderWeeklyReport(report: HeyWeeklyReport): string {
   lines.push(`FACT overview: ${o.ships} verified ships from ${o.projectsShipping} projects · ${o.published} pages published in total.`);
   lines.push(`DERIVED overview: ${o.newBuilders} new verified builders · ${o.backToShipping} back to shipping · ${o.stillBuilding} Still Building · ${o.underTheRadar} Under the Radar · ${o.verifiedBuilders} verified builders in total.`);
   const c = report.chain;
-  const chain = [c.dexTrades === undefined ? undefined : `${c.dexTrades.toLocaleString('en-US')} DEX trades`, c.dexVolumeUsd === undefined ? undefined : `${money(c.dexVolumeUsd)} volume (USDG/WETH/ETH pairs)`, c.launches === undefined ? undefined : `${c.launches.toLocaleString('en-US')} launches recorded`, c.projectsPublished === undefined ? undefined : `${c.projectsPublished} pages published`].filter((v): v is string => Boolean(v));
+  const chain = [c.dexTrades === undefined ? undefined : `${c.dexTrades.toLocaleString('en-US')} DEX trades`, c.dexVolumeWithheldDays ? `volume withheld (${c.dexVolumeWithheldDays} ${c.dexVolumeWithheldDays === 1 ? 'day' : 'days'} more than 10× the trailing median)` : c.dexVolumeUsd === undefined ? undefined : `${money(c.dexVolumeUsd)} volume (USDG/WETH/ETH pairs)`, c.launches === undefined ? undefined : `${c.launches.toLocaleString('en-US')} launches recorded`, c.projectsPublished === undefined ? undefined : `${c.projectsPublished} pages published`].filter((v): v is string => Boolean(v));
   if (chain.length > 0) lines.push(`FACT chain (${c.days} days): ${chain.join(' · ')}.`);
   if (report.shipped.length > 0) lines.push('', 'Most active builders:', ...report.shipped.map((g) => `- ${quotedName(g.name)}: ${g.ships} ${g.ships === 1 ? 'ship' : 'ships'} · ${sourceWords(g.latest, 'release_title')}`));
   if (report.movers.length > 0) lines.push('', 'Biggest movers (Builder Radar, 7 days; DERIVED ranks):', ...report.movers.map((m) => `- ${quotedName(m.name)}: #${m.rank7d} → #${m.rank} (▲ ${m.gained})`));

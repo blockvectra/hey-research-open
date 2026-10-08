@@ -114,7 +114,7 @@ export type HeyProject = {
    * Why `marketCap` is absent when HEY holds a reading it will not publish
    * (2026-09-28): the market's reason code or status, e.g.
    * `launch_pool_no_trades` or `readings_implausible`. Absent when HEY holds
-   * no reading at all. Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity), `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries) or, since 2026-10-09, `chain_evidence_contradicts` (more than 10× away from HEY's own chain readings).
+   * no reading at all. Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity), `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries) or, since 2026-10-09, `chain_evidence_contradicts` (more than 10× away from HEY's own chain readings) or `sources_disagree` (another source's price within a day more than 10× away).
    */
   valuationWithheld?: string;
   /**
@@ -310,7 +310,7 @@ export type HeyProjectDetail = HeyProject & {
     marketCapUsd?: number;
     valuationKind?: HeyValuationKind;
     fdvUsd?: number;
-    /** Present when the valuation is withheld: the market's reason code when it is not live (2026-09-26). Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity), `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries) or, since 2026-10-09, `chain_evidence_contradicts` (more than 10× away from HEY's own chain readings). `fdvUsd` is then absent too. */
+    /** Present when the valuation is withheld: the market's reason code when it is not live (2026-09-26). Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity), `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries) or, since 2026-10-09, `chain_evidence_contradicts` (more than 10× away from HEY's own chain readings) or `sources_disagree` (another source's price within a day more than 10× away). `fdvUsd` is then absent too. */
     valuationWithheld?: string;
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply (2026-09-25). */
@@ -465,7 +465,7 @@ export type HeyTokenMarket = {
     valuationKind?: HeyValuationKind;
     /** Fully diluted valuation from the same reading; equal to `marketCapUsd` when it stands in for one (2026-09-25). */
     fdvUsd?: number;
-    /** Why `marketCapUsd` and `fdvUsd` are absent although the reading carried them (round 4, 2026-09-30): `valuation_over_liquidity`, `unlisted_over_ceiling` or (2026-10-09) `chain_evidence_contradicts`, a valuation not plausible from the readings HEY has. */
+    /** Why `marketCapUsd` and `fdvUsd` are absent although the reading carried them (round 4, 2026-09-30): `valuation_over_liquidity`, `unlisted_over_ceiling` or (2026-10-09) `chain_evidence_contradicts` or `sources_disagree`, a valuation not plausible from the readings HEY has. */
     valuationWithheld?: string;
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply rather than market depth (2026-09-25). */

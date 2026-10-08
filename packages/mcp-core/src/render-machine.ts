@@ -242,7 +242,13 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   if (!m) lines.push('- NOT APPLICABLE: no tracked token, so no market.');
   else {
     if (m.tokenMarket) lines.push(`- DERIVED token market: ${tokenMarketWords(m.tokenMarket.status)}${m.tokenMarket.reason ? ` (${pretty(m.tokenMarket.reason)})` : ''}. A reading of the market, not of the team.`);
-    if (m.marketCap) lines.push(`- FACT ${valuationWord(m.marketCap.kind)} ${money(m.marketCap.usd)} (${m.marketCap.source}${m.marketCap.observedAt ? `, ${m.marketCap.observedAt.slice(0, 10)}` : ''})`);
+    // Sources that disagree are not FACT (2026-10-09 red-team F2): the API's own `sourcesDisagree`, never a stronger claim.
+    if (m.marketCap)
+      lines.push(
+        m.sourcesDisagree
+          ? `- DERIVED ${valuationWord(m.marketCap.kind)} ${money(m.marketCap.usd)} (${m.marketCap.source}${m.marketCap.observedAt ? `, ${m.marketCap.observedAt.slice(0, 10)}` : ''}) — sources disagree: ${m.sourcesDisagree.source} priced it at $${m.sourcesDisagree.priceUsd} on ${m.sourcesDisagree.observedAt.slice(0, 10)}`
+          : `- FACT ${valuationWord(m.marketCap.kind)} ${money(m.marketCap.usd)} (${m.marketCap.source}${m.marketCap.observedAt ? `, ${m.marketCap.observedAt.slice(0, 10)}` : ''})`,
+      );
     else if (m.valuationWithheld) lines.push(`- DERIVED valuation withheld: ${valuationWithheldClause(m.valuationWithheld)}. HEY holds a figure and does not publish it.`);
     else lines.push('- UNKNOWN valuation: no fresh reading.');
     lines.push(m.liquidity ? `- FACT ${liquidityWords(m.liquidity, now)}` : '- UNKNOWN liquidity: no reading.');
