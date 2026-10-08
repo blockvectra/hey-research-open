@@ -33,6 +33,8 @@ types; nothing is computed for the alert.
 | Preset | Sentence | Ledger types |
 |---|---|---|
 | `release` | When *project* ships a release | `build.release` |
+| `ship` | When *project* ships an update | `build.ship` — every other ship the ledger publishes: a launch, an integration, a docs or product update (added 2026-10-09) |
+| `code` | When *project* pushes code in a week | `build.code_activity` — HEY's weekly code-activity summary, once when it first arrives; in the inbox only (added 2026-10-09) |
 | `deploy` | When *project* deploys a contract | `contract.deployed` — never `contract.followup_deployed`, a serial launcher's deploy that is context, not a ship (added 2026-10-03) |
 | `implementation` | When *project* changes implementation | `contract.implementation_changed` |
 | `resumed` | When *project* resumes building after a long quiet period | `build.resumed` — HEY's own Resumed status: shipping again after 60 or more days without observed activity (`ACTIVITY.dormancyGapDays`) |
@@ -57,10 +59,15 @@ change, an unlock due within 7 days, a Market Integrity event or an activity
 status change", with where the alerts go (in HEY; by email too when the account
 has a confirmed address). One press follows the project and makes **one** rule:
 
-- `scope: watchlist`, the presets `release`, `deploy`, `implementation`,
-  `unlock` (7 days), `integrity` (only where Market Integrity is published) and
-  `status` — the meaningful ledger types only, never a price, market-movement
-  or holder-derived type;
+- `scope: watchlist`, the presets `release`, `ship`, `code` (in HEY only),
+  `deploy`, `implementation`, `unlock` (7 days), `integrity` (only where Market
+  Integrity is published) and `status` — the meaningful ledger types only, never
+  a price, market-movement or holder-derived type (`ship` and `code` added
+  2026-10-09; rules made before gained them through migration
+  `follow_bundle_ship_code`);
+- to a linked Telegram chat by default (2026-10-09), and by email when the
+  account has a confirmed address — or when the reader typed one in the box,
+  which HEY sends its one confirmation and mails nothing to until it is opened;
 - named "Projects you follow: what they ship and what changes" (the API
   reports it with `preset: null`);
 - every project followed later is covered by the same rule, and unfollowing a
@@ -125,7 +132,8 @@ it says so and offers nothing to confirm.
 
 Alertable types are the webhook-deliverable set (see
 [Webhooks](/docs/webhooks#events)), `market_integrity.event` only where
-published, plus `contract.method_first_observed` and `contract.method_resumed`.
+published, plus `contract.method_first_observed`, `contract.method_resumed` and
+`build.code_activity` (2026-10-09).
 
 ## What can never be an alert
 
@@ -155,8 +163,8 @@ published, plus `contract.method_first_observed` and `contract.method_resumed`.
   A rule never holds a URL: the subscription already passed HEY's destination
   checks and a signed ping. A subscription that also asks for the same type is
   sent the event once, not twice.
-- The two `contract.method_*` types are **shown in HEY only**: they are never
-  emailed or sent to a webhook.
+- The two `contract.method_*` types and `build.code_activity` are **shown in HEY
+  only**: they are never emailed, sent to a webhook or to Telegram.
 - **Telegram**, when HEY's Telegram bot is switched on: to a private chat you
   linked from **Account → Telegram** (a ten-minute, single-use code the bot
   confirms by your display name). One message per event however many of your

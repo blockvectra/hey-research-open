@@ -61,6 +61,20 @@ export type ValuationDisplayInput = {
 
 const positive = (value: number | null | undefined): value is number => typeof value === 'number' && Number.isFinite(value) && value > 0;
 
+/**
+ * Whether a market's reading may carry a valuation at all, before the gate
+ * (2026-10-09 audit H10): the market is live (rule 1) and not a rescued
+ * market (rule 1b). Read models that drop the figure themselves — the
+ * project profile, the market detail — ask this, so a profile never carries
+ * a valuation `valuationDisplay` would withhold.
+ */
+export function valuationMarketShowable(
+  status: TokenMarketStatusValue | string | null | undefined,
+  reason: string | null | undefined,
+): boolean {
+  return marketIsLive((status ?? null) as TokenMarketStatusValue | null, reason ?? null) && reason !== RESCUED_MARKET_REASON;
+}
+
 export function valuationDisplay(input: ValuationDisplayInput): ValuationDisplay {
   const status = (input.marketStatus ?? null) as TokenMarketStatusValue | null;
   const reason = input.marketReason ?? null;

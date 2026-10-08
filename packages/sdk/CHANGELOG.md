@@ -6,6 +6,11 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (coverage states, 2026-10-09)
+
+- `HeyCoverageState` gains `PARTIAL` (part of the dimension measured; today `contractActivity` with `partial_events_unreadable_some_days`, which read `MEASURED`) and `MAPPING_BLOCKED` (a candidate HEY holds — a declared site, docs or a repository — that nothing yet ties to the project; the reasons `site_not_corroborated`, `context_only_docs` and `context_only_repositories`, which read `NO_SOURCE`), additively. `HeyProjectCoverage.states` explains both.
+- `HeyCoverageEntry.cause?: HeyCoverageCause` (`own_source_unreachable`, `provider_unavailable`, `budget_deferred`), additively: whose side a `SOURCE_UNAVAILABLE` or deferred `NOT_ENOUGH_YET` read is on. Every existing state and reason code keeps its meaning; treat a state you do not know as a gap.
+
 ### Added (Partner Card evidence link, 2026-10-05)
 
 - `HeyPartnerShip.evidence_link`, additively: the latest meaningful ship's reader receipt page (`/evidence/ship:<uuid>`) with the card's attribution labels, as `project_link` carries them — the card's one "Evidence" link. `evidence_id` and `url` keep their meaning.

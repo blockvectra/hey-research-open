@@ -17,7 +17,7 @@ import { valuationDisplay, valuationDisplayLabel, valuationHiddenSentence, VALUA
 import { projectCategory } from './project-category';
 import { ProjectLogo } from './project-logo';
 import { cardShipPhrase, displayShipTitle } from './ship-phrase';
-import { ActivityChip, activityPresentation, type ActivityStatusValue, unknownActivityReason, StillBuildingBadge, TokenVerificationChip } from './status';
+import { ActivityChip, activityPresentation, type ActivityStatusValue, unknownActivityReason, StillBuildingBadge, TokenVerificationChip, tokenVerificationHelp, tokenVerificationLabel } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
 import { TokenLockChip, type TokenLockFacts } from './token-lock';
 import { BrandNotice, type BrandNoticeData } from './brand-notice';
@@ -74,7 +74,7 @@ export type ProjectCardData = {
   marketCapSource?: string;
   /** When the reading was taken: a figure older than a day says its age beside it (2026-09-28). */
   marketCapObservedAt?: Date;
-  /** Whether the project itself ties the contract to the project; only a mismatch is printed on a card (2026-09-28). */
+  /** Whether the project itself ties the contract to the project: a mismatch is the page's chip, an unverified token quiet text (2026-10-09). */
   tokenVerification?: string;
   /*
    * Market Lens (2026-09-12): the same reading's liquidity and 24 h volume,
@@ -96,7 +96,7 @@ export type ProjectCardData = {
   onchainEvents24h?: number;
   /** Canonical token identity. Absent for a project without a token. */
   token?: { chainId: number; contractAddress: string };
-  /** "Not affiliated with Robinhood — HEY has not verified this claim." (2026-10-02): drawn first, above every badge. */
+  /** "No known affiliation with Robinhood — HEY holds no evidence of one." (2026-10-02): drawn first, above every badge. */
   brandNotice?: BrandNoticeData;
   /**
    * Supply held at HoodLock, when HEY found a live lock. Absent is the
@@ -540,6 +540,17 @@ export function ProjectCard({
               */}
               {project.tokenVerification === 'MISMATCH' ? (
                 <TokenVerificationChip verification="MISMATCH" className="text-[12px]" />
+              ) : project.tokenVerification === 'UNVERIFIED' ? (
+                /*
+                 * Quiet text, not a chip (outsider audit AOP-09, 2026-10-09):
+                 * 82% of published tokens are unverified, and a card's
+                 * valuation read as the project's own token's — the page said
+                 * "Token unverified", the card nothing. Unknown verification
+                 * (no field) prints nothing; VERIFIED stays the quiet default.
+                 */
+                <span className="text-[12px] text-hey-muted" title={tokenVerificationHelp('UNVERIFIED')} data-testid="token-unverified">
+                  {tokenVerificationLabel('UNVERIFIED')}
+                </span>
               ) : null}
             </div>
           </>

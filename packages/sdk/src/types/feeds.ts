@@ -14,6 +14,8 @@ export type HeyChainDay = {
   day: string;
   dexTrades?: number;
   dexVolumeUsd?: number;
+  /** Why `dexVolumeUsd` is absent although HEY holds a reading for the day (2026-10-09, additive): `implausible_vs_trailing_median`, more than 10× the median of the previous 14 days. */
+  dexVolumeWithheld?: 'implausible_vs_trailing_median';
   tokensTraded?: number;
   poolsTraded?: number;
   transactions?: number;

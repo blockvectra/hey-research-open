@@ -174,7 +174,7 @@ export function isoWeekIndex(date: Date): number {
 export function collapseRepeatedEvidence(sorted: readonly ScoredEvent[]): ScoredEvent[] {
   const seen = new Set<string>();
   return sorted.filter((event) => {
-    const key = collapseKey(event);
+    const key = repeatedEvidenceKey(event);
     if (key === undefined) return true;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -182,8 +182,13 @@ export function collapseRepeatedEvidence(sorted: readonly ScoredEvent[]): Scored
   });
 }
 
-/** The period an event counts once in, or undefined when it always counts. */
-function collapseKey(event: ScoredEvent): string | undefined {
+/**
+ * The period an event counts once in, or undefined when it always counts.
+ * Exported (2026-10-09 audit B22) so a reader that counts building events —
+ * the Terminal chart's "Build events" series — folds exactly what the score
+ * folds: a release day, a deploy batch, a code week, a prerelease week.
+ */
+export function repeatedEvidenceKey(event: Pick<ScoredEvent, 'eventType' | 'publishedAt' | 'prerelease' | 'repository'>): string | undefined {
   if (event.eventType === 'CODE_ACTIVITY') return `code:${isoWeekIndex(event.publishedAt)}`;
   if (event.prerelease === true) return `prerelease:${isoWeekIndex(event.publishedAt)}`;
   if (event.eventType === RELEASE_BURST.eventType && event.repository) {

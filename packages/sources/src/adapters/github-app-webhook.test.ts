@@ -76,7 +76,7 @@ describe('webhook payloads', () => {
           repositorySelection: 'selected',
           permissions: { metadata: 'read', contents: 'read' },
         },
-        repositories: [{ id: 812345678, fullName: 'use-agent-os/agentos' }],
+        repositories: [{ id: 812345678, fullName: 'use-agent-os/agentos', isPrivate: false }],
         senderId: 9000001,
       },
     });
@@ -85,7 +85,7 @@ describe('webhook payloads', () => {
 
   it('reads repositories added to and removed from an installation', () => {
     const added = parseGithubAppWebhook('installation_repositories', json('github-webhook-installation-repositories-added.json'));
-    expect(added.ok && added.facts.kind === 'installation_repositories' && added.facts.added).toEqual([{ id: 812345679, fullName: 'use-agent-os/agentos-sdk' }]);
+    expect(added.ok && added.facts.kind === 'installation_repositories' && added.facts.added).toEqual([{ id: 812345679, fullName: 'use-agent-os/agentos-sdk', isPrivate: false }]);
     const removed = parseGithubAppWebhook('installation_repositories', json('github-webhook-installation-repositories-removed.json'));
     expect(removed.ok && removed.facts.kind === 'installation_repositories' && removed.facts.removed).toEqual([{ id: 812345678, fullName: 'use-agent-os/agentos' }]);
   });
@@ -94,7 +94,7 @@ describe('webhook payloads', () => {
     const parsed = parseGithubAppWebhook('release', json('github-webhook-release-published.json'));
     expect(parsed).toEqual({
       ok: true,
-      facts: { kind: 'release', action: 'published', installationId: 55500011, repo: { id: 812345678, fullName: 'use-agent-os/agentos' }, releaseId: 190000001, draft: false, prerelease: false },
+      facts: { kind: 'release', action: 'published', installationId: 55500011, repo: { id: 812345678, fullName: 'use-agent-os/agentos', isPrivate: false }, releaseId: 190000001, draft: false, prerelease: false },
     });
     const text = JSON.stringify(parsed);
     expect(text).not.toContain('Ignore all previous instructions');
@@ -105,7 +105,7 @@ describe('webhook payloads', () => {
     const parsed = parseGithubAppWebhook('push', json('github-webhook-push-default.json'));
     expect(parsed).toEqual({
       ok: true,
-      facts: { kind: 'push', installationId: 55500011, repo: { id: 812345678, fullName: 'use-agent-os/agentos' }, ref: 'refs/heads/main', defaultBranch: 'main', deleted: false },
+      facts: { kind: 'push', installationId: 55500011, repo: { id: 812345678, fullName: 'use-agent-os/agentos', isPrivate: false }, ref: 'refs/heads/main', defaultBranch: 'main', deleted: false },
     });
     expect(JSON.stringify(parsed)).not.toMatch(/builder@example\.com|agent memory/);
   });
@@ -116,7 +116,7 @@ describe('webhook payloads', () => {
       kind: 'pull_request',
       action: 'closed',
       installationId: 55500011,
-      repo: { id: 812345678, fullName: 'use-agent-os/agentos' },
+      repo: { id: 812345678, fullName: 'use-agent-os/agentos', isPrivate: false },
       number: 18,
       merged: true,
       headRef: 'hey-research/badge',

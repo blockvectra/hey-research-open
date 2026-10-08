@@ -80,6 +80,22 @@ async function checkChain(fallback: RpcFallback, ctx: SourceContext): Promise<Ch
   return pending;
 }
 
+/**
+ * The fallback node's URL for a read sent to `primaryUrl`, once it has proved its chain, or
+ * undefined (2026-10-09, overnight audit C5): for readers that post with their own `fetch`
+ * (the launch-factory scanner) and so cannot go through `requestWithRpcFailover`. A check that
+ * could not be made answers undefined; the primary's refusal then stands.
+ */
+export async function chainCheckedFallbackUrl(primaryUrl: string, ctx: SourceContext): Promise<string | undefined> {
+  const fallback = ctx.rpcFallback;
+  if (!fallback || primaryUrl !== fallback.primaryUrl || fallback.url === fallback.primaryUrl) return undefined;
+  try {
+    return (await checkChain(fallback, ctx)).ok ? fallback.url : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export type RpcOutcome = { outcome: HttpOutcome; url: string; attempts: number };
 
 /**

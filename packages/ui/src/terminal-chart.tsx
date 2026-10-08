@@ -113,6 +113,11 @@ export type ChartEvent = {
   href?: string | undefined;
   /** "Release", "Ship" — the kind, in words. */
   kindLabel?: string | undefined;
+  /**
+   * The period the event counts once in (2026-10-09 audit B22): a release
+   * day, a deploy batch. Every event is drawn; a count folds by it.
+   */
+  countKey?: string | undefined;
 };
 
 /**

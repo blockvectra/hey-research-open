@@ -97,9 +97,13 @@ describe('unknowns', () => {
       STALE: 'STALE',
       SOURCE_UNAVAILABLE: 'UNKNOWN',
       ERROR: 'UNKNOWN',
+      // 2026-10-09: part measured is too little to say; a candidate not yet tied is unverified.
+      PARTIAL: 'INSUFFICIENT_EVIDENCE',
+      MAPPING_BLOCKED: 'NOT_VERIFIED',
     };
     for (const [state, category] of Object.entries(map)) expect(categoryOfCoverage(state as CoverageStateCode), state).toBe(category);
     expect(categoryOfCoverage('NO_SOURCE', 'context_only_repositories')).toBe('NOT_VERIFIED');
+    expect(categoryOfCoverage('MAPPING_BLOCKED', 'site_not_corroborated')).toBe('NOT_VERIFIED');
     expect(categoryOfCoverage('MEASURED', 'context_only_repositories')).toBeUndefined();
   });
 

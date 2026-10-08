@@ -42,6 +42,23 @@ const rpcError = (message: string) => ({
 const noSleep = async () => {};
 
 describe('scanFactory', () => {
+  it('asks the chain-checked fallback node once when the primary refuses a log read (2026-10-09)', async () => {
+    const fallbackUrl = 'https://fallback-indexer-test.example';
+    const stub = stubFetch([
+      { status: 403, body: '<html>challenge</html>' },
+      { status: 200, body: JSON.stringify({ jsonrpc: '2.0', id: 1, result: '0x1237' }) },
+      logs([{ address: token, block: 120, tx: '0xt1' }]),
+    ]);
+    const result = await scanFactory(
+      factory,
+      { rpcUrl: 'https://rpc.example', fromBlock: 100, toBlock: 200, sleep: noSleep },
+      testContext({ fetchImpl: stub.fetchImpl, rpcFallback: { primaryUrl: 'https://rpc.example', url: fallbackUrl, chainId: 4663 } }),
+    );
+    expect(result.launches.map((launch) => launch.contractAddress)).toEqual([token]);
+    expect(result.lastIndexedBlock).toBe(200);
+    expect(stub.requests.map((request) => request.url)).toEqual(['https://rpc.example', fallbackUrl, fallbackUrl]);
+  });
+
   it('decodes the token from the indexed topic and records where it stopped', async () => {
     const stub = stubFetch(logs([{ address: token, block: 120, tx: '0xt1' }]));
 

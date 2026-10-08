@@ -13,7 +13,7 @@ import {
   type CandleDay,
   type ChartEvent,
 } from './terminal-chart';
-import { LANE_COUNT_ROOM, LANE_HIT_HALF, codeFacts, lastCloseMark, laneRooms, type ChartRow } from './terminal-chart-client';
+import { LANE_COUNT_ROOM, LANE_HIT_HALF, codeFacts, lastCloseMark, laneRooms, sinceEventMove, type ChartRow } from './terminal-chart-client';
 import { DailyCandleChart } from './terminal-chart-view';
 
 const TODAY = '2026-09-26';
@@ -582,5 +582,26 @@ describe('provider archive days on the daily chart', () => {
     const built = buildChartModel(own, [], { todayUtc: TODAY })!;
     expect(built.model.archive).toBeUndefined();
     expect(built.summary).not.toMatch(/archive/);
+  });
+});
+
+/*
+ * "Since event" is measured from the event's own day (2026-10-09 audit B21):
+ * hovering any day of a WEEK bracket, or HEY's observation day, measured from
+ * the hovered column, which is not when anything happened.
+ */
+describe('sinceEventMove', () => {
+  const row = (day: string, close: number): ChartRow => [day, close, close, close, close, 1000, 1, 'u'];
+  const model = { rows: [row('2026-09-20', 1), row('2026-09-21', 2), row('2026-09-22', 4), row('2026-09-23', 5)], latest: 3 } as unknown as Parameters<typeof sinceEventMove>[0];
+
+  it("anchors on a dated event's own column, whatever column is hovered", () => {
+    expect(sinceEventMove(model, [{ i: 1, p: 'EXACT' }])).toEqual({ pct: 150, at: 1 });
+    expect(sinceEventMove(model, [{ i: 0, p: 'DATE' }, { i: 2, p: 'EXACT' }])).toEqual({ pct: 25, at: 2 });
+  });
+
+  it('prints nothing for a week, a window or an observation, and nothing on the latest column', () => {
+    expect(sinceEventMove(model, [{ i: 0, p: 'WEEK' }])).toBeUndefined();
+    expect(sinceEventMove(model, [{ i: 1, p: 'OBSERVED' }, { i: 1, p: 'WINDOW' }])).toBeUndefined();
+    expect(sinceEventMove(model, [{ i: 3, p: 'EXACT' }])).toBeUndefined();
   });
 });

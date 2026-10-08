@@ -6,6 +6,48 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Coverage states (2026-10-09, additive).** `/api/projects/{slug}/coverage` adds `MAPPING_BLOCKED`
+  (a candidate HEY holds that nothing ties to the project; three reasons that read `NO_SOURCE`) and
+  `PARTIAL` (part of a dimension measured), and `cause` on an unavailable or deferred read
+  (`own_source_unreachable`, `provider_unavailable`, `budget_deferred`). Every other state keeps its
+  meaning; treat a state you do not know as a gap.
+- **Builder identity (2026-10-09).** A code-search hit in prose other than a README, an agent file, a
+  registry or copied chain definitions is a listing, not a deployment marker; older rows are
+  re-judged through the quality gate by a dry-run-first command. Reviewers can accept or reject a
+  queued builder repository, audited.
+- **Public discovery and search (2026-10-09).** Explore's default "research-ready" list is also on
+  Robinhood Chain (`CHAIN_NATIVE`); a repository that only lists the chain id is published, not
+  research-ready. Search always appends up to five names that contain the text, ignores a typed space at the
+  prefix and partial tiers, and lists projects with a readable builder source first among those
+  sharing an exact ticker. Cards mark an unverified token; one name for an unknown on card and page.
+- **Partner card (2026-10-09, additive).** `/api/v1/scan` answers `indexed`, `research_state`
+  (`not_researched`, `not_published`, `not_indexed`) and `launched_via` beside `found: false` for a
+  token with no published page. `found` keeps its meaning.
+- **Analytics (2026-10-09).** Server-recorded events share the page-view beacon's reader
+  definition; a `/search` with no published project records what it showed instead of `zero`
+  (`launch_records`, `issuer_tokens`, `foreign_address`, `answered`); route analytics template
+  identifiers. `$HEY` profile: an open perk with nothing behind it reads `statusReason: open_none_yet`.
+
+- **Follow → alert → return, repaired (2026-10-09).** Alerts: two presets, `ship` (`build.ship`) and
+  `code` (`build.code_activity`, shown in the HEY inbox only; never emailed, sent to a webhook or to
+  Telegram), both in the one-press follow bundle; `build.code_activity` is now an alertable type
+  (additive on `/api/alerts`). Rules made by Follow go to a linked Telegram chat by default, and the
+  follow box takes an email through the existing double opt-in. Both headers show the unread-alerts
+  count. Ask HEY routes "what shipped", "is it used", "what happened around this release" and "what
+  doesn't HEY know" to existing reads; the suggested "What did {p} ship before the price moved?" is now
+  "What happened around {p}'s last release?", answered from the around-event read. Migration
+  `follow_bundle_ship_code`.
+
+- **Market truth (2026-10-09).** A valuation HEY's own chain readings contradict more than 10× — the
+  price of the token's decoded on-chain trades, or its chain pool index on a day the reading barely
+  traded — is withheld with `valuationWithheld: chain_evidence_contradicts` (additive code). A price
+  another source puts more than 2× away within a day is no longer FACT: `market.sourcesDisagree`
+  (additive) names it. A chain day's DEX volume more than 10× its trailing 14-day median is withheld
+  (`dexVolumeWithheld`, additive; weekly `dexVolumeWithheldDays`). The project profile withholds a
+  rescued market's valuation as the card does. Explore's valuation controls are named "Valuation".
+  The scan's evidence breakdown prints words, never numbers. AI brief observations are DERIVED at
+  most, and a cause beside a market figure is quarantined.
+
 - **A repository the project's site links, with no owner tie, goes to review (2026-10-08).** A link
   from the project's own website says the site points at the code, not that the project wrote it. Such
   a repository now counts toward building only when something ties it to the project: its owner is

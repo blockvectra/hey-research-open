@@ -7,7 +7,22 @@
  *  1. it is at least `maxLiquidityMultiple` (10,000×) the liquidity measured
  *     in the same reading (`valuation_over_liquidity`); or
  *  2. it exceeds `unlistedCeilingUsd` ($10B) on a Robinhood Chain token that
- *     no listing HEY reads carries (`unlisted_over_ceiling`).
+ *     no listing HEY reads carries (`unlisted_over_ceiling`); or
+ *  3. HEY's own chain evidence contradicts the reading more than
+ *     `VALUATION_CHAIN_EVIDENCE.contradictionMultiple` (10×) (`chain_evidence_contradicts`,
+ *     2026-10-09 audit E2/E3): the price of the token's decoded on-chain
+ *     trades (`token_market_days.trade_close_usd`, the last
+ *     `maxAgeDays` before the reading) is more than 10× away
+ *     from the reading's price, or HEY's chain pool index holds less than a
+ *     tenth of the reading's liquidity on a day the reading itself traded
+ *     under `indexMaxTurnover` of it. USDB ($10.4B on GeckoTerminal,
+ *     $82M "liquidity", $10.69 of volume) led Explore's valuation order while
+ *     its decoded trades priced it 80× lower and the index held $2.8M. The
+ *     index under-reads real markets (a Uniswap v4 pool it does not index), so
+ *     it never decides alone: a reading that really trades — openzaps, $125K a
+ *     day on a $194K pool the index holds $2 of — is not caught. Rule 3
+ *     needs the caller's chain evidence and is not yet a scorer input
+ *     (`VALUATION_CHAIN_EVIDENCE`).
  *
  * An implausible valuation is never labelled FACT and never used as an input
  * anywhere a valuation is used: the card, the project page, the Terminal,
@@ -43,12 +58,31 @@ export const VALUATION_PLAUSIBILITY = {
   chainId: 4663,
 } as const;
 
+/**
+ * Rule 3's thresholds (2026-10-09 audit E2/E3), kept apart from
+ * `VALUATION_PLAUSIBILITY` on purpose: rule 3 fires only when a caller passes
+ * HEY's chain evidence, and the scorer does not yet (the Discovery Gap and
+ * Still Building read rules 1 and 2 only). Wiring it into the scorer changes
+ * the scoring rule set and needs its own version (hbm-v26) and a ruling; the
+ * card, its sorts and filters, the profile, the market detail, the API and
+ * the explain engine apply it now. Withhold only, never awards.
+ */
+export const VALUATION_CHAIN_EVIDENCE = {
+  /** HEY's own chain evidence more than this many times away from the reading contradicts it. */
+  contradictionMultiple: 10,
+  /** … read in the days up to this many before the reading (the market-status sweep's trade-close window). */
+  maxAgeDays: 2,
+  /** … and the index decides only beside a reading that traded at most this share of its own liquidity in the day. */
+  indexMaxTurnover: 0.001,
+} as const;
+
 /** The rules' version, carried by the explain engine's valuation rule. */
-export const VALUATION_PLAUSIBILITY_VERSION = 'valuation-plausibility-2026-09-30' as const;
+export const VALUATION_PLAUSIBILITY_VERSION = 'valuation-plausibility-2026-10-09' as const;
 
 export const VALUATION_IMPLAUSIBLE_REASONS = [
   'valuation_over_liquidity',
   'unlisted_over_ceiling',
+  'chain_evidence_contradicts',
 ] as const;
 export type ValuationImplausibleReason = (typeof VALUATION_IMPLAUSIBLE_REASONS)[number];
 
@@ -66,6 +100,14 @@ export type ValuationPlausibilityInput = {
   chainId?: number | null | undefined;
   /** Whether a listing HEY reads carries the token; omitted is `unknown`. */
   listing?: ValuationListing | null | undefined;
+  /** The reading's price (rule 3). */
+  priceUsd?: number | null | undefined;
+  /** The reading's 24 h volume (rule 3); absent means the provider did not report it. */
+  volume24hUsd?: number | null | undefined;
+  /** HEY's own decoded on-chain trade close for the token near the reading (rule 3); absent when HEY has none. */
+  chainTradePriceUsd?: number | null | undefined;
+  /** HEY's chain pool index liquidity for the token near the reading (rule 3); absent when HEY has none. */
+  chainIndexLiquidityUsd?: number | null | undefined;
 };
 
 export type ValuationPlausibility =
@@ -91,6 +133,7 @@ export function valuationPlausibility(input: ValuationPlausibilityInput): Valuat
   ) {
     return { plausible: false, reason: 'valuation_over_liquidity' };
   }
+  if (chainEvidenceContradicts(input)) return { plausible: false, reason: 'chain_evidence_contradicts' };
   if (
     input.chainId === VALUATION_PLAUSIBILITY.chainId &&
     value > VALUATION_PLAUSIBILITY.unlistedCeilingUsd &&
@@ -99,6 +142,36 @@ export function valuationPlausibility(input: ValuationPlausibilityInput): Valuat
     return { plausible: false, reason: 'unlisted_over_ceiling' };
   }
   return { plausible: true };
+}
+
+/**
+ * Rule 3 (2026-10-09): HEY's own chain evidence contradicts the reading.
+ * Unknown is never a trip wire: a missing price, trade close, index reading
+ * or volume leaves its half silent.
+ */
+export function chainEvidenceContradicts(
+  input: Pick<
+    ValuationPlausibilityInput,
+    'priceUsd' | 'liquidityUsd' | 'volume24hUsd' | 'chainTradePriceUsd' | 'chainIndexLiquidityUsd'
+  >,
+): boolean {
+  const multiple = VALUATION_CHAIN_EVIDENCE.contradictionMultiple;
+  if (positive(input.priceUsd) && positive(input.chainTradePriceUsd)) {
+    const ratio = Math.max(
+      input.priceUsd / input.chainTradePriceUsd,
+      input.chainTradePriceUsd / input.priceUsd,
+    );
+    if (ratio > multiple) return true;
+  }
+  return (
+    positive(input.liquidityUsd) &&
+    positive(input.chainIndexLiquidityUsd) &&
+    input.liquidityUsd > input.chainIndexLiquidityUsd * multiple &&
+    typeof input.volume24hUsd === 'number' &&
+    Number.isFinite(input.volume24hUsd) &&
+    input.volume24hUsd >= 0 &&
+    input.volume24hUsd <= input.liquidityUsd * VALUATION_CHAIN_EVIDENCE.indexMaxTurnover
+  );
 }
 
 /** A stored or transported reason read back: one of the list, or undefined for anything else. */
@@ -117,6 +190,7 @@ export const VALUATION_NOT_PLAUSIBLE_WORDS =
 export const VALUATION_IMPLAUSIBLE_WORDS: Readonly<Record<ValuationImplausibleReason, string>> = {
   valuation_over_liquidity: `it is at least ${VALUATION_PLAUSIBILITY.maxLiquidityMultiple.toLocaleString('en-US')}× the liquidity measured in the same reading`,
   unlisted_over_ceiling: `it is above $${VALUATION_PLAUSIBILITY.unlistedCeilingUsd / 1_000_000_000}B on a Robinhood Chain token that no listing HEY reads carries (HEY reads CoinGecko)`,
+  chain_evidence_contradicts: `HEY's own chain readings contradict it more than ${VALUATION_CHAIN_EVIDENCE.contradictionMultiple}×: the price of the token's decoded on-chain trades, or the liquidity in HEY's chain pool index on a day the reading barely traded`,
 };
 
 /** "Valuation not plausible from the readings HEY has: <reason>." — one sentence, for tooltips, the API and agents. */

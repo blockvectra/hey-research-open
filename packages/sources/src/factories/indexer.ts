@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { chainCheckedFallbackUrl } from '../http/rpc-failover';
+
 import type { SourceContext } from '../adapter';
 import type { LaunchFactoryConfig } from './registry';
 
@@ -383,12 +385,36 @@ export async function scanFactory(
     requests += 1;
     let parsed: z.infer<typeof rpcSchema> | undefined;
     try {
-      const response = await fetchImpl(options.rpcUrl, {
-        method: 'POST',
-        body,
-        headers: { 'content-type': 'application/json' },
-        signal: AbortSignal.timeout(ctx.timeoutMs),
-      });
+      const post = (url: string) =>
+        fetchImpl(url, {
+          method: 'POST',
+          body,
+          headers: { 'content-type': 'application/json' },
+          signal: AbortSignal.timeout(ctx.timeoutMs),
+        });
+      let response: Response;
+      try {
+        response = await post(options.rpcUrl);
+      } catch (cause) {
+        // A dropped connection or a timeout is a refusal too: the fallback node is asked once (2026-10-09).
+        const fallbackUrl = await chainCheckedFallbackUrl(options.rpcUrl, ctx);
+        if (!fallbackUrl) throw cause;
+        requests += 1;
+        response = await post(fallbackUrl);
+      }
+      /*
+       * The public node refuses the launch scans in bursts (a Cloudflare 403 or a 429/5xx: 837 of 3,781
+       * log reads on 2026-10-08), and this scanner posts with its own fetch, so it never reached the
+       * fallback node every other chain read already fails over to (2026-10-09, overnight audit C5).
+       * Asked once more of the chain-checked fallback, exactly as it was.
+       */
+      if (response.status === 403 || response.status === 429 || response.status >= 500) {
+        const fallbackUrl = await chainCheckedFallbackUrl(options.rpcUrl, ctx);
+        if (fallbackUrl) {
+          requests += 1;
+          response = await post(fallbackUrl);
+        }
+      }
       // An HTTP-level rate limit does not always carry a JSON-RPC error body.
       // Reading it as a parse failure would shrink the window instead of
       // backing off — turning throttling into permanent coverage gaps.

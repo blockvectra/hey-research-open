@@ -20,8 +20,13 @@ import { MarketChange } from './market-change';
  * cell is never coloured: it prints a dash or "Withheld" with its reason.
  */
 export type AroundCell =
-  /** A measured move in per cent; `partial` names the shorter span ("5 of 7 days"). */
-  | { kind: 'move'; pct: number; partial?: string | undefined }
+  /**
+   * A measured move in per cent; `partial` names the shorter span ("5 of 7
+   * days"). `window` is the span the move is over, as `MarketChange` reads it
+   * ("3D"): the screen-reader sentence says "over 3 days" for a three-day
+   * span, never a fixed "over 7 days" (2026-10-09 outsider audit AOP-08).
+   */
+  | { kind: 'move'; pct: number; partial?: string | undefined; window?: string | undefined }
   /** A measured level, already in words ("$1.2K/day", "1,240/day"). */
   | { kind: 'value'; text: string; partial?: string | undefined }
   /** Nothing to print: `reason` in words; `withheld` when HEY holds a figure it will not state. */
@@ -58,6 +63,12 @@ export type AroundPanel = {
   /** Each heading with its span, in the domain's words: "Observed after — starts 5 Oct, not yet observed". */
   spanHeadings: { before: string; around: string; after: string };
   rows: AroundRow[];
+  /**
+   * Whether the "observed after" column is drawn (2026-10-09 outsider audit
+   * AOP-07): false when the after span has not started, so a ship from this
+   * week does not print a column of "not measured". Default true.
+   */
+  showAfter?: boolean | undefined;
   /** Fields with nothing to show, and why: "Valuation: not measured — market too thin". */
   notShown: string[];
   /** Where an archive-sourced price or volume came from, in the domain's words (2026-10-02); absent when none did. */
@@ -77,7 +88,7 @@ function Cell({ cell, testId }: { cell: AroundCell; testId: string }): JSX.Eleme
   return (
     <span className="grid justify-items-end gap-0" data-testid={testId} data-state={cell.partial ? 'partial' : 'measured'}>
       {cell.kind === 'move' ? (
-        <MarketChange pct={cell.pct} window="7D" showWindow={false} size="meta" />
+        <MarketChange pct={cell.pct} window={cell.window ?? '7D'} showWindow={false} size="meta" />
       ) : (
         <span className="font-medium tabular-nums text-hey-ink">{cell.text}</span>
       )}
@@ -88,11 +99,12 @@ function Cell({ cell, testId }: { cell: AroundCell; testId: string }): JSX.Eleme
 
 /** The rows: measure, observed before, observed after; the event's own move beside the price. */
 export function AroundEventRows({ panel, className }: { panel: AroundPanel; className?: string }): JSX.Element {
+  const showAfter = panel.showAfter !== false;
   return (
     <div className={cn('grid gap-2', className)} data-testid="around-event-rows">
       <table className="w-full table-fixed border-collapse text-t-meta">
         <caption className="sr-only">
-          {panel.spanHeadings.before} and {panel.spanHeadings.after}: {panel.title}
+          {showAfter ? `${panel.spanHeadings.before} and ${panel.spanHeadings.after}` : panel.spanHeadings.before}: {panel.title}
         </caption>
         <thead>
           <tr className="text-left text-hey-secondary">
@@ -103,10 +115,12 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
               {panel.headings.before}
               <span className="block text-t-micro text-hey-muted">{panel.spans.before}</span>
             </th>
-            <th scope="col" className="pb-1 text-right font-normal">
-              {panel.headings.after}
-              <span className="block text-t-micro text-hey-muted">{panel.spans.after}</span>
-            </th>
+            {showAfter ? (
+              <th scope="col" className="pb-1 text-right font-normal">
+                {panel.headings.after}
+                <span className="block text-t-micro text-hey-muted">{panel.spans.after}</span>
+              </th>
+            ) : null}
           </tr>
         </thead>
         <tbody className="align-top">
@@ -123,7 +137,7 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
                   <span className="mt-0.5 flex flex-wrap items-baseline gap-x-1 text-t-micro text-hey-muted" data-testid="around-event-day">
                     <span>{panel.headings.around}:</span>
                     {row.around.kind === 'move' ? (
-                      <MarketChange pct={row.around.pct} window="1D" showWindow={false} size="meta" />
+                      <MarketChange pct={row.around.pct} window={row.around.window ?? '1D'} showWindow={false} size="meta" />
                     ) : row.around.kind === 'value' ? (
                       <span>{row.around.text}</span>
                     ) : (
@@ -135,12 +149,13 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
               <td className="py-1.5 text-right">
                 <Cell cell={row.before} testId="around-event-before" />
               </td>
+              {showAfter ? (
               <td className="py-1.5 text-right">
                 <Cell cell={row.after} testId="around-event-after" />
                 {row.change ? (
                   <span className="mt-0.5 flex justify-end gap-1 text-t-micro text-hey-muted" data-testid="around-event-change">
                     {row.change.market ? (
-                      <MarketChange pct={row.change.pct} window="7D" showWindow={false} size="meta" />
+                      <MarketChange pct={row.change.pct} window="vs before" showWindow={false} size="meta" />
                     ) : (
                       <span className="tabular-nums text-hey-secondary">{row.change.pct >= 0 ? '+' : '−'}{Math.abs(Math.round(row.change.pct * 10) / 10).toFixed(1)}%</span>
                     )}
@@ -149,6 +164,7 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
                   </span>
                 ) : null}
               </td>
+              ) : null}
             </tr>
           ))}
         </tbody>

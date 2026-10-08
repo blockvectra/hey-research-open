@@ -227,6 +227,14 @@ figures. Built for the Chit bot's line above its buy and sell buttons —
 - `found: false` for a token HEY has no published page for, and — as a **200**, not a 400 — for a
   chain HEY does not index (`reason: "chain"`; Robinhood Chain 4663 only, the 46630 testnet
   included). Print nothing in both cases. A malformed `token` is a 400: that is a bug on your side.
+- **What HEY holds for an unpublished token (2026-10-09, additive).** Beside `scan_url`, a
+  `found: false` for a token HEY has no published page for says what HEY holds: `indexed`
+  (`true` when the token is in HEY's own index — a reading of that index, so `false` is a finding),
+  `research_state` (`not_researched`: a launch record HEY indexed and has not published;
+  `not_published`: held, with no launch record HEY shows; `not_indexed`: nothing held) and
+  `launched_via` (the launchpad, when the launch record names it). `found` keeps its meaning — print
+  nothing as before, or say "Launch record — not researched by HEY · via Virtuals" as the site does.
+  Never a verdict on the token. Absent on another chain, the zero address and an issuer's token.
 - `chain` is optional and defaults to 4663.
 - `commits_30d_partial: true` (2026-09-18) means HEY read a full page of a hundred commits that started
   inside the window, so `commits_30d` is a floor; print it as `100+`, or drop the figure.

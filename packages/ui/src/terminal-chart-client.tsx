@@ -423,6 +423,30 @@ export function codeFacts(model: Pick<ChartModel, 'code' | 'tf'>, at: number, ev
   return parts.join(' · ');
 }
 
+/**
+ * The close move since a hovered build event (2026-10-09 audit B21),
+ * anchored on the event's own column — its day — never on the hovered
+ * column: hovering the fourth day of a WEEK bracket measured "since event"
+ * from that day, which is not when anything happened. Only an event dated to
+ * a day (EXACT or DATE) anchors a move; a week, a window or a day HEY merely
+ * observed has no day to measure from, so none is printed. The newest dated
+ * event in view anchors; undefined when none, when its column has no close,
+ * or when it is the latest column.
+ */
+export function sinceEventMove(
+  model: ChartModel,
+  events: readonly Pick<LaneEvent, 'i' | 'p'>[],
+): { pct: number; at: number } | undefined {
+  const dated = events.filter((event) => event.p === 'EXACT' || event.p === 'DATE');
+  if (dated.length === 0) return undefined;
+  const anchor = Math.max(...dated.map((event) => event.i));
+  if (anchor >= model.latest || anchor < 0) return undefined;
+  const from = model.rows[anchor] ? close(model.rows[anchor]!) : null;
+  const to = close(model.rows[model.latest]);
+  if (from === null || to === null || from <= 0) return undefined;
+  return { pct: (to / from - 1) * 100, at: anchor };
+}
+
 function Readout({
   model,
   at,
@@ -499,16 +523,10 @@ function Readout({
       );
     }
   }
-  const latestClose = close(model.rows[model.latest]);
-  const dayClose = close(row);
-  const since =
-    events.length > 0 &&
-    at !== model.latest &&
-    dayClose !== null &&
-    latestClose !== null &&
-    dayClose > 0
-      ? (latestClose / dayClose - 1) * 100
-      : undefined;
+  // Anchored on the event's own day, never the hovered column; none for a week or an observation (B21).
+  const sinceMove = sinceEventMove(model, events);
+  const since = sinceMove?.pct;
+  const sinceDate = sinceMove ? rowWhen(model, model.rows[sinceMove.at]![0]) : undefined;
   return (
     <div
       className="hey-chart-readout grid gap-0.5 text-t-ui tabular-nums text-hey-ink"
@@ -547,7 +565,7 @@ function Readout({
               {since !== undefined ? (
                 <span className="inline-flex items-baseline gap-1">
                   <MarketChange pct={since} window="since event" showWindow={false} size="meta" />{' '}
-                  close since {date}, observed, not caused
+                  close since {sinceDate}, observed, not caused
                 </span>
               ) : null}
             </>

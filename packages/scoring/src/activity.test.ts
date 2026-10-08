@@ -6,6 +6,7 @@ import {
   deriveActivityStatus,
   meaningfulEvents,
   releaseRepositoryOf,
+  repeatedEvidenceKey,
   utcSecondIndex,
   type ScoredEvent,
 } from './activity';
@@ -451,5 +452,15 @@ describe('a date the clock has not reached', () => {
       expect(result.status).toBe('SHIPPING');
       expect(result.lastMeaningfulShipAt).toEqual(daysAgo(3));
     });
+  });
+});
+
+describe('repeatedEvidenceKey (2026-10-09 audit B22)', () => {
+  const at = new Date('2026-10-01T10:00:03Z');
+  it('names the release day, the deploy second and the code week a reader folds by', () => {
+    expect(repeatedEvidenceKey({ eventType: 'GITHUB_RELEASE', publishedAt: at, repository: 'bambini-tech/digitaldon-public' })).toBe(`release-day:bambini-tech/digitaldon-public:${Math.floor(at.getTime() / 86_400_000)}`);
+    expect(repeatedEvidenceKey({ eventType: 'CONTRACT_DEPLOY_FOLLOWUP', publishedAt: at })).toBe(`deploy-batch:${Math.floor(at.getTime() / 1000)}`);
+    expect(repeatedEvidenceKey({ eventType: 'GITHUB_RELEASE', publishedAt: at, repository: null })).toBeUndefined();
+    expect(repeatedEvidenceKey({ eventType: 'CONTRACT_UPGRADE', publishedAt: at })).toBeUndefined();
   });
 });

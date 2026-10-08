@@ -4,7 +4,7 @@ import { cn } from './cn';
 export type BrandNoticeData = { kind: string; title: string; detail: string; ticker?: string };
 
 /**
- * "Not affiliated with Robinhood — HEY has not verified this claim."
+ * "No known affiliation with Robinhood — HEY holds no evidence of one."
  * (2026-10-02, outsider audit OA-A). A name that borrows Robinhood's brand or a
  * Robinhood stock ticker carries this above every badge, on the card and on
  * the page, so a gold "Verified builder" is never the first thing a reader

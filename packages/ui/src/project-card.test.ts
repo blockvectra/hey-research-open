@@ -165,6 +165,18 @@ describe('ProjectCard — fallbacks', () => {
     expect(render({ ...tokenBacked, tokenVerification: 'VERIFIED' })).not.toContain('Token verified');
   });
 
+  it('says quietly that a token is unverified, and nothing when verification is unknown (AOP-09, 2026-10-09)', () => {
+    // Autonolas on production: an UNVERIFIED market-listing token whose card printed "Valuation $2.3K" with no mark.
+    const unverified = render({ ...tokenBacked, tokenVerification: 'UNVERIFIED' });
+    expect(unverified).toContain('data-testid="token-unverified"');
+    expect(unverified).toContain('>Token unverified<');
+    // Text, not the page's chip.
+    expect(unverified).not.toContain('token-verification-chip');
+    expect(render({ ...tokenBacked, tokenVerification: 'VERIFIED' })).not.toContain('token-unverified');
+    expect(render({ ...tokenBacked, tokenVerification: 'MISMATCH' })).not.toContain('token-unverified');
+    expect(render(tokenBacked)).not.toContain('token-unverified');
+  });
+
   it('says how old a stale reading is, and nothing for a current one (2026-09-28)', () => {
     const now = new Date('2026-09-28T12:00:00Z');
     // firstviralonboardogcreatoraicoin on production: a Bitquery reading four days old, printed as current.

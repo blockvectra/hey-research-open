@@ -114,7 +114,7 @@ export type HeyProject = {
    * Why `marketCap` is absent when HEY holds a reading it will not publish
    * (2026-09-28): the market's reason code or status, e.g.
    * `launch_pool_no_trades` or `readings_implausible`. Absent when HEY holds
-   * no reading at all. Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity) or `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries).
+   * no reading at all. Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity), `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries) or, since 2026-10-09, `chain_evidence_contradicts` (more than 10× away from HEY's own chain readings).
    */
   valuationWithheld?: string;
   /**
@@ -310,7 +310,7 @@ export type HeyProjectDetail = HeyProject & {
     marketCapUsd?: number;
     valuationKind?: HeyValuationKind;
     fdvUsd?: number;
-    /** Present when the valuation is withheld: the market's reason code when it is not live (2026-09-26). Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity) or `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries). `fdvUsd` is then absent too. */
+    /** Present when the valuation is withheld: the market's reason code when it is not live (2026-09-26). Since round 4 (2026-09-30) also the valuation gate's reason when the valuation is not plausible from the readings HEY has: `valuation_over_liquidity` (at least 10,000× the same reading's liquidity), `unlisted_over_ceiling` (above $10B on a Robinhood Chain token no listing HEY reads carries) or, since 2026-10-09, `chain_evidence_contradicts` (more than 10× away from HEY's own chain readings). `fdvUsd` is then absent too. */
     valuationWithheld?: string;
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply (2026-09-25). */
@@ -326,6 +326,8 @@ export type HeyProjectDetail = HeyProject & {
     pairAddress?: string;
     observedAt: string;
     source: string;
+    /** Additive (2026-10-09): another source's reading within a day whose price is more than 2× away from this one's — "sources disagree", so the figures are the shown reading's as read, not a settled fact. Absent when none disagrees. */
+    sourcesDisagree?: { source: string; priceUsd: number; observedAt: string };
   };
   /** Present only when HEY actually ran the pipeline. A momentum of zero is "measured, nothing found"; absent is "not measured". */
   score?: {
@@ -463,7 +465,7 @@ export type HeyTokenMarket = {
     valuationKind?: HeyValuationKind;
     /** Fully diluted valuation from the same reading; equal to `marketCapUsd` when it stands in for one (2026-09-25). */
     fdvUsd?: number;
-    /** Why `marketCapUsd` and `fdvUsd` are absent although the reading carried them (round 4, 2026-09-30): `valuation_over_liquidity` or `unlisted_over_ceiling`, a valuation not plausible from the readings HEY has. */
+    /** Why `marketCapUsd` and `fdvUsd` are absent although the reading carried them (round 4, 2026-09-30): `valuation_over_liquidity`, `unlisted_over_ceiling` or (2026-10-09) `chain_evidence_contradicts`, a valuation not plausible from the readings HEY has. */
     valuationWithheld?: string;
     liquidityUsd?: number;
     /** `launch_inventory` when `liquidityUsd` is a launch pool's own supply rather than market depth (2026-09-25). */
@@ -607,6 +609,15 @@ export type HeyScanCard =
       reason?: 'chain' | 'not_a_token' | 'issuer_token';
       message?: string;
       scan_url?: string;
+      /**
+       * Additive (2026-10-09), beside `scan_url` only; `found` keeps its meaning. `indexed`: HEY holds
+       * the token. `research_state`: `not_researched` (a launch record HEY has not published),
+       * `not_published` (held, no launch record shown) or `not_indexed`. `launched_via`: the launchpad,
+       * when the launch record knows it. Never a verdict on the token.
+       */
+      indexed?: boolean;
+      research_state?: 'not_researched' | 'not_published' | 'not_indexed';
+      launched_via?: string;
       disclaimer: string;
     }
   | {

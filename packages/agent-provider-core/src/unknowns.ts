@@ -10,9 +10,9 @@ import { heyText, derivedText, type AgentText } from './text';
  * | category                | from                                                          |
  * |-------------------------|---------------------------------------------------------------|
  * | `NOT_MEASURED`          | `NO_SOURCE`, `NOT_RESEARCHED`; usage not watched or not read     |
- * | `INSUFFICIENT_EVIDENCE` | `NOT_ENOUGH_YET`; usage over part of the window                 |
+ * | `INSUFFICIENT_EVIDENCE` | `NOT_ENOUGH_YET`, `PARTIAL`; usage over part of the window      |
  * | `STALE`                 | `STALE`                                                        |
- * | `NOT_VERIFIED`          | an unverified token, context-only repositories or packages, an unconfirmed site, no verified owner |
+ * | `NOT_VERIFIED`          | `MAPPING_BLOCKED`; an unverified token, context-only repositories or packages, an unconfirmed site, no verified owner |
  * | `UNKNOWN`               | `SOURCE_UNAVAILABLE`, `ERROR`; activity status `UNKNOWN`; a ledger that cannot answer |
  *
  * `MEASURED`, `NOT_APPLICABLE` and `WITHHELD` are not gaps: a meme with no
@@ -24,7 +24,20 @@ import { heyText, derivedText, type AgentText } from './text';
 export const AGENT_UNKNOWN_CATEGORIES = ['UNKNOWN', 'NOT_MEASURED', 'NOT_VERIFIED', 'STALE', 'INSUFFICIENT_EVIDENCE'] as const;
 export type AgentUnknownCategory = (typeof AGENT_UNKNOWN_CATEGORIES)[number];
 
-export type CoverageStateCode = 'MEASURED' | 'NO_SOURCE' | 'NOT_ENOUGH_YET' | 'STALE' | 'SOURCE_UNAVAILABLE' | 'NOT_APPLICABLE' | 'NOT_RESEARCHED' | 'ERROR' | 'WITHHELD';
+export type CoverageStateCode =
+  | 'MEASURED'
+  | 'NO_SOURCE'
+  | 'NOT_ENOUGH_YET'
+  | 'STALE'
+  | 'SOURCE_UNAVAILABLE'
+  | 'NOT_APPLICABLE'
+  | 'NOT_RESEARCHED'
+  | 'ERROR'
+  | 'WITHHELD'
+  /** Since 2026-10-09: part of it measured. */
+  | 'PARTIAL'
+  /** Since 2026-10-09: a candidate HEY holds that nothing yet ties to the project. */
+  | 'MAPPING_BLOCKED';
 
 /** Reason codes on a gap state that mean "HEY has not verified whose it is", not "HEY has not read it". */
 const NOT_VERIFIED_REASONS: ReadonlySet<string> = new Set(['context_only_repositories', 'claimed_package_links_only', 'site_not_corroborated', 'context_only_docs']);
@@ -37,7 +50,10 @@ export function categoryOfCoverage(state: CoverageStateCode, reason?: string): A
     case 'NOT_RESEARCHED':
       return 'NOT_MEASURED';
     case 'NOT_ENOUGH_YET':
+    case 'PARTIAL':
       return 'INSUFFICIENT_EVIDENCE';
+    case 'MAPPING_BLOCKED':
+      return 'NOT_VERIFIED';
     case 'STALE':
       return 'STALE';
     case 'SOURCE_UNAVAILABLE':

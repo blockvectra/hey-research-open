@@ -14,9 +14,23 @@ import type { HeyUsageSummary } from './usage';
  * `MEASURED` (figures elsewhere are measurements, zeros included),
  * `NO_SOURCE`, `NOT_ENOUGH_YET`, `STALE`, `SOURCE_UNAVAILABLE`,
  * `NOT_APPLICABLE`, `NOT_RESEARCHED`, `ERROR`, `WITHHELD` (measured and not
- * published on this surface).
+ * published on this surface). Treat a state you do not know as a gap, never as a finding.
  */
 export type HeyCoverageState = 'MEASURED' | 'NO_SOURCE' | 'NOT_ENOUGH_YET' | 'STALE' | 'SOURCE_UNAVAILABLE' | 'NOT_APPLICABLE' | 'NOT_RESEARCHED' | 'ERROR' | 'WITHHELD';
+
+/**
+ * The finer state behind a coverage `state` (2026-10-09, additive): `PARTIAL` under `MEASURED` (part of it
+ * measured) and `MAPPING_BLOCKED` under `NO_SOURCE` (HEY holds a candidate nothing yet ties to the project).
+ * `state` keeps its meaning; this only says more.
+ */
+export type HeyCoverageStateDetail = 'PARTIAL' | 'MAPPING_BLOCKED';
+
+/**
+ * Whose side a failed or deferred read is on (2026-10-09): the project's own
+ * site, repository or feed; the third-party index HEY reads; or HEY's own
+ * budget or pace.
+ */
+export type HeyCoverageCause = 'own_source_unreachable' | 'provider_unavailable' | 'budget_deferred';
 
 export type HeyCoverageDimension =
   | 'identity'
@@ -48,12 +62,16 @@ export type HeyCoverageDimension =
 
 export type HeyCoverageEntry = {
   state: HeyCoverageState;
+  /** The finer state behind `state`, when there is one (2026-10-09, additive). */
+  stateDetail?: HeyCoverageStateDetail;
   /** How far back HEY's record of this dimension reaches. */
   since?: string;
   /** The newest reading behind it. */
   asOf?: string;
   /** A machine code for why the state is what it is (`hoodlock_only_none_found`, `no_builder_source`, …). */
   reason?: string;
+  /** On `SOURCE_UNAVAILABLE`, or a deferred `NOT_ENOUGH_YET`: whose side the failure is on (2026-10-09). */
+  cause?: HeyCoverageCause;
   /** Where the figures are, on this API. */
   detailUrl?: string;
 };

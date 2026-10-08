@@ -21,7 +21,7 @@ export const GITHUB_WEBHOOK_MAX_BYTES = 1024 * 1024;
 
 const FULL_NAME = /^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})\/[A-Za-z0-9_.-]{1,100}$/;
 const id = z.number().int().positive().max(Number.MAX_SAFE_INTEGER);
-const repository = z.object({ id, full_name: z.string().regex(FULL_NAME) });
+const repository = z.object({ id, full_name: z.string().regex(FULL_NAME), private: z.boolean().optional() });
 const account = z.object({ login: z.string().min(1).max(39), id, type: z.string().max(32) });
 const installation = z.object({
   id,
@@ -68,7 +68,8 @@ const pullRequestEvent = z.object({
   installation: z.object({ id }),
 });
 
-export type GithubAppRepoRef = { id: number; fullName: string };
+/** `isPrivate` as GitHub sent it (2026-10-09); absent when the payload did not say. */
+export type GithubAppRepoRef = { id: number; fullName: string; isPrivate?: boolean };
 export type GithubAppInstallationFacts = {
   id: number;
   accountLogin: string;
@@ -90,7 +91,7 @@ export type GithubAppWebhookParse =
   | { ok: true; facts: GithubAppWebhookFacts }
   | { ok: false; reason: 'unsupported_event' | 'malformed' };
 
-const repo = (value: { id: number; full_name: string }): GithubAppRepoRef => ({ id: value.id, fullName: value.full_name });
+const repo = (value: { id: number; full_name: string; private?: boolean | undefined }): GithubAppRepoRef => ({ id: value.id, fullName: value.full_name, ...(value.private === undefined ? {} : { isPrivate: value.private }) });
 const installationFacts = (value: z.infer<typeof installationEvent>['installation']): GithubAppInstallationFacts => ({
   id: value.id,
   accountLogin: value.account.login,

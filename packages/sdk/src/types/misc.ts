@@ -89,7 +89,7 @@ export type HeyWeeklyReport = {
   generatedAt: string;
   headline: string;
   overview: { published: number; verifiedBuilders: number; ships: number; projectsShipping: number; newBuilders: number; backToShipping: number; stillBuilding: number; underTheRadar: number };
-  chain: { days: number; dexTrades?: number; dexVolumeUsd?: number; tokensTraded?: number; launches?: number; projectsPublished?: number };
+  chain: { days: number; dexTrades?: number; dexVolumeUsd?: number; /** Days withheld as implausible (2026-10-09, additive); `dexVolumeUsd` is then absent. */ dexVolumeWithheldDays?: number; tokensTraded?: number; launches?: number; projectsPublished?: number };
   shipped: { slug: string; name: string; ships: number; latest: string; latestAt: string }[];
   newBuilders: { slug: string; name: string; verifiedAt: string }[];
   backToShipping: { slug: string; name: string; from: string; to: string }[];

@@ -7,6 +7,7 @@ import {
   VALUATION_HIDDEN_WORDS,
 } from './valuation-display';
 import {
+  VALUATION_CHAIN_EVIDENCE,
   VALUATION_IMPLAUSIBLE_REASONS,
   VALUATION_IMPLAUSIBLE_WORDS,
   VALUATION_NOT_PLAUSIBLE_WORDS,
@@ -26,6 +27,8 @@ describe('the valuation plausibility gate (round 4, 2026-09-30)', () => {
       unlistedCeilingUsd: 10_000_000_000,
       chainId: 4663,
     });
+    // Rule 3 apart (2026-10-09): not a scorer input until hbm-v26 is ruled on.
+    expect(VALUATION_CHAIN_EVIDENCE).toEqual({ contradictionMultiple: 10, maxAgeDays: 2, indexMaxTurnover: 0.001 });
   });
 
   describe('rule 1: at least 10,000× the same reading’s liquidity', () => {
@@ -125,6 +128,78 @@ describe('the valuation plausibility gate (round 4, 2026-09-30)', () => {
     });
   });
 
+  describe('rule 3: HEY’s own chain evidence contradicts the reading more than 10× (2026-10-09 audit E2/E3)', () => {
+    // Production's readings on 2026-10-08.
+    const usdb = {
+      fdvUsd: 10_416_055_051,
+      liquidityUsd: 82_460_100.99,
+      volume24hUsd: 10.69,
+      priceUsd: 1.0416,
+      chainId: RH,
+      listing: 'listed' as const,
+    };
+
+    it('withholds USDB: its decoded trades price it 80× lower', () => {
+      expect(valuationPlausibility({ ...usdb, chainTradePriceUsd: 0.01294 })).toEqual({
+        plausible: false,
+        reason: 'chain_evidence_contradicts',
+      });
+    });
+
+    it('withholds USDB on the index alone: a thirtieth of its liquidity on a day it barely traded', () => {
+      expect(valuationPlausibility({ ...usdb, chainIndexLiquidityUsd: 2_765_826 })).toEqual({
+        plausible: false,
+        reason: 'chain_evidence_contradicts',
+      });
+    });
+
+    it('trips in either direction, only past 10×', () => {
+      expect(valuationPlausibility({ marketCapUsd: 1_000_000, priceUsd: 1, chainTradePriceUsd: 10.01 }).plausible).toBe(false);
+      expect(valuationPlausibility({ marketCapUsd: 1_000_000, priceUsd: 10.01, chainTradePriceUsd: 1 }).plausible).toBe(false);
+      expect(valuationPlausibility({ marketCapUsd: 1_000_000, priceUsd: 10, chainTradePriceUsd: 1 }).plausible).toBe(true);
+    });
+
+    it('never lets the index decide beside a market that trades: openzaps, $125K a day on a pool the index holds $2 of', () => {
+      expect(
+        valuationPlausibility({
+          fdvUsd: 503_057,
+          liquidityUsd: 194_084,
+          volume24hUsd: 125_367,
+          priceUsd: 0.00000503,
+          chainTradePriceUsd: 0.00000417,
+          chainIndexLiquidityUsd: 2.38,
+          chainId: RH,
+        }),
+      ).toEqual({ plausible: true });
+    });
+
+    it('leaves atlantis-coin alone: its trades price it 1.6× higher and the index holds more than the reading', () => {
+      expect(
+        valuationPlausibility({
+          fdvUsd: 2_489_661_474,
+          liquidityUsd: 1_423_504,
+          volume24hUsd: 29.51,
+          priceUsd: 24.89,
+          chainTradePriceUsd: 39.65,
+          chainIndexLiquidityUsd: 2_767_714,
+          chainId: RH,
+          listing: 'listed',
+        }),
+      ).toEqual({ plausible: true });
+    });
+
+    it('unknown is never a trip wire: no evidence, no price or no volume leaves it silent', () => {
+      expect(valuationPlausibility({ ...usdb })).toEqual({ plausible: true });
+      expect(valuationPlausibility({ ...usdb, priceUsd: undefined, chainTradePriceUsd: 0.01294 })).toEqual({ plausible: true });
+      expect(valuationPlausibility({ ...usdb, volume24hUsd: undefined, chainIndexLiquidityUsd: 2_765_826 })).toEqual({ plausible: true });
+      expect(valuationPlausibility({ ...usdb, chainTradePriceUsd: 0, chainIndexLiquidityUsd: 0 })).toEqual({ plausible: true });
+    });
+
+    it('only withholds: a reading with no valuation is never touched', () => {
+      expect(valuationPlausibility({ priceUsd: 1, chainTradePriceUsd: 0.001 })).toEqual({ plausible: true });
+    });
+  });
+
   it('reads back only its own reason codes', () => {
     for (const reason of VALUATION_IMPLAUSIBLE_REASONS)
       expect(valuationImplausibleReason(reason)).toBe(reason);
@@ -136,6 +211,7 @@ describe('the valuation plausibility gate (round 4, 2026-09-30)', () => {
     expect(VALUATION_NOT_PLAUSIBLE_WORDS).toBe('Valuation not plausible from the readings HEY has');
     expect(VALUATION_IMPLAUSIBLE_WORDS.valuation_over_liquidity).toContain('10,000×');
     expect(VALUATION_IMPLAUSIBLE_WORDS.unlisted_over_ceiling).toContain('$10B');
+    expect(VALUATION_IMPLAUSIBLE_WORDS.chain_evidence_contradicts).toContain('10×');
     for (const reason of VALUATION_IMPLAUSIBLE_REASONS) {
       const sentence = valuationNotPlausibleSentence(reason);
       expect(sentence.startsWith(VALUATION_NOT_PLAUSIBLE_WORDS)).toBe(true);

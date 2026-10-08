@@ -288,7 +288,10 @@ least 10,000× the liquidity measured in the same reading) or `unlisted_over_cei
 a Robinhood Chain token that no listing HEY reads carries; HEY reads CoinGecko, not CoinMarketCap).
 Such a valuation is never sent as a figure and never enters `sort=marketCap`, `has=marketCap`,
 `maxMarketCap` or a coverage count. The comparison (`/api/compare`) and the market detail's
-`current` carry `valuationWithheld` too, additively.
+`current` carry `valuationWithheld` too, additively. Since 2026-10-09 the gate has a third reason,
+additively: `chain_evidence_contradicts` — the reading is more than 10× away from HEY's own chain
+readings of the token (the price of its decoded on-chain trades, or its chain pool index's
+liquidity on a day the reading traded under 0.1% of its own).
 
 `launchedVia` is present only when HEY observed the launch. "Unknown" and "Independent" are
 how the *card* says provenance is missing; the API omits the field instead, so nothing reads
@@ -816,6 +819,7 @@ every malformed token keep their `400`, which also spends nothing.
 |---|---|---|
 | `/api/v1/scan` | `activity_applies_to_token` | `false` exactly when `token_verification` is `MISMATCH`; the card then carries no `cta`. Every other field keeps its value |
 | | `reason: "not_a_token"` | on `found: false`, for the zero address |
+| | `indexed`, `research_state`, `launched_via` (2026-10-09) | on `found: false` beside `scan_url`: whether HEY holds the token, `not_researched` / `not_published` / `not_indexed`, and the launchpad when known. `found` keeps its meaning |
 | `/api/token/{chainId}/{address}` | `project.activityAppliesToToken` | as above; `project.url` is still sent |
 | `/api/v1/builder` | `activity_applies_to_token` | as above; `hey_project_url` is still sent — do not link from the token to it when `false` |
 
@@ -1081,18 +1085,41 @@ What HEY knows about a project, dimension by dimension, as states and never a sc
 `identity`, `builderEvidence`, `repositories`, `releases`, `marketCurrent`, `marketHistory`,
 `contractDeployment`, `contractActivity`, `contractSource`, `contractInterface`, `distribution`,
 `locks`, `marketIntegrity`, `timeline`, `officialDocs`, `apiDocs`, `sourceChanges`, `protocolEconomics`, `gitHost`, `package`, `securityContext` (2026-09-27). Each is
-`{ state, since?, asOf?, reason?, detailUrl? }`.
+`{ state, stateDetail?, since?, asOf?, reason?, cause?, detailUrl? }`.
+
+**`stateDetail` and `cause` (2026-10-09, additive; partner note).** `state` keeps its nine values and
+every one keeps its meaning; an entry may also carry `stateDetail`, a finer state behind `state`, and
+`cause`. Nothing that read one state before reads another now.
+
+- `stateDetail: "MAPPING_BLOCKED"`, under `state: "NO_SOURCE"`: HEY holds a candidate for the dimension —
+  a declared site, docs or a repository — and nothing yet ties it to the project; the remedy is a mapping
+  decision, not a read. Reasons `site_not_corroborated` (`apiDocs`, `sourceChanges`), `context_only_docs`
+  (`officialDocs`) and `context_only_repositories` (`repositories`).
+- `stateDetail: "PARTIAL"`, under `state: "MEASURED"`: HEY measured part of it. Today one reason:
+  `contractActivity` with `partial_events_unreadable_some_days` (some days' events decoded, others only
+  their calls). The figure covers only what HEY could read.
+- `cause`, on a `SOURCE_UNAVAILABLE` entry and on a `NOT_ENOUGH_YET` entry whose read HEY deferred:
+  `own_source_unreachable` (the project's own site, repository or feed did not answer, is gone, or asks HEY
+  not to read it), `provider_unavailable` (the third-party index HEY reads did not answer:
+  `registry_overview_unread`) or `budget_deferred` (HEY deferred the read — its own budget or pace, or a
+  host asking it to slow down; the source is not known to be down). A site whose only failures are such
+  rate refusals no longer reads `SOURCE_UNAVAILABLE` (`website_unreachable`, `site_unreachable`): it was
+  never known to be down, and it reads `NOT_ENOUGH_YET` with `cause: budget_deferred`.
+
+The SDK carries `HeyCoverageStateDetail` and `HeyCoverageCause`; inside HEY (the console's census) the two
+details are states of their own.
 
 The three site dimensions (2026-09-27, additive) describe the project's own site:
 
 - `officialDocs`: `MEASURED` (`official_docs`) when HEY holds the project's own docs;
   `NO_SOURCE` with `no_docs_link_found` when HEY read the site and found no docs link (a page
-  rendered by script can hold docs HEY cannot see, so this is not a zero), `context_only_docs`,
-  or `no_official_site`; `NOT_ENOUGH_YET` (`site_not_read_yet`); `SOURCE_UNAVAILABLE`
+  rendered by script can hold docs HEY cannot see, so this is not a zero) or `no_official_site`;
+  `NO_SOURCE` with `context_only_docs` (`stateDetail: MAPPING_BLOCKED` since 2026-10-09); `NOT_ENOUGH_YET` (`site_not_read_yet`); `SOURCE_UNAVAILABLE`
   (`website_unreachable`, `site_disallows_reading` when robots.txt disallows HEY);
   `NOT_APPLICABLE` for a meme.
 - `apiDocs`: `MEASURED` (`api_description_read`) when the site links an OpenAPI description HEY
-  read; `NO_SOURCE` (`no_api_description_linked`, `site_not_corroborated`, `no_official_site`);
+  read; `NO_SOURCE` (`no_api_description_linked`, `no_official_site`); `MAPPING_BLOCKED`
+  (`site_not_corroborated`, since 2026-10-09);
   `NOT_ENOUGH_YET` (`site_files_not_read_yet`); `SOURCE_UNAVAILABLE`
   (`api_description_disallowed`, `api_description_unreadable`, `site_unreachable`,
   `site_disallows_reading`); `NOT_APPLICABLE` for a meme or a launch with no repository and no
@@ -1102,7 +1129,7 @@ The three site dimensions (2026-09-27, additive) describe the project's own site
   contact, OpenAPI operations added or removed). `MEASURED` with `since` = HEY's first read of
   the site's files, which is a baseline and never a change (`changes_since_first_read` or
   `no_change_since_first_read`); `NOT_ENOUGH_YET` (`no_baseline_yet`); `STALE` after three
-  missed weekly reads; `NO_SOURCE` / `SOURCE_UNAVAILABLE` as above. A source change is never a
+  missed weekly reads; `NO_SOURCE` / `MAPPING_BLOCKED` / `SOURCE_UNAVAILABLE` as above. A source change is never a
   ship and never counts toward activity.
 
 The developer footprint dimensions (2026-09-27, additive): `gitHost` (what the official

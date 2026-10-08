@@ -67,6 +67,8 @@ const WINDOW_WORDS: Readonly<Record<string, string>> = {
   '1Y': 'over 1 year',
   All: 'over all recorded history',
   'since event': 'since the event',
+  // A level after an event against the level before it (2026-10-09 audit AOP-08): not a move over any fixed span.
+  'vs before': 'against the days before',
 };
 
 /** The window as a spoken phrase: "over 24 hours", "since the event". */
