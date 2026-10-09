@@ -6,6 +6,10 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Launch-window deploys and scoring `hbm-v26` (2026-10-09).** A follow-up deployment the token's deployer
+  sends within 24 hours of the token's creation is context (`contextReason: launch_window`), never
+  building. The scorer applies the valuation gate's chain-evidence and sources-disagree rules too, so a
+  valuation withheld on every surface is no input to the Discovery Gap or Still Building. Additive only.
 - **Cards and prices (2026-10-09).** A card whose token trades only in its launch pool reads "Launch
   pool only" and prints neither valuation nor liquidity; a quiet launch pool reads "no trades in the
   last day". A tiny price counts its zeros in a subscript (`$0.0₈267`), never exponent form. No API

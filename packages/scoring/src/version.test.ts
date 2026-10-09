@@ -21,7 +21,7 @@ import {
 } from './config';
 import { AUTOMATION } from './commit-automation';
 import { BURST, COMMIT_SUBSTANCE_VERSION } from './commit-substance';
-import { VALUATION_PLAUSIBILITY } from './valuation-plausibility';
+import { VALUATION_CHAIN_EVIDENCE, VALUATION_PLAUSIBILITY, VALUATION_SOURCES_DISAGREE } from './valuation-plausibility';
 import { SCORING_VERSION, SCORING_VERSIONS } from './version';
 
 /**
@@ -58,6 +58,9 @@ const RULES_DIGEST = createHash('sha256')
       DEPLOY_BATCH,
       // A comeback is RESUMED only inside HEY's coverage of its sources (hbm-v25).
       RESUMED_COVERAGE,
+      // The valuation gate's rules 3 and 4 decide the scorer's valuation too (hbm-v26).
+      VALUATION_CHAIN_EVIDENCE,
+      VALUATION_SOURCES_DISAGREE,
     }),
   )
   .digest('hex')
@@ -82,8 +85,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v25',
-      rules: '013e50468fafa762',
+      version: 'hbm-v26',
+      rules: 'b68d09636188c883',
     });
   });
 });

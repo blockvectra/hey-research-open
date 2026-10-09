@@ -1233,7 +1233,8 @@ A record HEY no longer stands behind answers `{ id, withdrawn: true, withdrawalR
 `superseded`), with `project` when the project is public. A `context_only` follow-up deployment
 also carries `contextReason` (2026-09-27): `held_by_another_project`, `shared_deployer`,
 `serial_launcher_deployer` (the account that launched the token creates contracts for many
-projects: 100 or more in 90 days), `token_mismatch` or `deployer_not_tied`. For a project that is not public the
+projects: 100 or more in 90 days), `launch_window` (sent by the token's deployer within 24 hours of the token's own
+creation: launch provenance, never building — added 2026-10-09), `token_mismatch` or `deployer_not_tied`. For a project that is not public the
 reason is `not_public` and nothing else is said, not even the slug. A claim that was never
 verified, a reviewer's note, a reviewer and a claimant are never published. A malformed id is
 `400 invalid_evidence_id`; an unknown one `404`. `state:` and `impl:` ids resolve once the

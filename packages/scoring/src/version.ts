@@ -310,7 +310,26 @@
  * repository with commits on 13 days in that gap, attached on 09-19; the
  * first read pages back only until the newest week is covered).
  */
-export const SCORING_VERSION = 'hbm-v25' as const;
+/*
+ * hbm-v26 (2026-10-09, founder delegation, category-defining run): no weight,
+ * threshold or Build Momentum formula changes. The scorer's current valuation
+ * passes the whole valuation gate every surface applies, rules 3 and 4
+ * included: HEY's own chain evidence contradicting the reading by more than
+ * 10× (`VALUATION_CHAIN_EVIDENCE`, `chain_evidence_contradicts`) and another
+ * source's price more than 10× away within a day (`VALUATION_SOURCES_DISAGREE`,
+ * `sources_disagree`). Before, those two withheld the valuation on the card,
+ * the sorts, the API, the map and Pulse, but the Discovery Gap percentile and
+ * Still Building still read it — USDB's $10.4B on about $10 a day of volume
+ * sat in the population every other project's attention was ranked against.
+ * A withheld valuation leaves the percentile (liquidity and volume
+ * renormalised as for any missing figure) and is no current value for Still
+ * Building (`NOT_MEASURED`, `valuation_not_plausible`), exactly as hbm-v20's
+ * two rules. Unknown is never a trip wire: no chain reading and no other
+ * source leave both rules silent. The gate only withholds, never awards, and
+ * never reaches activity status or Build Momentum. Three index probes per
+ * cohort project, read after the joins.
+ */
+export const SCORING_VERSION = 'hbm-v26' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

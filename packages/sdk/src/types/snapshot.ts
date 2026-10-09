@@ -197,7 +197,8 @@ export type HeyEvidenceReceipt =
       /**
        * With `context_only`: which rule holds a follow-up deployment as context (2026-09-27) —
        * `held_by_another_project`, `shared_deployer`, `serial_launcher_deployer` (the account
-       * launches contracts for many projects), `token_mismatch` or `deployer_not_tied`.
+       * launches contracts for many projects), `launch_window` (sent within 24 h of the token's own
+       * creation: launch provenance, 2026-10-09), `token_mismatch` or `deployer_not_tied`.
        */
       contextReason?: string;
       /** Present only when the project is public. */
