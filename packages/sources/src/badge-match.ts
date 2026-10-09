@@ -113,8 +113,12 @@ const PLACING_ATTRIBUTE = /\b(?:href|src|srcset|data-src)[ \t\r\n]{0,8}=[ \t\r\n
 /** Every absolute or protocol-relative URL in a text; bounded per match. */
 const URL_IN_TEXT = /(?:https?:)?\/\/[^\s"'<>()[\]`{}|\\^]{1,2048}/gi;
 
-/** The badge image or page path, with the slug captured. */
-const BADGE_PATH = /^\/(?:api\/)?badge\/([a-z0-9-]{1,120})\/?$/;
+/**
+ * The badge image or page path, with the slug captured: `/api/badge/<slug>`, `/badge/<slug>`, and
+ * the documented image form `/badge/<slug>.svg` (docs/BADGES.md, HEY's own README) — all three serve
+ * this project's badge.
+ */
+const BADGE_PATH = /^\/(?:api\/badge\/([a-z0-9-]{1,120})|badge\/([a-z0-9-]{1,120})(?:\.svg)?)\/?$/;
 
 function matchesTarget(raw: string, host: string, slugs: ReadonlySet<string>): boolean {
   let value = decodeEntities(raw.trim());
@@ -133,7 +137,8 @@ function matchesTarget(raw: string, host: string, slugs: ReadonlySet<string>): b
   } catch {
     return false;
   }
-  const slug = BADGE_PATH.exec(path)?.[1];
+  const found = BADGE_PATH.exec(path);
+  const slug = found?.[1] ?? found?.[2];
   return slug !== undefined && slugs.has(slug);
 }
 

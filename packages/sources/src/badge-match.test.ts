@@ -25,6 +25,10 @@ describe('findBadgePlacement', () => {
     expect(html('<img src=https://heyresearch.xyz/api/badge/agentos>')).toBe(true);
     expect(html('<img srcset="https://heyresearch.xyz/api/badge/agentos?theme=dark 2x, /x.png 1x">')).toBe(true);
     expect(html('<IMG SRC="HTTPS://HEYRESEARCH.XYZ/API/BADGE/AGENTOS">')).toBe(true);
+    // The documented image form, as HEY's own README and docs/BADGES.md give it (2026-10-09).
+    expect(html('<img src="https://heyresearch.xyz/badge/agentos.svg">')).toBe(true);
+    expect(readme('[![AgentOS on HEY](https://heyresearch.xyz/badge/agentos.svg)](https://heyresearch.xyz/project/agentos)')).toBe(true);
+    expect(html('<img src="https://heyresearch.xyz/api/badge/agentos.svg">')).toBe(false);
     // A trailing slash on the path is the same badge.
     expect(html('<img src="https://heyresearch.xyz/api/badge/agentos/">')).toBe(true);
   });
@@ -32,6 +36,7 @@ describe('findBadgePlacement', () => {
   it('ignores another project’s badge, a longer slug that starts with this one, and other HEY pages', () => {
     expect(html('<img src="https://heyresearch.xyz/api/badge/otherproject">')).toBe(false);
     expect(html('<img src="https://heyresearch.xyz/api/badge/agentos-2">')).toBe(false);
+    expect(html('<img src="https://heyresearch.xyz/badge/agentos-2.svg">')).toBe(false);
     expect(html('<a href="https://heyresearch.xyz/project/agentos">HEY</a>')).toBe(false);
     expect(html('<img src="https://heyresearch.xyz/api/badge/agentos/extra">')).toBe(false);
     expect(html('<img src="https://heyresearch.xyz/og/project/agentos">')).toBe(false);
