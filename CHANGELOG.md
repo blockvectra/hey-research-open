@@ -6,6 +6,7 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **On-chain context on the bot's cards and in HEY Scan (2026-10-09).** A founder decision widens HEY Scan's "never maps holders" boundary for one token's concentration: the bot's cards show a token's stored on-chain readings after the builder story (the day's transfers and trades, the distribution summary, pools and depth, the lock, the contract), and a scan of a token HEY does not track reads them live — shares and counts, never an address — under its own `scan-onchain` allowance, keeping the distribution as the token's daily summary. `POST /api/scan` gains an additive "On-chain context" group and `report.onchain`. A ticker that names one project says how many other tokens use it.
 - **Telegram bot: unpublished addresses and tickers (2026-10-09).** The bot answers an address or ticker HEY has not published with what HEY holds (its record, launch, the card's market reading, declared links as unverified text, every token sharing the symbol with a true count), and on an explicit request in a chat reads the address live through the same HEY Scan as `POST /api/scan`, after answering, within per-user and per-group limits; never in inline mode or Guest Mode.
 - **Launch-window deploys and scoring `hbm-v26` (2026-10-09).** A follow-up deployment the token's deployer
   sends within 24 hours of the token's creation is context (`contextReason: launch_window`), never

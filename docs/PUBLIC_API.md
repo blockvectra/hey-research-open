@@ -1307,6 +1307,42 @@ means HEY could not look.
 `GET /api/v1/scan` is unchanged: the bot card carries no evidence block. Findings are
 facts with the place they were read from, and the absences are named as absences.
 
+**On-chain context (additive, 2026-10-09; a founder decision).** For an
+address that is a token, `report.groups` gains a fourth group, `"On-chain context"`, after "What
+HEY cannot see", and `report` gains `onchain` — its machine-readable half. Context, never a
+verdict, never a score, never a colour, and **never an address**: the fifty largest balances a
+read sums are never returned. Every part is read or says why it was not.
+
+```jsonc
+"onchain": {
+  "distribution": {
+    "state": "read", "basis": "live",            // "record" on a reused answer: the summary HEY kept from the earlier read
+    "day": "2026-10-09", "readAt": "2026-10-09T10:02:11.000Z",
+    "holdersTotal": 412,                          // balances above zero; null when the source returned no count
+    "top10SharePct": 20, "top50SharePct": 20,     // of total supply, excluding pools, lockers, routers and burns
+    "pooledSharePct": 40, "burnedSharePct": 10,
+    "nakamotoHalf": 3,                            // addresses holding half of the supply left once those are out
+    "sharesStated": true,                         // false: no share is stated (supply unknown, or balances exceed it)
+    "ranked": 4, "named": 2                       // largest balances read, and how many HEY could name (counts only)
+  },
+  "activity": {
+    "state": "read", "readAt": "…", "since": "2026-10-08",
+    "days": [                                     // each UTC day on its own: distinct addresses are never added across days
+      { "day": "2026-10-08", "complete": true,  "transfers": 1234, "trades": 56, "buys": 30, "sells": 26, "distinctAddresses": 40, "poolsTraded": 2 },
+      { "day": "2026-10-09", "complete": false, "transfers": 17,   "trades": 4,  "buys": 4,  "sells": 0,  "distinctAddresses": 3,  "poolsTraded": 1 }
+    ]
+  }
+}
+```
+
+A part not read is `{ "state": "not_read", "reason": … }` — `not_configured`, `allowance_spent`
+(HEY's own `scan-onchain` allowance, 100 reads a day, or the scan budget), `plan_ceiling` (the
+Bitquery plan's daily point ceiling), `provider_refused`, `read_failed`, `no_balances_in_window`
+(the source saw no balance change in the days it keeps — not an empty token), or `not_kept` (a
+reused answer whose earlier read kept no summary). A reused answer's `activity` is
+`{ "state": "not_repeated" }`. Absent `onchain` means the address is not a token. Nothing here is
+an input to activity status, Build Momentum, the Discovery Gap or the Radar.
+
 **Three refusals before any of that** (documented 2026-09-19). The route is same-origin and JSON
 only: a request whose `origin` is not HEY's own is `403` with `{"error": "Cross-site request
 refused."}`, and a body that is not `application/json` is `415` with `{"error": "Send JSON."}`;

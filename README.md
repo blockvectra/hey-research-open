@@ -239,7 +239,10 @@ Asking never publishes.
 A person asks the same question at [heyresearch.xyz/scan](https://heyresearch.xyz/scan), or inside
 the Research Terminal at `/terminal/scan`, where the ⌘K palette offers it for any address HEY does
 not track. One scan behind both, and the same boundary: who is building this, never what the token
-might do next. It has one name (2026-10-01): the navigation says "Scan", and the page asks
+might do next. Since 2026-10-09 (a founder decision) a scan of a token HEY does not track also
+reads its on-chain context — how concentrated the supply is and the day's transfers and trades,
+shares and counts, never an address — under its own small daily allowance, and keeps the
+distribution as that token's daily summary. It has one name (2026-10-01): the navigation says "Scan", and the page asks
 "Is anyone building this?". A published project answers with its Research Summary and the doors
 to follow it; anything unresearched says "Builder not established yet." and what HEY holds. What
 readers keep asking about is summed per record (`research_demand`) and decides only what HEY
@@ -568,6 +571,9 @@ what HEY holds — its record, launch, the card's market reading, the links its 
 (as unverified text) and every token sharing the symbol, with a true count — and an explicit
 request in a chat reads the address live through the same HEY Scan as the website, after the
 bot has answered and within per-reader and per-group limits (never in inline mode or Guest Mode).
+Its cards carry the token's on-chain context after the builder story (2026-10-09): the day's
+transfers and trades, the distribution in the market page's words, pools and depth, the lock and
+the contract — dated, two short lines in a shared card, never an address.
 `/telegram` (2026-10-06) is a small page with one way in — Try HEY in
 Telegram — the commands, inline mode, Guest Mode, the group watch and what HEY keeps; it exists
 only while the bot is switched on. The HEY Mini App (2026-10-06) is the same research inside
