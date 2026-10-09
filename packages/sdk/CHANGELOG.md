@@ -6,10 +6,29 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
-### Added (coverage states, 2026-10-09)
+## 0.2.0 — 2026-10-09
 
-- `HeyCoverageState` gains `PARTIAL` (part of the dimension measured; today `contractActivity` with `partial_events_unreadable_some_days`, which read `MEASURED`) and `MAPPING_BLOCKED` (a candidate HEY holds — a declared site, docs or a repository — that nothing yet ties to the project; the reasons `site_not_corroborated`, `context_only_docs` and `context_only_repositories`, which read `NO_SOURCE`), additively. `HeyProjectCoverage.states` explains both.
-- `HeyCoverageEntry.cause?: HeyCoverageCause` (`own_source_unreachable`, `provider_unavailable`, `budget_deferred`), additively: whose side a `SOURCE_UNAVAILABLE` or deferred `NOT_ENOUGH_YET` read is on. Every existing state and reason code keeps its meaning; treat a state you do not know as a gap.
+### Added (coverage detail, 2026-10-09)
+
+- `HeyCoverageEntry.stateDetail?: HeyCoverageStateDetail`, additively: `PARTIAL` under `MEASURED` (part of the dimension measured; today `contractActivity` with `partial_events_unreadable_some_days`) and `MAPPING_BLOCKED` under `NO_SOURCE` (a candidate HEY holds — a declared site, docs or a repository — that nothing yet ties to the project; reasons `site_not_corroborated`, `context_only_docs`, `context_only_repositories`). `HeyCoverageState` keeps its nine values and their meaning; the finer state never replaces it.
+- `HeyCoverageEntry.cause?: HeyCoverageCause` (`own_source_unreachable`, `provider_unavailable`, `budget_deferred`), additively: whose side a `SOURCE_UNAVAILABLE` or deferred `NOT_ENOUGH_YET` read is on. Every existing state and reason code keeps its meaning; treat a value you do not know as a gap.
+
+### Added (market truth, 2026-10-09)
+
+- Valuation withheld reasons (`valuationWithheld`, `valuationImplausible`) gain `chain_evidence_contradicts` (more than 10× away from HEY's own chain readings) and `sources_disagree` (another source's price within a day more than 10× away), additively; `fdvUsd` is absent beside them as before. Treat an unknown reason as a withheld valuation you have no words for.
+- `sourcesDisagree?: { source, priceUsd, observedAt }` beside a published valuation, additively: another source within a day more than 2× away, so the figure is the shown reading's, not a settled fact.
+- `HeyChainDay.dexVolumeWithheld?: 'implausible_vs_trailing_median'` and `HeyWeeklyReport.chain.dexVolumeWithheldDays?`, additively: a day's DEX volume more than 10× its 14-day median is withheld (`dexVolumeUsd` absent), never shown as a figure.
+- `HeyPoolStructure.dominantPoolShare` is documented as a percentage (0–100, one decimal), as the API has always sent it; no value changed.
+
+### Added (partner scan card, 2026-10-09)
+
+- `/api/v1/scan`'s not-found answer gains `indexed?`, `research_state?` (`not_researched` | `not_published` | `not_indexed`) and `launched_via?`, additively, beside `found: false`. `ships_30d` and `releases_30d` keep their documented zeros, with `activity_measured` saying whether they are measurements.
+
+### Added (alerts and search, 2026-10-09)
+
+- `HeyAlertPresetId` gains `ship` and `code`, and `HeyAlertEventType` gains `build.code_activity` (a weekly code-activity change, shown in the inbox only; never e-mailed or sent to a webhook), additively.
+- A search suggestion may carry `sameNameDifferentContract?: true`, additively: another page with the same name and a different contract.
+- Evidence receipts' `contextReason` gains `launch_window` (a follow-up deployment sent within 24 hours of the token's own creation: launch provenance, never building), additively.
 
 ### Added (Partner Card evidence link, 2026-10-05)
 

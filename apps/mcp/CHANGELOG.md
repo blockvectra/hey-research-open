@@ -6,6 +6,21 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.2.0 — 2026-10-09
+
+### Fixed (2026-10-09)
+
+- `get_token_market` printed the largest pool's share of liquidity a hundred times too large ("10000%"): the API sends a percentage (0–100) and the renderer read it as a fraction.
+- A valuation another source contradicts (`sourcesDisagree`) is printed DERIVED with "sources disagree", never FACT.
+
+### Changed (2026-10-09)
+
+- Bundles `@hey-research-lab/sdk` 0.2.0: coverage `stateDetail` and `cause`, the valuation gate's new withheld reasons (`chain_evidence_contradicts`, `sources_disagree`) with their plain words, a withheld chain DEX volume day, and the scan card's additive not-found fields.
+- `get_evidence`'s description lists every evidence family from one list (`v4hook:` among them), as llms.txt does.
+- The research profile says in one sentence what `research_answer` still carries (market context labelled context only), instead of "builder intelligence only".
+- The listing note says what the API does: an unknown parameter name is ignored, but a known parameter with an unreadable value is refused (it said every unrecognised filter was ignored).
+- A frozen weekly report whose stored chain volume includes a withheld day is printed with no total and names the withheld days.
+
 ## 0.1.2 — 2026-10-02
 
 ### Fixed (outsider open-source check, 2026-10-02)

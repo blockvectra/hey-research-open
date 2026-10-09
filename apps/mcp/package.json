@@ -1,6 +1,6 @@
 {
   "name": "@hey-research-lab/mcp",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "mcpName": "io.github.hey-research-lab/hey-research",
   "description": "MCP server for HEY Research Lab: evidence-backed research on Robinhood Chain projects — builder activity, ships, contracts, changes and market context, each with its source. Read-only; not investment advice.",
   "license": "MIT",

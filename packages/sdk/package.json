@@ -1,6 +1,6 @@
 {
   "name": "@hey-research-lab/sdk",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Typed client for the HEY Research Lab public API: evidence-backed research on Robinhood Chain projects — builder activity, ships, contracts, changes and market context, each with its source.",
   "license": "MIT",
   "type": "module",

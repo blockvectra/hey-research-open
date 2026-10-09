@@ -12,7 +12,7 @@
 declare const __MCP_VERSION__: string | undefined;
 
 /** Kept equal to `apps/mcp/package.json` by `apps/mcp/src/version.test.ts`. */
-export const MCP_PACKAGE_VERSION = '0.1.2';
+export const MCP_PACKAGE_VERSION = '0.2.0';
 
 export const MCP_VERSION: string =
   typeof __MCP_VERSION__ === 'string' && __MCP_VERSION__ !== '' ? __MCP_VERSION__ : MCP_PACKAGE_VERSION;
