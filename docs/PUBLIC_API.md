@@ -1263,7 +1263,10 @@ POST /api/scan   { "address": "0x…" }
 
 Ten requests an hour per client, never cached, and every call spends a provider budget the
 scheduled pipeline needs first. It is the only route in HEY that makes outbound provider calls
-on a reader's request, and it can answer `503` when that budget is spent for the day.
+on a reader's request, and it can answer `503` when that budget is spent for the day. The HEY
+Telegram bot's live read (2026-10-09) is this same scan reached from a
+chat — the same `scanAddress`, budget, per-address-day cap and reuse window, run after the bot has
+answered and within its own per-user and per-group allowances — not another route or exception.
 
 | `status` | HTTP | What it means |
 |---|---|---|

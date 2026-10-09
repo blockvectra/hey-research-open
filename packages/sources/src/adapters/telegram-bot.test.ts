@@ -199,4 +199,13 @@ describe('the Mini App (2026-10-06): the menu button and web_app buttons', () =>
     );
     expect(JSON.parse(String(stub.requests[0]!.init?.body)).reply_markup).toEqual({ inline_keyboard: [[{ text: 'Full research', web_app: { url: 'https://heyresearch.xyz/tg/app?p=agentos' } }]] });
   });
+
+  it('sends a reply to a message when asked, and still sends it if that message is gone (2026-10-09)', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('telegram-send-message.json') });
+    await adapter.fetch({ token: TOKEN, method: 'sendMessage', chatId: -100, text: 'x', replyToMessageId: 88 }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(JSON.parse(String(stub.requests[0]!.init?.body)).reply_parameters).toEqual({ message_id: 88, allow_sending_without_reply: true });
+    const plain = stubFetch({ status: 200, body: readFixture('telegram-send-message.json') });
+    await adapter.fetch({ token: TOKEN, method: 'sendMessage', chatId: 1, text: 'x' }, testContext({ fetchImpl: plain.fetchImpl }));
+    expect(JSON.parse(String(plain.requests[0]!.init?.body))).not.toHaveProperty('reply_parameters');
+  });
 });

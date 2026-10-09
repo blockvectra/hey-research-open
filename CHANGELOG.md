@@ -6,6 +6,7 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Telegram bot: unpublished addresses and tickers (2026-10-09).** The bot answers an address or ticker HEY has not published with what HEY holds (its record, launch, the card's market reading, declared links as unverified text, every token sharing the symbol with a true count), and on an explicit request in a chat reads the address live through the same HEY Scan as `POST /api/scan`, after answering, within per-user and per-group limits; never in inline mode or Guest Mode.
 - **Launch-window deploys and scoring `hbm-v26` (2026-10-09).** A follow-up deployment the token's deployer
   sends within 24 hours of the token's creation is context (`contextReason: launch_window`), never
   building. The scorer applies the valuation gate's chain-evidence and sources-disagree rules too, so a

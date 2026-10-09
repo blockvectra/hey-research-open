@@ -563,7 +563,12 @@ in any chat for a selectable research card (inline mode), mention it in a chat i
 and "Add HEY to a group" puts it in your own. In a group it stays quiet unless asked; its admins
 can have it watch projects and send the group's meaningful builder changes (at most three
 messages a day) or one daily digest. Never price, never a group's conversation, never anyone's
-private watchlist. `/telegram` (2026-10-06) is a small page with one way in — Try HEY in
+private watchlist. Since 2026-10-09 an address or ticker HEY has not published answers with
+what HEY holds — its record, launch, the card's market reading, the links its listing declared
+(as unverified text) and every token sharing the symbol, with a true count — and an explicit
+request in a chat reads the address live through the same HEY Scan as the website, after the
+bot has answered and within per-reader and per-group limits (never in inline mode or Guest Mode).
+`/telegram` (2026-10-06) is a small page with one way in — Try HEY in
 Telegram — the commands, inline mode, Guest Mode, the group watch and what HEY keeps; it exists
 only while the bot is switched on. The HEY Mini App (2026-10-06) is the same research inside
 Telegram: open it from the bot's menu button or a card's "Full research", search a project,

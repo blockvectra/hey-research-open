@@ -49,7 +49,8 @@ type WithToken = { token: string };
 
 export type TelegramBotCall = WithToken &
   (
-    | { method: 'sendMessage'; chatId: number; text: string; replyMarkup?: TelegramReplyMarkup }
+    /** `replyToMessageId` (2026-10-09): sent as a reply to that message, and still sent if it was deleted (`allow_sending_without_reply`). */
+    | { method: 'sendMessage'; chatId: number; text: string; replyMarkup?: TelegramReplyMarkup; replyToMessageId?: number }
     | { method: 'editMessageText'; chatId: number; messageId: number; text: string; replyMarkup?: TelegramReplyMarkup }
     | { method: 'deleteMessage'; chatId: number; messageId: number }
     | { method: 'setWebhook'; url: string; secretToken: string; allowedUpdates: readonly string[]; maxConnections?: number }
@@ -164,6 +165,7 @@ function bodyOf(call: TelegramBotCall): Record<string, unknown> {
         parse_mode: 'HTML',
         link_preview_options: { is_disabled: true },
         ...(call.replyMarkup ? { reply_markup: call.replyMarkup } : {}),
+        ...(call.method === 'sendMessage' && call.replyToMessageId !== undefined ? { reply_parameters: { message_id: call.replyToMessageId, allow_sending_without_reply: true } } : {}),
       };
     case 'deleteMessage':
       return { chat_id: call.chatId, message_id: call.messageId };
