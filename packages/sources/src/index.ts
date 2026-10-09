@@ -53,6 +53,7 @@ export * from './adapters/explorer-etherscan';
 export * from './adapters/sourcify';
 export * from './adapters/signatures';
 export * from './adapters/blockscout-contract';
+export * from './adapters/blockscout-token';
 export * from './adapters/virtuals';
 export * from './adapters/website';
 export * from './adapters/site-wellknown';

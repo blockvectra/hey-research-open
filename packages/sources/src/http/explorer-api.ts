@@ -67,6 +67,26 @@ export function explorerApiUrl(api: ExplorerApi, path: string, query: Record<str
   return `${base}${path.startsWith('/') ? path : `/${path}`}${encoded ? `?${encoded}` : ''}`;
 }
 
+/**
+ * A REST path on the Blockscout API with the chain in the path (2026-10-10):
+ * `https://api.blockscout.com/4663/api/v2/tokens/{address}?apikey=…`.
+ *
+ * The `?chain_id=4663` form answers "Network not supported" for the REST
+ * token routes (the Etherscan-style `/v2/api` above is the exception); the
+ * chain-in-path form answers them — verified from production on 2026-10-09
+ * with HEY's key, which is the Blockscout API's free tier (key required, about
+ * 100,000 credits a day, five requests a second). Undefined for anything but
+ * the keyed API with a chain: no request may leave without the key, and the
+ * key never travels to another host.
+ */
+export function explorerChainApiUrl(api: ExplorerApi, path: string, query: Record<string, string | number> = {}): string | undefined {
+  if (!isKeyedExplorerApi(api) || api.chainId === undefined || !Number.isInteger(api.chainId) || api.chainId <= 0) return undefined;
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) params.set(key, String(value));
+  params.set('apikey', api.apiKey);
+  return `${BLOCKSCOUT_PRO_API_BASE_URL}/${api.chainId}${path.startsWith('/') ? path : `/${path}`}?${params.toString()}`;
+}
+
 /** The URL with the key replaced, for evidence rows, logs and errors. */
 export function redactApiKey(url: string | undefined): string | undefined {
   if (!url) return url;

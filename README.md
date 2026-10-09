@@ -242,7 +242,9 @@ not track. One scan behind both, and the same boundary: who is building this, ne
 might do next. Since 2026-10-09 (a founder decision) a scan of a token HEY does not track also
 reads its on-chain context — how concentrated the supply is and the day's transfers and trades,
 shares and counts, never an address — under its own small daily allowance, and keeps the
-distribution as that token's daily summary. It has one name (2026-10-01): the navigation says "Scan", and the page asks
+distribution as that token's daily summary. Since 2026-10-10 that distribution is read from the
+Blockscout API (free tier, key required) first, with the explorer's all-time transfer count beside
+it, and from Bitquery only when the explorer cannot answer. It has one name (2026-10-01): the navigation says "Scan", and the page asks
 "Is anyone building this?". A published project answers with its Research Summary and the doors
 to follow it; anything unresearched says "Builder not established yet." and what HEY holds. What
 readers keep asking about is summed per record (`research_demand`) and decides only what HEY
@@ -573,7 +575,10 @@ request in a chat reads the address live through the same HEY Scan as the websit
 bot has answered and within per-reader and per-group limits (never in inline mode or Guest Mode).
 Its cards carry the token's on-chain context after the builder story (2026-10-09): the day's
 transfers and trades, the distribution in the market page's words, pools and depth, the lock and
-the contract — dated, two short lines in a shared card, never an address.
+the contract — dated, two short lines in a shared card, never an address. It is a community
+channel and says so on `/start`, `/help` and the Mini App (2026-10-10, Robinhood Chain Terms of
+Service §5.6(d)(i)): "Community-run by Hey Research Lab · not an official Robinhood channel." A
+HEY badge is "Verified by Hey Research Lab from public evidence — not a Robinhood certification."
 `/telegram` (2026-10-06) is a small page with one way in — Try HEY in
 Telegram — the commands, inline mode, Guest Mode, the group watch and what HEY keeps; it exists
 only while the bot is switched on. The HEY Mini App (2026-10-06) is the same research inside

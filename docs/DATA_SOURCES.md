@@ -32,7 +32,8 @@ depends on a live API.
 | `geckoterminal-ohlcv` (hour, minute) | 1h and 15m candles for the Terminal chart, a bounded token set (2026-09-29) | 15 min | Per-pool OHLC with per-bar volume; only bars that traded are listed, so a missing bar stays missing; own key `geckoterminal-intraday` 1,440/day inside the provider's 7,000; context only |
 | `bitquery-ohlc` | 15m bars (1h added up from them) for every live market and what Terminal readers open, from decoded trades against USDG/WETH/ETH (2026-10-03) | 1 min | One realtime cube, a hundred tokens a request, five points; a quarter with no trade has no bar; an answer that fills the row limit is split, never stored; own key `bitquery-intraday` 480/day, points under `bitquery-points`; GeckoTerminal reads such a token's history once and never overwrites its bars; context only |
 | `geckoterminal-ohlcv` (day, archive) | A token's daily OHLC and per-day volume back to its pool's first trade, for the days HEY never read (2026-10-02) | 6 h | One-time, resumable backfill into `token_market_archive_days` (basis `provider_archive`), never `token_market_days`; no liquidity or valuation in the archive; own key `geckoterminal-archive` 600/day on the history lane a minute apart; display context only |
-| `blockscout` | Contract metadata, verification, deployment evidence | 1 h | Holder endpoints are deliberately not implemented |
+| `blockscout` | Contract metadata, verification, deployment evidence | 1 h | Holder endpoints only for HEY Scan's on-chain context (2026-10-10, `blockscout-token`, below) |
+| `blockscout-token` / `-counters` / `-holders` | A scanned token's record (supply, decimals), the explorer's holder and all-time transfer counts, and its fifty largest balances (2026-10-10) | 15 min | The Blockscout API (free tier, key required), chain in the path (`/4663/api/v2/tokens/…`); HEY Scan only, the distribution's first source with Bitquery as fallback; balances summed into shares in memory, never kept; budget `blockscout` and the scan's `scan-onchain`; context only |
 | `rpc-contract` | `eth_getCode` existence check | 1 h | Lightweight verification only; HEY runs no node |
 | `github-repo` | Repository activity window | 30 min | Stars are display context, never a score input |
 | `github-releases` | Releases → `GITHUB_RELEASE` ShipEvents | 30 min | Drafts excluded; stable `externalId` for dedupe; budget 6,000 req/day |
@@ -44,7 +45,7 @@ depends on a live API.
 | `virtuals-market` | The launchpad's curve/pool valuation for a batch of 25 agents, in VIRTUAL | 1 h | Holder fields never leave the payload; converted with a same-run CoinGecko rate; source `virtuals` |
 | `bitquery` | Decoded DEX and launchpad trades for up to 100 contracts per GraphQL request: last price, day's volume and trade count, venue (Market Lens, 2026-09-12) | 1 h |
 | `bitquery-discovery` | The week's traded tokens network-wide, by volume, 1,000 token×venue rows a page: symbol, name, decimals, venue, trades, volume, distinct-trader count (2026-09-12) | 1 h | Paid (Pro plan, points-metered), its key held by the worker only; `Holders` is queried for the token-distribution map rule 1 allows (2026-09-14), `Balances` is not; FDV = price × the ERC-20 supply stored on `tokens`; source `bitquery`; budget `bitquery` 4,000 req/day, paced at 60/min against the plan's documented 90 |
-| `robinhood-stock-assets` / `robinhood-stock-price` | Tokenized-equity assets, multipliers and raw underlying bid/ask | 1 h / 60 s | Off unless switched on for the deployment; price only, no market cap; source `robinhood-stock-api` |
+| `robinhood-stock-assets` / `robinhood-stock-price` | Stock Token assets, multipliers and raw underlying bid/ask | 1 h / 60 s | Off unless switched on for the deployment; price only, no market cap; source `robinhood-stock-api` |
 | launchpad | Interface + registry only | — | No provider ships until its access is public, documented and permitted |
 | `github-deployments` | Newest deployment to an environment named production (2026-09-27) | 30 min | ETag; name, time and commit only; context, never a ship; budget 1,000/day |
 | `github-pulls` | Merged pull requests of an already-read repository (2026-09-29) | 30 min | ETag; number, merge time and whether automation opened it — never a title or a person; display context on the Terminal chart's code lane, never a ship; budget 3,000/day. Read when due (2026-10-03): a watched, Terminal-opened (14 days) or active-market project every 2 h from the whole budget, any other every 72 h inside a share (2,000) spread evenly over the UTC day — the budget had run out by ~06:00 UTC daily |
@@ -72,6 +73,43 @@ Blockscout PRO API (`api.blockscout.com`, its Etherscan-style `/v2/api?module=�
 HEY holds a PRO key; the free starter plan (100K credits a day, 5 requests a second)
 covers HEY's volume. Without a key the reads still target the instance and degrade honestly.
 The key is only ever a query parameter on the request; every echoed URL is redacted.
+
+### HEY Scan's distribution from the explorer (Blockscout API, free tier, 2026-10-10)
+
+HEY does not pay for Blockscout: its explorer key is the free tier of the Blockscout API
+(`api.blockscout.com`, key required, about 100,000 credits a day at roughly 20 credits a call —
+about 5,000 calls — and five requests a second). HEY's one paid provider is Bitquery.
+
+HEY Scan's on-chain context for a token HEY does not track now reads the distribution from the
+explorer first: `GET /4663/api/v2/tokens/{address}/counters` (holder count, all-time transfer
+count) and `/holders` (the fifty largest balances), plus the token record
+(`/api/v2/tokens/{address}`: supply, decimals) only when the chain did not give them. The chain
+goes in the path: the `?chain_id=4663` form answers "Network not supported" on these routes. The
+balances are labelled and summed exactly as the daily sweep's are (`distributionOf`: pools,
+lockers, routers, burns and the token out of the Top figures), never returned, logged or stored;
+only the day's summary row is kept (`token_holder_summaries`). The explorer gives the largest
+balances, not every balance, so "half of the remaining supply" is not counted on such a read (it
+says so); its holder count is the one a reader can check on the explorer page. The all-time
+transfer count is its own dated figure, "transfers since launch, as the explorer counts them",
+never added to a day's figures. When the explorer is not configured, declines or fails, the
+Bitquery holder read (ten points) answers on the same allowance unit; a part neither read says
+"not read" with its reason. The day's transfers and trades stay Bitquery's.
+
+**Cost.** At most fifty scanned tokens a day (`scan-onchain`, 100 reads): at most 150 explorer
+calls (about 3,000 credits) and up to 500 Bitquery points a day no longer spent.
+
+**The daily distribution sweep stays on Bitquery (evaluated 2026-10-10).** The sweep reads at most
+440 tokens a day (`REFRESH_DISTRIBUTION` 280 live, `REFRESH_DISTRIBUTION_CATALOGUE` 160), each a
+holder read (10 points) and a holder-graph read (5): at most 6,600 points, 4,400 of them the
+holder reads — 16% of the 27,419-point daily ceiling. Moving the holder reads to the explorer
+would take two calls a token, about 880 calls (≈17,600 credits) a day. The explorer already
+spends 1,500–4,800 calls a day, and its configured ceilings (`blockscout` 4,500,
+`blockscout-source` 1,000) already exceed the free tier's ~5,000 at 20 credits a call. Thirty per
+cent headroom means at most 3,500 calls a day; a heavy day with the sweep would be about 5,830
+(≈117% of the tier), and even the live half alone about 5,510. It does not fit, so the sweep was
+not switched. It would also cost the market page its concentration figures (Gini, the median
+balance, "half of the remaining supply"), which only Bitquery computes over every balance, and
+the graph read stays Bitquery's either way.
 
 ### Follow-up deployments (Blockscout PRO API, 2026-09-12)
 

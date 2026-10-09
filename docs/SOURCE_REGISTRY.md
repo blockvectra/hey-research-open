@@ -166,6 +166,21 @@ supplies a ticker). Launcher templates — a fixed name list in
 in one run — are counted and skipped. Job `SYNC_VERIFIED_CONTRACTS` hourly; CLI
 `pnpm data:builders sync-verified [--max-pages=N]`; sync-state id `BLOCKSCOUT_VERIFIED`.
 
+### Blockscout API — token counters and largest balances (2026-10-10)
+
+| | |
+| --- | --- |
+| Endpoints | `https://api.blockscout.com/4663/api/v2/tokens/{address}/counters`, `…/holders` (one page of fifty), `…/tokens/{address}` (record) — `?apikey=` |
+| Purpose | HEY Scan's on-chain context for a token HEY does not track: the explorer's holder count and all-time transfer count, and the fifty largest balances summed into shares (`packages/sources/src/adapters/blockscout-token.ts`, `packages/domain/src/onchain/live.ts`) |
+| Fields used | `token_holders_count`, `transfers_count`; `items[].address.hash`, `items[].value` (in memory only); `total_supply`, `decimals`, `holders_count` |
+| Not kept | Any address or balance: only the day's summary row (`token_holder_summaries`, no address) |
+| Auth | The Blockscout API's free tier (key required, `RH_BLOCKSCOUT_API_KEY`); HEY does not pay for Blockscout. The chain goes in the path — `?chain_id=4663` answers "Network not supported" on these REST routes |
+| Rate limit | Free tier about 100,000 credits a day (≈20 a call, ≈5,000 calls) and five requests a second. Two calls a scanned token, a third only when the chain gave no decimals, each under `blockscout` (4,500/day, 60/min) and the scan's `scan-onchain` (100 reads/day): at most 150 calls a day |
+| Cache policy | 15 min |
+| Reliability | **Authoritative** for the explorer's own counts; "half of the remaining supply" is not counted from one page of balances and says so. Context only (`blockscout` authority: never identity, building or a ship) |
+| Verified | 2026-10-09 from production with HEY's key: `/counters` → `{ transfers_count, token_holders_count, ui_multiplier_changes_count }` (strings), `/holders` → `{ items[50], next_page_params }` |
+| Fallback | Bitquery's `Holders` read (10 points) on the same allowance unit; a part neither read says "not read" with its reason |
+
 ### Virtuals
 
 | | |

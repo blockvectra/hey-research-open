@@ -1317,11 +1317,12 @@ read sums are never returned. Every part is read or says why it was not.
 "onchain": {
   "distribution": {
     "state": "read", "basis": "live",            // "record" on a reused answer: the summary HEY kept from the earlier read
+    "source": "blockscout",                       // a live read's provider (additive, 2026-10-10): "blockscout" first, "bitquery" as fallback; absent on a record
     "day": "2026-10-09", "readAt": "2026-10-09T10:02:11.000Z",
     "holdersTotal": 412,                          // balances above zero; null when the source returned no count
     "top10SharePct": 20, "top50SharePct": 20,     // of total supply, excluding pools, lockers, routers and burns
     "pooledSharePct": 40, "burnedSharePct": 10,
-    "nakamotoHalf": 3,                            // addresses holding half of the supply left once those are out
+    "nakamotoHalf": 3,                            // addresses holding half of the supply left once those are out; null on an explorer read (not counted)
     "sharesStated": true,                         // false: no share is stated (supply unknown, or balances exceed it)
     "ranked": 4, "named": 2                       // largest balances read, and how many HEY could name (counts only)
   },
@@ -1331,16 +1332,28 @@ read sums are never returned. Every part is read or says why it was not.
       { "day": "2026-10-08", "complete": true,  "transfers": 1234, "trades": 56, "buys": 30, "sells": 26, "distinctAddresses": 40, "poolsTraded": 2 },
       { "day": "2026-10-09", "complete": false, "transfers": 17,   "trades": 4,  "buys": 4,  "sells": 0,  "distinctAddresses": 3,  "poolsTraded": 1 }
     ]
+  },
+  "transfersSinceLaunch": {                       // additive, 2026-10-10: the explorer's all-time count, never added to a day
+    "state": "read", "count": 98765, "day": "2026-10-10", "readAt": "…", "source": "blockscout"
   }
 }
 ```
+
+**Since 2026-10-10** the distribution is read from the Blockscout API (free tier, key required)
+first — the explorer's holder count and its fifty largest balances, labelled and summed exactly as
+before — and from Bitquery only when the explorer is not configured, declines or fails;
+`distribution.source` says which answered. The explorer gives the largest balances, not every
+balance, so `nakamotoHalf` is `null` on an explorer read. `transfersSinceLaunch` is the explorer's
+count of every transfer since the token was created, as the explorer counts them: one dated
+figure, never a rate and never added to `activity`. Clients that do not know these fields can
+ignore them; nothing else changed meaning.
 
 A part not read is `{ "state": "not_read", "reason": … }` — `not_configured`, `allowance_spent`
 (HEY's own `scan-onchain` allowance, 100 reads a day, or the scan budget), `plan_ceiling` (the
 Bitquery plan's daily point ceiling), `provider_refused`, `read_failed`, `no_balances_in_window`
 (the source saw no balance change in the days it keeps — not an empty token), or `not_kept` (a
-reused answer whose earlier read kept no summary). A reused answer's `activity` is
-`{ "state": "not_repeated" }`. Absent `onchain` means the address is not a token. Nothing here is
+reused answer whose earlier read kept no summary). A reused answer's `activity` and
+`transfersSinceLaunch` are `{ "state": "not_repeated" }`. Absent `onchain` means the address is not a token. Nothing here is
 an input to activity status, Build Momentum, the Discovery Gap or the Radar.
 
 **Three refusals before any of that** (documented 2026-09-19). The route is same-origin and JSON

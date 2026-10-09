@@ -1,0 +1,11 @@
+{
+  "items": [
+    { "address": { "hash": "0x1111111111111111111111111111111111111111", "is_contract": true, "is_verified": false, "name": null, "implementations": [] }, "token_id": null, "value": "400000000000000000000000" },
+    { "address": { "hash": "0x2222222222222222222222222222222222222222", "is_contract": false, "is_verified": false, "name": null, "implementations": [] }, "token_id": null, "value": "150000000000000000000000" },
+    { "address": { "hash": "0x000000000000000000000000000000000000dEaD", "is_contract": false, "is_verified": false, "name": null, "implementations": [] }, "token_id": null, "value": "100000000000000000000000" },
+    { "address": { "hash": "0x3333333333333333333333333333333333333333", "is_contract": false, "is_verified": false, "name": null, "implementations": [] }, "token_id": null, "value": "50000000000000000000000" },
+    { "address": { "hash": "0x3333333333333333333333333333333333333333", "is_contract": false, "is_verified": false, "name": null, "implementations": [] }, "token_id": null, "value": "50000000000000000000000" },
+    { "address": { "hash": "0x4444444444444444444444444444444444444444", "is_contract": false, "is_verified": false, "name": null, "implementations": [] }, "token_id": null, "value": "0" }
+  ],
+  "next_page_params": { "address_hash": "0x4444444444444444444444444444444444444444", "items_count": 50, "value": "0" }
+}
