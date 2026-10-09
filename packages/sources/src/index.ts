@@ -1,6 +1,7 @@
 export * from './adapter';
 export * from './errors';
 export * from './html';
+export * from './badge-match';
 export * from './feed-kind';
 export * from './registrable';
 export * from './xml';

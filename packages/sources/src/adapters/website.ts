@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
+import { findBadgePlacement, type BadgeTarget } from '../badge-match';
 import { extractHtmlMetadata, type HtmlMetadata } from '../html';
 import { performSourceFetch } from '../http/perform';
 
@@ -21,6 +22,12 @@ export type WebsiteInput = {
    * adapter; only the verdict does.
    */
   mentions?: readonly string[];
+  /**
+   * A project's HEY badge to look for (2026-10-09, `badge-match.ts`). Like
+   * `mentions`, the search happens here so the body never leaves the adapter;
+   * only the verdict does (`badge`).
+   */
+  badge?: BadgeTarget;
 };
 
 export type WebsiteMetadata = HtmlMetadata & {
@@ -38,6 +45,8 @@ export type WebsiteMetadata = HtmlMetadata & {
    * uses, not the one it issues.
    */
   listed?: string[];
+  /** Whether the page shows the requested `badge`; absent when none was asked for. */
+  badge?: { found: boolean };
 };
 
 /** Characters either side of a mention searched for other addresses. */
@@ -117,6 +126,7 @@ export function createWebsiteAdapter(): SourceAdapter<WebsiteInput, WebsiteMetad
               url: finalUrl,
               contentHash: hashContent(body),
               ...(wanted.length > 0 ? mentionsOf(haystack, wanted) : {}),
+              ...(input.badge ? { badge: { found: findBadgePlacement(body, 'html', input.badge).found } } : {}),
             };
           },
         },
