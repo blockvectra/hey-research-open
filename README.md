@@ -21,7 +21,7 @@
 
 Not *which wallet bought* and not *which token is pumping*, but:
 
-> **Which projects are still building, what have they shipped, and which of them is nobody looking at?**
+> **Which projects are still building, what have they shipped, and which of them are not yet getting much market attention?**
 
 Price tells you what the market is doing. HEY tells you what the builder is doing.
 
@@ -462,7 +462,8 @@ curl -s "$BASE/api/evidence/$ID" | jq '{id, summary, sourceUrl, verification}'
 
 The same flow in TypeScript, with A2A and a raw MCP call, is on
 [`/developers/agents`](https://heyresearch.xyz/developers/agents). Name your software (an MCP
-`clientInfo` name, or `x-hey-integration: <name>/<version>` on REST and A2A) so HEY can tell an
+`clientInfo` name, or `x-hey-integration: <name>/<version>` on REST, A2A and — for a stateless MCP
+client that never sends `initialize`, since 2026-10-10 — on each MCP call) so HEY can tell an
 agent's use from a registry probe when it counts use — your own name, not the `my-agent` of the
 examples, which HEY files as a test client; it changes no answer. The hosted endpoint
 answers JSON to a client that accepts `application/json` alone (2026-10-05).

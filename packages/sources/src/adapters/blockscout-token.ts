@@ -65,12 +65,20 @@ const countersSchema = z
   .passthrough()
   .refine((raw) => raw.token_holders_count !== undefined || raw.transfers_count !== undefined, { message: 'not a token counters record' });
 
+const addressSchema = z
+  .object({
+    is_contract: z.boolean().nullish(),
+    creation_transaction_hash: z.string().nullish(),
+  })
+  .passthrough()
+  .refine((raw) => raw.is_contract !== undefined || raw.creation_transaction_hash !== undefined, { message: 'not an address record' });
+
 const holdersSchema = z
   .object({
     items: z.array(
       z
         .object({
-          address: z.object({ hash: z.string() }).passthrough(),
+          address: z.object({ hash: z.string(), is_contract: z.boolean().nullish() }).passthrough(),
           value: numberish,
         })
         .passthrough(),
@@ -123,6 +131,20 @@ export type BlockscoutHolderBalance = {
   address: string;
   /** Base units. */
   valueRaw: string;
+  /** The explorer says the address holds code (2026-10-10); absent when it did not say. */
+  isContract?: boolean;
+};
+
+/**
+ * One address as the explorer records it (2026-10-10): whether it holds code
+ * and the transaction that created it. Read only to tell whether a large
+ * balance sits in a contract the token's own creation transaction made — a
+ * launch contract, never a holding.
+ */
+export type BlockscoutAddressRecord = {
+  isContract?: boolean;
+  /** Lower-cased; absent for an account or when the explorer did not say. */
+  creationTxHash?: string;
 };
 
 export type BlockscoutTokenHolders = {
@@ -155,6 +177,16 @@ export function normalizeBlockscoutTokenCounters(raw: z.infer<typeof countersSch
   };
 }
 
+const TX_HASH = /^0x[0-9a-fA-F]{64}$/;
+
+export function normalizeBlockscoutAddress(raw: z.infer<typeof addressSchema>): BlockscoutAddressRecord {
+  const hash = raw.creation_transaction_hash?.trim().toLowerCase();
+  return {
+    ...(typeof raw.is_contract === 'boolean' ? { isContract: raw.is_contract } : {}),
+    ...(hash && TX_HASH.test(hash) ? { creationTxHash: hash } : {}),
+  };
+}
+
 export function normalizeBlockscoutTokenHolders(raw: z.infer<typeof holdersSchema>): BlockscoutTokenHolders {
   const seen = new Set<string>();
   const holders: BlockscoutHolderBalance[] = [];
@@ -163,7 +195,8 @@ export function normalizeBlockscoutTokenHolders(raw: z.infer<typeof holdersSchem
     const valueRaw = baseUnits(item.value);
     if (!ADDRESS.test(address) || seen.has(address) || valueRaw === undefined || /^0+$/.test(valueRaw)) continue;
     seen.add(address);
-    holders.push({ address, valueRaw });
+    const isContract = item.address.is_contract;
+    holders.push({ address, valueRaw, ...(typeof isContract === 'boolean' ? { isContract } : {}) });
     if (holders.length >= BLOCKSCOUT_HOLDERS_PAGE) break;
   }
   return { holders, more: raw.next_page_params !== null && raw.next_page_params !== undefined };
@@ -174,13 +207,14 @@ function tokenRead<TRaw, TOut>(
   suffix: string,
   schema: z.ZodType<TRaw>,
   normalize: (raw: TRaw) => TOut,
+  collection: 'tokens' | 'addresses' = 'tokens',
 ): SourceAdapter<BlockscoutTokenInput, TOut> {
   return {
     name,
     canHandle: (input) => ADDRESS.test(input.address) && explorerChainApiUrl(input, '/') !== undefined,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<TOut>> {
       if (!ADDRESS.test(input.address)) return errorResult<TOut>(ctx, 'BLOCKED_URL', 'not read: not a contract address');
-      const url = explorerChainApiUrl(input, `/api/v2/tokens/${input.address.toLowerCase()}${suffix}`);
+      const url = explorerChainApiUrl(input, `/api/v2/${collection}/${input.address.toLowerCase()}${suffix}`);
       // Keyed only: without the key (or the chain) no request leaves.
       if (!url) return explorerNotKeyed(ctx);
       const result = await performSourceFetch(
@@ -214,4 +248,9 @@ export function createBlockscoutTokenCountersAdapter(): SourceAdapter<Blockscout
 /** The fifty largest balances, largest first: one page, in memory only. */
 export function createBlockscoutTokenHoldersAdapter(): SourceAdapter<BlockscoutTokenInput, BlockscoutTokenHolders> {
   return tokenRead('blockscout-token-holders', '/holders', holdersSchema, normalizeBlockscoutTokenHolders);
+}
+
+/** One address record: whether it holds code and the transaction that created it. */
+export function createBlockscoutAddressAdapter(): SourceAdapter<BlockscoutTokenInput, BlockscoutAddressRecord> {
+  return tokenRead('blockscout-address', '', addressSchema, normalizeBlockscoutAddress, 'addresses');
 }

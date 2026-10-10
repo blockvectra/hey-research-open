@@ -59,8 +59,9 @@ const CHANGE_TYPES_RESEARCH = PUBLIC_CHANGE_TYPES.filter((type) => !type.startsW
  * HEY Research as MCP tools (2026-09-05; reworked 2026-09-26).
  *
  * The question HEY exists to answer — *which projects on Robinhood Chain are
- * still building, what have they shipped, and which of them is nobody looking
- * at?* — is exactly the kind of question someone asks an assistant. These
+ * still building, what have they shipped, and which of them are not yet
+ * getting much market attention?* — is exactly the kind of question someone
+ * asks an assistant. These
  * tools let it be answered from HEY's own record instead of from guesswork.
  *
  * Fourteen tools, one per real question, over the canonical API (snapshot,
@@ -286,7 +287,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           ? [`This is the research profile: ${HEY_MCP_RESEARCH_PROFILE_SCOPE}. The full set is at /mcp.`]
           : []),
         '',
-        'For one bounded answer to a research question, start with research_answer (research_project, what_changed, builder_status, verify_project, compare_builders, unknowns): answer first, tagged claims, freshness, unknowns, evidence ids.',
+        // Names the argument (2026-10-10, adoption audit AG-03): the list read as if research_answer took a free-text question.
+        'For one bounded answer to a research question, start with research_answer. Its `capability` argument is one of research_project, what_changed, builder_status, verify_project, compare_builders or unknowns — e.g. {"capability":"research_project","project":"<slug>"}; it takes no free-text question. Answer first, tagged claims, freshness, unknowns, evidence ids.',
         research
           ? 'The other tools read one record in depth: get_changes, get_project_timeline, get_contract, explain_fact, get_evidence; find_projects finds a project by name, ticker or contract.'
           : 'The other tools read one record in depth: get_project_snapshot, get_changes, get_contract, explain_fact; find_projects finds or browses (a 0x address is a contract lookup).',

@@ -1,5 +1,10 @@
 # Putting HEY in your bot
 
+This guide is the one-line `/api/token` lookup for a chat bot. A product card, a terminal panel or an
+app uses the Partner Card, `GET /api/v1/builder`, on the partners page. The two answer an address HEY
+has not published differently: here it is a `200` with `status: "unknown"`, there a `404` with a
+`scan_url`.
+
 Someone pastes a contract address into a chat. You want one line that says whether anyone is
 actually building it. This is how, end to end, in one HTTP call and no account.
 
@@ -22,6 +27,9 @@ curl -s https://heyresearch.xyz/api/token/4663/0xebb4c5b97e4117e30ec82ce025e6f21
 
 ## What comes back
 
+An example answer, in the shape the call returns as of 10 October 2026 — your call returns today's
+values. A code ship's title names its week, absolute, never "since":
+
 ```jsonc
 {
   "chainId": 4663,
@@ -38,7 +46,7 @@ curl -s https://heyresearch.xyz/api/token/4663/0xebb4c5b97e4117e30ec82ce025e6f21
     "shipsLast30Days": 4,
     "lastShipAt": "2026-09-16T02:38:59.000Z",
     "lastShip": {
-      "title": "Active development: 3 commits in the last 90 days across 1 contributor",
+      "title": "Code changes, week of 2026-09-14 – 2026-09-20 · 3 commits",
       "publishedAt": "2026-09-16T02:38:59.000Z",
       "sourceUrl": "https://github.com/darkrouteRH/contracts"
     },

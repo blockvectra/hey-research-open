@@ -1,7 +1,7 @@
 # MCP server (2026-09-05; reworked 2026-09-26)
 
 HEY answers one question: **which projects on Robinhood Chain are still building, what have
-they shipped, and which of them is nobody looking at?** That is the shape of a question
+they shipped, and which of them are not yet getting much market attention?** That is the shape of a question
 someone asks an assistant, so HEY is an MCP server — twelve tools an assistant can call
 while answering, hosted at `https://heyresearch.xyz/mcp` or run beside the assistant, and a
 **research profile** at `https://heyresearch.xyz/mcp/research` (round 4, 2026-09-30): builder
@@ -311,7 +311,14 @@ And never:
   guide. The npm package carries the same
   name as `mcpName`, which is how the registry verifies an npm package; it ships with the next MCP
   release, and only then is the package added to the entry. Publishing to the registry is a
-  manual step the lab takes.
+  manual step the lab takes. On 2026-10-10 the entry in the repository and the npm package are both
+  0.2.0, while the published registry entry still reads 0.1.1: the next `mcp-publisher publish`
+  brings it level (adoption audit AG-03). The npm README's mission line now reads "not yet getting
+  much market attention"; npm shows a README only with a new version, so it reaches npm with the
+  next MCP release.
+- **The instructions name the argument (AG-03, 2026-10-10).** "Start with research_answer" now says
+  its `capability` argument is one of the six and gives `{"capability":"research_project","project":"<slug>"}`:
+  the old list read as if `research_answer` took a free-text question.
 - **The handshake** names the server `hey-research`, titled `HEY Research Lab`, with
   `websiteUrl` the agent guide (`/developers/agents`). The MCP SDK in use (1.30) negotiates protocol
   versions up to `2025-11-25`; the current specification is `2026-07-28`.

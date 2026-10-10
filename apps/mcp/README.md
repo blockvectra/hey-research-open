@@ -10,8 +10,8 @@ Or use the hosted endpoint, which needs nothing installed:
 [HEY Research](https://heyresearch.xyz) as tools an assistant can call, over the
 [Model Context Protocol](https://modelcontextprotocol.io). HEY is the
 builder-discovery layer for Robinhood Chain; it answers one question — **which
-projects are still building, what have they shipped, and which of them is
-nobody looking at?** — from a public, source-backed record.
+projects are still building, what have they shipped, and which of them are not
+yet getting much market attention?** — from a public, source-backed record.
 
 The tools read the same public API anyone can `curl`, so they can say nothing
 the API does not.

@@ -6,8 +6,8 @@ npm install @hey-research-lab/sdk
 
 Typed client for the [HEY Research](https://heyresearch.xyz) public API — the
 builder-discovery layer for Robinhood Chain. It answers one question: **which
-projects are still building, what have they shipped, and which of them is
-nobody looking at?**
+projects are still building, what have they shipped, and which of them are not
+yet getting much market attention?**
 
 Every call reads the same source-backed record the site renders. Nothing here
 ranks by price, values a token, or knows anything about a wallet, because HEY
