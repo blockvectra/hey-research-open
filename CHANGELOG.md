@@ -6,6 +6,10 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Owner workspace and badge emails (2026-10-10).** `/account` "Your projects" shows each verified page's ownership, GitHub connection, badge (found, gone or not found yet), following and research coverage in plain words, with one next step (Connect GitHub, Add your badge, Follow, Share your profile) — never a score or a bar. A project's verified owner gets one email when HEY first finds the project's badge on its own site or README, and one when a placement goes gone, under the existing ownership-claims email setting. Neither changes research, ranking or any API field.
+
+- **Embed widgets count as badge placements (2026-10-10).** `findBadgePlacement` also matches the widget frame `/embed/project/<slug>` and a visible `<hey-project project="<slug>">` element on a page that loads HEY's `/embed/hey-project.js`.
+
 - **GitHub claims need admin (2026-10-10).** A claim through GitHub is verified only for a repository or organisation admin; a `maintain` role is refused.
 
 - **Self-reported posts (2026-10-10).** A share of a self-reported `build.ship` or `build.release` reads "<project> reported <title> (self-reported, not checked by HEY)", never "shipped".

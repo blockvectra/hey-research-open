@@ -116,9 +116,11 @@ const URL_IN_TEXT = /(?:https?:)?\/\/[^\s"'<>()[\]`{}|\\^]{1,2048}/gi;
 /**
  * The badge image or page path, with the slug captured: `/api/badge/<slug>`, `/badge/<slug>`, and
  * the documented image form `/badge/<slug>.svg` (docs/BADGES.md, HEY's own README) — all three serve
- * this project's badge.
+ * this project's badge — and the embed widget's frame `/embed/project/<slug>` (2026-10-10, adoption brief §17:
+ * the widget is the badge's richer form, docs/EMBEDS.md). A widget named by contract (`<chain>:0x…`) is not
+ * matched: the matcher holds slugs only.
  */
-const BADGE_PATH = /^\/(?:api\/badge\/([a-z0-9-]{1,120})|badge\/([a-z0-9-]{1,120})(?:\.svg)?)\/?$/;
+const BADGE_PATH = /^\/(?:api\/badge\/([a-z0-9-]{1,120})|badge\/([a-z0-9-]{1,120})(?:\.svg)?|embed\/project\/([a-z0-9-]{1,120}))\/?$/;
 
 function matchesTarget(raw: string, host: string, slugs: ReadonlySet<string>): boolean {
   let value = decodeEntities(raw.trim());
@@ -138,7 +140,7 @@ function matchesTarget(raw: string, host: string, slugs: ReadonlySet<string>): b
     return false;
   }
   const found = BADGE_PATH.exec(path);
-  const slug = found?.[1] ?? found?.[2];
+  const slug = found?.[1] ?? found?.[2] ?? found?.[3];
   return slug !== undefined && slugs.has(slug);
 }
 
@@ -177,5 +179,28 @@ export function findBadgePlacement(body: string, kind: BadgeBodyKind, target: Ba
   for (const candidate of candidates) {
     if (candidate && matchesTarget(candidate, parts.host, parts.slugs)) return { found: true, url: decodeEntities(candidate.trim()) };
   }
+  if (kind === 'html') {
+    const widget = webComponentPlacement(body, visible, parts.host, parts.slugs);
+    if (widget) return { found: true, url: widget };
+  }
   return { found: false };
+}
+
+/** The Web Component's element, `<hey-project project="slug">`; bounded per tag. */
+const WEB_COMPONENT = /<hey-project\b[^>]{0,1024}?\bproject[ \t\r\n]{0,8}=[ \t\r\n]{0,8}(?:"([^"]{1,120})"|'([^']{1,120})'|([a-z0-9-]{1,120}))/gi;
+
+/**
+ * The embed widget as its Web Component (2026-10-10, `htmlSnippet` in apps/web's embed snippets): a visible
+ * `<hey-project project="<slug>">` element on a page that loads HEY's own `/embed/hey-project.js`. The script
+ * element is hidden text, so the loader is looked for in the raw page; the element must be visible.
+ */
+function webComponentPlacement(body: string, visible: string, host: string, slugs: ReadonlySet<string>): string | undefined {
+  const lowered = asciiLower(body);
+  const loader = `${host}/embed/hey-project.js`;
+  if (!lowered.includes(`//${loader}`)) return undefined;
+  for (const match of visible.matchAll(WEB_COMPONENT)) {
+    const slug = decodeEntities((match[1] ?? match[2] ?? match[3] ?? '').trim()).toLowerCase();
+    if (slugs.has(slug)) return `https://${loader}#project=${slug}`;
+  }
+  return undefined;
 }

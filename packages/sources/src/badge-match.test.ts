@@ -33,6 +33,23 @@ describe('findBadgePlacement', () => {
     expect(html('<img src="https://heyresearch.xyz/api/badge/agentos/">')).toBe(true);
   });
 
+  it('finds the embed widget too: its frame, and its Web Component with HEY’s loader (2026-10-10, §17)', () => {
+    expect(html('<iframe src="https://heyresearch.xyz/embed/project/agentos?variant=card&amp;theme=light"></iframe>')).toBe(true);
+    expect(html('<iframe src="https://heyresearch.xyz/embed/project/agentos-2?variant=card"></iframe>')).toBe(false);
+    // A widget named by contract is not matched: the matcher holds slugs only.
+    expect(html('<iframe src="https://heyresearch.xyz/embed/project/4663:0x0000000000000000000000000000000000000001"></iframe>')).toBe(false);
+    const component = (attrs: string, loader = '<script src="https://heyresearch.xyz/embed/hey-project.js" async></script>') =>
+      `${loader}<hey-project ${attrs} variant="card" theme="light"><a href="https://heyresearch.xyz/project/agentos">AgentOS on HEY Research Lab</a></hey-project>`;
+    expect(findBadgePlacement(component('project="agentos"'), 'html', target())).toEqual({ found: true, url: 'https://heyresearch.xyz/embed/hey-project.js#project=agentos' });
+    expect(html(component("project='AgentOS'"))).toBe(true);
+    expect(html(component('project="otherproject"'))).toBe(false);
+    // Without HEY's loader the element is only a link to the project page, which is not a placement.
+    expect(html(component('project="agentos"', ''))).toBe(false);
+    expect(html(component('project="agentos"', '<script src="https://evil.example/embed/hey-project.js"></script>'))).toBe(false);
+    // An element shown as code is not placed.
+    expect(html(`<script src="https://heyresearch.xyz/embed/hey-project.js"></script><pre>&lt;hey-project project="agentos"&gt;</pre><code><hey-project project="agentos"></hey-project></code>`)).toBe(false);
+  });
+
   it('ignores another project’s badge, a longer slug that starts with this one, and other HEY pages', () => {
     expect(html('<img src="https://heyresearch.xyz/api/badge/otherproject">')).toBe(false);
     expect(html('<img src="https://heyresearch.xyz/api/badge/agentos-2">')).toBe(false);
