@@ -6,6 +6,8 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Self-reported posts (2026-10-10).** A share of a self-reported `build.ship` or `build.release` reads "<project> reported <title> (self-reported, not checked by HEY)", never "shipped".
+
 - **Launch contracts and the share API (2026-10-10).** On-chain context labels a contract created in the token's own transaction as its launch contract (`launch`, "Launch contract (created with the token)") and counts it with pools, never as a holding; unread stays unnamed. `GET /api/share/{subject}` gains `markdown` and, for a research summary, `thesis` (additive).
 
 - **Self-reported stays self-reported (2026-10-10).** A builder's own contract-deploy update never makes a page chain-native. In a research summary's `thesis`, a self-reported record carries the new tag `SELF_REPORTED` ("Self-reported by the project") and a code-activity week `DERIVED`; a self-reported latest change is `DERIVED` and says "self-reported by the project, not checked by HEY". An owner-added contract another project already declares is context (`contextReason: contract_shared_with_published`). An owner can prove a repository they added with a GitHub claim or the GitHub App. No other field changes meaning.
