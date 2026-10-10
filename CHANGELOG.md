@@ -6,6 +6,8 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **GitHub claims need admin (2026-10-10).** A claim through GitHub is verified only for a repository or organisation admin; a `maintain` role is refused.
+
 - **Self-reported posts (2026-10-10).** A share of a self-reported `build.ship` or `build.release` reads "<project> reported <title> (self-reported, not checked by HEY)", never "shipped".
 
 - **Launch contracts and the share API (2026-10-10).** On-chain context labels a contract created in the token's own transaction as its launch contract (`launch`, "Launch contract (created with the token)") and counts it with pools, never as a holding; unread stays unnamed. `GET /api/share/{subject}` gains `markdown` and, for a research summary, `thesis` (additive).
