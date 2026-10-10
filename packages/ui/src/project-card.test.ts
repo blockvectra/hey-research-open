@@ -147,7 +147,7 @@ describe('ProjectCard — fallbacks', () => {
     expect(formatPercentChange(undefined)).toBeUndefined();
   });
 
-  it('names a launch pool that traded "Launch pool only" and prints none of its figures as a market (RT2-01, 2026-10-09)', () => {
+  it('prints a launch pool\'s valuation beside "launch pool" and none of its liquidity (RT2-01, founder 2026-10-11)', () => {
     const launchPool = {
       ...tokenBacked,
       tokenMarketStatus: 'ACTIVE_MARKET',
@@ -162,9 +162,12 @@ describe('ProjectCard — fallbacks', () => {
     } as ProjectCardData;
     const html = render(launchPool);
     expect(html).toContain('data-valuation-state="launch_pool_only"');
-    expect(html).toContain('>Launch pool only<');
-    expect(html).not.toContain('$4.8M');
+    // The page prints the figure beside the label, so the card does too (founder, 2026-10-11): named "Valuation", never a market cap.
+    expect(html).toContain('$4.8M');
+    expect(html).toContain('· launch pool');
     expect(html).not.toContain('Market cap');
+    // With no figure HEY can show, the card still names the market.
+    expect(render({ ...launchPool, marketCapUsd: undefined } as ProjectCardData)).toContain('>Launch pool only<');
     const lens = renderToStaticMarkup(createElement(ProjectCard, { project: launchPool, marketLens: true }));
     expect(lens).not.toContain('$2.4M');
     // The pool's trades are measured and stay; its "liquidity" is the token's own supply and does not.

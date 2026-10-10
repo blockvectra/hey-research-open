@@ -222,11 +222,18 @@ export function ProjectCard({
    * RT2-01): the classifier calls it ACTIVE_MARKET, so `valuationDisplay`
    * shows its figure, and the card printed "Market cap $X" over the token's
    * own supply at its last price on the homepage, Explore and the token view.
-   * The card names it "Launch pool only", as the chip and the page do, and
-   * prints no figure; the API's `publishedValuation` is unchanged.
+   * The card names it "Launch pool only", as the chip and the page do.
+   *
+   * Founder ruling 2026-10-11: the project page already printed the figure
+   * beside that label ("Launch pool only · $43K fully diluted valuation"), so
+   * a card that printed none disagreed with its own page. The card now prints
+   * the valuation with "launch pool" beside it, named "Valuation" (never a
+   * market cap); the pool's "liquidity" still stays off (it is the token's own
+   * supply), and the Discovery Gap, Under the Radar and Still Building stay
+   * unmeasured on it (hbm-v22).
    */
   const launchPoolOnly = isLaunchPoolOnlyMarket(project.tokenMarketStatus, project.tokenMarketReason);
-  const staleAge = valuation.shown && !launchPoolOnly ? staleReadingAge(project.marketCapObservedAt, now) : undefined;
+  const staleAge = valuation.shown ? staleReadingAge(project.marketCapObservedAt, now) : undefined;
   const hasToken = Boolean(project.token);
   // What HEY does know about a token it cannot read building from (2026-09-13): trades and on-chain events, as context under the cap.
   const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
@@ -505,17 +512,22 @@ export function ProjectCard({
               */}
               <span
                 className="text-hey-secondary"
-                {...(valuation.shown && !launchPoolOnly && valuation.kind === 'fdv'
+                {...(valuation.shown && valuation.kind === 'fdv'
                   ? { title: FDV_HELP }
                   : {})}
               >
                 {terms?.valuation
-                  ? terms.valuation(launchPoolOnly ? 'Valuation' : valuationDisplayLabel(valuation, 'card'), valuation.shown && !launchPoolOnly ? valuation.kind : undefined)
+                  ? terms.valuation(launchPoolOnly ? 'Valuation' : valuationDisplayLabel(valuation, 'card'), valuation.shown ? valuation.kind : undefined)
                   : launchPoolOnly
                     ? 'Valuation'
                     : valuationDisplayLabel(valuation, 'card')}
               </span>
-              {launchPoolOnly ? (
+              {launchPoolOnly && valuation.shown ? (
+                <span className="font-semibold tabular-nums text-hey-ink" data-valuation-state="launch_pool_only" title={LAUNCH_POOL_ONLY_PRESENTATION.help}>
+                  {formatUsdCompact(valuation.usd)}
+                  <span className="ml-1 font-normal text-hey-muted">· launch pool{staleAge ? ` · ${staleAge} old` : ''}</span>
+                </span>
+              ) : launchPoolOnly ? (
                 <span className="text-hey-muted" data-valuation-state="launch_pool_only" title={LAUNCH_POOL_ONLY_PRESENTATION.help}>
                   {LAUNCH_POOL_ONLY_PRESENTATION.label}
                 </span>
