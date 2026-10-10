@@ -6,6 +6,8 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Site navigation (2026-10-10).** The header has four or five links (Explore, Ships, Scan, the Terminal while it resolves, What changed from 1280px), a quiet Telegram button that opens the bot's attributed start link, and a Menu at every width (Discover, Research, Monitor, Developers, $HEY, a Telegram row, Submit, the account, Reduce transparency). The footer is the site map in six columns, with a Telegram block and one last line for the chain, the $HEY contract, About, the roadmap, Status, Terms, Privacy and X. Every page that was linked is still linked. The footer now also links the builder guide, the badge page, the embed kit, the partner card, the Uniswap integration, the research queue and the vote. No API field changes.
+
 - **Owner workspace and badge emails (2026-10-10).** `/account` "Your projects" shows each verified page's ownership, GitHub connection, badge (found, gone or not found yet), following and research coverage in plain words, with one next step (Connect GitHub, Add your badge, Follow, Share your profile) — never a score or a bar. A project's verified owner gets one email when HEY first finds the project's badge on its own site or README, and one when a placement goes gone, under the existing ownership-claims email setting. Neither changes research, ranking or any API field.
 
 - **Embed widgets count as badge placements (2026-10-10).** `findBadgePlacement` also matches the widget frame `/embed/project/<slug>` and a visible `<hey-project project="<slug>">` element on a page that loads HEY's `/embed/hey-project.js`.
