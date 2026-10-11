@@ -36,6 +36,71 @@ export type RpcFallback = {
 
 type ChainCheck = { ok: true } | { ok: false; answered: number };
 
+/**
+ * What this process has seen of failover (2026-10-11, recovery ledger).
+ *
+ * A failover used to leave no trace beyond the answer's `sourceUrl`: the
+ * primary node could refuse for a day while the fallback carried every read,
+ * and nothing in the console said so. The moments below are kept in memory,
+ * per process — never a URL, never a request — and the worker's recovery
+ * check reads them on its schedule to open, hold or close a
+ * `PROVIDER_PRIMARY_UNAVAILABLE` incident. Both failover paths report here:
+ * the adapters' `requestWithRpcFailover` and the `$HEY` reads' viem
+ * transport (`chainTransport` in `@hey/domain`).
+ */
+export type RpcFailoverState = {
+  /** The primary last answered (any answer that was not a refusal). */
+  primaryOkAt?: Date;
+  /** The primary last refused, and how (`RATE_LIMITED`, `HTTP 403`, …). */
+  primaryRefusedAt?: Date;
+  primaryRefusal?: string;
+  /** The fallback last answered a read the primary refused. */
+  fallbackServedAt?: Date;
+  /** The fallback last failed too (or proved to be another chain). */
+  fallbackFailedAt?: Date;
+  /** Reads the fallback answered since the process started. */
+  fallbackServed: number;
+};
+
+let failoverState: RpcFailoverState = { fallbackServed: 0 };
+
+/** A copy of this process's failover moments. */
+export function rpcFailoverSnapshot(): RpcFailoverState {
+  return { ...failoverState };
+}
+
+/** Record one outcome on a failover path. `at` is the wall clock unless a test pins it. */
+export function noteRpcFailover(
+  event: 'primary_ok' | 'primary_refused' | 'fallback_served' | 'fallback_failed',
+  options: { at?: Date; refusal?: string } = {},
+): void {
+  const at = options.at ?? new Date();
+  switch (event) {
+    case 'primary_ok':
+      failoverState.primaryOkAt = at;
+      break;
+    case 'primary_refused':
+      failoverState.primaryRefusedAt = at;
+      if (options.refusal) failoverState.primaryRefusal = options.refusal.slice(0, 80);
+      break;
+    case 'fallback_served':
+      failoverState.fallbackServedAt = at;
+      failoverState.fallbackServed += 1;
+      break;
+    case 'fallback_failed':
+      failoverState.fallbackFailedAt = at;
+      break;
+  }
+}
+
+/** Tests only: forget every recorded failover moment. */
+export function resetRpcFailoverState(): void {
+  failoverState = { fallbackServed: 0 };
+}
+
+const refusalLabel = (error: unknown): string =>
+  error instanceof SourceError ? (error.status !== undefined ? `${error.code} (HTTP ${error.status})` : error.code) : 'refused';
+
 const checks = new Map<string, Promise<ChainCheck>>();
 
 /** Tests only: forget every chain check. */
@@ -107,18 +172,26 @@ export async function requestWithRpcFailover(request: HttpRequest, ctx: SourceCo
   const eligible = fallback !== undefined && request.method === 'POST' && request.url === fallback.primaryUrl && fallback.url !== fallback.primaryUrl;
   try {
     const outcome = await httpRequest(request, ctx);
+    if (eligible) noteRpcFailover('primary_ok');
     return { outcome, url: request.url, attempts: outcome.kind === 'ok' ? outcome.response.attempts : 1 };
   } catch (error) {
-    if (!eligible || !isNodeRefusal(error)) throw error;
+    if (!eligible || !isNodeRefusal(error)) {
+      // A deterministic answer is still an answer: the node is up.
+      if (eligible && error instanceof SourceError) noteRpcFailover('primary_ok');
+      throw error;
+    }
+    noteRpcFailover('primary_refused', { refusal: refusalLabel(error) });
     const primaryAttempts = (error as SourceError).attempts ?? 1;
     let check: ChainCheck;
     try {
       check = await checkChain(fallback, ctx);
     } catch {
       // The fallback could not even say which chain it is: the primary's refusal stands.
+      noteRpcFailover('fallback_failed');
       throw error;
     }
     if (!check.ok) {
+      noteRpcFailover('fallback_failed');
       const refused = error as SourceError;
       throw new SourceError(refused.code, `${refused.message}; RH_RPC_FALLBACK_URL answers chain ${check.answered}, not ${fallback.chainId}, and is not used`, refused.status, refused.retryAfterSeconds, {
         ...(refused.retryAfterMs !== undefined ? { retryAfterMs: refused.retryAfterMs } : {}),
@@ -127,9 +200,12 @@ export async function requestWithRpcFailover(request: HttpRequest, ctx: SourceCo
     }
     try {
       const outcome = await httpRequest({ ...request, url: fallback.url }, { ...ctx, rpcFallback: undefined });
+      noteRpcFailover('fallback_served');
       return { outcome, url: fallback.url, attempts: primaryAttempts + (outcome.kind === 'ok' ? outcome.response.attempts : 1) };
     } catch (second) {
       if (second instanceof SourceError) second.attempts = primaryAttempts + (second.attempts ?? 1);
+      if (isNodeRefusal(second)) noteRpcFailover('fallback_failed');
+      else noteRpcFailover('fallback_served');
       throw second;
     }
   }

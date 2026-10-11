@@ -14,8 +14,17 @@ import { pickDeepestLiquidity, priceChangePct, sumAcrossPools, toNumber } from '
  * Those links are what decide promotion, so this endpoint is where a token stops
  * being an anonymous contract and starts being a candidate project.
  *
- * Verified 2026-09-01: `tokens/v1/robinhood/{a,b,c}` returns one entry per pair,
- * and 12 of 25 Robinhood Chain pairs carried website or social metadata.
+ * What it does not return is a token's market (re-measured live 2026-10-11):
+ * it answers **one pair per token** — the pair DEX Screener itself features
+ * for the token, which is often not its deepest pool. Artificial Inu answered
+ * its $87K USDG pool while `/token-pairs/v1` lists a $3.46M NVDA pool for the
+ * same token; Orbio answered one pool of $0.93M against $2.27M across its own.
+ * So its depth, volume and pair are that one pool's, never the token's market:
+ * the market refresh reads `/token-pairs/v1` (`dexscreener-token-pairs.ts`),
+ * and this endpoint stays the screening step, where only the declared links
+ * matter. (The 2026-09-01 note here said it "returns one entry per pair"; it
+ * returns one entry per *token*, and the depth summed across "pools" below is
+ * one pool's on this endpoint.)
  */
 export const DEXSCREENER_BATCH_SIZE = 30;
 
@@ -25,7 +34,8 @@ const linkSchema = z.object({
   url: z.string().nullish(),
 });
 
-const pairSchema = z.object({
+/** One DEX Screener pair, as `/tokens/v1` and `/token-pairs/v1` both serialise it. */
+export const dexscreenerPairSchema = z.object({
   chainId: z.string().nullish(),
   dexId: z.string().nullish(),
   pairAddress: z.string().nullish(),
@@ -63,9 +73,12 @@ const pairSchema = z.object({
     .nullish(),
 });
 
+/** As the fetch hands it to `normalize`; every figure goes through `toNumber`, which takes either form. */
+export type DexscreenerPair = z.input<typeof dexscreenerPairSchema>;
+
 const responseSchema = z.union([
-  z.array(pairSchema),
-  z.object({ pairs: z.array(pairSchema).nullish() }),
+  z.array(dexscreenerPairSchema),
+  z.object({ pairs: z.array(dexscreenerPairSchema).nullish() }),
 ]);
 
 export type DexscreenerTokensInput = {
@@ -154,10 +167,9 @@ export function createDexscreenerTokensAdapter(): SourceAdapter<
           normalize: (raw): TokenScreening[] => {
             const pairs = Array.isArray(raw) ? raw : (raw.pairs ?? []);
 
-            // Several pairs can share one token. Price, valuation and venue
-            // come from the deepest pair; depth, volume and trade counts are
-            // summed across them all, because those are properties of the
-            // token's market rather than of one pool (2026-09-14).
+            // This endpoint answers one pair per token (see the note above), so
+            // each bucket normally holds one pool; the shared normaliser is the
+            // one `/token-pairs/v1` uses, where a bucket is every pool.
             const byToken = new Map<string, typeof pairs>();
             for (const pair of pairs) {
               // The chain is in the path, but a provider echoing a different one
@@ -173,56 +185,8 @@ export function createDexscreenerTokensAdapter(): SourceAdapter<
             const screenings: TokenScreening[] = [];
 
             for (const [address, tokenPairs] of byToken) {
-              const scored = tokenPairs.map((pair) => ({
-                pair,
-                liquidityUsd: toNumber(pair.liquidity?.usd),
-              }));
-              const best = pickDeepestLiquidity(scored);
-              if (!best) continue;
-
-              const { pair } = best;
-              const info = pair.info ?? {};
-              const websites = (info.websites ?? [])
-                .map((entry) => cleanUrl(entry.url))
-                .filter((url): url is string => Boolean(url));
-              const socials = (info.socials ?? [])
-                .map((entry) => {
-                  const url = cleanUrl(entry.url);
-                  return url ? { type: entry.type ?? entry.label ?? 'other', url } : undefined;
-                })
-                .filter((entry): entry is { type: string; url: string } => Boolean(entry));
-
-              const createdAt = pair.pairCreatedAt ? new Date(pair.pairCreatedAt) : undefined;
-
-              screenings.push({
-                chainId: input.chainId,
-                contractAddress: address,
-                websites,
-                socials,
-                ...opt('name', pair.baseToken?.name),
-                ...opt('symbol', pair.baseToken?.symbol),
-                ...opt('websiteUrl', websites[0]),
-                ...opt('imageUrl', cleanUrl(info.imageUrl)),
-                ...opt('marketCapUsd', toNumber(pair.marketCap)),
-                ...opt('fdvUsd', toNumber(pair.fdv)),
-                ...opt('liquidityUsd', sumAcrossPools(tokenPairs, (row) => toNumber(row.liquidity?.usd))),
-                ...opt('volume24hUsd', sumAcrossPools(tokenPairs, (row) => toNumber(row.volume?.h24))),
-                ...opt('priceUsd', toNumber(pair.priceUsd)),
-                ...opt('pairAddress', pair.pairAddress),
-                ...opt('pairUrl', pair.url),
-                ...opt('venue', pair.dexId ?? undefined),
-                ...opt('buys24h', sumAcrossPools(tokenPairs, (row) => toNumber(row.txns?.h24?.buys))),
-                ...opt('sells24h', sumAcrossPools(tokenPairs, (row) => toNumber(row.txns?.h24?.sells))),
-                ...opt('priceChange1hPct', toNumber(pair.priceChange?.h1)),
-                ...opt('priceChange6hPct', toNumber(pair.priceChange?.h6)),
-                ...opt('priceChange24hPct', toNumber(pair.priceChange?.h24)),
-                ...opt(
-                  'pairCreatedAt',
-                  createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : undefined,
-                ),
-                ...(tokenPairs.some((row) => (row.boosts?.active ?? 0) > 0) ? { promotionActive: true as const } : {}),
-                ...opt('pairLabels', pair.labels && pair.labels.length > 0 ? pair.labels.filter((label) => /^[A-Za-z0-9._-]{1,16}$/.test(label)).slice(0, 5) : undefined),
-              });
+              const screening = screeningFromPairs(input.chainId, address, tokenPairs);
+              if (screening) screenings.push(screening);
             }
 
             return screenings;
@@ -230,5 +194,67 @@ export function createDexscreenerTokensAdapter(): SourceAdapter<
         },
       );
     },
+  };
+}
+
+/**
+ * One token's screening from the pairs DEX Screener listed for it, every one
+ * of them with this token as its base (the caller filters).
+ *
+ * Price, valuation, venue and the pair HEY links to come from the deepest
+ * pool — `pickDeepestLiquidity`, the one rule — and depth, volume and trade
+ * counts are summed across the pools, because those are properties of the
+ * token's market rather than of one pool (2026-09-14). On `/token-pairs/v1`
+ * the pools are every pool the provider lists (at most thirty, so the sum is
+ * a floor — `sumAcrossPools`); on `/tokens/v1` they are the one pool it
+ * features. Undefined when no pair was given.
+ */
+export function screeningFromPairs(chainId: number, address: string, tokenPairs: readonly DexscreenerPair[]): TokenScreening | undefined {
+  const scored = tokenPairs.map((pair) => ({
+    pair,
+    liquidityUsd: toNumber(pair.liquidity?.usd),
+  }));
+  const best = pickDeepestLiquidity(scored);
+  if (!best) return undefined;
+
+  const { pair } = best;
+  const info = pair.info ?? {};
+  const websites = (info.websites ?? [])
+    .map((entry) => cleanUrl(entry.url))
+    .filter((url): url is string => Boolean(url));
+  const socials = (info.socials ?? [])
+    .map((entry) => {
+      const url = cleanUrl(entry.url);
+      return url ? { type: entry.type ?? entry.label ?? 'other', url } : undefined;
+    })
+    .filter((entry): entry is { type: string; url: string } => Boolean(entry));
+
+  const createdAt = pair.pairCreatedAt ? new Date(pair.pairCreatedAt) : undefined;
+
+  return {
+    chainId,
+    contractAddress: address,
+    websites,
+    socials,
+    ...opt('name', pair.baseToken?.name),
+    ...opt('symbol', pair.baseToken?.symbol),
+    ...opt('websiteUrl', websites[0]),
+    ...opt('imageUrl', cleanUrl(info.imageUrl)),
+    ...opt('marketCapUsd', toNumber(pair.marketCap)),
+    ...opt('fdvUsd', toNumber(pair.fdv)),
+    ...opt('liquidityUsd', sumAcrossPools(tokenPairs, (row) => toNumber(row.liquidity?.usd))),
+    ...opt('volume24hUsd', sumAcrossPools(tokenPairs, (row) => toNumber(row.volume?.h24))),
+    ...opt('priceUsd', toNumber(pair.priceUsd)),
+    ...opt('pairAddress', pair.pairAddress),
+    ...opt('pairUrl', pair.url),
+    ...opt('venue', pair.dexId ?? undefined),
+    ...opt('buys24h', sumAcrossPools(tokenPairs, (row) => toNumber(row.txns?.h24?.buys))),
+    ...opt('sells24h', sumAcrossPools(tokenPairs, (row) => toNumber(row.txns?.h24?.sells))),
+    ...opt('priceChange1hPct', toNumber(pair.priceChange?.h1)),
+    ...opt('priceChange6hPct', toNumber(pair.priceChange?.h6)),
+    ...opt('priceChange24hPct', toNumber(pair.priceChange?.h24)),
+    ...opt('pairCreatedAt', createdAt && !Number.isNaN(createdAt.getTime()) ? createdAt : undefined),
+    ...(tokenPairs.some((row) => (row.boosts?.active ?? 0) > 0) ? { promotionActive: true as const } : {}),
+    ...opt('pairLabels', pair.labels && pair.labels.length > 0 ? pair.labels.filter((label) => /^[A-Za-z0-9._-]{1,16}$/.test(label)).slice(0, 5) : undefined),
   };
 }

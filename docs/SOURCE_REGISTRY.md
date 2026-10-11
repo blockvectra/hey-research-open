@@ -370,11 +370,11 @@ read API; names come from the token contracts.
 | Chain slug | **`robinhood`** — verified live, never assumed |
 | Role | **Enrichment and reconciliation**, not chain enumeration |
 | Purpose | Candidate discovery, market context, and the project links that gate promotion |
-| Endpoints | `/latest/dex/search?q=`, `/tokens/v1/robinhood/{addresses}` (batch, ≤30 per call) |
+| Endpoints | `/latest/dex/search?q=`, `/tokens/v1/robinhood/{addresses}` (screening batch, ≤30 per call, **one featured pair per token**), `/token-pairs/v1/robinhood/{address}` (the market refresh since 2026-10-11: every pool of one token, ≤30, the token's base pools only) |
 | Fields used | `baseToken.{address,name,symbol}`, `marketCap`, `fdv`, `liquidity.usd`, `volume.h24`, `pairCreatedAt`, `info.websites[]`, `info.socials[]` |
 | Auth | None |
 | Free | Yes |
-| Rate limit | Documented ~300 req/min on token endpoints, ~60 req/min elsewhere. HEY batches 30 addresses per request and stays far below both |
+| Rate limit | Documented ~300 req/min on token endpoints, ~60 req/min elsewhere. Screening batches 30 addresses per request; the market refresh is one pools read a token, inside the same `dexscreener` daily budget and 60/min pace |
 | Cache policy | Market data 5m–24h by refresh tier; `info` block 12h |
 | Reliability | **Medium** (aggregator). Never overwrites a canonical on-chain symbol or an authoritative project link |
 | Verified | `search?q=robinhood` → 30 pairs, 25 on `robinhood`; 12 of 25 carried `info.websites`/`socials`. Batch endpoint returned 3 pairs for 5 addresses |
@@ -386,6 +386,17 @@ endpoint cannot list the chain, so HEY builds the candidate universe from chain
 inventory and factory events, then reconciles each candidate against this
 provider in batches.
 | Fallback | GeckoTerminal for market context; discovery degrades to the other sources |
+
+**The batch endpoint is not a market (re-measured 2026-10-11).** `/tokens/v1` answers one pair per
+token — the pair DEX Screener features, often not the deepest — so pricing from it linked a minor
+pool and read one pool's depth as the token's (Artificial Inu: an $87K pool linked beside a $3.46M
+one). `/latest/dex/tokens/{addresses}` is no longer in DEX Screener's reference and caps the whole
+answer at 30 pairs across every address asked. The market refresh reads `/token-pairs/v1` per token
+(`dexscreener-token-pairs.ts`, fixtures `dexscreener-token-pairs*.json`): the deepest pool the token
+is the base of is the stored and linked pair; depth, volume and trades are summed across those pools
+(a floor when the 30-pool cap is reached). A project page links that pair only from a reading inside
+the 24-hour freshness window, else DEX Screener's search by contract. Existing rows correct
+themselves on each token's next regular `REFRESH_MARKET_BATCH` read; there is no backfill job.
 
 Since 2026-09-27 the batch endpoint's `boosts.active` is kept as presence only (an undated
 "promotion observed" sighting, never the count) and the deepest pair's `labels` (`v4`) are kept

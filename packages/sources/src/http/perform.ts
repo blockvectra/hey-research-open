@@ -41,6 +41,7 @@ export async function performSourceFetch<TRaw, TOut>(
         sourceUrl: outcome.url,
         cacheTtlSeconds: options.cacheTtlSeconds,
         status: 'not_modified',
+        ...(outcome.quota === undefined ? {} : { quota: outcome.quota }),
         ...(ctx.etag === undefined ? {} : { etag: ctx.etag }),
         ...(ctx.lastModified === undefined ? {} : { lastModified: ctx.lastModified }),
       };
@@ -54,6 +55,7 @@ export async function performSourceFetch<TRaw, TOut>(
     } catch (error) {
       return errorResult(ctx, 'INVALID_RESPONSE', `unparseable body: ${describe(error)}`, {
         sourceUrl: request.url,
+        ...(response.quota === undefined ? {} : { quota: response.quota }),
       });
     }
 
@@ -65,6 +67,7 @@ export async function performSourceFetch<TRaw, TOut>(
         .join('; ');
       return errorResult(ctx, 'INVALID_RESPONSE', `schema mismatch (${detail})`, {
         sourceUrl: request.url,
+        ...(response.quota === undefined ? {} : { quota: response.quota }),
       });
     }
 
@@ -76,6 +79,7 @@ export async function performSourceFetch<TRaw, TOut>(
       cacheTtlSeconds: options.cacheTtlSeconds,
       status: 'fresh',
       attempts,
+      ...(response.quota === undefined ? {} : { quota: response.quota }),
       ...(response.etag === undefined ? {} : { etag: response.etag }),
       ...(response.lastModified === undefined ? {} : { lastModified: response.lastModified }),
     };
@@ -88,6 +92,7 @@ export async function performSourceFetch<TRaw, TOut>(
           : { retryAfterSeconds: error.retryAfterSeconds }),
         ...(error.attempts === undefined ? {} : { attempts: error.attempts }),
         ...(error.status === undefined ? {} : { httpStatus: error.status }),
+        ...(error.quota === undefined ? {} : { quota: error.quota }),
       });
     }
     return errorResult(ctx, 'NETWORK', describe(error), { sourceUrl: request.url });

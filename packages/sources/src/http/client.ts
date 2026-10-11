@@ -9,6 +9,7 @@ import { errorCodeForStatus, SourceError } from '../errors';
 import type { Agent } from 'undici';
 
 import { isIpLiteralHost, pinnedDispatcher } from './pinned';
+import { readQuotaHeaders, type ProviderQuotaReading } from './quota';
 import { assertResolvesPublic, assertSafeUrl, systemLookup } from './url-safety';
 
 /** 5 MB ceiling on any single response body (PRD V4 section 27). */
@@ -61,6 +62,12 @@ export type HttpResponse = {
    * one per call.
    */
   attempts: number;
+  /**
+   * What the provider says is left of its allowance (2026-10-11, capacity
+   * advisor): Blockscout's `x-credits-remaining`, GitHub's `x-ratelimit-*`.
+   * Numbers only; absent when the response carried none.
+   */
+  quota?: ProviderQuotaReading;
 };
 
 /** The most times one `httpRequest` call may send a request (a 5xx retried once). */
@@ -74,7 +81,7 @@ export const MAX_ATTEMPTS_IN_PROCESS = 2;
  * 304 — so the redirect, the only sign of the rename, was dropped with the
  * body. Additive: the request's own URL when nothing redirected.
  */
-export type HttpOutcome = { kind: 'ok'; response: HttpResponse } | { kind: 'not_modified'; url: string };
+export type HttpOutcome = { kind: 'ok'; response: HttpResponse } | { kind: 'not_modified'; url: string; quota?: ProviderQuotaReading };
 
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
@@ -309,10 +316,13 @@ async function attemptOnce(
     currentUrl = nextUrl;
   }
 
+  // What the provider says is left of its allowance, from the final response's headers (2026-10-11).
+  const quota = readQuotaHeaders(response.headers);
+
   // From here the response is either read or discarded, and the pinned dispatcher always released.
   if (response.status === 304) {
     await discard(response, dispatcher);
-    return { kind: 'not_modified', url: response.url || currentUrl };
+    return { kind: 'not_modified', url: response.url || currentUrl, ...(quota ? { quota } : {}) };
   }
 
   if (!response.ok) {
@@ -334,7 +344,7 @@ async function attemptOnce(
       `${currentUrl} responded ${response.status}`,
       response.status,
       retryAfterMs === undefined ? undefined : Math.ceil(retryAfterMs / 1000),
-      retryAfterMs === undefined ? {} : { retryAfterMs },
+      { ...(retryAfterMs === undefined ? {} : { retryAfterMs }), ...(quota ? { quota } : {}) },
     );
   }
 
@@ -381,6 +391,7 @@ async function attemptOnce(
       // The URL we actually ended on, so callers record real provenance.
       url: response.url || currentUrl,
       attempts: 1,
+      ...(quota ? { quota } : {}),
     },
   };
 }

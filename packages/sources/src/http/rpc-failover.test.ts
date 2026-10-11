@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { createRpcContractAdapter } from '../adapters/rpc';
 import { createRpcLogCountAdapter } from '../adapters/rpc-logs';
 import { testContext } from '../testing';
-import { isNodeRefusal, resetRpcFallbackChecks } from './rpc-failover';
+import { isNodeRefusal, resetRpcFallbackChecks, resetRpcFailoverState, rpcFailoverSnapshot } from './rpc-failover';
 import { SourceError } from '../errors';
 
 /*
@@ -112,6 +112,30 @@ describe('RPC failover for the adapters', () => {
     const none = await createRpcContractAdapter().fetch({ rpcUrl: PRIMARY, address: ADDRESS }, { ...ctx, rpcFallback: undefined });
     expect(none.status).toBe('rate_limited');
     expect(asked.some((call) => call.url === FALLBACK)).toBe(false);
+  });
+
+  it('records each failover for the recovery ledger: the refusal, the fallback serving, then the primary answering again', async () => {
+    resetRpcFailoverState();
+    let refuse = true;
+    const { ctx } = nodes(
+      () => (refuse ? { status: 429 } : { result: code }),
+      (method) => (method === 'eth_chainId' ? { result: '0x1237' } : { result: code }),
+    );
+    const adapter = createRpcContractAdapter();
+    await adapter.fetch({ rpcUrl: PRIMARY, address: ADDRESS }, ctx);
+    const during = rpcFailoverSnapshot();
+    expect(during.primaryRefusal).toBe('RATE_LIMITED (HTTP 429)');
+    expect(during.fallbackServed).toBe(1);
+    expect(during.fallbackServedAt).toBeInstanceOf(Date);
+    expect(during.primaryOkAt).toBeUndefined();
+    refuse = false;
+    await adapter.fetch({ rpcUrl: PRIMARY, address: ADDRESS }, ctx);
+    const after = rpcFailoverSnapshot();
+    expect(after.primaryOkAt).toBeInstanceOf(Date);
+    expect(after.primaryOkAt!.getTime()).toBeGreaterThanOrEqual(after.primaryRefusedAt!.getTime());
+    // Nothing about the request is kept: no URL, no address.
+    expect(JSON.stringify(after)).not.toContain('rpc.');
+    expect(JSON.stringify(after)).not.toContain(ADDRESS);
   });
 
   it('calls a refusal a refusal', () => {

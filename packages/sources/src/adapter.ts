@@ -1,3 +1,4 @@
+import type { ProviderQuotaReading } from './http/quota';
 import type { AddressLookup } from './http/url-safety';
 import type { SourceErrorCode } from './errors';
 
@@ -45,6 +46,13 @@ export type SourceResult<T> = {
    * Absent when the provider meters in requests, or no request left.
    */
   meteredUnits?: number;
+  /**
+   * What the provider said was left of its own allowance on this response
+   * (2026-10-11, capacity advisor): Blockscout's credits, GitHub's window.
+   * Numbers only, never a header value that could carry a secret; absent
+   * when the provider sent none or no request left.
+   */
+  quota?: ProviderQuotaReading;
 };
 
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
@@ -132,7 +140,7 @@ export function errorResult<T>(
   ctx: SourceContext,
   code: SourceErrorCode,
   message: string,
-  options: { sourceUrl?: string; retryAfterSeconds?: number; cacheTtlSeconds?: number; attempts?: number; httpStatus?: number } = {},
+  options: { sourceUrl?: string; retryAfterSeconds?: number; cacheTtlSeconds?: number; attempts?: number; httpStatus?: number; quota?: ProviderQuotaReading } = {},
 ): SourceResult<T> {
   return {
     fetchedAt: resolveNow(ctx),
@@ -153,6 +161,7 @@ export function errorResult<T>(
       : { retryAfterSeconds: options.retryAfterSeconds }),
     ...(options.attempts === undefined ? {} : { attempts: options.attempts }),
     ...(options.httpStatus === undefined ? {} : { httpStatus: options.httpStatus }),
+    ...(options.quota === undefined ? {} : { quota: options.quota }),
   };
 }
 

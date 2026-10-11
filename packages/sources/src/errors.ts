@@ -6,6 +6,8 @@
  * a provider outage must be distinguishable from "the project stopped shipping"
  * (PRD V4 section 50).
  */
+import type { ProviderQuotaReading } from './http/quota';
+
 export const SOURCE_ERROR_CODES = [
   'TIMEOUT',
   'NETWORK',
@@ -97,18 +99,25 @@ export class SourceError extends Error {
    */
   attempts?: number;
 
+  /**
+   * What the provider said was left of its allowance on the refusing response
+   * (2026-10-11): a GitHub 403 with `x-ratelimit-remaining: 0`. Numbers only.
+   */
+  quota?: ProviderQuotaReading;
+
   constructor(
     readonly code: SourceErrorCode,
     message: string,
     readonly status?: number,
     readonly retryAfterSeconds?: number,
-    options: { retryAfterMs?: number; attempts?: number } = {},
+    options: { retryAfterMs?: number; attempts?: number; quota?: ProviderQuotaReading } = {},
   ) {
     super(redactSecrets(message));
     this.name = 'SourceError';
     if (options.retryAfterMs !== undefined) this.retryAfterMs = options.retryAfterMs;
     else if (retryAfterSeconds !== undefined) this.retryAfterMs = retryAfterSeconds * 1000;
     if (options.attempts !== undefined) this.attempts = options.attempts;
+    if (options.quota !== undefined) this.quota = options.quota;
   }
 
   /** Worth retrying at all — by a later job, a cooldown, or the client itself. */
