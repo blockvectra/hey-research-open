@@ -102,10 +102,24 @@ describe('inbound updates', () => {
     expect(parse('telegram-update-blocked.json')).toMatchObject({ ok: true, update: { kind: 'my_chat_member', member: { new_chat_member: { status: 'kicked' } } } });
   });
 
-  it('keeps nothing it does not need: no username or first name survives the parse', () => {
+  it('keeps nothing it does not need: no first name or group title survives the parse', () => {
     const group = parse('telegram-update-group-hey.json');
-    expect(JSON.stringify(group)).not.toContain('member_name');
+    expect(JSON.stringify(group)).not.toContain('"Member"');
     expect(JSON.stringify(group)).not.toContain('Robinhood Chain builders');
+  });
+
+  it('keeps the sender’s username only when it has Telegram’s shape, and never a replied-to author’s (2026-10-11)', () => {
+    // The sender's own username is the admin-only actor record's one operational identifier.
+    expect(parse('telegram-update-group-hey.json')).toMatchObject({ ok: true, update: { kind: 'message', message: { from: { id: 222222222, is_bot: false, username: 'member_name' } } } });
+    // Anything that is not 4–32 of A-Z, a-z, 0-9 and _ is no username — never an error, never a guess.
+    const odd = parse('telegram-update-username-invalid.json');
+    expect(odd).toMatchObject({ ok: true, update: { kind: 'message', message: { from: { id: 666666666, is_bot: false } } } });
+    const json = JSON.stringify(odd);
+    expect(json).not.toContain('bad name');
+    expect(json).not.toContain('"Odd"');
+    // The author of a replied-to message is never named.
+    expect(json).not.toContain('someone_else');
+    expect(json).not.toContain('Someone');
   });
 
   it('drops an update kind HEY does not answer, and refuses a malformed one', () => {
@@ -129,7 +143,9 @@ describe('the viral-loop surface (2026-10-05): Guest Mode, inline mode, groups',
       },
     });
     const json = JSON.stringify(guest);
-    for (const kept of ['reader_name', 'Reader', 'Some trading chat', 'Other']) expect(json).not.toContain(kept);
+    for (const kept of ['"Reader"', 'Some trading chat', 'Other']) expect(json).not.toContain(kept);
+    // The summoner's own username is kept (2026-10-11, the admin-only actor record); a name or a title never.
+    expect(guest).toMatchObject({ ok: true, update: { guest: { from: { username: 'reader_name' } } } });
   });
 
   it('parses an inline query and a chosen inline result, without the reader’s name or language', () => {

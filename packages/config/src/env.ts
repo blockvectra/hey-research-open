@@ -620,8 +620,19 @@ export const serverEnvSchema = z
          * links no Mini App and `telegram:bot setup` leaves the menu button alone.
          */
         miniAppShortName: optionalString,
+        /**
+         * The secret the admin-only Telegram actor key is derived from (2026-10-11, docs/TELEGRAM.md
+         * "Analytics"): HMAC(secret, 'telegram-actor-v1'), then HMAC of the Telegram user id. Optional;
+         * unset, the session secret is used. Rotating it re-keys every actor the next time they use
+         * the bot (their rows move to the new key); an actor who never returns keeps the old key until
+         * it is pruned 90 days after it was last seen. At least 32 characters when set.
+         */
+        actorSecret: optionalString,
       })
       .superRefine((telegram, context) => {
+        if (telegram.actorSecret && telegram.actorSecret.length < MIN_SESSION_SECRET_LENGTH) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['actorSecret'], message: `TELEGRAM_ACTOR_SECRET must be at least ${MIN_SESSION_SECRET_LENGTH} characters` });
+        }
         if (telegram.botToken && !TELEGRAM_BOT_TOKEN_PATTERN.test(telegram.botToken)) {
           context.addIssue({ code: z.ZodIssueCode.custom, path: ['botToken'], message: 'TELEGRAM_BOT_TOKEN does not look like a bot token (`<digits>:<key>`)' });
         }
@@ -836,6 +847,7 @@ function shapeEnv(raw: RawEnv) {
       webhookSecret: raw.TELEGRAM_WEBHOOK_SECRET,
       botUsername: raw.TELEGRAM_BOT_USERNAME,
       miniAppShortName: raw.TELEGRAM_MINIAPP_SHORT_NAME,
+      actorSecret: raw.TELEGRAM_ACTOR_SECRET,
     },
     searchConsole: {
       credentialsJson: raw.GOOGLE_SEARCH_CONSOLE_CREDENTIALS,
@@ -939,6 +951,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'telegram.webhookSecret': 'TELEGRAM_WEBHOOK_SECRET',
   'telegram.botUsername': 'TELEGRAM_BOT_USERNAME',
   'telegram.miniAppShortName': 'TELEGRAM_MINIAPP_SHORT_NAME',
+  'telegram.actorSecret': 'TELEGRAM_ACTOR_SECRET',
   'searchConsole.credentialsJson': 'GOOGLE_SEARCH_CONSOLE_CREDENTIALS',
   'searchConsole.site': 'GOOGLE_SEARCH_CONSOLE_SITE',
   'webhooks.masterKey': 'WEBHOOK_MASTER_KEY',
@@ -1115,6 +1128,15 @@ export function isMailEnabled(env: ServerEnv): boolean {
  */
 export function isTelegramBotEnabled(env: ServerEnv): boolean {
   return env.telegram.enabled && Boolean(env.telegram.botToken) && Boolean(env.telegram.webhookSecret) && Boolean(env.telegram.botUsername);
+}
+
+/**
+ * The secret the admin-only Telegram actor key is derived from (2026-10-11): `TELEGRAM_ACTOR_SECRET`,
+ * else the session secret, else nothing — and with nothing, no actor is recorded (never a key made
+ * up from a default).
+ */
+export function telegramActorSecret(env: ServerEnv): string | undefined {
+  return env.telegram.actorSecret ?? env.sessionSecret;
 }
 
 /** The bot's public link, `https://t.me/<username>`, or undefined while the bot is off. */

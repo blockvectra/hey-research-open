@@ -298,6 +298,25 @@ export function createTelegramBotAdapter(): SourceAdapter<TelegramBotCall, Teleg
 const chat = z.object({ id: z.number().int(), type: z.enum(['private', 'group', 'supergroup', 'channel']) });
 const user = z.object({ id: z.number().int(), is_bot: z.boolean() });
 
+/**
+ * A Telegram username as Telegram allows one: 4–32 of A-Z, a-z, 0-9 and `_` (2026-10-11, the
+ * founder's Telegram admin analytics ruling). Anything else is no username — never an error and
+ * never a guess — so a value that reaches a link or an admin page has this shape and nothing more.
+ */
+export const TELEGRAM_USERNAME_PATTERN = /^[A-Za-z0-9_]{4,32}$/;
+
+/**
+ * The Telegram user who sent an update (2026-10-11): the id, whether it is a bot and — only for
+ * the sender, never for the author of a replied-to message — the username Telegram supplies, when
+ * it has the shape above. It is the one operational identifier the admin-only actor record keeps
+ * (docs/TELEGRAM.md "Analytics"); a first or last name, a language or a photo is never read.
+ */
+const sender = z
+  .object({ id: z.number().int(), is_bot: z.boolean(), username: z.unknown().optional() })
+  .transform(({ id, is_bot, username }): { id: number; is_bot: boolean; username?: string } =>
+    typeof username === 'string' && TELEGRAM_USERNAME_PATTERN.test(username) ? { id, is_bot, username } : { id, is_bot },
+  );
+
 /** Telegram's ceiling on a caption. */
 const CAPTION_MAX = 1024;
 
@@ -315,7 +334,7 @@ const repliedMessage = z.object({
 
 const inboundMessage = z.object({
   message_id: z.number().int(),
-  from: user.optional(),
+  from: sender.optional(),
   /** Set when an anonymous group admin speaks as the group itself (`sender_chat.id === chat.id`), or a channel posts in its linked group. */
   sender_chat: chat.optional(),
   chat,
@@ -341,7 +360,7 @@ const inboundGuest = inboundMessage.extend({ guest_query_id: z.string().min(1).m
 
 const inboundCallback = z.object({
   id: z.string().min(1).max(128),
-  from: user,
+  from: sender,
   message: z.object({ message_id: z.number().int(), chat }).optional(),
   /** A press on a message sent through inline mode or as a guest answer: it carries no chat. */
   inline_message_id: z.string().max(256).optional(),
@@ -351,7 +370,7 @@ const inboundCallback = z.object({
 const memberStatus = z.object({ status: z.string().max(32) });
 const inboundMember = z.object({
   chat,
-  from: user,
+  from: sender,
   date: z.number().int(),
   old_chat_member: memberStatus,
   new_chat_member: memberStatus,
@@ -360,7 +379,7 @@ const inboundMember = z.object({
 /** An inline query (`@<bot> <query>` typed in any chat). The text is at most 256 characters, Telegram's own ceiling. */
 const inboundInline = z.object({
   id: z.string().min(1).max(256),
-  from: user,
+  from: sender,
   query: z.string().max(256),
   offset: z.string().max(64),
   chat_type: z.enum(['sender', 'private', 'group', 'supergroup', 'channel']).optional(),
@@ -369,7 +388,7 @@ const inboundInline = z.object({
 /** One inline result a reader picked and sent (only while BotFather's inline feedback is on). */
 const inboundChosen = z.object({
   result_id: z.string().min(1).max(64),
-  from: user,
+  from: sender,
   query: z.string().max(256),
   inline_message_id: z.string().max(256).optional(),
 });

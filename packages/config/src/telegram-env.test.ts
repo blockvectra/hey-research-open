@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isTelegramBotEnabled, parseServerEnv, safeParseServerEnv, telegramBotUrl, telegramMiniAppShortName } from './env';
+import { isTelegramBotEnabled, parseServerEnv, safeParseServerEnv, telegramActorSecret, telegramBotUrl, telegramMiniAppShortName } from './env';
 
 /**
  * The HEY Telegram bot's configuration (2026-09-30, docs/TELEGRAM.md): off
@@ -68,5 +68,15 @@ describe('telegram bot configuration', () => {
       expect(parsed.ok, value).toBe(false);
       if (!parsed.ok) expect(parsed.variables).toContain('TELEGRAM_MINIAPP_SHORT_NAME');
     }
+  });
+
+  it('derives the actor key from its own secret, else the session secret, else nothing (2026-10-11)', () => {
+    const session = 's'.repeat(40);
+    expect(telegramActorSecret(parseServerEnv(configured))).toBeUndefined();
+    expect(telegramActorSecret(parseServerEnv({ ...configured, SESSION_SECRET: session }))).toBe(session);
+    expect(telegramActorSecret(parseServerEnv({ ...configured, SESSION_SECRET: session, TELEGRAM_ACTOR_SECRET: 'a'.repeat(32) }))).toBe('a'.repeat(32));
+    const short = safeParseServerEnv({ ...configured, TELEGRAM_ACTOR_SECRET: 'too-short' });
+    expect(short.ok).toBe(false);
+    if (!short.ok) expect(short.variables).toContain('TELEGRAM_ACTOR_SECRET');
   });
 });
