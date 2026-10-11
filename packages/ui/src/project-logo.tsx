@@ -42,6 +42,21 @@ export function monogramOf(name: string): string {
   return `${(words[0] ?? '').charAt(0)}${(words[1] ?? '').charAt(0)}`.toUpperCase();
 }
 
+/**
+ * A logo a reader's browser may load (FE-5, 2026-10-12): a same-origin path —
+ * HEY's logo proxy (`/api/logo?…`) or HEY's own asset — or inline image data.
+ * Anything else would have the reader's browser contact a host HEY has not
+ * vetted, a project owner's own server among them, which learns the reader's
+ * address and can swap the image at will; the monogram is drawn instead. The
+ * web layer decides which hosts are proxied; this is the fail-safe for a
+ * page that forgets to ask it.
+ */
+export function isDrawableLogo(url: string | null | undefined): url is string {
+  if (!url) return false;
+  if (url.startsWith('data:image/')) return true;
+  return url.startsWith('/') && !url.startsWith('//') && !url.startsWith('/\\');
+}
+
 export function ProjectLogo({
   name,
   slug,
@@ -56,6 +71,7 @@ export function ProjectLogo({
   className?: string;
 }) {
   const shared = 'shrink-0 overflow-hidden rounded-[6px]';
+  const drawable = isDrawableLogo(logoUrl) ? logoUrl : undefined;
 
   const monogram = (
     <span
@@ -64,7 +80,7 @@ export function ProjectLogo({
         shared,
         'inline-flex items-center justify-center font-semibold tracking-tight',
         MONOGRAM_PALETTE[paletteIndex(slug)],
-        !logoUrl && className,
+        !drawable && className,
       )}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}
     >
@@ -72,7 +88,7 @@ export function ProjectLogo({
     </span>
   );
 
-  if (logoUrl) {
+  if (drawable) {
     return (
       /*
        * The image sits on top of the monogram, so a logo that cannot be had
@@ -86,7 +102,8 @@ export function ProjectLogo({
        * pixel ceiling — that glyph sat on top of a perfectly good monogram
        * (2026-09-20). What makes the fallback work is that `/api/logo`
        * answers a transparent pixel rather than a 404, so nothing here ever
-       * sees a failed load. A logo whose host is not proxied still can.
+       * sees a failed load. A logo whose host is not proxied is never drawn
+       * (`isDrawableLogo`, FE-5 2026-10-12).
        */
       <span
         className={cn(shared, 'relative inline-block bg-hey-subtle', className)}
@@ -94,7 +111,7 @@ export function ProjectLogo({
       >
         {monogram}
         <img
-          src={logoUrl}
+          src={drawable}
           alt=""
           width={size}
           height={size}

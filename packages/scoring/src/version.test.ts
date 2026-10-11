@@ -61,6 +61,7 @@ const RULES_DIGEST = createHash('sha256')
       // The valuation gate's rules 3 and 4 decide the scorer's valuation too (hbm-v26).
       VALUATION_CHAIN_EVIDENCE,
       VALUATION_SOURCES_DISAGREE,
+      // DISCOVERY_GAP above carries withholdUnknownActivity: building HEY cannot read gets no gap (hbm-v27).
     }),
   )
   .digest('hex')
@@ -85,8 +86,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v26',
-      rules: 'b68d09636188c883',
+      version: 'hbm-v27',
+      rules: 'e223911cb94d81ee',
     });
   });
 });

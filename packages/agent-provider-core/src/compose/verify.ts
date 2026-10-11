@@ -73,6 +73,10 @@ const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   market_listing: 'HEY knows the contract from a market listing; the project has not been seen naming it.',
   site_silent: 'The project’s site does not name this contract.',
   not_checked: 'HEY has not yet checked whether the project names this contract.',
+  // 2026-10-12 (audits INV-1, DI-2, DI-8).
+  site_disclaims_contract: 'The project’s own site names this contract and says it is not the project’s token.',
+  site_names_contract_contested: 'The project’s own site names this contract, and another published page of the same name and ticker has a site naming a different one; neither naming verifies.',
+  site_off_page_names_contract: 'A site other than the project’s own declared website names this contract.',
 };
 
 const ROLE_WORDS: Readonly<Record<'token' | 'declared' | 'followup', string>> = {

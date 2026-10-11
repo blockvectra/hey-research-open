@@ -129,11 +129,25 @@ export const VALUATION_HIDDEN_HELP: Readonly<Record<ValuationHidden, string>> = 
 };
 
 /**
+ * Why a rescued market's valuation is withheld (2026-10-12, audit INV-2): the
+ * market is live — another pool of the token holds it — so "not live" is
+ * false, and "readings do not agree" is not what happened either. The reading
+ * every surface holds follows the thin pool, and founder ruling F1 measures
+ * the market only on the pool that holds it.
+ */
+export const RESCUED_MARKET_VALUATION_WORDS =
+  'Another pool of this token holds the market; the reading HEY follows is a nearly empty pool, so HEY does not publish that pool’s valuation';
+
+/**
  * Why no figure is printed, for a tooltip or an agent: the state's help, or
- * — for an implausible valuation — the sentence that names its reason.
+ * — for an implausible valuation — the sentence that names its reason, or —
+ * for a rescued market — the sentence that says the market is active elsewhere.
  */
 export function valuationHiddenSentence(display: ValuationDisplay): string | undefined {
   if (display.shown) return undefined;
+  if (display.state === 'unconfirmed' && display.reason === RESCUED_MARKET_REASON) {
+    return `${RESCUED_MARKET_VALUATION_WORDS}. Context only; it never affects activity status.`;
+  }
   const implausible = display.state === 'not_plausible' ? valuationImplausibleReason(display.reason) : undefined;
   return implausible ? valuationNotPlausibleSentence(implausible) : VALUATION_HIDDEN_HELP[display.state];
 }

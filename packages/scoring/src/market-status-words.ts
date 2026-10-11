@@ -62,6 +62,8 @@ export const UNCONFIRMED_MARKET_REASONS = [
   'launch_pool_volume_unknown',
   'readings_implausible',
   'removal_unconfirmed',
+  // A liquid pool no reading measured a volume for (2026-10-12, audit DI-4): whether it trades is not settled.
+  'volume_unknown',
 ] as const;
 export type UnconfirmedMarketReason = (typeof UNCONFIRMED_MARKET_REASONS)[number];
 
@@ -132,6 +134,7 @@ export const TOKEN_MARKET_REASON_WORDS: Readonly<Record<(typeof TOKEN_MARKET_REA
   liquidity_and_volume: 'the pool holds liquidity and the token traded in the last day',
   not_a_fungible_token: 'the token reads 0 decimals (an NFT collection or another token that is not fungible), so no sale of it is a fungible market',
   reading_not_current: 'the newest reading is more than 36 hours old and no trade record from the last day speaks for the market',
+  volume_unknown: 'the pool holds liquidity, but no reading from the last 36 hours reports how much traded',
 };
 
 /** "Active market: the pool holds liquidity and the token traded in the last day." One sentence per status and reason. */

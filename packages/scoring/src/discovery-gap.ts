@@ -122,6 +122,8 @@ export const DISCOVERY_GAP_WITHHELD_REASONS = [
   'active_pool_not_read',
   'no_market_reading',
   'no_build_momentum',
+  // hbm-v27 (2026-10-12, audit INV-4), appended so the list only grows: building HEY cannot read.
+  'activity_unknown',
 ] as const;
 export type DiscoveryGapWithheldReason = (typeof DISCOVERY_GAP_WITHHELD_REASONS)[number];
 
@@ -134,6 +136,7 @@ export const DISCOVERY_GAP_WITHHELD_WORDS: Readonly<Record<DiscoveryGapWithheldR
   active_pool_not_read: 'Not measured — no reading of the pool that makes the market active',
   no_market_reading: 'Not measured — no current market reading',
   no_build_momentum: 'Not measured — no building recorded',
+  activity_unknown: 'Not measured — activity unknown',
 };
 
 /** A stored reason read back: one of the list, or undefined for anything else (a row scored before hbm-v18). */

@@ -56,6 +56,7 @@ export const GAP_WITHHELD_WORDS: Readonly<Record<HeyDiscoveryGapWithheld, string
   active_pool_not_read: 'Not measured — no reading of the pool that makes the market active',
   no_market_reading: 'Not measured — no current market reading',
   no_build_momentum: 'Not measured — no building recorded',
+  activity_unknown: 'Not measured — activity unknown',
 };
 
 /**

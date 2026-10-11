@@ -266,6 +266,19 @@ export const DISCOVERY_GAP = {
    * (`active_pool_not_read`).
    */
   rescuedMarketOnActivePool: true,
+  /**
+   * Building HEY cannot read gets no gap (hbm-v27, 2026-10-12, audit INV-4,
+   * ruling under the founder's delegation): a project whose activity status
+   * is UNKNOWN is not measured (`activity_unknown`), exactly as Still
+   * Building already was (hbm-v21, F2). Its Build Momentum there comes only
+   * from evidence quality and source breadth, so a gap read "building ahead of
+   * attention" for a project HEY says it cannot read — chicken (HatchFi) held
+   * a 94.6th-percentile momentum and a gap of 10.8 beside "Activity not
+   * measurable". It stays in the population the others are ranked against;
+   * only its own gap is withheld. The activity status only withholds, never
+   * awards.
+   */
+  withholdUnknownActivity: true,
 } as const;
 
 /** Discovery Gap component weights (PRD V4 section 13.1). */

@@ -847,7 +847,9 @@ export type HeyDiscoveryGapWithheld =
   /** 2026-10-01 (hbm-v21, additive): the market is active only in another pool of the token, and HEY holds no current reading of that pool. Never measured on the thin pool instead. */
   | 'active_pool_not_read'
   | 'no_market_reading'
-  | 'no_build_momentum';
+  | 'no_build_momentum'
+  /** 2026-10-12 (hbm-v27, additive): HEY holds no builder source it can read, so whether the project is building ahead of attention is not known. */
+  | 'activity_unknown';
 
 /**
  * Why Still Building was not measured (2026-09-30), sent beside

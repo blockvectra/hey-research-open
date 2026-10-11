@@ -45,6 +45,16 @@ export type WebsiteMetadata = HtmlMetadata & {
    * uses, not the one it issues.
    */
   listed?: string[];
+  /**
+   * Which of `mentioned` the page disowns (2026-10-12, audit INV-1): a
+   * disowning phrase ("not issued or endorsed by", "not our token", "no
+   * official token", …) within `DISCLAIMER_WINDOW_CHARS` of the contract, and
+   * nearer to it than to any other address on the page. nautilo.ai links the
+   * community token whose fees support it and says, in the next sentence, that
+   * Nautilo did not issue or endorse it; a substring match read that as the
+   * site naming its own token.
+   */
+  disclaimed?: string[];
   /** Whether the page shows the requested `badge`; absent when none was asked for. */
   badge?: { found: boolean };
 };
@@ -84,6 +94,57 @@ export function listedMentions(haystack: string, mentioned: readonly string[]): 
     }
     return seen;
   });
+}
+
+/** Characters either side of a disowning phrase searched for the contract it speaks of. */
+export const DISCLAIMER_WINDOW_CHARS = 600;
+
+/**
+ * A page disowning a token (2026-10-12, audit INV-1). Narrow on purpose: it
+ * only ever withholds, but a meme calling itself "a community token" or a
+ * prelaunch page saying "token not launched yet" names its own token, so
+ * neither phrase is here. "Not issued" / "not endorsed" followed by Robinhood
+ * is the Robinhood Chain disclaimer many projects print in a footer, about
+ * Robinhood rather than the token, and is skipped (`ROBINHOOD_AFTER`).
+ */
+const DISCLAIMER_IN_PAGE =
+  /\bnot (?:issued|endorsed)\b|\b(?:not|isn['’]t) (?:our|an official|the official) token\b|\bno official token\b|\bunofficial token\b|\bnot affiliated with (?:this|the|that|any) token\b|\bdid not (?:issue|endorse)\b/g;
+const ROBINHOOD_AFTER = /^[^.<]{0,60}\brobinhood\b/;
+
+/**
+ * The needles of `mentioned` the page disowns. Pure; `haystack` is the
+ * lower-cased body. Each disowning phrase speaks of the nearest address to it
+ * within the window, and of none when two different addresses are equally
+ * near: on a "beware: 0xfake is not our token — ours is 0xreal" page the
+ * phrase belongs to the fake.
+ */
+export function disclaimedMentions(haystack: string, mentioned: readonly string[]): string[] {
+  if (mentioned.length === 0) return [];
+  const bare = (value: string) => value.replace(/^0x/, '');
+  const spots: { at: number; end: number; address: string }[] = [];
+  for (const match of haystack.matchAll(ADDRESS_IN_PAGE)) {
+    const at = match.index ?? 0;
+    spots.push({ at, end: at + match[0].length, address: bare(match[0]) });
+  }
+  // A contract printed without its 0x is still the contract.
+  for (const own of new Set(mentioned.map(bare))) {
+    for (let at = haystack.indexOf(own); at >= 0; at = haystack.indexOf(own, at + own.length)) spots.push({ at, end: at + own.length, address: own });
+  }
+  const disowned = new Set<string>();
+  for (const phrase of haystack.matchAll(DISCLAIMER_IN_PAGE)) {
+    const start = phrase.index ?? 0;
+    const end = start + phrase[0].length;
+    if (ROBINHOOD_AFTER.test(haystack.slice(end, end + 80))) continue;
+    let nearest: { distance: number; addresses: Set<string> } | undefined;
+    for (const spot of spots) {
+      const distance = spot.at >= end ? spot.at - end : start >= spot.end ? start - spot.end : 0;
+      if (distance > DISCLAIMER_WINDOW_CHARS) continue;
+      if (!nearest || distance < nearest.distance) nearest = { distance, addresses: new Set([spot.address]) };
+      else if (distance === nearest.distance) nearest.addresses.add(spot.address);
+    }
+    if (nearest && nearest.addresses.size === 1) disowned.add([...nearest.addresses][0]!);
+  }
+  return mentioned.filter((needle) => disowned.has(bare(needle)));
 }
 
 const CACHE_TTL_SECONDS = 21_600;
@@ -135,9 +196,9 @@ export function createWebsiteAdapter(): SourceAdapter<WebsiteInput, WebsiteMetad
   };
 }
 
-function mentionsOf(haystack: string, wanted: readonly string[]): { mentioned: string[]; listed: string[] } {
+function mentionsOf(haystack: string, wanted: readonly string[]): { mentioned: string[]; listed: string[]; disclaimed: string[] } {
   const mentioned = wanted.map((needle) => needle.toLowerCase()).filter((needle) => needle.length > 0 && haystack.includes(needle));
-  return { mentioned, listed: listedMentions(haystack, mentioned) };
+  return { mentioned, listed: listedMentions(haystack, mentioned), disclaimed: disclaimedMentions(haystack, mentioned) };
 }
 
 /**

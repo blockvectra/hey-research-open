@@ -28,8 +28,8 @@ describe('token market status', () => {
   it('separates an active market from one with liquidity but no trades', () => {
     expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 6_200, volume24hUsd: 0 }, peakLiquidityUsd: 6_300 })).toMatchObject({ status: 'TRADING_INACTIVE' });
     expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 6_200, volume24hUsd: 340 }, peakLiquidityUsd: 6_300 })).toMatchObject({ status: 'ACTIVE_MARKET' });
-    // A provider that does not report volume cannot say trading stopped.
-    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 6_200 }, peakLiquidityUsd: 6_300 })).toMatchObject({ status: 'ACTIVE_MARKET' });
+    // A provider that does not report volume cannot say trading stopped — nor, since 2026-10-12 (DI-4), that it traded.
+    expect(classifyTokenMarket({ now, latest: { observedAt: at(0), liquidityUsd: 6_200 }, peakLiquidityUsd: 6_300 })).toEqual({ status: 'INSUFFICIENT_DATA', reason: 'volume_unknown' });
   });
 
   it('calls a small pool low liquidity, and dust no liquidity', () => {

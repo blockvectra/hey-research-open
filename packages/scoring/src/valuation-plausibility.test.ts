@@ -281,6 +281,17 @@ describe('valuationDisplay carries the gate: never printed, never a kind', () =>
     );
   });
 
+  it('says a rescued market is active in another pool, never that its readings disagree (2026-10-12, audit INV-2)', () => {
+    const rescued = valuationDisplay({ valueUsd: 3_080_000_000, marketStatus: 'ACTIVE_MARKET', marketReason: 'liquidity_in_another_pool' });
+    expect(rescued).toEqual({ shown: false, state: 'unconfirmed', reason: 'liquidity_in_another_pool' });
+    expect(valuationHiddenSentence(rescued)).toBe(
+      'Another pool of this token holds the market; the reading HEY follows is a nearly empty pool, so HEY does not publish that pool’s valuation. Context only; it never affects activity status.',
+    );
+    // Readings that do disagree keep their own sentence.
+    const disagree = valuationDisplay({ valueUsd: 1_000, marketStatus: 'INSUFFICIENT_DATA', marketReason: 'pool_readings_disagree' });
+    expect(valuationHiddenSentence(disagree)).toMatch(/do not agree/);
+  });
+
   it('withholds it even when a caller still passes the figure', () => {
     expect(
       valuationDisplay({

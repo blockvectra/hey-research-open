@@ -329,7 +329,21 @@
  * never reaches activity status or Build Momentum. Three index probes per
  * cohort project, read after the joins.
  */
-export const SCORING_VERSION = 'hbm-v26' as const;
+/*
+ * hbm-v27 (2026-10-12, audit INV-4, ruling under the founder's delegation): no
+ * weight, threshold or Build Momentum formula changes. A project whose
+ * activity status is UNKNOWN — building HEY cannot read — gets no Discovery
+ * Gap (`DISCOVERY_GAP.withholdUnknownActivity`, `discoveryGapWithheld:
+ * 'activity_unknown'`), exactly as its Still Building was already not measured
+ * (hbm-v21, F2). Its Build Momentum there is evidence quality and source
+ * breadth with no recent ship, so its gap read "building ahead of attention"
+ * beside "Activity not measurable": chicken (HatchFi) carried a 94.6th
+ * momentum percentile and a gap of 10.8 on 2026-10-11, the one such gap of 10
+ * UNKNOWN projects with momentum. It stays in the population the others are
+ * ranked against; with no gap it cannot be Under the Radar. The activity status
+ * only withholds, never awards.
+ */
+export const SCORING_VERSION = 'hbm-v27' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 
 import { cn } from './cn';
+import { emailSafe } from './email-safe';
 import { formatRelativeTime, formatVerification, plainText, readableSummary, shipKindLabel, shortenHexInText, type ReadableSummary } from './format';
 
 /**
@@ -75,7 +76,7 @@ export function BuildTimeline({
 
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             {/* Release notes arrive as Markdown; the timeline shows the words (QA sweep 2026-09-04). */}
-            <h3 className="text-sm font-medium break-words">{shortenHexInText(plainText(item.title))}</h3>
+            <h3 className="text-sm font-medium break-words">{emailSafe(shortenHexInText(plainText(item.title)))}</h3>
             <time dateTime={item.publishedAt.toISOString()} className="text-xs text-hey-secondary">
               {formatRelativeTime(item.publishedAt, now)}
             </time>
@@ -93,7 +94,7 @@ export function BuildTimeline({
           <CodeWeekHighlights highlights={item.highlights} className="mt-2" />
 
           {item.substanceNote ? (
-            <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{item.substanceNote}</p>
+            <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{emailSafe(item.substanceNote)}</p>
           ) : null}
 
           {item.sourceUrl || action ? (
@@ -140,10 +141,10 @@ export function CodeWeekHighlights({
           <li key={index} className="[overflow-wrap:anywhere]">
             {highlight.href ? (
               <a href={highlight.href} rel="nofollow noopener noreferrer" target="_blank" className="underline decoration-hey-border-strong underline-offset-4 hover:decoration-hey-ink">
-                {shortenHexInText(highlight.text)}
+                {emailSafe(shortenHexInText(highlight.text))}
               </a>
             ) : (
-              shortenHexInText(highlight.text)
+              emailSafe(shortenHexInText(highlight.text))
             )}
           </li>
         ))}
@@ -158,28 +159,32 @@ export function CodeWeekHighlights({
  * points, one tap away when anything was left out or it was a list. The
  * timeline and the latest-ship card both draw it, so a release reads the same
  * in either place.
+ *
+ * Every piece goes through `emailSafe` (FE-1, 2026-10-12): release notes say
+ * `npm install @scope/pkg@1.2.3`, which Cloudflare's e-mail obfuscation
+ * rewrote in the HTML — #418 and "[email protected]" on seven project pages.
  */
 export function ShipSummary({ summary, className }: { summary: ReadableSummary | undefined; className?: string }) {
   if (!summary) return null;
   const expandable = summary.truncated || summary.items.length > 1;
   if (!expandable) {
-    return <p className={cn('leading-relaxed text-hey-ink/80 break-words', className)} data-testid="ship-summary">{summary.short}</p>;
+    return <p className={cn('leading-relaxed text-hey-ink/80 break-words', className)} data-testid="ship-summary">{emailSafe(summary.short)}</p>;
   }
   return (
     <details className={cn('group leading-relaxed text-hey-ink/80', className)} data-testid="ship-summary">
       <summary className="cursor-pointer list-none break-words marker:hidden [&::-webkit-details-marker]:hidden">
-        <span className="group-open:hidden">{summary.short}</span>{' '}
+        <span className="group-open:hidden">{emailSafe(summary.short)}</span>{' '}
         <span className="whitespace-nowrap text-hey-secondary underline underline-offset-4 group-open:hidden">Show all</span>
         <span className="hidden text-hey-secondary underline underline-offset-4 group-open:inline">Show less</span>
       </summary>
       {summary.items.length > 1 ? (
         <ul className="mt-1 list-disc space-y-1 pl-5 break-words">
           {summary.items.map((point, index) => (
-            <li key={index}>{point}</li>
+            <li key={index}>{emailSafe(point)}</li>
           ))}
         </ul>
       ) : (
-        <p className="mt-1 break-words">{summary.items[0]}</p>
+        <p className="mt-1 break-words">{emailSafe(summary.items[0])}</p>
       )}
     </details>
   );

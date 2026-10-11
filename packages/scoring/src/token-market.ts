@@ -164,8 +164,13 @@ export const TOKEN_MARKET = {
  * (`not_a_fungible_token`, a dead reason); and a reading older than
  * `currentReadingMaxHours` no longer says the market traded, or did not, in
  * the last day (`reading_not_current`).
+ *
+ * token-market-2026-10-12 (audit DI-4): a liquid market no reading measured
+ * a volume for — not the current one, not a fresh trade record, not any
+ * reading of the last `currentReadingMaxHours`, which is now read when the
+ * first two carry none — is `volume_unknown`, never ACTIVE_MARKET.
  */
-export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-10-03' as const;
+export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-10-12' as const;
 
 /**
  * A drain HEY measured in one series of readings (2026-09-27). The sweep's SQL
@@ -214,6 +219,15 @@ export type TokenMarketEvidence = {
    * when one exists.
    */
   trades?: { observedAt: Date; volume24hUsd: number };
+  /**
+   * The newest reading of any source that reports a 24h volume (2026-10-12,
+   * audit DI-4). Read only when neither the current reading nor a fresh trade
+   * record carries one, and only inside `currentReadingMaxHours`: a virtuals
+   * reading every three hours with no volume field made `mandate` "Active
+   * market" between the daily GeckoTerminal readings that measured $0, and
+   * it flipped thirteen times in a week.
+   */
+  recentVolume?: { observedAt: Date; volume24hUsd: number };
   /**
    * The deepest liquidity HEY saw in the last day in a pool *other* than the
    * one the latest reading describes, or across all pools in HEY's own chain
@@ -398,10 +412,11 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
    * reading's own figure, and a fresh decoded trade record, which counts
    * trades in every pool. The larger wins — "no trades" on a page that shows
    * $54 of volume beside it was the pool reading's zero overruling the chain.
-   * Unknown stays unknown: neither reading reports volume → undefined.
+   * With neither, the newest volume read in the last `currentReadingMaxHours`
+   * (2026-10-12, DI-4). Unknown stays unknown: none of them → undefined.
    */
   const freshTrades = evidence.trades && now.getTime() - evidence.trades.observedAt.getTime() <= DAY_MS ? evidence.trades.volume24hUsd : undefined;
-  const volume = latest.volume24hUsd === undefined ? freshTrades : freshTrades === undefined ? latest.volume24hUsd : Math.max(latest.volume24hUsd, freshTrades);
+  const volume = tokenMarketVolume(evidence);
   /*
    * Whether anything HEY holds speaks for the last day's trading (2026-10-03,
    * full audit): the reading itself, inside `currentReadingMaxHours`, or a
@@ -515,11 +530,59 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     return { status: 'LOW_LIQUIDITY', reason: 'liquidity_below_exit_threshold' };
   }
   if (!tradingCurrent) return notCurrent;
-  if (volume !== undefined && volume <= TOKEN_MARKET.inactiveVolumeUsd) {
+  /*
+   * An active market is one HEY measured trading (2026-10-12, audit DI-4).
+   * No volume from the reading, a fresh trade record or any reading of the
+   * last `currentReadingMaxHours` is unknown, never "traded": it was
+   * ACTIVE_MARKET `liquidity_and_volume`, so a market measured at $0 once a
+   * day read active whenever a reading without a volume field came between
+   * (1,872 ACTIVE/INACTIVE flips on 900 projects in the week to 2026-10-11).
+   */
+  if (volume === undefined) return { status: 'INSUFFICIENT_DATA', reason: VOLUME_UNKNOWN_REASON };
+  if (volume <= TOKEN_MARKET.inactiveVolumeUsd) {
     return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
   }
   return { status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' };
 }
+
+/**
+ * The 24h volume the classifier decides on (2026-09-25; one function since
+ * 2026-10-12, audit DI-3): the current reading's figure and a fresh decoded
+ * trade record's, the larger winning — the trade record counts every pool —
+ * and, when neither reports one, the newest volume any reading measured in
+ * the last `currentReadingMaxHours` (DI-4). Unknown stays unknown: undefined.
+ */
+export function tokenMarketVolume(evidence: TokenMarketEvidence): number | undefined {
+  const { latest, now } = evidence;
+  const freshTrades = evidence.trades && now.getTime() - evidence.trades.observedAt.getTime() <= DAY_MS ? evidence.trades.volume24hUsd : undefined;
+  const read = latest?.volume24hUsd;
+  const volume = read === undefined ? freshTrades : freshTrades === undefined ? read : Math.max(read, freshTrades);
+  if (volume !== undefined) return volume;
+  const recent = evidence.recentVolume;
+  const recentAge = recent ? now.getTime() - recent.observedAt.getTime() : Number.POSITIVE_INFINITY;
+  return recent && recentAge >= 0 && recentAge <= TOKEN_MARKET.currentReadingMaxHours * 3_600_000 ? recent.volume24hUsd : undefined;
+}
+
+/**
+ * The 24h volume HEY stores and shows beside a status (2026-10-12, audit
+ * DI-3): the figure the classifier decided it on, never a pool reading's own
+ * zero beside an "Active market" HEY's decoded trades made active (kairune:
+ * $0 from GeckoTerminal, $669 traded). A market rescued by another pool counts
+ * that pool's volume too, as the classifier does. Undefined: no volume known.
+ */
+export function tokenMarketDecidedVolume(evidence: TokenMarketEvidence, classification: TokenMarketClassification): number | undefined {
+  const volume = tokenMarketVolume(evidence);
+  if (classification.reason !== RESCUED_MARKET_REASON) return volume;
+  const otherVolume = evidence.otherPools?.volume24hUsd;
+  return otherVolume === undefined ? volume : volume === undefined ? otherVolume : Math.max(volume, otherVolume);
+}
+
+/**
+ * The reason a liquid market carries when no reading HEY holds measured its
+ * volume (2026-10-12, audit DI-4). Not dead — the pool holds liquidity — and
+ * not measured: whether it traded is unknown, never "active", never zero.
+ */
+export const VOLUME_UNKNOWN_REASON = 'volume_unknown' as const;
 
 /**
  * The reason a token that is not fungible carries (2026-10-03): decimals 0,
@@ -648,6 +711,7 @@ export const TOKEN_MARKET_REASONS = [
   'liquidity_and_volume',
   'not_a_fungible_token',
   'reading_not_current',
+  'volume_unknown',
 ] as const;
 
 /**
