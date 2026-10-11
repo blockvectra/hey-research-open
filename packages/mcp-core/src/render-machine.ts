@@ -484,6 +484,10 @@ export function renderExplainIndex(index: HeyExplainIndex): string {
 /** `GET /api/evidence/{id}` as text. A withdrawn receipt names nothing it may not. */
 export function renderEvidence(r: HeyEvidenceReceipt): string {
   if (r.withdrawn) {
+    // A v4 hook HEY has not read (2026-10-11): unknown, never "tied to no project".
+    if (r.withdrawalReason === 'not_read') {
+      return [`# ${r.id} — not read yet`, 'UNKNOWN HEY has not read who created this hook yet. Never read this as "tied to no project": HEY has not looked. Do not cite it as anyone\'s.', '', r.disclaimer].join('\n');
+    }
     return [`# ${r.id} — withdrawn`, `HEY no longer makes this claim (${pretty(r.withdrawalReason)}). Do not cite it.${r.project ? ` Project: ${quotedName(r.project.name)} — ${r.project.url}` : ''}`, '', r.disclaimer].join('\n');
   }
   const lines: string[] = [`# Evidence ${r.id}`, `${quotedName(r.project.name)} — ${r.project.url}`, ''];
@@ -525,8 +529,9 @@ function deployerWords(d: NonNullable<HeyContract['deployer']>): string {
 
 function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
   const lines: string[] = [];
-  lines.push(`${c.name ? `${quoteExternal(c.name, 'contract_explorer')} — ` : ''}chain ${c.chainId}, ${c.address}${c.role ? ` (${c.role})` : ''}${c.watched ? '' : ' — listed, not watched: HEY has not read this contract yet'}`);
+  lines.push(`${c.name ? `${quoteExternal(c.name, 'contract_explorer')} — ` : ''}chain ${c.chainId}, ${c.address}${c.role ? ` (${c.role})` : ''}${c.watched ? '' : c.uniswapV4Hook ? ' — a Uniswap v4 hook HEY stores; not watched by its contract reads' : ' — listed, not watched: HEY has not read this contract yet'}`);
   lines.push(c.associatedProject ? `- FACT project: ${quotedName(c.associatedProject.name)} — ${c.associatedProject.url}` : '- UNKNOWN project: no single published project claims this contract (none does, or more than one does equally).');
+  if (c.uniswapV4Hook) lines.push(...v4HookLines(c.uniswapV4Hook));
   if (c.creation) lines.push(`- FACT created ${c.creation.at ? atPrecision(c.creation.at, c.creation.precision) : 'at an unread time'}${c.creation.tx ? ` in ${c.creation.tx}` : ''}${c.creation.block ? `, block ${c.creation.block}` : ''}`);
   if (c.deployer) lines.push(`- FACT deployed by ${c.deployer.address}${deployerWords(c.deployer)}`);
   if (c.factory) lines.push(`- FACT created through factory ${c.factory}`);
@@ -552,6 +557,37 @@ function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
   );
   lines.push(methodWords(a.methods));
   if (c.evidence.length > 0) lines.push(`- Evidence ids: ${c.evidence.slice(0, 8).join(', ')}${c.evidence.length > 8 ? ` and ${c.evidence.length - 8} more` : ''}`);
+  return lines;
+}
+
+const V4_HOOK_NULL_WORDS: Record<NonNullable<NonNullable<HeyContract['uniswapV4Hook']>['deployedAtReason']>, string> = {
+  creation_not_read: 'HEY has not read its creation record yet',
+  creation_record_unavailable: 'the explorer held no creation record when HEY asked',
+  block_time_not_read: "HEY has not read the block's time",
+};
+
+/**
+ * A Uniswap v4 hook HEY stores (2026-10-11) as lines: the attribution in the
+ * public list's own terms (a project only when listed; not read yet is
+ * UNKNOWN, never "not tied"), the callbacks as what the PoolManager will call,
+ * the pools on tokens HEY tracks, and the hooklist as a listing, never a
+ * verification.
+ */
+function v4HookLines(h: NonNullable<HeyContract['uniswapV4Hook']>): string[] {
+  const lines: string[] = [];
+  const receipt = h.receiptStands ? `evidence ${h.evidenceId}` : `${h.evidenceId} — its receipt does not stand: do not cite it`;
+  if (h.attribution === 'LISTED' && h.project) lines.push(`- FACT Uniswap v4 hook listed under ${quotedName(h.project.name)} — ${h.project.url} (${h.basisLabel ?? 'listed'}${h.attributionDetail ? `: ${h.attributionDetail}` : ''}; ${receipt})`);
+  else if (h.attribution === 'NOT_READ') lines.push(`- UNKNOWN Uniswap v4 hook: who created it — ${h.attributionWords} Never read this as "tied to no project" (${receipt})`);
+  else lines.push(`- FACT Uniswap v4 hook: ${h.attributionWords}${h.attributionDetail ? ` (${h.attributionDetail})` : ''} (${receipt})`);
+  lines.push(`- FACT callbacks its address declares — what the PoolManager will call, not what the hook does: ${h.permissions.length > 0 ? h.permissions.join(', ') : 'none'}`);
+  lines.push(
+    h.deployedAt
+      ? `- FACT hook created ${h.deployedAt.slice(0, 10)}${h.deployedBlock !== null ? `, block ${h.deployedBlock}` : ''}`
+      : `- UNKNOWN hook creation time: ${h.deployedAtReason ? V4_HOOK_NULL_WORDS[h.deployedAtReason] : 'not read'}`,
+  );
+  lines.push(`- FACT first read initialising a pool at block ${h.firstPoolInitBlock}${h.firstPoolInitAt ? ` (${h.firstPoolInitAt.slice(0, 10)})` : " (the block's time not read)"}; ${h.poolsOnTrackedTokens} pool${h.poolsOnTrackedTokens === 1 ? '' : 's'} on tokens HEY tracks use it — not every pool, and not usage`);
+  if (h.hooklist) lines.push(`- FACT listed in Uniswap's hooklist as ${quoteExternal(h.hooklist.listedAs, 'uniswap_hooklist')} — a third-party listing, not a verification and not a tie${h.hooklist.disagreement ? `; ${h.hooklist.disagreement}` : ''}`);
+  else if (h.hooklistState === 'list_not_read') lines.push("- UNKNOWN Uniswap's hooklist: HEY has not read the list");
   return lines;
 }
 

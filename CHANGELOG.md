@@ -6,6 +6,11 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Hook pages and API (2026-10-11).** New `GET /api/v4-hooks/{address}` (`getV4Hook`), SDK `v4Hooks.list()` and `v4Hooks.get()`, MCP `get_v4_hook`, and a page per hook at `/integrations/uniswap/hooks/<address>`. `GET /api/v4-hooks` is served from an hourly precomputed copy and gains `asOf`, `readFrom` and `stale`; with no copy and a failed live read it answers 503 `service_unavailable`, never an empty list.
+- **v4 hooks across reads (2026-10-11).** `GET /api/contracts/{chainId}/{address}`, MCP `get_contract`, A2A `investigate_contract` and `POST /api/scan` gain an additive `uniswapV4Hook` section for a hook address HEY stores (callbacks, attribution state, the project only when listed, pools on tracked tokens, hooklist context, `v4hook:` id). The `v4hook:` receipt's withdrawn reason gains `not_read`. A scan report's `evidence` is now optional (absent on a hook answer). The weekly report gains `uniswapV4Hooks` (report version 4). `/api/v1/builder` gains `uniswap_v4_hooks` and `uniswap_v4_hooks_state`, additively.
+- **$HEY profile (2026-10-11).** `/api/hey/profile` gains `receipts`, `treasury.reconciliation` and `liquidityLock`, additively; the schema stays `hey.token-profile/v1`.
+- **Discovery and agents (2026-10-11).** Verified Builder pages without a description are indexed. A2A answers `message/send` and header-less `SendMessage`; `tasks/send` returns -32601 naming the supported methods. `/llms-full.txt` exists. Product events gain `email.subscribe`; `telegram.lookup` carries a daily-salted asker digest.
+
 - **Reviewed token pages (2026-10-11).** The site screener also reads a page on a project's own site that a person reviewed as naming its token (`REVIEWED_TOKEN_PAGES`), while the homepage does not, and counts it only while the page still names the contract. `token_candidates.website_mention_context` gains the value `reviewed`. No API field changes meaning.
 
 - **Launch-pool valuation on cards (2026-10-11).** A card whose token trades only in its launch pool prints its valuation with "· launch pool" beside it, as the project page does, instead of "Launch pool only" with no figure. Its liquidity stays off the card and the figure still orders no list. No API field changes.

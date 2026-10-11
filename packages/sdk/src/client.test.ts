@@ -474,6 +474,14 @@ describe('methods for the machine-layer routes (2026-09-26)', () => {
     ]);
   });
 
+  it('lists the v4 hooks HEY ties to a project and opens one hook by its address (2026-10-11)', async () => {
+    const { client, calls } = recording({});
+    await client.v4Hooks.list();
+    await client.v4Hooks.list({ limit: 10, under: 1_000_000 });
+    await client.v4Hooks.get('0x3ad87f5b9cf8f17ed39d787eef3d9d19053d28cc');
+    expect(calls.map(pathAndQuery)).toEqual(['/api/v4-hooks', '/api/v4-hooks?limit=10&under=1000000', '/api/v4-hooks/0x3ad87f5b9cf8f17ed39d787eef3d9d19053d28cc']);
+  });
+
   it('sends the bulk reads comma-joined, with the key, and keeps the partner routes’ spelling', async () => {
     const { client, calls } = recording({ items: [] }, { apiKey: 'hey_test_key' });
     await client.snapshots.bulk(['agentos', 'arrow']);

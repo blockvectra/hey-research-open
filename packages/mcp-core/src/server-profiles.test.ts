@@ -74,7 +74,7 @@ describe('one registry, two profiles', () => {
   it('the research profile offers builder intelligence only: no market move, Under the Radar or valuation tool', async () => {
     const { client } = await connect({ profile: 'research' });
     const { tools } = await client.listTools();
-    expect(tools.map((tool) => tool.name).sort()).toEqual(['explain_fact', 'find_projects', 'get_changes', 'get_contract', 'get_evidence', 'get_project_timeline', 'research_answer']);
+    expect(tools.map((tool) => tool.name).sort()).toEqual(['explain_fact', 'find_projects', 'get_changes', 'get_contract', 'get_evidence', 'get_project_timeline', 'get_v4_hook', 'research_answer']);
     const listing = JSON.stringify(tools);
     for (const word of ['under-the-radar', 'shipping-in-silence', 'builder-radar', 'maxMarketCap', 'minLiquidity', 'marketCap', 'market.valuation', 'market.status', 'discovery_gap', 'market.volume_spike', '"market"', 'get_token_market', 'market-moves']) expect(listing, word).not.toContain(word);
     // Market Integrity is not offered on the research profile even where the site publishes it.

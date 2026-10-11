@@ -30,6 +30,7 @@ import {
   renderUnlocks,
   renderWeeklyReport,
 } from './render';
+import { renderV4Hook } from './render-v4-hooks';
 import { renderBuildMarket, renderContract, renderCoverage, renderDiff, renderEvidence, renderExplainIndex, renderExplained, renderProjectContracts, renderSnapshot } from './render-machine';
 import { renderIdentitySearch } from './render-research';
 import { HEY_MCP_DEPRECATED_TOOLS, HEY_MCP_GATED_TOOLS, HEY_MCP_RESEARCH_PROFILE_SCOPE, HEY_MCP_TOOLS, mcpToolsFor, PUBLIC_CHANGE_TYPES, type HeyMcpProfile, type HeyMcpToolName } from './tools';
@@ -675,6 +676,23 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           });
         return { content: [{ type: 'text', text: 'Give an address (and chainId, default 4663), or a project slug.' }], isError: true };
       },
+    );
+  }
+
+  if (offered.has('get_v4_hook')) {
+    server.registerTool(
+      'get_v4_hook',
+      {
+        ...describe('get_v4_hook', [
+          'Who built a Robinhood Chain Uniswap v4 hook: the project HEY ties it to and why (named only while listed; never a creator account), its declared callbacks (not a safety verdict), source, hooklist entry, pools by week and unknowns.',
+        ]),
+        inputSchema: { address: z.string().regex(ADDRESS) },
+      },
+      async ({ address }) =>
+        run('get_v4_hook', apiUrl(`/api/v4-hooks/${address.toLowerCase()}`), async () => {
+          const hook = await client.v4Hooks.get(address.toLowerCase());
+          return api(hook, renderV4Hook(hook));
+        }),
     );
   }
 

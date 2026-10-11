@@ -107,8 +107,63 @@ export type HeyWeeklyReport = {
   shipsRule: HeyWeeklyShipRule;
   /** Present only when that rule is not today's: the same window recounted under today's rule from today's records — never the week as published. */
   shipsUnderCurrentRule?: { ruleId: string; ships: number; projectsShipping: number; countedAt: string };
+  /** State of Robinhood Chain v4 hooks (2026-10-11, additive; report v4): counts only. Absent on reports written before it. */
+  uniswapV4Hooks?: HeyWeeklyV4Hooks;
   url: string;
   disclaimer: string;
+};
+
+/** One listed hook first decoded inside the report's week: a contract, its project and its `v4hook:` receipt. */
+export type HeyWeeklyV4HookItem = {
+  address: string;
+  evidenceId: string;
+  basis: 'chain' | 'project' | 'linked' | 'review';
+  basisLabel: string;
+  slug: string;
+  name: string;
+  firstDecodedAt: string;
+  deployedAt: string | null;
+};
+
+/**
+ * The weekly report's v4 hook block (2026-10-11). Every total is as of `asOf`
+ * (the report's generation); "this week" counts are first decoded inside
+ * `window`. Null — never 0 — is unknown: before HEY decodes any hook every
+ * hook count is null and `notMeasured` says why. Launch protocols are counted,
+ * never named. Contract context only: no account, no market figure, no ranking.
+ */
+export type HeyWeeklyV4Hooks = {
+  chainId: number;
+  asOf: string;
+  window: { start: string; end: string };
+  notMeasured?: { reason: 'no_hook_decoded'; detail: string };
+  seen: { total: number | null; newThisWeek: number | null; lastDecodedAt: string | null; method: string };
+  onTrackedTokens: { hooks: number | null; method: string };
+  listed: {
+    hooks: number | null;
+    projects: number | null;
+    byBasis: {
+      chain: { hooks: number; projects: number };
+      project: { hooks: number; projects: number };
+      linked: { hooks: number; projects: number };
+      factory: { hooks: number; projects: number };
+      review: { hooks: number; projects: number };
+    } | null;
+    method: string;
+  };
+  newListed: { hooks: number | null; factoryInstances: number | null; shown: number; items: HeyWeeklyV4HookItem[]; method: string };
+  creationRead: { read: number | null; notReadYet: number | null; unavailable: number | null; lastCheckedAt: string | null; method: string };
+  factories: { seen: number | null; tiedToPublishedProjects: number | null; projects: number | null; method: string };
+  hooklist: { read: boolean; entries: number | null; seenByHey: number | null; attributed: number | null; readAt: string | null; reason?: 'hooklist_not_read'; method: string };
+  launchProtocols: {
+    hooks: number | null;
+    shareOfSeen: number | null;
+    protocols: number | null;
+    largestShareOfSeen: number | null;
+    launchInfrastructure: number | null;
+    method: string;
+  };
+  limits: string[];
 };
 
 /* ---------------------------------------------------------------- bounties */
@@ -393,7 +448,23 @@ export type HeyBuilderCard = {
   badge_url: string;
   /** `hey_project_url` with HEY's attribution labels (`utm_medium=partner_api`); link this one. */
   project_link: string;
+  /** The project's publicly listed Uniswap v4 hooks (2026-10-11, additive); null unless `uniswap_v4_hooks_state` is `listed`. */
+  uniswap_v4_hooks: HeyPartnerV4Hooks | null;
+  /** `none_listed` is a reading of HEY's listing (a hook whose creation HEY has not read is tied to no one yet); `not_read`: HEY has decoded no v4 hook on the chain — unknown, not none. */
+  uniswap_v4_hooks_state: 'listed' | 'none_listed' | 'not_read';
   disclaimer: string;
+};
+
+/** A project's listed Uniswap v4 hooks on the partner card (2026-10-11). Contracts and counts only. */
+export type HeyPartnerV4Hooks = {
+  /** Every listed hook, factory instances included. */
+  listed: number;
+  basis_counts: { chain: number; project: number; linked: number; factory: number; review: number };
+  /** At most ten hooks with a row of their own, newest deployment first; factory instances are counted, never listed. */
+  items: { address: string; basis: 'chain' | 'project' | 'linked' | 'review'; basis_label: string; page_url: string; evidence_id: string }[];
+  shown: number;
+  total: number;
+  list_url: string;
 };
 
 /** A ship on the partner card (2026-09-30). */

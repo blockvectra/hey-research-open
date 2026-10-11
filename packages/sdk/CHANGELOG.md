@@ -6,6 +6,17 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added ($HEY profile, 2026-10-10)
+
+- `HeyTokenProfile.treasury.reconciliation: HeyTreasuryReconciliation`, additively: whether the treasury's daily balance reads reconcile with HEY's ledger, with the first, highest and latest read per asset, the ledger's confirmed rows in the same block window and what they do not explain — or `state: 'not_read'` with its reason. Computed, never typed; unknown is never 0.
+- `HeyTokenProfile.liquidityLock: HeyLiquidityLock`, additively: the launch position the Pons V2 locker holds, the curve phase HEY read and the launch verification's `position_locked` check (`checkedAt: null`, `verification_printed_not_stored`). `locks.tokenLock.pairLocked` keeps its meaning: a reading of HoodLock alone.
+- `HeyTokenProfile.receipts: HeyUtilityReceipts`, additively: one aggregate per row over HEY's own tables (research requests completed, notes approved, bounties by state, payouts, bonds, vote rounds, confirmed ledger in and out), each with `asOf` and its `source` table; a null value was not read, never zero. The schema stays `hey.token-profile/v1`.
+
+### Added (v4 hooks in the weekly report and the Partner Card, 2026-10-11)
+
+- `HeyWeeklyReport.uniswapV4Hooks?: HeyWeeklyV4Hooks`, additively (report version 4): the state of Robinhood Chain v4 hooks as counts — seen, new this week, on tracked tokens, listed by basis, new listed hooks (≤20 named, factory instances counted), creation-read progress, factories tied to projects, hooklist coverage and launch-protocol concentration (never a protocol's name). Totals are as of `asOf`; null with `notMeasured` before HEY decodes any hook. Absent on older reports.
+- `HeyBuilderCard.uniswap_v4_hooks: HeyPartnerV4Hooks | null` and `uniswap_v4_hooks_state: 'listed' | 'none_listed' | 'not_read'`, additively: the project's publicly listed hooks (`listed`, `basis_counts`, ≤10 `items` with `page_url` and `v4hook:` `evidence_id`, `shown` of `total`, `list_url`). No existing field changes; the `token=` lookup is unchanged.
+
 ## 0.2.0 — 2026-10-09
 
 ### Added (coverage detail, 2026-10-09)

@@ -58,6 +58,7 @@ import type {
   HeyTokenLookup,
   HeyTokenMarket,
 } from './types/projects';
+import type { HeyV4HookDetail, HeyV4Hooks, HeyV4HooksQuery } from './types/v4-hooks';
 import { SDK_VERSION } from './version';
 
 /**
@@ -461,6 +462,25 @@ export class HeyClient {
     /** `GET /api/contracts/{chainId}/{address}` (2026-09-26): one contract as a research entity — counts, proxy, source, interface, activity. */
     get: (chainId: number, address: string): Promise<HeyContract> =>
       this.get(`/api/contracts/${encodeURIComponent(String(chainId))}/${encodeURIComponent(address)}`),
+  };
+
+  readonly v4Hooks = {
+    /**
+     * `GET /api/v4-hooks` (2026-10-04): the Uniswap v4 hooks HEY ties to a
+     * published project on Robinhood Chain — listed hooks only, newest
+     * deployment first, shown of total, each with its `v4hook:` id — and one
+     * aggregate count for every other hook. `under` narrows by market context,
+     * never orders. `asOf` dates HEY's hourly copy.
+     */
+    list: (query: HeyV4HooksQuery = {}): Promise<HeyV4Hooks> => this.get('/api/v4-hooks', query),
+    /**
+     * `GET /api/v4-hooks/{address}` (2026-10-11): one hook HEY holds — who HEY
+     * ties it to (a project is named only while HEY lists the hook), its
+     * callbacks, source, hooklist entry, pools on tracked tokens by week, and
+     * what HEY does not know, each null with its reason. A hook HEY does not
+     * hold throws `not_found`; a malformed address `invalid_address`.
+     */
+    get: (address: string): Promise<HeyV4HookDetail> => this.get(`/api/v4-hooks/${encodeURIComponent(address)}`),
   };
 
   /* ------------------------------------------------------ the agent contract */

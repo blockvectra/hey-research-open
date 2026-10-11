@@ -79,19 +79,21 @@ describe('the HEY MCP server', () => {
     requested = [];
   });
 
-  it('offers exactly the twelve tools in the catalogue, each read-only, titled and annotated', async () => {
+  it('offers exactly the thirteen tools in the catalogue, each read-only, titled and annotated', async () => {
     const client = await connect(fixtures);
     const { tools } = await client.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual(HEY_MCP_TOOLS.map((tool) => tool.name).sort());
     // Fifteen until round 4 (2026-09-30): lookup_token, compare_projects and get_project_coverage were folded, and stay callable.
-    expect(tools).toHaveLength(12);
+    // Thirteen since 2026-10-11: get_v4_hook.
+    expect(tools).toHaveLength(13);
     for (const tool of tools) {
       expect(tool.title, tool.name).toBeTruthy();
       expect(tool.annotations?.readOnlyHint, tool.name).toBe(true);
       expect(tool.annotations?.openWorldHint, tool.name).toBe(true);
     }
-    // The whole list, output schemas included, costs a model less than the old 22-tool list's 19,179 bytes (round 4: per profile, `HEY_MCP_TOOL_LIST_BUDGET`).
-    expect(HEY_MCP_TOOL_LIST_BUDGET.full).toBe(19_179);
+    // The whole list, output schemas included, costs a model less than the old 22-tool list's 19,179 bytes (round 4: per profile, `HEY_MCP_TOOL_LIST_BUDGET`),
+    // plus get_v4_hook's 748 since 2026-10-11.
+    expect(HEY_MCP_TOOL_LIST_BUDGET.full).toBe(20_000);
     expect(JSON.stringify(tools).length).toBeLessThan(HEY_MCP_TOOL_LIST_BUDGET.full);
     // No tool promises a valuation, a recommendation or a price ranking.
     const descriptions = tools.map((tool) => tool.description ?? '').join(' ').toLowerCase();
@@ -116,7 +118,7 @@ describe('the HEY MCP server', () => {
     expect((await (await connect(fixtures)).listTools()).tools.map((tool) => tool.name)).not.toContain('market_integrity');
     const names = (await (await connect(fixtures, { marketIntegrity: true })).listTools()).tools.map((tool) => tool.name);
     expect(names).toContain(HEY_MCP_GATED_TOOLS[0].name);
-    expect(names).toHaveLength(13);
+    expect(names).toHaveLength(14);
     expect(marketIntegrityFromEnv(undefined)).toBe(false);
     expect(marketIntegrityFromEnv('internal')).toBe(false);
     expect(marketIntegrityFromEnv('terminal')).toBe(false);
@@ -352,7 +354,7 @@ describe('the free-data wave on existing tools, not new ones (2026-09-27)', () =
   it('extends get_project_snapshot, get_contract and get_project_coverage, and adds no tool per provider', async () => {
     const client = await connect(fixtures);
     const { tools } = await client.listTools();
-    expect(tools).toHaveLength(12);
+    expect(tools).toHaveLength(13);
     expect(tools.map((tool) => tool.name).join(' ')).not.toMatch(/defillama|dexscreener|sourcify|osv|deps|package|footprint|promotion/i);
     const described = (name: string) => tools.find((tool) => tool.name === name)!.description ?? '';
     expect(described('get_project_snapshot')).toMatch(/Context blocks, never building: paid promotion .*DefiLlama protocol economics .*developer footprint/);

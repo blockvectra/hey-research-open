@@ -55,8 +55,12 @@ export const HEY_MCP_PROFILE_PATHS: Readonly<Record<HeyMcpProfile, string>> = { 
  * bytes: typed output was paid for by folding three overlapping tools and
  * dropping the SDK's `$schema` stamps, not by lifting the budget. `research`
  * is its own, smaller budget. `server.test.ts` holds both.
+ *
+ * `full` is 20,000 since 2026-10-11: `get_v4_hook` (one Uniswap v4 hook — who
+ * built it) costs 748 bytes and the list had 9 to spare; every other tool's
+ * description is unchanged. `research` holds it inside its own budget.
  */
-export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 19_179, research: 11_000 };
+export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_000, research: 11_000 };
 
 export type HeyMcpToolInfo = {
   name: string;
@@ -131,8 +135,16 @@ export const HEY_MCP_TOOLS = [
   {
     name: 'get_contract',
     title: 'Contract',
-    summary: 'A contract as a research entity — creation, deployer, verified source, proxy and implementation history, interface counts and changes, activity — by address or for every contract of a project.',
+    summary: 'A contract as a research entity — creation, deployer, verified source, proxy and implementation history, interface counts and changes, activity, and for a Uniswap v4 hook HEY stores its callbacks and attribution — by address or for every contract of a project.',
     routes: ['/api/contracts/{chainId}/{address}', '/api/projects/{slug}/contracts'],
+    replaces: [],
+    profiles: ['full', 'research'],
+  },
+  {
+    name: 'get_v4_hook',
+    title: 'Uniswap v4 hook',
+    summary: 'Who built a Robinhood Chain Uniswap v4 hook: the project HEY ties it to and on what basis (named only while HEY lists it), the callbacks its address declares, its source, pools on tracked tokens by week, and what HEY does not know.',
+    routes: ['/api/v4-hooks/{address}'],
     replaces: [],
     profiles: ['full', 'research'],
   },

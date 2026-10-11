@@ -192,7 +192,7 @@ export type HeyEvidenceReceipt =
   | {
       id: string;
       withdrawn: true;
-      /** `retracted`, `disputed`, `context_only`, `review_false_positive`, `announced_ship_withdrawn`, `superseded`, `not_attributed` (a `v4hook:` id HEY ties to no project), or `not_public`. */
+      /** `retracted`, `disputed`, `context_only`, `review_false_positive`, `announced_ship_withdrawn`, `superseded`, `not_attributed` (a `v4hook:` id HEY read and ties to no project), `not_read` (a `v4hook:` id whose creation HEY has not read yet — unknown, never "not tied"; 2026-10-11), or `not_public`. */
       withdrawalReason: string;
       /**
        * With `context_only`: which rule holds a follow-up deployment as context (2026-09-27) —

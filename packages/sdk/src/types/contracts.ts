@@ -126,9 +126,50 @@ export type HeyContract = {
   };
   activity: { state: HeyMeasureState; daysMeasured: number; calls7d: number | null; events7d: number | null; newestDay?: string; methods: HeyContractMethods };
   freshness: { proxyCheckedAt?: string; sourceCheckedAt?: string; activityObservedAt?: string };
+  /** Present when the address is a Uniswap v4 hook HEY stores (2026-10-11, additive); absent for any other contract. */
+  uniswapV4Hook?: HeyContractV4Hook;
   evidence: string[];
   url: string;
   disclaimer: string;
+};
+
+/**
+ * A Uniswap v4 hook HEY stores (2026-10-11). Context only:
+ *  - `permissions`/`capabilities`: what the PoolManager will call, decoded from the address — never what the hook does or whether it is safe;
+ *  - `attribution`: `LISTED` (on HEY's public hook list, `project` named), `TIED_NOT_LISTED` (tied by HEY's read to a project HEY does not list — no name), `LAUNCH_INSTANCE`, `NOT_TIED` (read, tied to no project), or `NOT_READ` (HEY has not read who created it yet — unknown, never "not tied");
+ *  - a time HEY did not read is null with its `*Reason`, never a zero;
+ *  - `poolsOnTrackedTokens`: pools on tokens HEY tracks, never every pool and never usage;
+ *  - `hooklist`: Uniswap's hooklist "listed as", a third-party listing, never verification;
+ *  - `evidenceId`: the `v4hook:` receipt, which stands only while `receiptStands`.
+ * No creator or deployer account is ever named.
+ */
+export type HeyContractV4Hook = {
+  hookAddress: string;
+  permissions: string[];
+  capabilities: string;
+  permissionsBasis: string;
+  attribution: 'LISTED' | 'TIED_NOT_LISTED' | 'LAUNCH_INSTANCE' | 'NOT_TIED' | 'NOT_READ';
+  attributionWords: string;
+  attributionDetail: string | null;
+  project: { slug: string; name: string; url: string } | null;
+  basis: 'chain' | 'project' | 'linked' | 'factory' | 'review' | null;
+  basisLabel: string | null;
+  creationState: 'read' | 'not_read' | 'unavailable';
+  deployedAt: string | null;
+  deployedBlock: number | null;
+  deployedAtReason: 'creation_not_read' | 'creation_record_unavailable' | 'block_time_not_read' | null;
+  firstPoolInitBlock: number;
+  firstPoolInitAt: string | null;
+  firstPoolInitAtReason: 'block_time_not_read' | null;
+  poolsOnTrackedTokens: number;
+  poolsOnTrackedTokensBasis: string;
+  hooklist: { listedAs: string; verifiedSourceAsListed: boolean; listedPermissions: string[]; disagreement: string | null; url: string; readAt: string; label: string } | null;
+  hooklistState: 'listed' | 'not_listed' | 'list_not_read';
+  evidenceId: string;
+  receiptStands: boolean;
+  firstSeenAt: string;
+  observedAt: string;
+  checkedAt: string | null;
 };
 
 /** `GET /api/projects/{slug}/contracts`: the project's contracts, each as `/api/contracts` serves it. */

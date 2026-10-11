@@ -60,10 +60,10 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 |---|---|
 | `HEY_API_URL` | Another HEY to read, e.g. `http://localhost:3000` when developing. Default `https://heyresearch.xyz`. Anything but https is refused except on localhost, because the key rides on every request. |
 | `HEY_API_KEY` | An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account). Lifts the anonymous rate limit; nothing is gated behind it. Sent as a bearer token, never logged. |
-| `HEY_MARKET_INTEGRITY` | Set to `public` only when the HEY you read publishes Market Integrity; `market_integrity` is offered only then. Unset, the server offers twelve tools. |
-| `HEY_MCP_PROFILE` | `research` serves the research profile (round 4): builder intelligence first — `research_answer` (which still carries its contract's labelled market context), `find_projects` by identity, `get_changes` without market events, `get_project_timeline`, `explain_fact`, `get_evidence`, `get_contract`. Unset, the full set. Hosted: `https://heyresearch.xyz/mcp/research`. |
+| `HEY_MARKET_INTEGRITY` | Set to `public` only when the HEY you read publishes Market Integrity; `market_integrity` is offered only then. Unset, the server offers thirteen tools. |
+| `HEY_MCP_PROFILE` | `research` serves the research profile (round 4): builder intelligence first — `research_answer` (which still carries its contract's labelled market context), `find_projects` by identity, `get_changes` without market events, `get_project_timeline`, `explain_fact`, `get_evidence`, `get_contract`, `get_v4_hook`. Unset, the full set. Hosted: `https://heyresearch.xyz/mcp/research`. |
 
-## The twelve tools
+## The thirteen tools
 
 | Tool | What it answers |
 |---|---|
@@ -74,7 +74,8 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 | `explain_fact` | Why HEY shows a figure: the rule, the source, the inputs, the lineage, the evidence ids. |
 | `get_evidence` | One typed evidence id (`ship:`, `signal:`, `abi:`, `impl:`, `lock:`, `source:`, `claim:`, `state:`, `integrity:` (while Market Integrity is public), `narrative:`, `method:`, `sourcechange:`, `security:`, `v4hook:`) as a receipt. |
 | `get_token_market` | One token's market from HEY's daily index, lifecycle, pools, supply concentration (shares only), contract checks; `include: ["moves"]` adds the valuation moves with what shipped before each. |
-| `get_contract` | A contract as a research entity — creation, deployer, verified source, proxy and implementation history, interface counts, activity. |
+| `get_contract` | A contract as a research entity — creation, deployer, verified source, proxy and implementation history, interface counts, activity, and for a Uniswap v4 hook HEY stores its callbacks and attribution. |
+| `get_v4_hook` | Who built a Robinhood Chain Uniswap v4 hook: the project HEY ties it to and on what basis (named only while HEY lists the hook; never a creator account), the callbacks its address declares (never a safety verdict), source and proxy as read, Uniswap's hooklist entry as context, pools on tracked tokens by week, and what HEY does not know. |
 | `project_diff` | What changed for one project between two dates, never a cause. |
 | `ask_hey` | A free-text question about one project, answered only from HEY's record. |
 | `chain_overview` | The chain day by day, this week, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention. |
