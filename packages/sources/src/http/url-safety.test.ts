@@ -25,6 +25,11 @@ describe('assertSafeUrl', () => {
     expect(result.ok === false && result.reason).toBe('PRIVATE_HOST');
   });
 
+  // A trailing dot is the same name to DNS (2026-10-12, SSRF F3); ::ffff:0:0/96 is IPv4-translated (F4).
+  it.each(['http://localhost./', 'http://metadata.google.internal./', 'http://api.localhost./', 'http://[::ffff:0:7f00:1]/'])('blocks %s', (url) => {
+    expect(assertSafeUrl(url).ok).toBe(false);
+  });
+
   it.each(['http://localhost/', 'http://api.localhost/', 'http://metadata.google.internal/'])(
     'blocks the reserved hostname %s',
     (url) => {

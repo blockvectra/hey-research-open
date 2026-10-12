@@ -63,6 +63,19 @@ describe('plainText', () => {
     expect(plainText(null)).toBe('');
   });
 
+  it('keeps code spans and snake_case words whole (UI-3, 2026-10-12)', () => {
+    // hey-agent-contract v0.2.0 on /project/hey-research-lab read "chainevidencecontradicts … in VALUATIONNOTPLAUSIBLE_CODES".
+    expect(plainText('Valuation-gate reasons `chain_evidence_contradicts` and `sources_disagree` in `VALUATION_NOT_PLAUSIBLE_CODES`.')).toBe(
+      'Valuation-gate reasons chain_evidence_contradicts and sources_disagree in VALUATION_NOT_PLAUSIBLE_CODES.',
+    );
+    expect(plainText('get_token_market printed MAPPING_BLOCKED under NO_SOURCE')).toBe('get_token_market printed MAPPING_BLOCKED under NO_SOURCE');
+    expect(plainText('a `**literal**` stays')).toBe('a **literal** stays');
+    // Emphasis at a word's edge is still a mark.
+    expect(plainText('this is _very_ and __really__ done')).toBe('this is very and really done');
+    // A code span the store cut in half leaves no stray backtick.
+    expect(plainText('the scan card’s `HeyCoverageEntry.cause?')).toBe('the scan card’s HeyCoverageEntry.cause?');
+  });
+
   it('removes HTML tags a source pasted in', () => {
     expect(plainText('Meet <b>BoneHood</b><br/>the dog')).toBe('Meet BoneHood the dog');
   });

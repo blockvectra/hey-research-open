@@ -397,9 +397,24 @@ export function plainText(value: string | null | undefined): string {
   return /[\p{L}\p{N}]/u.test(words) ? words : '';
 }
 
+/*
+ * Inline code is kept, word for word (UI-3, 2026-10-12). The emphasis rule
+ * used to run over a code span's contents and over the middle of a word, so
+ * a release note's `chain_evidence_contradicts` and `AGENT_COVERAGE_STATES`
+ * read "chainevidencecontradicts" and "AGENTCOVERAGESTATES" on a project's
+ * timeline. A code span is now set aside before the emphasis rules and put
+ * back after them, and an underscore is emphasis only at a word's edge — as
+ * CommonMark reads it — never inside `snake_case`.
+ */
+const CODE_MARK = '\uE000';
+
 function plainWords(value: string): string {
+  const code: string[] = [];
   return (
     value
+      // A private-use mark sets a code span aside below; one in the source is dropped first.
+      .split(CODE_MARK)
+      .join('')
       // Images carry no words; a bare URL in their place would be noise.
       .replace(/!\[[^\]]*\]\([^)]*\)/g, ' ')
       // Links keep their text; a link whose text is the URL keeps the URL.
@@ -429,9 +444,14 @@ function plainWords(value: string): string {
       .replace(/\\([\\`*_{}[\]()#+\-.!~|>])/g, '$1')
       // Fenced and inline code: keep what is inside.
       .replace(/```[a-z]*\n?/gi, '')
-      .replace(/`([^`]*)`/g, '$1')
-      // Emphasis and strikethrough: bold, italic, both, underscores, tildes.
-      .replace(/(\*{1,3}|_{1,3}|~~)(?=\S)([\s\S]*?\S)\1/g, '$2')
+      .replace(/`([^`]*)`/g, (_match, inner: string) => `${CODE_MARK}${code.push(inner) - 1}${CODE_MARK}`)
+      // A backtick left without its pair (a summary the store cut inside a code span) is a mark, not a word.
+      .replace(/`/g, '')
+      // Emphasis and strikethrough: bold, italic, both, tildes.
+      .replace(/(\*{1,3}|~~)(?=\S)([\s\S]*?\S)\1/g, '$2')
+      // Underscore emphasis only at a word's edge: `_this_`, `__this__`, never the joins of `snake_case_words`.
+      .replace(/(^|[^\p{L}\p{N}_])(_{1,3})(?=[^\s_])([\s\S]*?[^\s_])\2(?![\p{L}\p{N}_])/gu, '$1$3')
+      .replace(new RegExp(`${CODE_MARK}(\\d+)${CODE_MARK}`, 'g'), (_match, index: string) => code[Number(index)] ?? '')
       // Whitespace, including CR/LF and non-breaking spaces, to single spaces.
       .replace(/[\s\u00a0]+/g, ' ')
       .trim()

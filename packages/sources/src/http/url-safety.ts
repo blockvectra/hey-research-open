@@ -164,6 +164,8 @@ const isPrivateIpv6 = (host: string): boolean => {
   if (g0 === 0x100 && g1 === 0 && g2 === 0 && g3 === 0) return true;
   // ff00::/8, multicast.
   if (g0 >= 0xff00) return true;
+  // ::ffff:0:0/96, IPv4-translated (SIIT): a translator reaches the IPv4 address in the low bits (2026-10-12, SSRF F4).
+  if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0xffff && g5 === 0) return true;
   // An IPv4-mapped tail written in hex under a zero prefix (`::ffff:7f00:1`) is caught above; keep the embedded check for any other zero-prefixed spelling.
   if (g0 === 0 && g1 === 0 && g2 === 0 && g3 === 0 && g4 === 0 && g5 === 0xffff) return isPrivateIpv4(v4Of(g6, g7));
   return false;
@@ -200,7 +202,9 @@ export function assertSafeUrl(candidate: string): UrlSafetyResult {
     };
   }
 
-  const hostname = url.hostname.toLowerCase();
+  // One trailing dot is the same name to DNS (`localhost.`, `metadata.google.internal.`), so it is not a way past the
+  // blocklist (2026-10-12, full audit SSRF F3).
+  const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
 
   if (BLOCKED_HOSTNAMES.has(hostname) || hostname.endsWith('.localhost')) {
     return { ok: false, reason: 'BLOCKED_HOST', detail: `host ${hostname} is blocked` };
