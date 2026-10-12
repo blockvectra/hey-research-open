@@ -341,6 +341,12 @@ const inboundMessage = z.object({
   date: z.number().int(),
   // Telegram's own ceiling; anything longer is not a message Telegram sent.
   text: z.string().max(TELEGRAM_MESSAGE_MAX).optional(),
+  /**
+   * A photo's, a video's or a document's caption (2026-10-12, full audit TG-5): a forwarded
+   * announcement is an image with its contract in the caption, and it got no answer at all. Read
+   * in a private chat only, and only for its contracts, `$TICKER`s or a short name. Never stored.
+   */
+  caption: z.string().max(CAPTION_MAX).optional(),
   reply_to_message: repliedMessage.optional(),
   /** A message sent through a bot's inline mode, HEY's own cards included: never a request to HEY. */
   via_bot: user.optional(),

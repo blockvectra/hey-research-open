@@ -23,6 +23,14 @@ export const SOURCE_ERROR_CODES = [
   'UPSTREAM_ERROR',
   'INVALID_RESPONSE',
   'BLOCKED_URL',
+  /**
+   * The host's name does not resolve (2026-10-12, audit DQ-4). It was reported
+   * as BLOCKED_URL, which reads as HEY's own address guard refusing the URL:
+   * 166 dead domains on published pages looked like SSRF refusals. Not retried
+   * in-process, and permanent for a job, exactly as before; it is a fact about
+   * the site, not a refusal by HEY.
+   */
+  'DNS_UNRESOLVED',
   'TOO_LARGE',
   'UNSUPPORTED_CONTENT_TYPE',
 ] as const;

@@ -93,10 +93,13 @@ describe('ProjectCard — fallbacks', () => {
     expect(html).not.toContain('on X');
   });
 
-  it('shows Unknown for a token without a launch record, without a link', () => {
+  it('says the launch was not observed for a token without a launch record or a pool, never "via Unknown" (2026-10-12, audit RD-10)', () => {
     const html = render({ ...tokenBacked, launchedVia: { name: 'Unknown' } });
-    expect(html).toContain('Unknown');
+    expect(html).toContain('Launch not observed');
+    expect(html).not.toContain('>Unknown<');
+    expect(html).not.toMatch(/>via<\/span>/);
     expect(html).not.toContain('launch page');
+    expect(render({ ...tokenBacked, launchedVia: undefined })).toContain('Launch not observed');
   });
 
   it('renders the UNKNOWN status with the existing vocabulary', () => {

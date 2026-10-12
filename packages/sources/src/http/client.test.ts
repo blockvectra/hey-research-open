@@ -262,6 +262,23 @@ describe('SSRF protection by resolution (submitted URLs)', () => {
     expect(stub.callCount()).toBe(0);
   });
 
+  // A dead domain is its own kind, never the address guard's refusal (2026-10-12, audit DQ-4).
+  it('reports a host that does not resolve as DNS_UNRESOLVED, not BLOCKED_URL', async () => {
+    const stub = stubFetch(ok('{}'));
+    await expect(
+      httpRequest(
+        { url: 'https://pepons.example/', enforceUrlSafety: true },
+        testContext({
+          fetchImpl: stub.fetchImpl,
+          lookupImpl: async () => {
+            throw Object.assign(new Error('getaddrinfo ENOTFOUND pepons.example'), { code: 'ENOTFOUND' });
+          },
+        }),
+      ),
+    ).rejects.toMatchObject({ code: 'DNS_UNRESOLVED', retryable: false });
+    expect(stub.callCount()).toBe(0);
+  });
+
   it('checks every redirect hop, not just the first URL', async () => {
     const stub = stubFetch([
       { status: 302, headers: { location: 'http://internal.attacker.example/' } },

@@ -67,8 +67,11 @@ import { SDK_VERSION } from './version';
  * HEY's public API is the same record its pages render — which projects on
  * Robinhood Chain are still building, what they shipped, and which of them
  * nobody is looking at — and this is that API as typed calls. Anyone can
- * point it at `https://heyresearch.xyz` with no credentials; a key from
- * /account lifts the anonymous rate limit and nothing else.
+ * point it at `https://heyresearch.xyz` with no credentials. A key from
+ * /account names the integration, gives it its own per-minute bucket and the
+ * bulk reads, and carries a monthly allowance; a free key keeps the anonymous
+ * per-minute figure (2026-10-12, AG-1: this said it "lifts the anonymous rate
+ * limit", which a free key never did).
  *
  * It began as the MCP server's fetch layer and still is: the server bundles
  * it, names itself in `userAgent`, and reads the same routes. Everything

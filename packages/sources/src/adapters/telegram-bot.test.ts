@@ -128,6 +128,15 @@ describe('inbound updates', () => {
     expect(parseTelegramUpdate({ update_id: 5, message: { chat: { id: 'x' } } })).toEqual({ ok: false, reason: 'malformed', updateId: 5 });
     expect(parseTelegramUpdate('nonsense')).toEqual({ ok: false, reason: 'malformed' });
   });
+
+  it('keeps a photo’s caption, within Telegram’s 1,024 characters (2026-10-12, TG-5)', () => {
+    const photo = (caption: string) => ({ update_id: 11, message: { message_id: 3, from: { id: 7, is_bot: false }, chat: { id: 7, type: 'private' }, date: 1, photo: [{ file_id: 'x' }], caption } });
+    const parsed = parseTelegramUpdate(photo('CA: 0xa0a0000000000000000000000000000000000001'));
+    expect(parsed.ok && parsed.update.kind === 'message' ? parsed.update.message.caption : undefined).toBe('CA: 0xa0a0000000000000000000000000000000000001');
+    // The photo itself is never read.
+    expect(JSON.stringify(parsed)).not.toContain('file_id');
+    expect(parseTelegramUpdate(photo('x'.repeat(1025)))).toEqual({ ok: false, reason: 'malformed', updateId: 11 });
+  });
 });
 
 describe('the viral-loop surface (2026-10-05): Guest Mode, inline mode, groups', () => {

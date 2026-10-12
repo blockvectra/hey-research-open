@@ -6,6 +6,19 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Reader, agent and builder audit repairs (2026-10-12).**
+  - **Scoring:** hbm-v28 counts a project's follow-up deploys, each at most 60 seconds after the one before, as one run; it was one UTC second. The token verification rule version is `token-status-2026-10-12`.
+  - **API:**
+    - `GET /api` answers a JSON index.
+    - `/.well-known/agent.json`, `/.well-known/mcp.json` and `/.well-known/mcp/server-card.json` exist, and an unknown `/.well-known/` path answers a JSON 404.
+    - The A2A Agent Card also carries the 0.3 fields `url`, `protocolVersion` and `preferredTransport`.
+    - `GET /api/v4-hooks` gains the opt-in `projects=shown` and the additive `projectsScope`, `projectsShown` and `projectsTotal`.
+    - OpenAPI error answers are typed.
+  - **Sources:** a source read that cannot resolve its host is `DNS_UNRESOLVED`.
+  - **Product events:** new `telegram.menu_opened`, `telegram.today` and `telegram.changes`, and the outcome `held`.
+  - **Account:** downloading your data needs a sign-in from the last 15 minutes.
+  - **Migrations:** 0249 adds a site-read failure count on token candidates; 0250 merges duplicate spellings of a project's website into one source row and one badge placement.
+  - No public API field changes meaning.
 - **Discovery and Terminal analytics (2026-10-12).** The daily traffic rollup writes the dimensions `surface` (`discovery`, `terminal`, `both`) and `surface_engaged` to `traffic_days`; a staff console page compares the two surfaces. No public API field changes.
 - **Full-platform audit repairs (2026-10-12).** hbm-v27: a project whose activity HEY cannot read gets no Discovery Gap (`discoveryGapWithheld: 'activity_unknown'`). Token market status `INSUFFICIENT_DATA` with reason `volume_unknown` when no reading in 36 h measured a volume. Token verification reasons `site_names_contract_contested`, `site_disclaims_contract` and `site_off_page_names_contract` (UNVERIFIED). Website mention context gains `disclaimed`. Migrations 0245–0248 (indexes, the quality sweep's hidden-slice rotation, a commits ETag). Logos from hosts outside the image proxy are no longer drawn (a monogram shows). `pnpm test` fails when integration tests would be skipped unless `HEY_ALLOW_INTEGRATION_SKIP=1`; Playwright refuses a non-scratch database unless `HEY_E2E_ALLOW_ANY_DB=1`. No public API field changes meaning; the new reasons are additive values.
 - **Founder Control Center (2026-10-12).** The staff console's first page summarises operations and production and opens every issue at its exact detail (`?focus=` on the health page, one incident, one job type's failed rows). New staff-only operator actions `provider.pause` (1, 6 or 24 hours, through the existing provider cool-off), `provider.resume` (an operator's pause only), `recovery.run-checks` and `jobs.retry-failed` (at most 25 rows), each audited. A new browser key `hey.admin.guide.v1` (staff console only) is listed on the Privacy page. No public API field changes.

@@ -46,6 +46,8 @@ const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   site_disclaims_contract: 'The project’s own site names the token contract and says it is not the project’s token.',
   site_names_contract_contested: 'The project’s own site names the token contract, and another published page of the same name and ticker has a site naming a different one; neither naming verifies.',
   site_off_page_names_contract: 'A site other than the project’s own declared website names the token contract.',
+  // 2026-10-12 (audit DQ-1).
+  site_unreachable: 'The project’s own site named the token contract when HEY read it, and has not answered HEY’s reads since; that naming no longer verifies the token.',
 };
 
 /**

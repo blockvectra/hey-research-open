@@ -2,7 +2,7 @@
 
 HEY answers one question: **which projects on Robinhood Chain are still building, what have
 they shipped, and which of them are not yet getting much market attention?** That is the shape of a question
-someone asks an assistant, so HEY is an MCP server — twelve tools an assistant can call
+someone asks an assistant, so HEY is an MCP server — thirteen tools an assistant can call
 while answering, hosted at `https://heyresearch.xyz/mcp` or run beside the assistant, and a
 **research profile** at `https://heyresearch.xyz/mcp/research` (round 4, 2026-09-30): builder
 intelligence first — no market-move, Under the Radar or valuation tool, and the ledger without market
@@ -108,7 +108,7 @@ anything else must be https, because the key rides on every request). Set `HEY_A
 read with your key's allowance; the server never prints the key. Start it with
 `HEY_MARKET_INTEGRITY=public` only where the site publishes Market Integrity.
 
-## The twelve tools
+## The thirteen tools
 
 One tool per real question. The twenty-two tools before 2026-09-26 were replaced, not
 aliased: nothing was published and the MCP had been called once. `research_answer`
@@ -348,7 +348,7 @@ And never:
 | `research_answer` on API-typed fixtures | `packages/mcp-core/src/agent-contract.test.ts` |
 
 The server tests drive it through an actual `Client` over the in-memory transport: the tool
-list (exactly twelve, thirteen with the flag, every one titled and read-only, under the old
+list (exactly thirteen, fourteen with the flag, every one titled and read-only, under the old
 list's size with its output schemas), every tool end to end on its fixture, the resources, the prompts, and every
 failure.
 

@@ -39,8 +39,14 @@ const card = await hey.scanCard(4663, '0x…');
 if (card.found) console.log(card.status_label, card.activity.ships_30d);
 ```
 
-An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account) lifts
-the anonymous rate limit and nothing else; browsing needs no key.
+Browsing needs no key. An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account)
+names your integration, gives it its own per-minute bucket instead of the one every
+caller on your address shares, unlocks the bulk reads and carries a monthly
+allowance. A free key keeps the anonymous per-minute figure; a holder key gets more.
+Keyed answers are private, so they are never served from the edge cache.
+Without a key, every route shares one bucket per address (120 requests a minute);
+a 429 carries `retry-after`, read as `HeyApiError.retryAfterSeconds`. The client
+never retries on its own, so a loop that ignores it is refused until the minute ends.
 
 ```ts
 const hey = new HeyClient({ apiKey: process.env.HEY_API_KEY, userAgent: 'my-newsletter/1.2' });

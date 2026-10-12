@@ -163,18 +163,21 @@ export function isoWeekIndex(date: Date): number {
  * day are two. A release whose repository is not known is never collapsed.
  *
  * And — since hbm-v24 (founder ruling 2026-10-03, "kira sekali") — one
- * follow-up contract deployment per project per UTC second (`DEPLOY_BATCH`):
- * a deploy script put up four contracts in one second and the project read
- * ACTIVE on them. The input is one project's events, so the key is the second
- * alone; deploys a second apart count apart.
+ * follow-up contract deployment per run of the project's deploys
+ * (`DEPLOY_BATCH`): a deploy script put up four contracts in one second and
+ * the project read ACTIVE on them. The input is one project's events. Since
+ * hbm-v28 (2026-10-12, audit RD-2) the run is every deploy at most
+ * `DEPLOY_BATCH.maxGapSeconds` after the one before (`deployRunStarts`), not
+ * one UTC second: a script spread over 148 seconds counted as 20 ships.
  *
  * The input is meaningful events (corroborated) newest first, so the kept
  * row is the newest corroborated one — the row `buildingEvidenceSql` keeps.
  */
 export function collapseRepeatedEvidence(sorted: readonly ScoredEvent[]): ScoredEvent[] {
   const seen = new Set<string>();
-  return sorted.filter((event) => {
-    const key = repeatedEvidenceKey(event);
+  const runStarts = deployRunStarts(sorted);
+  return sorted.filter((event, index) => {
+    const key = repeatedEvidenceKey(event, runStarts[index]);
     if (key === undefined) return true;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -183,22 +186,53 @@ export function collapseRepeatedEvidence(sorted: readonly ScoredEvent[]): Scored
 }
 
 /**
+ * The run each follow-up deploy belongs to (hbm-v28, 2026-10-12, audit RD-2),
+ * aligned with the input: the time of the run's first deploy, or undefined for
+ * any other event. A deploy at most `DEPLOY_BATCH.maxGapSeconds` after the
+ * project's previous one joins its run; a longer gap starts a new one. The
+ * input is one project's events, in any order. `deployRunStartSql` is the
+ * same rule in SQL.
+ */
+export function deployRunStarts(events: readonly Pick<ScoredEvent, 'eventType' | 'publishedAt'>[]): (Date | undefined)[] {
+  const starts: (Date | undefined)[] = events.map(() => undefined);
+  const deploys = events
+    .map((event, index) => ({ event, index }))
+    .filter(({ event }) => event.eventType === DEPLOY_BATCH.eventType)
+    .sort((a, b) => a.event.publishedAt.getTime() - b.event.publishedAt.getTime());
+  let runStart: Date | undefined;
+  let previous: number | undefined;
+  for (const { event, index } of deploys) {
+    const at = event.publishedAt.getTime();
+    if (runStart === undefined || previous === undefined || at - previous > DEPLOY_BATCH.maxGapSeconds * 1000) runStart = event.publishedAt;
+    starts[index] = runStart;
+    previous = at;
+  }
+  return starts;
+}
+
+/**
  * The period an event counts once in, or undefined when it always counts.
  * Exported (2026-10-09 audit B22) so a reader that counts building events —
  * the Terminal chart's "Build events" series — folds exactly what the score
- * folds: a release day, a deploy batch, a code week, a prerelease week.
+ * folds: a release day, a deploy run, a code week, a prerelease week. A
+ * follow-up deploy is keyed by its run's first deploy (`deployRunStart`, from
+ * `deployRunStarts` or `deployRunStartSql`, hbm-v28); without one it is a run
+ * of its own.
  */
-export function repeatedEvidenceKey(event: Pick<ScoredEvent, 'eventType' | 'publishedAt' | 'prerelease' | 'repository'>): string | undefined {
+export function repeatedEvidenceKey(
+  event: Pick<ScoredEvent, 'eventType' | 'publishedAt' | 'prerelease' | 'repository'>,
+  deployRunStart?: Date,
+): string | undefined {
   if (event.eventType === 'CODE_ACTIVITY') return `code:${isoWeekIndex(event.publishedAt)}`;
   if (event.prerelease === true) return `prerelease:${isoWeekIndex(event.publishedAt)}`;
   if (event.eventType === RELEASE_BURST.eventType && event.repository) {
     return `release-day:${event.repository.toLowerCase()}:${utcDayIndex(event.publishedAt)}`;
   }
-  if (event.eventType === DEPLOY_BATCH.eventType) return `deploy-batch:${utcSecondIndex(event.publishedAt)}`;
+  if (event.eventType === DEPLOY_BATCH.eventType) return `deploy-batch:${utcSecondIndex(deployRunStart ?? event.publishedAt)}`;
   return undefined;
 }
 
-/** Whole UTC seconds since the epoch: the deploy-batch key (hbm-v24). */
+/** Whole UTC seconds since the epoch: the deploy-run key (hbm-v24; the run's first deploy since hbm-v28). */
 export function utcSecondIndex(date: Date): number {
   return Math.floor(date.getTime() / 1000);
 }
@@ -210,8 +244,8 @@ export function utcDayIndex(date: Date): number {
 
 /**
  * The hbm-v11 name, kept for its callers: it applies every collapse the
- * scorer applies, the release day (hbm-v23) and the deploy batch (hbm-v24)
- * included.
+ * scorer applies, the release day (hbm-v23) and the deploy run (hbm-v24,
+ * hbm-v28) included.
  */
 export const collapseSameWeekCodeActivity = collapseRepeatedEvidence;
 

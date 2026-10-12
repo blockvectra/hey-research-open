@@ -232,7 +232,8 @@ async function attemptOnce(
         if (isAbort(error)) throw new SourceError('TIMEOUT', `resolving ${currentUrl} timed out`);
         throw error;
       }
-      if (!resolved.ok) throw new SourceError('BLOCKED_URL', resolved.detail);
+      // A name that does not resolve is a dead site, not HEY's guard refusing it (DQ-4, 2026-10-12).
+      if (!resolved.ok) throw new SourceError(resolved.reason === 'UNRESOLVABLE_HOST' ? 'DNS_UNRESOLVED' : 'BLOCKED_URL', resolved.detail);
       // Pin the connection to what was checked; an IP literal needs no pin.
       if (!isIpLiteralHost(currentUrl)) dispatcher = pinnedDispatcher(resolved.addresses);
     }

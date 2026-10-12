@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   collapseRepeatedEvidence,
   collapseSameWeekCodeActivity,
+  deployRunStarts,
   deriveActivityStatus,
   meaningfulEvents,
   releaseRepositoryOf,
@@ -187,16 +188,32 @@ describe('activity status', () => {
       const result = deriveActivityStatus({ events: [deploy(at), deploy(at)], now: batchNow, hasSourceCoverage: true });
       expect(result.status).toBe('QUIET');
       expect(result.meaningfulEventCount).toBe(1);
-      // Two deploys a second apart are two deployments, and still ACTIVE.
-      const next = new Date(Date.parse(at) + 1000).toISOString();
+      // Two deploys more than a minute apart are two deployments, and still ACTIVE (hbm-v28: a second apart is one run).
+      const next = new Date(Date.parse(at) + 61_000).toISOString();
       expect(deriveActivityStatus({ events: [deploy(at), deploy(next)], now: batchNow, hasSourceCoverage: true }).status).toBe('ACTIVE');
     });
 
-    it('counts seconds apart, and never folds another event type into a batch', () => {
-      // deepstate's 1 September run: 20:24:01, 20:24:03 and two at 20:24:04 are three seconds.
-      expect(count([deploy('2026-09-01T20:24:01Z'), deploy('2026-09-01T20:24:03Z'), deploy('2026-09-01T20:24:04Z'), deploy('2026-09-01T20:24:04Z')])).toBe(3);
-      // 16:02:38.999 and 16:02:39.000 are two seconds.
-      expect(count([deploy('2026-09-30T16:02:38.999Z'), deploy('2026-09-30T16:02:39.000Z')])).toBe(2);
+    it('counts a run of deploys each within a minute of the one before once (hbm-v28, 2026-10-12, audit RD-2)', () => {
+      // deepstate's 1 September run: 20:24:01, 20:24:03 and two at 20:24:04 are one run.
+      expect(count([deploy('2026-09-01T20:24:01Z'), deploy('2026-09-01T20:24:03Z'), deploy('2026-09-01T20:24:04Z'), deploy('2026-09-01T20:24:04Z')])).toBe(1);
+      // 16:02:38.999 and 16:02:39.000 are one run across two seconds.
+      expect(count([deploy('2026-09-30T16:02:38.999Z'), deploy('2026-09-30T16:02:39.000Z')])).toBe(1);
+      // equalfilabs-statics-app's script: 40 contracts from 03:05:43 to 03:08:11, never more than a minute apart, is one deployment.
+      const script = Array.from({ length: 40 }, (_, n) => deploy(new Date(Date.parse('2026-10-01T03:05:43Z') + Math.round((n * 148_000) / 39)).toISOString()));
+      expect(count(script)).toBe(1);
+      // Exactly 60 seconds apart joins the run; 61 seconds starts another.
+      expect(count([deploy('2026-09-30T16:00:00Z'), deploy('2026-09-30T16:01:00Z')])).toBe(1);
+      expect(count([deploy('2026-09-30T16:00:00Z'), deploy('2026-09-30T16:01:01Z')])).toBe(2);
+      // A run is chained: each deploy within a minute of the previous one, however long the whole run lasts.
+      expect(count([deploy('2026-09-30T16:00:00Z'), deploy('2026-09-30T16:00:50Z'), deploy('2026-09-30T16:01:40Z'), deploy('2026-09-30T16:02:30Z')])).toBe(1);
+    });
+
+    it('starts a run at its first deploy, whatever the order of the input', () => {
+      const events = [deploy('2026-09-30T16:00:50Z'), deploy('2026-09-30T16:00:00Z'), deploy('2026-09-30T17:00:00Z'), deploy('2026-09-30T16:00:20Z', { eventType: 'CONTRACT_UPGRADE' })];
+      expect(deployRunStarts(events).map((start) => start?.toISOString())).toEqual(['2026-09-30T16:00:00.000Z', '2026-09-30T16:00:00.000Z', '2026-09-30T17:00:00.000Z', undefined]);
+    });
+
+    it('never folds another event type into a batch', () => {
       // An upgrade, or a release, in the same second is its own ship.
       expect(count([deploy('2026-09-30T16:02:38Z'), deploy('2026-09-30T16:02:38Z', { eventType: 'CONTRACT_UPGRADE' })])).toBe(2);
       expect(count([deploy('2026-09-30T16:02:38Z', { eventType: 'CONTRACT_UPGRADE' }), deploy('2026-09-30T16:02:38Z', { eventType: 'CONTRACT_UPGRADE' })])).toBe(2);
@@ -460,6 +477,9 @@ describe('repeatedEvidenceKey (2026-10-09 audit B22)', () => {
   it('names the release day, the deploy second and the code week a reader folds by', () => {
     expect(repeatedEvidenceKey({ eventType: 'GITHUB_RELEASE', publishedAt: at, repository: 'bambini-tech/digitaldon-public' })).toBe(`release-day:bambini-tech/digitaldon-public:${Math.floor(at.getTime() / 86_400_000)}`);
     expect(repeatedEvidenceKey({ eventType: 'CONTRACT_DEPLOY_FOLLOWUP', publishedAt: at })).toBe(`deploy-batch:${Math.floor(at.getTime() / 1000)}`);
+    // A deploy in a run is keyed by the run's first deploy (hbm-v28).
+    const runStart = new Date('2026-10-01T09:59:30Z');
+    expect(repeatedEvidenceKey({ eventType: 'CONTRACT_DEPLOY_FOLLOWUP', publishedAt: at }, runStart)).toBe(`deploy-batch:${Math.floor(runStart.getTime() / 1000)}`);
     expect(repeatedEvidenceKey({ eventType: 'GITHUB_RELEASE', publishedAt: at, repository: null })).toBeUndefined();
     expect(repeatedEvidenceKey({ eventType: 'CONTRACT_UPGRADE', publishedAt: at })).toBeUndefined();
   });

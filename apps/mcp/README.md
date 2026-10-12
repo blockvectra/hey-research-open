@@ -59,7 +59,7 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 | Variable | Purpose |
 |---|---|
 | `HEY_API_URL` | Another HEY to read, e.g. `http://localhost:3000` when developing. Default `https://heyresearch.xyz`. Anything but https is refused except on localhost, because the key rides on every request. |
-| `HEY_API_KEY` | An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account). Lifts the anonymous rate limit; nothing is gated behind it. Sent as a bearer token, never logged. |
+| `HEY_API_KEY` | An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account). Names your integration and gives it its own per-minute bucket instead of the one every caller on your address shares, with a monthly allowance; a free key keeps the anonymous per-minute figure, a holder key gets more. No tool is gated behind it. Sent as a bearer token, never logged. |
 | `HEY_MARKET_INTEGRITY` | Set to `public` only when the HEY you read publishes Market Integrity; `market_integrity` is offered only then. Unset, the server offers thirteen tools. |
 | `HEY_MCP_PROFILE` | `research` serves the research profile (round 4): builder intelligence first — `research_answer` (which still carries its contract's labelled market context), `find_projects` by identity, `get_changes` without market events, `get_project_timeline`, `explain_fact`, `get_evidence`, `get_contract`, `get_v4_hook`. Unset, the full set. Hosted: `https://heyresearch.xyz/mcp/research`. |
 

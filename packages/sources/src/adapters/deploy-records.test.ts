@@ -99,6 +99,17 @@ describe('which files are deploy records for Robinhood Chain', () => {
   it('reads a per-chain file in a deployments folder as a hand-kept record', () => {
     expect(planDeployRecordReads(['deployments/4663.json']).files).toEqual([{ path: 'deployments/4663.json', kind: 'DEPLOYMENTS_JSON' }]);
   });
+
+  it('never reads a hand-kept file named as a list of other people’s contracts (2026-10-12, BL-7)', () => {
+    const lists = [
+      'deployments/token-registry-4663.json',
+      'deployments/696x-compatibility-discovery.json',
+      'deployments/696x-watchlist-additions-discovery-2026-09-26.json',
+      'deployments/stock-assets.4663.json',
+      'deployments/robinhood-mainnet.template.json',
+    ];
+    expect(planDeployRecordReads([...lists, 'deployments/fleet-4663.json']).files).toEqual([{ path: 'deployments/fleet-4663.json', kind: 'DEPLOYMENTS_JSON' }]);
+  });
 });
 
 describe('what a record says', () => {

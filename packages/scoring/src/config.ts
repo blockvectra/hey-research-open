@@ -126,21 +126,29 @@ export const RELEASE_BURST = {
 
 /**
  * A deploy batch is one ship (hbm-v24, founder ruling 2026-10-03, "kira
- * sekali" — count it once). A project's follow-up contract deployments
- * recorded in the same UTC second count once — the newest corroborated one
- * stands for the batch — in activity status, Build Momentum and every SQL
- * count of building (`buildingEvidenceSql`), as a release day does
- * (`RELEASE_BURST`). The key is the project and the second of the block time
- * the ship is dated to: in production every same-second batch was one
- * deployer's, each contract its own creating transaction (no two shared a
- * hash), in one or two blocks. Deploys a second apart count apart; an upgrade
- * is not a deploy and is never part of a batch. Every deploy stays on the
+ * sekali" — count it once). A project's follow-up contract deployments of one
+ * run count once — the newest corroborated one stands for the run — in
+ * activity status, Build Momentum and every SQL count of building
+ * (`buildingEvidenceSql`), as a release day does (`RELEASE_BURST`). An upgrade
+ * is not a deploy and is never part of a run. Every deploy stays on the
  * timeline with its source.
+ *
+ * A run, not a second (hbm-v28, 2026-10-12, audit RD-2, ruling under the
+ * founder's delegation): deploys of one project each at most `maxGapSeconds`
+ * after the one before form one run. hbm-v24 keyed the batch on the UTC
+ * second, which held only for a script that finished inside one second: one
+ * script put up 40 contracts over 148 seconds in 20 distinct seconds, counted
+ * as 20 ships and filled 20 of the 24 lines on /ships. On production the gaps
+ * between a project's consecutive follow-up deploys break cleanly between 45
+ * and 84 seconds (none in between), so 60 seconds joins a script's spill-over
+ * and never two separate deployments.
  */
 export const DEPLOY_BATCH = {
   eventType: 'CONTRACT_DEPLOY_FOLLOWUP',
-  /** One counted follow-up deploy per project per this period. */
-  period: 'utc_second',
+  /** One counted follow-up deploy per run of the project's deploys (hbm-v28; `utc_second` in hbm-v24). */
+  period: 'gap_run',
+  /** A deploy at most this many seconds after the project's previous one is in the same run. */
+  maxGapSeconds: 60,
 } as const;
 
 /**

@@ -25,6 +25,7 @@ describe('normalized error model', () => {
       'NOT_FOUND',
       'INVALID_RESPONSE',
       'BLOCKED_URL',
+      'DNS_UNRESOLVED',
       'TOO_LARGE',
       'UNSUPPORTED_CONTENT_TYPE',
     ] as const) {

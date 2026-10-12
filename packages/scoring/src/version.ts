@@ -343,7 +343,26 @@
  * ranked against; with no gap it cannot be Under the Radar. The activity status
  * only withholds, never awards.
  */
-export const SCORING_VERSION = 'hbm-v27' as const;
+/*
+ * hbm-v28 (2026-10-12, audit RD-2, ruling under the founder's delegation): no
+ * weight, threshold or Build Momentum formula changes. A deploy batch is a
+ * run, not a UTC second: a project's follow-up deployments each at most 60
+ * seconds after the one before (`DEPLOY_BATCH.maxGapSeconds`) count once —
+ * the newest corroborated deploy standing for the run — in activity status,
+ * Build Momentum, the streak, velocity and cadence (`collapseRepeatedEvidence`,
+ * `deployRunStarts`) and in every SQL count of building
+ * (`buildingEvidenceSql`'s deploy-run keeper, `deployRunStartSql`). What did
+ * not change: an upgrade is never part of a run, deploys more than 60 seconds
+ * apart count apart, and no ship is deleted or retracted — every deploy stays
+ * on the timeline with its creating transaction; only the count changes.
+ * Measured on production before the change (read-only, 2026-10-12): one
+ * script (equalfilabs-statics-app) put up 40 contracts between 03:05:43 and
+ * 03:08:11 UTC in 20 distinct seconds — 20 counted ships and 20 of the 24
+ * lines on /ships. Over all 335 standing follow-up deploys, the gaps between a
+ * project's consecutive deploys break cleanly: the largest under a minute is
+ * 45 s and the smallest above it 84 s. 307 deploy seconds become 214 runs.
+ */
+export const SCORING_VERSION = 'hbm-v28' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

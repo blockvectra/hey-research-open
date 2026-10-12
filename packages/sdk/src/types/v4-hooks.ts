@@ -132,6 +132,11 @@ export type HeyV4Hooks = {
   order: string;
   filter: { valuationUnderUsd: number | null; excludedNoFigure: number; excludedNoFigureProjects: number };
   projects: HeyV4HookProjectGroup[];
+  /** Which projects `projects` holds (additive, 2026-10-12): `all` (the default) or `shown`, the shown rows' projects only. */
+  projectsScope: 'all' | 'shown';
+  /** Project groups in `projects`, of `projectsTotal` matching the filter (additive, 2026-10-12). */
+  projectsShown: number;
+  projectsTotal: number;
   aggregate: {
     sentence: string;
     seen: number;
@@ -157,6 +162,8 @@ export type HeyV4HooksQuery = {
   limit?: number;
   /** A reader's market-context filter in USD; a project HEY prints no figure for is left out and counted. Never an order. */
   under?: number;
+  /** `shown`: only the shown rows' projects in `projects` (2026-10-12); default every project matching the filter. */
+  projects?: 'all' | 'shown';
 };
 
 /** One thing HEY does not know about a hook: always null, with why. */

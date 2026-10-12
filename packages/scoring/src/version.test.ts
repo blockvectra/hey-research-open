@@ -54,7 +54,7 @@ const RULES_DIGEST = createHash('sha256')
       VALUATION_PLAUSIBILITY,
       // A repository's full releases of one UTC day count once (hbm-v23).
       RELEASE_BURST,
-      // A project's follow-up deploys of one UTC second count once (hbm-v24).
+      // A project's follow-up deploys of one run count once (hbm-v24; a 60-second gap run since hbm-v28).
       DEPLOY_BATCH,
       // A comeback is RESUMED only inside HEY's coverage of its sources (hbm-v25).
       RESUMED_COVERAGE,
@@ -86,8 +86,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v27',
-      rules: 'e223911cb94d81ee',
+      version: 'hbm-v28',
+      rules: '723bedd3d08ac2fe',
     });
   });
 });

@@ -71,6 +71,17 @@ const MAX_PATH_CHARS = 300;
  * (`deployRecordIsProofSql`), POSIX-compatible on purpose.
  */
 export const TEST_DATA_PATH_PATTERN = '(^|/)(test|tests|__tests__|testdata|test[-_]data|fixtures?|__fixtures__|mocks?|examples?|samples?|demos?|specs?|e2e)/';
+/**
+ * A hand-kept JSON file named as a list of other people's contracts (2026-10-12, builder audit BL-7): a
+ * token registry, a discovery or watchlist file, a compatibility list, an allowlist, a template, a stock
+ * asset list. Chit's `deployments/token-registry-4663.json` and HOODX's
+ * `deployments/696x-compatibility-discovery.json` sit in `deployments/` but record what the app reads,
+ * not what it deployed, and made HEY propose merging the listed projects' pages into the lister's. Read
+ * on the file name only; one spelling, shared with the domain's SQL check of records already stored
+ * (`deployRecordIsProofSql`), POSIX-compatible on purpose.
+ */
+export const ASSET_LIST_PATH_PATTERN = '(^|/)[^/]*(registry|discovery|watchlist|compatibility|whitelist|allowlist|template|stock[-_]?assets|token[-_]?list)[^/]*$';
+const ASSET_LIST_PATH = new RegExp(ASSET_LIST_PATH_PATTERN, 'i');
 const EXCLUDED_SEGMENT = new RegExp(
   `(^|/)(node_modules|vendor|vendored|third[_-]?party|lib|libs|external|\\.git|dry-run|cache|artifacts|out|typechain(-types)?|solcInputs)/|${TEST_DATA_PATH_PATTERN}`,
   'i',
@@ -135,6 +146,7 @@ export function planDeployRecordReads(paths: readonly string[], options: { chain
     }
     // A hand-kept deployments file: `deployments.json`, `deployment-rh.json`, or one file per chain in `deployments/`.
     const depth = folderDepth(path);
+    if (ASSET_LIST_PATH.test(path)) continue;
     if (DEPLOYMENTS_FOLDER_FILE.test(path) ? depth <= HAND_KEPT_MAX_DEPTH + 1 : DEPLOYMENTS_JSON.test(path) && depth <= HAND_KEPT_MAX_DEPTH) {
       files.push({ path, kind: 'DEPLOYMENTS_JSON' });
     }

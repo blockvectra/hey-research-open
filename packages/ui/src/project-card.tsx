@@ -146,6 +146,16 @@ export type ProjectCardShip = {
  */
 const VERIFIED_STATES = new Set(['PUBLICLY_VERIFIED', 'ADMIN_VERIFIED', 'SOURCE_LINKED']);
 
+/**
+ * Where a token launched, when HEY holds no launch record (2026-10-12, audit
+ * RD-10): the homepage and search printed "via Unknown". A card and a launch
+ * record row say this instead, with no "via".
+ */
+export const LAUNCH_NOT_OBSERVED = 'Launch not observed';
+
+/** No launch origin HEY can name: none recorded, or the domain's "Unknown" placeholder. */
+export const launchNotObserved = (name: string | null | undefined): boolean => !name || name.trim() === '' || name === 'Unknown';
+
 const hostOf = (url: string): string => {
   try {
     return new URL(url).hostname.replace(/^www\./, '');
@@ -293,22 +303,28 @@ export function ProjectCard({
     );
 
   // REFERENCE: launch origin and official X, the card's last line on every variant.
+  const launchUnobserved = launchNotObserved(project.launchedVia?.name) && !project.marketVenue;
   const origin = (
     <div className="flex items-center justify-between gap-3 text-[13px]">
       <span className="flex min-w-0 items-center gap-1.5" data-testid="launched-via">
-        <span className="text-hey-muted">via</span>
-        {project.launchedVia?.url ? (
+        {/* No launch record and no pool: say so, never "via Unknown" (2026-10-12, audit RD-10). */}
+        {launchUnobserved ? null : <span className="text-hey-muted">via</span>}
+        {launchUnobserved ? (
+          <span className="truncate text-hey-muted" title="HEY did not observe where this token launched.">
+            {LAUNCH_NOT_OBSERVED}
+          </span>
+        ) : project.launchedVia?.url ? (
           <ExternalRef href={project.launchedVia.url} label={`Open ${project.launchedVia.name} launch page`}>
             {project.launchedVia.name}
           </ExternalRef>
-        ) : (project.launchedVia?.name ?? 'Unknown') === 'Unknown' && project.marketVenue ? (
+        ) : launchNotObserved(project.launchedVia?.name) && project.marketVenue ? (
           // No launch record, but a pool: say where the token trades, never where it launched.
           <span className="truncate text-hey-secondary" title={`HEY did not observe the launch; the token trades on ${project.marketVenue}.`}>
             {/* A venue HEY cannot name is "DEX" already (`venueLabel`): print it once, never "DEX (DEX)" (full audit, 2026-10-03). */}
             {project.marketVenue === 'DEX' ? 'DEX' : `DEX (${project.marketVenue})`}
           </span>
         ) : (
-          <span className="truncate text-hey-secondary">{project.launchedVia?.name ?? 'Unknown'}</span>
+          <span className="truncate text-hey-secondary">{project.launchedVia?.name}</span>
         )}
       </span>
       {project.officialX ? (

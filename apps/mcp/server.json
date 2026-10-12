@@ -28,7 +28,7 @@
       "environmentVariables": [
         {
           "name": "HEY_API_KEY",
-          "description": "Optional HEY API key: lifts the anonymous rate limit and nothing else.",
+          "description": "Optional HEY API key: names your integration and gives it its own per-minute bucket with a monthly allowance; a free key keeps the anonymous per-minute figure. Nothing private is behind it.",
           "isRequired": false,
           "isSecret": true
         },
