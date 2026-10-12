@@ -17,6 +17,10 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 - `HeyWeeklyReport.uniswapV4Hooks?: HeyWeeklyV4Hooks`, additively (report version 4): the state of Robinhood Chain v4 hooks as counts — seen, new this week, on tracked tokens, listed by basis, new listed hooks (≤20 named, factory instances counted), creation-read progress, factories tied to projects, hooklist coverage and launch-protocol concentration (never a protocol's name). Totals are as of `asOf`; null with `notMeasured` before HEY decodes any hook. Absent on older reports.
 - `HeyBuilderCard.uniswap_v4_hooks: HeyPartnerV4Hooks | null` and `uniswap_v4_hooks_state: 'listed' | 'none_listed' | 'not_read'`, additively: the project's publicly listed hooks (`listed`, `basis_counts`, ≤10 `items` with `page_url` and `v4hook:` `evidence_id`, `shown` of `total`, `list_url`). No existing field changes; the `token=` lookup is unchanged.
 
+### Added (listed token only, 2026-10-12)
+
+- `HeyCatalogueCounts.listedTokenOnly?: number` and `HeyStatus.catalog.listedTokenOnly?: number`, additively: the part of `published` that is a listed token with no builder evidence and no live market (activity Unknown, no ship of any kind, a token market that is inactive or gone). Counted in `published`, never subtracted; absent when not counted, never 0. `published` keeps its meaning.
+
 ## 0.2.0 — 2026-10-09
 
 ### Added (coverage detail, 2026-10-09)

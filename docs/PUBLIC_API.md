@@ -200,6 +200,14 @@ The catalogue, with the same filters and order the browse pages use.
 | `age` | `day`, `week`, `month`, `older` — how long ago the token's pool was created | — |
 | `deployed` | `day`, `week`, `month`, `older` — how long ago the contract was deployed. Two dates, one vocabulary: a pool is opened when someone makes a market, a contract is deployed when the project puts it on chain, and they can be months apart | — |
 
+**`catalogue.listedTokenOnly` (additive, 2026-10-12).** The part of `catalogue.published` that is a
+listed token with no builder evidence and no live market: activity status Unknown, no ship of any
+kind on record, and a primary token whose market status is `TRADING_INACTIVE`, `NO_LIQUIDITY`,
+`LIQUIDITY_REMOVED` or `MARKET_ABANDONED` (a thin market, or one HEY has not read, is not in it).
+These pages stay published and are counted in `published`; the figure is never subtracted from it,
+and it decides no status, score, badge or order. `/api/status` carries the same figure as
+`catalog.listedTokenOnly`, and `/methodology#counts` defines it.
+
 **The Token Projects view, in API terms (2026-09-12).** Explore's `?view=tokens` is spelled here as
 `has=token`. A market order (`sort=marketCap`, `liquidity`, `volume24h`) puts projects without that
 reading *after* those with it, in activity order — it never ranks them, and it never invents a
@@ -2257,7 +2265,9 @@ The same material is also published as RSS, for a reader rather than a script:
 words). `catalog.indexed` keeps its meaning — the hidden launch records, approved rows HEY has not
 published — and is not the catalogue's "indexed" (every approved row); `catalog.hidden` carries the
 same figure under the catalogue's word, and `catalog.hiddenAsOf` is when the hourly summary counted
-it. `catalog.asOf` dates only `published`, `verifiedBuilders` and `verifiedBuildersOnChain`.
+it. `catalog.asOf` dates only `published`, `verifiedBuilders`, `verifiedBuildersOnChain` and, since
+2026-10-12, `catalog.listedTokenOnly` (the part of `published` that is a listed token with no builder
+evidence and no live market; absent when only the hourly summary stands, never 0).
 
 ## Implementation
 

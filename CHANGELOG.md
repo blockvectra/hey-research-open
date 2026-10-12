@@ -6,6 +6,16 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Founder list settled (2026-10-12).**
+  - **Terminal:** a self-serve 7-day trial (migration 0251: `terminal_access_requests.kind`, `expires_at`).
+  - **Narratives:** rule version `narratives-v3`.
+  - **API:** `/api/projects` gains `catalogue.listedTokenOnly` and `/api/status` gains `catalog.listedTokenOnly` (additive).
+  - **Account:** linking GitHub on /account; owners proved by DNS, a site file or a signature can add a GitHub proof for an uncorroborated official repository; /account lists the account's own bonds with their state.
+  - **Moderation:** a moderator `source.retract` action, and the script `data:retract-sources`.
+  - **Staff sessions:** a 12 h idle and 7 d absolute limit, and a recent sign-in for sensitive console actions.
+  - **Agents:** `/.well-known/glama.json`.
+  - **Deploys:** a low-priority builder, warm-up, and autodeploy spacing.
+  - No public API field changes meaning.
 - **Reader, agent and builder audit repairs (2026-10-12).**
   - **Scoring:** hbm-v28 counts a project's follow-up deploys, each at most 60 seconds after the one before, as one run; it was one UTC second. The token verification rule version is `token-status-2026-10-12`.
   - **API:**

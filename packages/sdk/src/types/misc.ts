@@ -277,6 +277,8 @@ export type HeyStatus = {
     hidden?: number;
     hiddenAsOf?: string;
     verifiedBuildersOnChain?: number;
+    /** The part of `published` that is a listed token with no builder evidence and no live market (2026-10-12, additive). */
+    listedTokenOnly?: number;
     asOf?: string;
   };
   jobs: { pending: number; failed24h: number | null };

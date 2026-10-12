@@ -269,6 +269,11 @@ export type HeyCatalogueCounts = {
   verifiedBuildersOnChain?: number;
   /** Every published project (2026-10-02, additive). */
   published?: number;
+  /**
+   * The part of `published` that is a listed token with no builder evidence and no live market (2026-10-12, additive):
+   * activity Unknown, no ship of any kind, a token market that is inactive or gone. Counted in `published`, never subtracted.
+   */
+  listedTokenOnly?: number;
   chainId?: number;
   /** When these figures were counted (ISO 8601). */
   asOf?: string;
