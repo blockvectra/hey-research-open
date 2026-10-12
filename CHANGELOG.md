@@ -6,8 +6,9 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Homepage signals and badges (2026-10-13).** The homepage strip shows six signals from the last two days, newest first. /badges matches a placement to its source by key. No API field changes.
 - **Founder list settled (2026-10-12).**
-  - **Terminal:** a self-serve 7-day trial (migration 0251: `terminal_access_requests.kind`, `expires_at`).
+  - **Terminal:** a self-serve 7-day trial (migration 0251: `terminal_access_requests.kind`, `expires_at`). Removed on 2026-10-13 (migration 0252 ends any trial row, 0253 drops both columns): Terminal access is a $HEY holding of at least $500, or an early-access request an admin approves.
   - **Narratives:** rule version `narratives-v3`.
   - **API:** `/api/projects` gains `catalogue.listedTokenOnly` and `/api/status` gains `catalog.listedTokenOnly` (additive).
   - **Account:** linking GitHub on /account; owners proved by DNS, a site file or a signature can add a GitHub proof for an uncorroborated official repository; /account lists the account's own bonds with their state.
