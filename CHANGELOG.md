@@ -6,6 +6,8 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Agent-framework plugins (2026-10-13).** New public repos: plugin-hey-research (ElizaOS), hey-agentkit (Coinbase AgentKit), hey-goat-plugin (GOAT SDK) and hey-virtuals-plugin (Virtuals GAME and an ACP scaffold), all at 0.1.0. `/.well-known/hey-project.json` lists them among HEY's repositories.
+- **MCP tool descriptions (2026-10-13).** Tool descriptions, titles and the instructions sent at connection lead with the user's question and name the inputs an agent holds (a name, a $TICKER, a 0x contract). A2A skills and llms.txt carry the same questions. No tool, input or output changes.
 - **Homepage signals and badges (2026-10-13).** The homepage strip shows six signals from the last two days, newest first. /badges matches a placement to its source by key. No API field changes.
 - **Founder list settled (2026-10-12).**
   - **Terminal:** a self-serve 7-day trial (migration 0251: `terminal_access_requests.kind`, `expires_at`). Removed on 2026-10-13 (migration 0252 ends any trial row, 0253 drops both columns): Terminal access is a $HEY holding of at least $500, or an early-access request an admin approves.

@@ -59,6 +59,10 @@ export const HEY_MCP_PROFILE_PATHS: Readonly<Record<HeyMcpProfile, string>> = { 
  * `full` is 20,000 since 2026-10-11: `get_v4_hook` (one Uniswap v4 hook — who
  * built it) costs 748 bytes and the list had 9 to spare; every other tool's
  * description is unchanged. `research` holds it inside its own budget.
+ *
+ * Unchanged on 2026-10-13, when every description was rewritten to open on
+ * its user question: the lists measure 19,716 and 10,760 bytes, paid for by
+ * dropping the default `execution` stamp (`shapeToolList`).
  */
 export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_000, research: 11_000 };
 
@@ -78,8 +82,8 @@ export type HeyMcpToolInfo = {
 export const HEY_MCP_TOOLS = [
   {
     name: 'find_projects',
-    title: 'Find projects',
-    summary: 'Find projects by name, ticker or contract, or browse one of HEY’s surfaces (still building, under the radar, back from dormancy, shipping in silence, accelerating, the Builder Radar) with the catalogue’s filters.',
+    title: 'Find a Robinhood Chain project',
+    summary: 'Which project is this name, $TICKER or 0x contract, and is anyone building it? Or browse one of HEY’s surfaces (still building, under the radar, back from dormancy, shipping in silence, accelerating, the Builder Radar) with the catalogue’s filters.',
     routes: ['/api/projects', '/api/chain/silence', '/api/chain/accelerating', '/api/builders', '/api/token/{chainId}/{address}'],
     replaces: ['search_projects', 'list_projects', 'shipping_in_silence', 'builder_comebacks', 'accelerating_builders', 'list_builders', 'lookup_token'],
     profiles: ['full', 'research'],
@@ -87,23 +91,23 @@ export const HEY_MCP_TOOLS = [
   {
     name: 'get_project_snapshot',
     title: 'Project snapshot',
-    summary: 'The important state of one project in one read, opening on the Research Summary (one tagged line each for build, usage, market, contracts, fundamentals, security, the latest change and what HEY does not know), then identity, build, market with its withholding, on-chain, verification, locks, latest changes, freshness and coverage.',
+    summary: 'Tell me about this project: the important state of one project in one read, opening on the Research Summary (one tagged line each for build, usage, market, contracts, fundamentals, security, the latest change and what HEY does not know), then identity, build, market with its withholding, on-chain, verification, locks, latest changes, freshness and coverage.',
     routes: ['/api/projects/{slug}/snapshot'],
     replaces: ['get_project', 'project_intelligence'],
     profiles: ['full'],
   },
   {
     name: 'get_changes',
-    title: 'What changed',
-    summary: 'The change ledger: what changed on the chain or on one project, one event per change, with its own time, its precision, when HEY knew and its evidence. Cursor sync.',
+    title: 'What changed on Robinhood Chain',
+    summary: 'What changed on Robinhood Chain today or this week, or on one project? The change ledger: one event per change, with its own time, its precision, when HEY knew and its evidence. Cursor sync.',
     routes: ['/api/changes'],
     replaces: ['list_ships', 'list_signals', 'contract_changes'],
     profiles: ['full', 'research'],
   },
   {
     name: 'get_project_timeline',
-    title: 'Project timeline',
-    summary: 'One project’s research timeline, every kind of evidence on one axis, paged with a cursor.',
+    title: 'What a project shipped',
+    summary: 'What did this project ship, and when? Its research timeline, every kind of evidence on one axis, paged with a cursor.',
     routes: ['/api/projects/{slug}/timeline'],
     replaces: ['project_timeline'],
     profiles: ['full', 'research'],
@@ -111,7 +115,7 @@ export const HEY_MCP_TOOLS = [
   {
     name: 'explain_fact',
     title: 'Explain a fact',
-    summary: 'Why HEY publishes a figure: the rule, the winning source, the inputs, the lineage and the evidence ids.',
+    summary: 'Why does HEY say this? For one published figure: the rule, the winning source, the inputs, the lineage and the evidence ids.',
     routes: ['/api/projects/{slug}/explain'],
     replaces: [],
     profiles: ['full', 'research'],
@@ -119,7 +123,7 @@ export const HEY_MCP_TOOLS = [
   {
     name: 'get_evidence',
     title: 'Open evidence',
-    summary: 'One published record by its typed id (ship:, signal:, abi:, impl:, lock:, source:, claim:, state:), as a receipt.',
+    summary: 'What backs this claim? One published record by its typed id (ship:, signal:, abi:, impl:, lock:, source:, claim:, state:), as a receipt.',
     routes: ['/api/evidence/{id}'],
     replaces: [],
     profiles: ['full', 'research'],
@@ -127,15 +131,15 @@ export const HEY_MCP_TOOLS = [
   {
     name: 'get_token_market',
     title: 'Token market',
-    summary: 'One token’s market from HEY’s daily index: current reading with its kind, lifecycle, pools, supply concentration (shares only), contract checks; optionally the day-on-day moves with what shipped before each.',
+    summary: 'Does this token still trade? Context beside the building, never advice — one token’s market from HEY’s daily index: current reading with its kind, lifecycle, pools, supply concentration (shares only), contract checks; optionally the day-on-day moves with what shipped before each.',
     routes: ['/api/projects/{slug}/market', '/api/projects/{slug}/market-moves'],
     replaces: ['events_before_market_change'],
     profiles: ['full'],
   },
   {
     name: 'get_contract',
-    title: 'Contract',
-    summary: 'A contract as a research entity — creation, deployer, verified source, proxy and implementation history, interface counts and changes, activity, and for a Uniswap v4 hook HEY stores its callbacks and attribution — by address or for every contract of a project.',
+    title: 'Who made this contract',
+    summary: 'Who made this contract, and is it a known project’s? A contract as a research entity — creation, deployer, verified source, proxy and implementation history, interface counts and changes, activity, and for a Uniswap v4 hook HEY stores its callbacks and attribution — by address or for every contract of a project.',
     routes: ['/api/contracts/{chainId}/{address}', '/api/projects/{slug}/contracts'],
     replaces: [],
     profiles: ['full', 'research'],
@@ -166,21 +170,43 @@ export const HEY_MCP_TOOLS = [
   },
   {
     name: 'research_answer',
-    title: 'Agent research answer',
-    summary: 'One bounded answer in HEY’s agent contract (AgentIntelligenceResponse v1) for one of six questions: research a project, what changed, builder status with its evidence, whether a contract belongs to a project, a builder comparison, and what HEY does not know (every coverage dimension’s state).',
+    title: 'Research a Robinhood Chain project',
+    summary: 'Is this project still being built, what did it ship, what changed? One bounded answer in HEY’s agent contract (AgentIntelligenceResponse v1) for one of six questions: research a project, what changed, builder status with its evidence, whether a contract belongs to a project, a builder comparison, and what HEY does not know (every coverage dimension’s state).',
     routes: ['/api/agent/{capability}'],
     replaces: ['compare_projects', 'get_project_coverage'],
     profiles: ['full', 'research'],
   },
   {
     name: 'chain_overview',
-    title: 'Chain overview',
-    summary: 'Robinhood Chain as a whole: day-by-day activity, this week’s rollup, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention.',
+    title: 'Robinhood Chain overview',
+    summary: 'How active is Robinhood Chain? The chain as a whole: day-by-day activity, this week’s rollup, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention.',
     routes: ['/api/chain', '/api/this-week', '/api/reports/weekly/{week}', '/api/chain/unlocks', '/api/chain/build-market'],
     replaces: ['chain_activity', 'this_week', 'weekly_report', 'upcoming_unlocks'],
     profiles: ['full'],
   },
 ] as const satisfies readonly HeyMcpToolInfo[];
+
+/**
+ * The questions a user types, and the tool that answers each (2026-10-13). An
+ * agent picks a tool from the list alone, so every description leads with its
+ * question; llms.txt prints this map, and a test holds every tool it names to
+ * the catalogue. `research` marks the questions the research profile answers.
+ */
+export type HeyMcpQuestion = { question: string; answer: string; tools: readonly HeyMcpToolInfo['name'][]; research: boolean };
+
+export const HEY_MCP_QUESTIONS = [
+  {
+    question: 'Is this project, token, $TICKER or 0x contract still being built? What did it ship, and when?',
+    answer: 'research_answer with a project slug (research_project or builder_status); find_projects turns a name, $TICKER or 0x contract into the slug',
+    tools: ['research_answer', 'find_projects'],
+    research: true,
+  },
+  { question: 'What changed on Robinhood Chain today or this week, or on one project?', answer: 'get_changes (or research_answer with what_changed)', tools: ['get_changes', 'research_answer'], research: true },
+  { question: 'Which projects are building ahead of their market attention?', answer: 'find_projects with surface under-the-radar or shipping-in-silence', tools: ['find_projects'], research: false },
+  { question: 'Who made this contract, and is it a known project’s?', answer: 'get_contract, or research_answer with verify_project', tools: ['get_contract', 'research_answer'], research: true },
+  { question: 'What does HEY not know about this project?', answer: 'research_answer with unknowns', tools: ['research_answer'], research: true },
+  { question: 'How active is Robinhood Chain as a whole?', answer: 'chain_overview', tools: ['chain_overview'], research: false },
+] as const satisfies readonly HeyMcpQuestion[];
 
 /** Offered only where the site publishes Market Integrity (`HEY_MARKET_INTEGRITY=public`). */
 export const HEY_MCP_GATED_TOOLS = [

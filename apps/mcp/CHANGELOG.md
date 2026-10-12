@@ -6,6 +6,12 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+### Changed (2026-10-13)
+
+- Every tool's description opens on the question it answers, in the words a user types ("Is this Robinhood Chain project still being built, what did it ship…?", "What changed on Robinhood Chain today or this week…?", "Who made this Robinhood Chain contract, and is it a known project's?"), names the inputs an agent holds (a name, a `$TICKER`, a `0x` contract), and says briefly what it is not (price advice, a safety verdict). Titles name the question too (`research_answer` is "Research a Robinhood Chain project"). Every claim is unchanged.
+- The server instructions open on one paragraph saying when to reach for HEY.
+- The tool list drops the default `execution: {"taskSupport": "forbidden"}` stamp (MCP reads its absence the same way): 19,716 bytes on the full profile, 10,760 on research, both smaller than before.
+
 ## 0.2.0 — 2026-10-09
 
 ### Fixed (2026-10-09)

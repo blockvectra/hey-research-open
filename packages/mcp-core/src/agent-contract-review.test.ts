@@ -104,7 +104,7 @@ describe('research_answer on MCP after the adversarial review', () => {
     expect(instructions.indexOf('research_answer')).toBeGreaterThan(-1);
     expect(instructions.indexOf('research_answer')).toBeLessThan(instructions.indexOf('get_project_snapshot'));
     expect(instructions).not.toMatch(/not yet weighting/);
-    expect(instructions).toMatch(/Market figures are context only/);
+    expect(instructions).toMatch(/market figures are context only/i);
     expect(instructions).toMatch(/Disclosure: HEY Research Lab issues its own token, \$HEY/);
     expect(instructions).toMatch(/no ranking bonus/);
   });

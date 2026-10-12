@@ -320,6 +320,23 @@ And never:
 - **The instructions name the argument (AG-03, 2026-10-10).** "Start with research_answer" now says
   its `capability` argument is one of the six and gives `{"capability":"research_project","project":"<slug>"}`:
   the old list read as if `research_answer` took a free-text question.
+- **Question first (2026-10-13).** An agent picks a tool from the list alone, and of about 30,000
+  MCP requests in 30 days only about 600 were tool calls (`research_answer` 253, `find_projects` 88,
+  `get_changes` 86, `chain_overview` 32, `get_project_snapshot` 31); the rest were directory probes
+  and handshakes. So every tool's description and every A2A skill's description opens on the question
+  it answers, in the words a user types ("Is this Robinhood Chain project still being built, what did
+  it ship…?", "What changed on Robinhood Chain today or this week…?", "Who made this Robinhood Chain
+  contract, and is it a known project's?"), names the inputs an agent holds (a name, a `$TICKER`, a
+  `0x` contract on chain 4663 — `find_projects` turns either of the first two into the slug
+  `research_answer` takes), and says briefly what comes back and what it is not (not price advice,
+  not a safety verdict). The handshake's instructions open on one paragraph saying when to reach for
+  HEY. `HEY_MCP_QUESTIONS` (`packages/mcp-core/src/tools.ts`) maps each question to its tool;
+  llms.txt prints it, and tests hold every tool it names to the catalogue and every description to
+  a leading question. The claims behind each question are the API's, unchanged (machine-layer rule
+  7). The list stays inside its byte budget: the default `execution: {"taskSupport": "forbidden"}`
+  the SDK stamps on every tool is dropped (MCP reads an absent `taskSupport` as forbidden), as the
+  `$schema` stamps were — 19,716 bytes of 20,000 on `/mcp`, 10,760 of 11,000 on `/mcp/research`
+  (19,918 and 10,855 before).
 - **The handshake** names the server `hey-research`, titled `HEY Research Lab`, with
   `websiteUrl` the agent guide (`/developers/agents`). The MCP SDK in use (1.30) negotiates protocol
   versions up to `2025-11-25`; the current specification is `2026-07-28`.

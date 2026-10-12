@@ -7,7 +7,7 @@ import { HeyClient } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
 import { createHeyMcpServer, MCP_API_ANSWER_SCHEMA, type HeyMcpOptions } from './server';
-import { HEY_MCP_DEPRECATED_TOOLS, HEY_MCP_RESEARCH_PROFILE_SCOPE, HEY_MCP_TOOL_LIST_BUDGET, mcpToolsFor, type HeyMcpProfile } from './tools';
+import { HEY_MCP_DEPRECATED_TOOLS, HEY_MCP_QUESTIONS, HEY_MCP_RESEARCH_PROFILE_SCOPE, HEY_MCP_TOOL_LIST_BUDGET, mcpToolsFor, type HeyMcpProfile } from './tools';
 
 /**
  * Round 4 (2026-09-30): one registry, two profiles; typed output on every
@@ -126,6 +126,61 @@ describe('one registry, two profiles', () => {
       const args = Object.fromEntries((prompt.arguments ?? []).map((arg) => [arg.name, sample[arg.name] ?? 'agentos']));
       const body = ((await client.getPrompt({ name: prompt.name, arguments: args })).messages[0]!.content as { text: string }).text;
       for (const called of body.match(/\b[a-z]+(?:_[a-z]+)+\b/g)?.filter((word) => /^(get|find|explain|compare|lookup|ask|project|chain|research)_/.test(word) && !capabilities.has(word)) ?? []) expect(names.has(called), `${prompt.name} names ${called}`).toBe(true);
+    }
+  });
+});
+
+/*
+ * An agent picks a tool from the list alone (2026-10-13: ~600 tool calls in ~30,000 MCP requests a month),
+ * so every description opens on the question it answers, in the words a user types, and names the inputs an
+ * agent holds. The claims behind the question stay the API's (machine rule 7: the tests above and in
+ * server.test.ts pin them).
+ */
+describe('question-first tool list (2026-10-13)', () => {
+  const firstSentence = (text: string) => text.split(/(?<=[.?!])\s+/)[0] ?? '';
+
+  it.each(['full', 'research'] as const)('%s: every description opens on the question it answers', async (profile) => {
+    const { client } = await connect({ profile, marketIntegrity: true });
+    for (const tool of (await client.listTools()).tools) expect(firstSentence(tool.description ?? ''), tool.name).toMatch(/\?$/);
+  });
+
+  it.each(['full', 'research'] as const)('%s: names the inputs an agent holds and where a name or ticker becomes a slug', async (profile) => {
+    const { client } = await connect({ profile });
+    const { tools } = await client.listTools();
+    const described = (name: string) => tools.find((tool) => tool.name === name)?.description ?? '';
+    expect(described('find_projects')).toMatch(/name, \$TICKER or 0x contract/);
+    expect(described('research_answer')).toMatch(/find_projects resolves a name or \$TICKER/);
+    expect(described('research_answer')).toMatch(/still being built/);
+    expect(described('research_answer')).toContain('Not price advice or a safety verdict.');
+    expect(described('get_changes')).toMatch(/^What changed on Robinhood Chain today or this week/);
+    expect(described('get_contract')).toMatch(/^Who made this Robinhood Chain contract, and is it a known project's\?/);
+  });
+
+  it.each(['full', 'research'] as const)('%s: the handshake opens on when to reach for HEY', async (profile) => {
+    const { client } = await connect({ profile });
+    const opening = (client.getInstructions() ?? '').split('\n')[0]!;
+    expect(opening).toMatch(/^Use HEY Research Lab for any question about a Robinhood Chain \(chain id 4663\) project, token, \$TICKER or 0x contract: is it still being built, what did it ship and when, what changed today or this week/);
+    expect(opening).toContain('nothing here is price advice or a safety verdict');
+    expect(opening).toContain('heyresearch.xyz link');
+    // The research profile offers no market-attention surface, so its handshake does not promise one.
+    expect(opening.includes('building ahead of their market attention')).toBe(profile === 'full');
+  });
+
+  it('drops only the default execution stamp: MCP reads an absent taskSupport as "forbidden"', async () => {
+    const { client } = await connect();
+    for (const tool of (await client.listTools()).tools) expect(tool.execution, tool.name).toBeUndefined();
+  });
+
+  it('maps every question to tools the catalogue lists, and the research questions to research-profile tools', () => {
+    const full = new Set(mcpToolsFor('full').map((tool) => tool.name));
+    const research = new Set(mcpToolsFor('research').map((tool) => tool.name));
+    for (const entry of HEY_MCP_QUESTIONS) {
+      expect(entry.question, entry.question).toMatch(/\?$/);
+      for (const tool of entry.tools) {
+        expect(full.has(tool), `${entry.question} → ${tool}`).toBe(true);
+        expect(entry.answer, `${entry.question} names ${tool}`).toContain(tool);
+        if (entry.research) expect(research.has(tool), `${entry.question} → ${tool} on research`).toBe(true);
+      }
     }
   });
 });
