@@ -144,12 +144,30 @@ describe('question-first tool list (2026-10-13)', () => {
     for (const tool of (await client.listTools()).tools) expect(firstSentence(tool.description ?? ''), tool.name).toMatch(/\?$/);
   });
 
+  /*
+   * Anthropic's MCP Directory policy (2026-10-13): a tool description carries no instruction about other tools. No
+   * description or input schema names another listed tool; the server's instructions, which are not a tool, may.
+   */
+  it.each(['full', 'research'] as const)('%s: no tool description or input schema names another tool', async (profile) => {
+    const { client } = await connect({ profile });
+    const { tools } = await client.listTools();
+    const names = tools.map((tool) => tool.name);
+    const crossed = tools.flatMap((tool) => {
+      const text = `${tool.description ?? ''} ${JSON.stringify(tool.inputSchema)}`;
+      // A tool's name is matched as a word, so the enum values `market_integrity` and `market_integrity.state` (data, not a tool) are told apart by context below.
+      return names
+        .filter((other) => other !== tool.name && new RegExp(`\\b${other}\\b(?![._])`).test(text.replace(/"market_integrity"/g, '')))
+        .map((other) => `${tool.name} → ${other}`);
+    });
+    expect(crossed).toEqual([]);
+  });
+
   it.each(['full', 'research'] as const)('%s: names the inputs an agent holds and where a name or ticker becomes a slug', async (profile) => {
     const { client } = await connect({ profile });
     const { tools } = await client.listTools();
     const described = (name: string) => tools.find((tool) => tool.name === name)?.description ?? '';
     expect(described('find_projects')).toMatch(/name, \$TICKER or 0x contract/);
-    expect(described('research_answer')).toMatch(/find_projects resolves a name or \$TICKER/);
+    expect(described('research_answer')).toMatch(/a name or \$TICKER resolves to its slug through HEY’s project search/);
     expect(described('research_answer')).toMatch(/still being built/);
     expect(described('research_answer')).toContain('Not price advice or a safety verdict.');
     expect(described('get_changes')).toMatch(/^What changed on Robinhood Chain today or this week/);

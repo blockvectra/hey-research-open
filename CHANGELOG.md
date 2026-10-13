@@ -8,6 +8,7 @@ record.
 
 - **ERC-8004 registration file (2026-10-13).** New `GET /.well-known/agent-registration.json`: HEY's ERC-8004 registration (type `registration-v1`; web, MCP, A2A and e-mail services; `supportedTrust` empty). HEY is agentId 8783 on Robinhood Chain's Identity Registry, and the file lists that registration. No API field changes.
 - **Agent-framework plugins (2026-10-13).** New public repos: plugin-hey-research (ElizaOS), hey-agentkit (Coinbase AgentKit), hey-goat-plugin (GOAT SDK) and hey-virtuals-plugin (Virtuals GAME and an ACP scaffold), all at 0.1.0, and hey-agent-skills (the `hey-research` Agent Skill and Claude Code plugin). `/.well-known/hey-project.json` lists them among HEY's repositories.
+- **Official X account (2026-10-13).** `officialX` on `/api/projects` and `/api/projects/{slug}` prefers the account a project links from its own site over one discovered elsewhere (migration 0254 updates `hey_official_x_url`). The field's meaning is unchanged; 53 projects show a different, better-sourced account.
 - **MCP tool descriptions (2026-10-13).** Tool descriptions, titles and the instructions sent at connection lead with the user's question and name the inputs an agent holds (a name, a $TICKER, a 0x contract). A2A skills and llms.txt carry the same questions. No tool, input or output changes.
 - **Homepage signals and badges (2026-10-13).** The homepage strip shows six signals from the last two days, newest first. /badges matches a placement to its source by key. No API field changes.
 - **Founder list settled (2026-10-12).**

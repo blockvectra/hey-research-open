@@ -797,7 +797,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       'research_answer',
       {
         ...describe('research_answer', [
-          'Is this Robinhood Chain project still being built, what did it ship, what changed, is this contract its own? One bounded answer. capability: research_project or builder_status (project slug; find_projects resolves a name or $TICKER);',
+          'Is this Robinhood Chain project still being built, what did it ship, what changed, is this contract its own? One bounded answer. capability: research_project or builder_status (a project slug; a name or $TICKER resolves to its slug through HEY’s project search);',
           'what_changed (project or chain, 1–30 days); verify_project (address, project?); compare_builders (2–4, no winner); unknowns (every coverage state). Claims FACT/DERIVED/UNKNOWN with freshness and evidence ids. Not price advice or a safety verdict.',
         ]),
         inputSchema: {
