@@ -1,5 +1,5 @@
 import type { AgentChange, AgentClaim, AgentIntelligenceResponse, AgentUnknown } from '../schema';
-import { quoteForTransport, type AgentText } from '../text';
+import { quoteForTransport, QUOTED_TEXT_LEGEND, type AgentText } from '../text';
 
 /**
  * The agent contract as plain text (2026-09-30), for transports that carry
@@ -7,7 +7,17 @@ import { quoteForTransport, type AgentText } from '../text';
  * field of the JSON answer — the tag, the value, the dates, the evidence ids
  * — and a source's words are quoted and labelled as data
  * (`quoteForTransport`), never printed where they could read as HEY's.
+ *
+ * Two levels of detail (2026-10-14, AG-04). `summary` — the default on the
+ * MCP tool's text — is the answer line, the claims, the unknowns, the links
+ * and the citation: what an agent needs to answer a person and say where it
+ * came from, in about 4 KB, with the whole JSON one resource link away.
+ * `full` adds the capability's data lines, the freshness schedule, the
+ * evidence list and the methodology. Both end on the citation line
+ * (`citation.text`), the last thing a model reads.
  */
+export type AgentTextDetail = 'summary' | 'full';
+
 const q = (value: AgentText): string => quoteForTransport(value);
 const day = (iso: string | null | undefined): string => (iso ? iso.slice(0, 10) : 'not dated');
 
@@ -34,11 +44,20 @@ function unknownLine(unknown: AgentUnknown): string {
   return `- ${unknown.category} ${unknown.dimension}: ${q(unknown.statement)} Do not conclude: ${q(unknown.doNotConclude)} (reason ${unknown.reason}${unknown.coverageState ? `, coverage ${unknown.coverageState}` : ''})`;
 }
 
-function dataLines(response: AgentIntelligenceResponse): string[] {
+/**
+ * The capability's own lines. In `summary` they are only what the claims do not already say and an
+ * answer cannot do without (AG-04): research_project keeps its latest meaningful change (the claims
+ * carry identity, builder state, contract identity, market and usage); builder_status keeps the status,
+ * the rule and its boundary (the inputs and lineage are the full text's); what_changed keeps every event,
+ * because the events are the answer; verify_project, compare_builders and unknowns are short and kept whole.
+ */
+function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail): string[] {
   if (!response.data) return [];
+  const summary = detail === 'summary';
   switch (response.capability) {
     case 'research_project': {
       const d = response.data;
+      if (summary) return d.latestMeaningfulChange ? ['Latest meaningful change:', changeLine(d.latestMeaningfulChange)] : [];
       const lines = [
         `Identity: ${d.identity.slug} — ${q(d.identity.name)}${d.identity.symbol ? ` (${q(d.identity.symbol)})` : ''}; kind ${d.identity.projectKind}; research level ${d.identity.researchLevel}; first recorded by HEY ${day(d.identity.firstRecordedByHeyAt)}.`,
         `Builder state: ${d.builderState.activityStatus}; last meaningful ship ${d.builderState.lastMeaningfulShipAt ? day(d.builderState.lastMeaningfulShipAt) : 'none recorded or not measured'}; meaningful events in 30 days ${d.builderState.meaningfulEvents30d ?? 'not measured'}; Build Momentum ${d.builderState.buildMomentum ?? 'not measured'}; Still Building ${d.builderState.stillBuildingState ?? (d.builderState.stillBuilding ? 'HELD' : 'no')}${d.builderState.scoringVersion ? ` (${d.builderState.scoringVersion})` : ''}.`,
@@ -69,8 +88,8 @@ function dataLines(response: AgentIntelligenceResponse): string[] {
       return [
         `Status: ${d.state} ${d.status} — ${q(d.statusMeaning)}`,
         `Rule ${d.methodology.ruleId} (${d.methodology.version}): ${q(d.methodology.rule)}`,
-        ...(d.inputs.length > 0 ? ['Inputs:', ...d.inputs.map((input) => `- ${input.name}: ${Array.isArray(input.value) ? input.value.join(', ') : String(input.value)}${input.source ? ` (${input.source})` : ''}${input.observedAt ? ` read ${day(input.observedAt)}` : ''}`)] : []),
-        ...(d.lineage.length > 0 ? ['Lineage:', ...d.lineage.map((step) => `- ${step.step}: ${q(step.text)}`)] : []),
+        ...(!summary && d.inputs.length > 0 ? ['Inputs:', ...d.inputs.map((input) => `- ${input.name}: ${Array.isArray(input.value) ? input.value.join(', ') : String(input.value)}${input.source ? ` (${input.source})` : ''}${input.observedAt ? ` read ${day(input.observedAt)}` : ''}`)] : []),
+        ...(!summary && d.lineage.length > 0 ? ['Lineage:', ...d.lineage.map((step) => `- ${step.step}: ${q(step.text)}`)] : []),
         `Status rests on current evidence: ${d.statusRestsOnCurrentEvidence === null ? 'unknown' : d.statusRestsOnCurrentEvidence ? 'yes' : 'no — due to be scored again'}.`,
         `Build Momentum: ${d.buildMomentum.state} ${d.buildMomentum.value ?? d.buildMomentum.classification}. Still Building: ${d.stillBuilding.state} ${d.stillBuilding.classification}${d.stillBuilding.stillBuildingState ? ` (${d.stillBuilding.stillBuildingState})` : ''}. ${q(d.stillBuilding.meaning)}`,
         `Never an input to this status: ${d.excludedContext.map((entry) => entry.item).join(', ')}.`,
@@ -108,7 +127,31 @@ function dataLines(response: AgentIntelligenceResponse): string[] {
   }
 }
 
-export function renderAgentResponseText(response: AgentIntelligenceResponse): string {
+/** What the subject resolved from (AG-01), without echoing the caller's text: the field, and the slug it became. */
+function resolvedLine(response: AgentIntelligenceResponse): string | undefined {
+  const subject = response.subject;
+  if (!subject?.resolvedFrom || !subject.project) return undefined;
+  const by = subject.resolvedFrom.address ? `address ${subject.resolvedFrom.address}` : 'the name or ticker sent as q';
+  return `Resolved from ${by} to project ${subject.project.slug} through HEY’s project search.`;
+}
+
+/** The candidates an ambiguous name or ticker could mean (AG-01): the slugs to send back, never a pick. */
+function candidateLines(response: AgentIntelligenceResponse): string[] {
+  const candidates = response.error?.candidates;
+  if (!candidates || candidates.length === 0) return [];
+  return ['Candidates (send one as project):', ...candidates.map((candidate) => `- ${candidate.slug}: ${q(candidate.name)}${candidate.token ? ` · token ${candidate.token.address}` : ''} · ${candidate.url}`)];
+}
+
+/**
+ * The citation line (AG-02): the last line of the text, after everything else, so a model that keeps
+ * only the end of an answer still keeps where it came from.
+ */
+export function citationLine(response: Pick<AgentIntelligenceResponse, 'citation'>): string | undefined {
+  return response.citation?.text;
+}
+
+export function renderAgentResponseText(response: AgentIntelligenceResponse, options: { detail?: AgentTextDetail } = {}): string {
+  const detail: AgentTextDetail = options.detail ?? 'full';
   const lines: string[] = [
     `# HEY ${response.capability} — ${response.schema} v${response.schemaVersion}`,
     `Chain: ${response.chain.name} (${response.chain.chainId}) · as of ${response.asOf} · status ${response.status}`,
@@ -117,22 +160,31 @@ export function renderAgentResponseText(response: AgentIntelligenceResponse): st
   ];
   // HEY's own token (round 4): the disclosure right under the answer, in the founder's words.
   for (const disclosure of response.disclosures ?? []) lines.push(`Disclosure: ${q(disclosure.statement)}${disclosure.projects.length > 0 ? ` (${disclosure.projects.join(', ')})` : ''}.`);
+  const resolved = resolvedLine(response);
+  if (resolved) lines.push(resolved);
   if (response.error) lines.push(`Error ${response.error.code}: ${q(response.error.message)}${response.error.movedTo ? ` Moved to ${response.error.movedTo}.` : ''}`);
-  const data = dataLines(response);
+  lines.push(...candidateLines(response));
+  const data = dataLines(response, detail);
   if (data.length > 0) lines.push('', ...data);
   if (response.claims.length > 0) lines.push('', 'Claims (FACT recorded with its source · DERIVED a rule HEY applied · UNKNOWN not held):', ...response.claims.map(claimLine));
   if (response.unknowns.length > 0) lines.push('', 'What HEY does not know:', ...response.unknowns.map(unknownLine));
-  if (response.freshness.length > 0) {
+  if (detail === 'full' && response.freshness.length > 0) {
     lines.push(
       '',
       'Freshness:',
       ...response.freshness.map((entry) => `- ${entry.family}: ${entry.freshnessStatus}${entry.observedAt ? `, read ${entry.observedAt.slice(0, 16).replace('T', ' ')} UTC` : ', never read'}; stale after ${entry.staleAfterHours} h; refreshed by ${entry.refresh.job} every ${entry.refresh.everyMinutes === entry.refresh.slowestMinutes ? `${entry.refresh.everyMinutes} min` : `${entry.refresh.everyMinutes}–${entry.refresh.slowestMinutes} min`}; next ${entry.nextExpectedRefresh ?? entry.nextExpectedRefreshReason ?? 'unknown'}`),
     );
   }
-  if (response.evidence.length > 0) lines.push('', 'Evidence (typed ids; open with get_evidence or the receipt URL):', ...response.evidence.slice(0, 40).map((ref) => `- ${ref.id} — ${ref.receiptUrl}`));
-  lines.push('', `Methodology: ${response.methodology.rules.map((rule) => `${rule.id} ${rule.version}`).join(', ')}.`);
-  lines.push(`Canonical JSON: ${response.links.self}`);
+  if (detail === 'full' && response.evidence.length > 0) lines.push('', 'Evidence (typed ids; open with get_evidence or the receipt URL):', ...response.evidence.slice(0, 40).map((ref) => `- ${ref.id} — ${ref.receiptUrl}`));
+  lines.push('');
+  if (detail === 'full') lines.push(`Methodology: ${response.methodology.rules.map((rule) => `${rule.id} ${rule.version}`).join(', ')}.`);
+  if (response.links.page) lines.push(`Page: ${response.links.page}${response.links.pageAttributed ? ` (attributed link ${response.links.pageAttributed})` : ''}`);
+  lines.push(`Canonical JSON: ${response.links.self}${detail === 'summary' ? ' (the full answer: data, freshness, every evidence id)' : ''}`);
   if (response.citation) lines.push(`Cite in an AgentResearchReceipt as {"kind":"hey_agent_answer","capability":"${response.citation.capability}","schemaVersion":"1","url":"${response.citation.url}","asOf":"${response.citation.asOf}"}.`);
   lines.push(`Not provided: ${response.boundaries.notProvided.join(', ')}.`, q(response.boundaries.disclaimer));
-  return lines.join('\n');
+  // A source's words are quoted «…» above: the legend sits before the citation, which stays last.
+  const body = lines.join('\n');
+  const legend = body.includes('«') ? `\n\n${QUOTED_TEXT_LEGEND}` : '';
+  const citation = citationLine(response);
+  return `${body}${legend}${citation ? `\n${citation}` : ''}`;
 }

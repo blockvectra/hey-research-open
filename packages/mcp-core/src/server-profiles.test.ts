@@ -167,7 +167,7 @@ describe('question-first tool list (2026-10-13)', () => {
     const { tools } = await client.listTools();
     const described = (name: string) => tools.find((tool) => tool.name === name)?.description ?? '';
     expect(described('find_projects')).toMatch(/name, \$TICKER or 0x contract/);
-    expect(described('research_answer')).toMatch(/a name or \$TICKER resolves to its slug through HEY’s project search/);
+    expect(described('research_answer')).toMatch(/q: a name or \$TICKER, or address, or project: a slug/);
     expect(described('research_answer')).toMatch(/still being built/);
     expect(described('research_answer')).toContain('Not price advice or a safety verdict.');
     expect(described('get_changes')).toMatch(/^What changed on Robinhood Chain today or this week/);

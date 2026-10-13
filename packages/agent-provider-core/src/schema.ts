@@ -443,10 +443,32 @@ const citation = z
     asOf: iso,
     project: slug.optional(),
     scoringVersion: code.optional(),
+    /**
+     * The citation as a sentence (2026-10-14, AG-02, additive): "Source: HEY
+     * Research Lab, builder research for Robinhood Chain — <page url>, as of
+     * <date>, rules <scoringVersion>". The last line of every MCP text and
+     * A2A text part, so what an agent repeats carries where it came from.
+     */
+    text: z.string().max(400),
   })
   .strict();
 
-const errorSchema = z.object({ code, message: agentTextSchema, movedTo: slug.optional() }).strict();
+/**
+ * A candidate when a name or ticker matched several published projects
+ * (2026-10-14, AG-01): the slug to send back, the name as a source's words,
+ * and the token when one is tracked. Identity only, never a figure.
+ */
+const candidate = z.object({ slug, name: agentTextSchema, url, token: z.object({ chainId: z.number().int(), address }).strict().optional() }).strict();
+
+const errorSchema = z
+  .object({
+    code,
+    message: agentTextSchema,
+    movedTo: slug.optional(),
+    /** `ambiguous` (AG-01, additive): the published projects a `q` could mean, in the matcher's order; HEY picks none. */
+    candidates: z.array(candidate).max(8).optional(),
+  })
+  .strict();
 
 /**
  * A disclosure about the answer's own subject (2026-09-30, round 4,
@@ -472,6 +494,8 @@ const base = {
       project: z.string().max(120).optional(),
       projects: z.array(z.string().max(120)).max(8).optional(),
       address: z.string().max(60).optional(),
+      /** The name or $TICKER asked for (AG-01, additive), as the request validator folded it. */
+      q: z.string().max(64).optional(),
       days: z.number().int().optional(),
       types: z.array(code).max(40).optional(),
       limit: z.number().int().optional(),
@@ -485,6 +509,13 @@ const base = {
       project: subjectProject.optional(),
       projects: z.array(subjectProject).max(AGENT_LIMITS.compareProjects).optional(),
       contract: z.object({ chainId: z.number().int(), address }).strict().optional(),
+      /**
+       * How the subject was found when the caller sent no slug (2026-10-14,
+       * AG-01, additive): the `q` (a name or $TICKER) or the `address` that
+       * resolved to it through HEY's one search matcher. Absent when the
+       * caller named the slug.
+       */
+      resolvedFrom: z.object({ q: z.string().max(64).optional(), address: address.optional() }).strict().optional(),
     })
     .strict()
     .nullable(),
@@ -497,7 +528,21 @@ const base = {
   /** Every evidence id the answer cites, once each. */
   evidence: z.array(agentEvidenceRefSchema).max(AGENT_LIMITS.evidence),
   methodology,
-  links: z.object({ self: url, page: url.optional(), canonical: z.array(url).max(12) }).strict(),
+  links: z
+    .object({
+      self: url,
+      /** The clean canonical page: what a citation names. */
+      page: url.optional(),
+      /**
+       * The same page with HEY's attribution labels (2026-10-14, AG-02,
+       * additive): `utm_source=hey-agent&utm_medium=<the integration the caller
+       * declared>`. Present only when the request carried `x-hey-integration`;
+       * a link for a client that opted in, never a tracker on the canonical URL.
+       */
+      pageAttributed: url.optional(),
+      canonical: z.array(url).max(12),
+    })
+    .strict(),
   citation: citation.nullable(),
   boundaries,
   error: errorSchema.optional(),
@@ -536,6 +581,8 @@ export type AgentCompareProject = z.infer<typeof compareProject>;
 export type AgentCompareCompleteness = NonNullable<AgentCompareData['completeness']>;
 export type AgentUnknownsData = z.infer<typeof unknownsData>;
 export type AgentCitation = z.infer<typeof citation>;
+export type AgentCandidate = z.infer<typeof candidate>;
+export type AgentResolvedFrom = NonNullable<NonNullable<z.infer<typeof base.subject>>['resolvedFrom']>;
 export type AgentBoundaries = z.infer<typeof boundaries>;
 export type AgentMethodology = z.infer<typeof methodology>;
 export type AgentSubject = z.infer<typeof base.subject>;

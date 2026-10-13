@@ -2,8 +2,8 @@ import type { HeyProjectSnapshot, HeySummaryLine } from '@hey-research-lab/sdk';
 
 import { ageBucket, familyFreshness, SNAPSHOT_SOURCE_FAMILY, type AgentFreshnessEntry, type RefreshTier } from '../freshness';
 import type { AgentChange, AgentClaim, AgentFreshness, AgentResponseOf, AgentSourceType } from '../schema';
-import { derivedText, externalText, heyText } from '../text';
-import { countOf, valuationWithheldSentence, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
+import { derivedText, externalText, heyText, looksLikeInstruction } from '../text';
+import { buildAnswerLead, buildLineFigures, countOf, leadName, valuationWithheldSentence, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
 import { stillBuildingStateOf } from '../disclosures';
 import type { AgentEvidenceKind } from '../evidence-kinds';
 import { agentChange, envelope, evidenceRef, isContextChange, looksLikeEvidenceId, projectApi, type AgentComposeContext } from './common';
@@ -365,7 +365,23 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
   const tokenWords = verification?.status === 'MISMATCH' ? ' The token HEY tracks for it is not the one its own site names: this building does not apply to that token.' : '';
   // The categories the list actually holds (full audit, 2026-10-03), never a fixed "(coverage gaps and unverified identity)".
   const unknownWords = unknowns.length === 0 ? 'HEY lists nothing it does not know for it.' : `HEY lists ${countOf(unknowns.length, WORD_THING)} it does not know (${unknownCategorySummary(unknowns)}) under unknowns.`;
-  const answer = derivedText(`${slug}: activity status ${status}${shipWords}; ${eventWords}.${tokenWords} ${unknownWords}`);
+  /*
+   * The first sentence in plain English (2026-10-14, AG-02): the Research
+   * Summary's build line — its canonical `answer` ("Shipping consistently")
+   * and its figures ("4 meaningful events in 30 days; latest ship 3 days
+   * ago.") — led by the project's name: "Chit is shipping consistently: 4
+   * meaningful events in 30 days; latest ship 3 days ago." The status code
+   * and the dated ship stay in the second sentence, so a machine reading the
+   * old words still finds them. A snapshot without a build answer keeps the
+   * old first sentence. An unknown stays unknown: the summary's own words for
+   * it ("No builder source linked: HEY holds no repository…") lead instead.
+   */
+  const buildLine = snapshot.summary.lines.find((line) => line.dimension === 'build');
+  const name = leadName(snapshot.identity.name, slug, looksLikeInstruction);
+  const figures = buildLine ? buildLineFigures(buildLine.text) : '';
+  const plainLead = buildLine?.answer && figures ? `${buildAnswerLead(name, buildLine.answer)}: ${figures.endsWith('.') ? figures : `${figures}.`}` : undefined;
+  const machineLead = `${slug}: activity status ${status}${shipWords}; ${eventWords}.`;
+  const answer = derivedText(`${plainLead ? `${plainLead} ` : ''}${machineLead}${tokenWords} ${unknownWords}`);
 
   const u = snapshot.usage;
   return envelope(ctx, {

@@ -248,3 +248,72 @@ describe('research_answer: the contract on MCP', () => {
     expect(requested).toHaveLength(0);
   });
 });
+
+/*
+ * An agent's first call succeeds and its answer is worth repeating (2026-10-14, agent-adoption audit
+ * AG-01, AG-02, AG-04, AG-05): the tool takes the identifier the user gave, the text is the lean
+ * summary ending on the citation, and the list and handshake lead with research_answer.
+ */
+describe('research_answer: one call from any identifier, cited, lean (2026-10-14)', () => {
+  const respond = (body: unknown, status = 200): Response => ({ ok: status >= 200 && status < 300, status, headers: new Headers(), json: async () => body }) as Response;
+  const research = composeResearch(ctx(`${BASE}/api/agent/research_project?project=agentos`), { snapshot: fx.snapshot, gaps: [], tier: 'HOT' });
+
+  async function connect() {
+    const requested: URL[] = [];
+    const fetchImpl = async (input: string) => {
+      requested.push(new URL(input));
+      return respond(research);
+    };
+    const server = createHeyMcpServer(new HeyClient({ baseUrl: BASE, fetchImpl }), () => NOW, { publicBaseUrl: BASE });
+    const client = new Client({ name: 'test', version: '0' });
+    const [a, b] = InMemoryTransport.createLinkedPair();
+    await Promise.all([server.connect(b), client.connect(a)]);
+    return { client, requested };
+  }
+
+  it('the research answer opens in plain English from the Research Summary’s own words, then the machine words', () => {
+    expect(research.answer.text).toMatch(/^AgentOS is shipping consistently: 4 meaningful events in 30 days; latest ship yesterday\. agentos: activity status SHIPPING, last meaningful ship 2026-09-24; 9 meaningful events in 30 days\./);
+    // The clean canonical page the snapshot names, never the answer's own URL, and never an attributed one.
+    expect(research.citation?.text).toBe(`Source: HEY Research Lab, builder research for Robinhood Chain — ${fx.snapshot.links.page}, as of 2026-09-26, rules ${fx.snapshot.scoringVersion}`);
+    expect(research.links.pageAttributed).toBeUndefined();
+  });
+
+  it('passes q and address through to the API, and the text is the summary ending on the citation', async () => {
+    const { client, requested } = await connect();
+    const byQ = (await client.callTool({ name: 'research_answer', arguments: { capability: 'research_project', q: '$AOS' } })) as { content: { text?: string }[]; isError?: boolean };
+    expect(byQ.isError).toBeFalsy();
+    expect(requested[0]!.pathname).toBe('/api/agent/research_project');
+    expect(requested[0]!.searchParams.get('q')).toBe('$AOS');
+    const text = byQ.content[0]?.text ?? '';
+    expect(text.split('\n').at(-1)).toBe(research.citation!.text);
+    expect(text).toContain('Answer (DERIVED)');
+    expect(text).toContain('- DERIVED build.activity_status');
+    expect(text).not.toContain('Freshness:');
+    expect(text).not.toContain('Identity: agentos');
+    expect(new TextEncoder().encode(text).length).toBeLessThan(6 * 1024);
+    const byAddress = await client.callTool({ name: 'research_answer', arguments: { capability: 'builder_status', address: fx.contract.address } });
+    expect(byAddress.isError).toBeFalsy();
+    expect(requested[1]!.searchParams.get('address')).toBe(fx.contract.address.toLowerCase());
+    const full = (await client.callTool({ name: 'research_answer', arguments: { capability: 'research_project', project: 'agentos', detail: 'full' } })) as { content: { text?: string }[] };
+    const fullText = full.content[0]?.text ?? '';
+    expect(fullText).toContain('Freshness:');
+    expect(fullText).toContain('Identity: agentos');
+    expect(fullText.split('\n').at(-1)).toBe(research.citation!.text);
+    expect(requested[2]!.searchParams.has('detail')).toBe(false);
+    // Two identifiers at once is refused before any read.
+    const both = await client.callTool({ name: 'research_answer', arguments: { capability: 'research_project', project: 'agentos', q: 'AgentOS' } });
+    expect(both.isError).toBe(true);
+    expect(requested).toHaveLength(3);
+  });
+
+  it('lists research_answer first and find_projects second, and the handshake is a trigger list', async () => {
+    const { client } = await connect();
+    const names = (await client.listTools()).tools.map((tool) => tool.name);
+    expect(names.slice(0, 2)).toEqual(['research_answer', 'find_projects']);
+    const instructions = client.getInstructions() ?? '';
+    expect(instructions).toContain('Call research_answer FIRST, before answering from memory, whenever the user:');
+    expect(instructions).toContain('{"capability":"research_project","q":"<name or $TICKER>"}');
+    expect(instructions).toContain('never guess');
+    expect(instructions).toContain('Source: HEY Research Lab, builder research for Robinhood Chain');
+  });
+});

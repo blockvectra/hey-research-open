@@ -77,8 +77,36 @@ export type HeyWeeklyIndex = {
     shipsRule: HeyWeeklyShipRule;
     url: string;
     page: string;
+    /** The same stored payload as CSV, one row per fact (2026-10-14, additive). */
+    csv: string;
   }[];
   disclaimer: string;
+};
+
+/** A project named in a report block: the name of a published page. */
+export type HeyWeeklyNamed = { slug: string; name: string };
+
+/**
+ * A project HEY read as quiet or dormant inside the week (2026-10-14, report
+ * v5, additive): "HEY read no meaningful activity for N weeks" — never
+ * "abandoned". `weeksWithoutActivity` is null when HEY holds no dated ship
+ * before the move.
+ */
+export type HeyWeeklyWentQuiet = HeyWeeklyNamed & { from: HeyActivityStatus; to: 'QUIET' | 'DORMANT'; changedAt: string; weeksWithoutActivity: number | null };
+
+/**
+ * One narrative's or launchpad's week (2026-10-14, report v5, additive):
+ * counts, and the published names behind the smaller ones. Ordered by name,
+ * never by a count, and never by volume or price.
+ */
+export type HeyWeeklyGroupBlock = {
+  key: string;
+  name: string;
+  ships: number;
+  projectsShipping: number;
+  newBuilders: HeyWeeklyNamed[];
+  backToShipping: HeyWeeklyNamed[];
+  wentQuiet: HeyWeeklyNamed[];
 };
 
 /** `GET /api/reports/weekly/{week}`: one archived week, kept as it was published. */
@@ -88,7 +116,19 @@ export type HeyWeeklyReport = {
   final: boolean;
   generatedAt: string;
   headline: string;
-  overview: { published: number; verifiedBuilders: number; ships: number; projectsShipping: number; newBuilders: number; backToShipping: number; stillBuilding: number; underTheRadar: number };
+  overview: {
+    published: number;
+    /** Verified Builders on any chain (the catalogue's count), labelled as such on every surface. */
+    verifiedBuilders: number;
+    /** Verified Builders with Robinhood Chain evidence (2026-10-14, report v5, additive): the count a headline leads with. Absent on older reports. */
+    verifiedBuildersChainEvidence?: number;
+    ships: number;
+    projectsShipping: number;
+    newBuilders: number;
+    backToShipping: number;
+    stillBuilding: number;
+    underTheRadar: number;
+  };
   chain: { days: number; dexTrades?: number; dexVolumeUsd?: number; /** Days withheld as implausible (2026-10-09, additive); `dexVolumeUsd` is then absent. */ dexVolumeWithheldDays?: number; tokensTraded?: number; launches?: number; projectsPublished?: number };
   shipped: { slug: string; name: string; ships: number; latest: string; latestAt: string }[];
   newBuilders: { slug: string; name: string; verifiedAt: string }[];
@@ -109,7 +149,19 @@ export type HeyWeeklyReport = {
   shipsUnderCurrentRule?: { ruleId: string; ships: number; projectsShipping: number; countedAt: string };
   /** State of Robinhood Chain v4 hooks (2026-10-11, additive; report v4): counts only. Absent on reports written before it. */
   uniswapV4Hooks?: HeyWeeklyV4Hooks;
+  /** Projects HEY read as quiet or dormant inside the week (2026-10-14, report v5, additive). Absent on older reports. */
+  wentQuiet?: { total: number; items: HeyWeeklyWentQuiet[] };
+  /** The week cut by primary narrative (2026-10-14, report v5, additive): by name, never a league table. Absent on older reports. */
+  narratives?: HeyWeeklyGroupBlock[];
+  /** Projects in the week's sections with no primary narrative, counted rather than dropped. */
+  narrativesUnassigned?: number;
+  /** The week cut by launchpad (2026-10-14, report v5, additive): by name, never by volume. Absent on older reports. */
+  launchpads?: HeyWeeklyGroupBlock[];
+  /** Projects in the week's sections HEY holds no launch record for. */
+  launchpadsUnassigned?: number;
   url: string;
+  /** The same stored payload as CSV, one row per fact (2026-10-14, additive). */
+  csv: string;
   disclaimer: string;
 };
 

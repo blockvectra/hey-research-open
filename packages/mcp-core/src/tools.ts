@@ -63,6 +63,9 @@ export const HEY_MCP_PROFILE_PATHS: Readonly<Record<HeyMcpProfile, string>> = { 
  * Unchanged on 2026-10-13, when every description was rewritten to open on
  * its user question: the lists measure 19,716 and 10,760 bytes, paid for by
  * dropping the default `execution` stamp (`shapeToolList`).
+ *
+ * Unchanged on 2026-10-14 (AG-01, AG-04): research_answer's `q` and `detail`
+ * arguments cost 151 bytes; the lists measure 19,867 and 10,911.
  */
 export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_000, research: 11_000 };
 

@@ -112,7 +112,11 @@ it says so and offers nothing to confirm.
 }
 ```
 
-- **scope**: `projects` (1–50 published slugs), `watchlist`, or `all`.
+- **scope**: `projects` (1–50 published slugs), `watchlist`, `all`, or `narrative` (2026-10-14:
+  every published project whose **primary** narrative is `narrative`, a narrative slug, when the
+  event arrives — "AI agents on Robinhood Chain" as one standing question, matched by the same
+  matcher; a project with no primary narrative matches no narrative rule, and the rule answers
+  `narrative: {slug, name}`). An unknown narrative is `unknown_narrative`.
 - **eventTypes**: 1–40 alertable types (below).
 - **conditions** narrow only the types they apply to, and only by facts the
   event itself carries:
@@ -175,6 +179,37 @@ published, plus `contract.method_first_observed`, `contract.method_resumed` and
   form says "Telegram alerts are not available yet." and offers no Telegram box.
 - **Discord is not built** (see [Not built](#not-built)).
 
+## The owner's own-project rule (2026-10-14, growth plan O1)
+
+A verified owner is the one builder HEY may tell, with consent, when it records something about
+their project. Right after a claim verifies — every proof path lands on `/claim/<slug>?verified=1`
+— and on `/account` for every owned page with no answer yet, the owner is asked once: **"Where
+should HEY tell you when it records something about *project*?"** Three presses, each one form
+(`OwnerChannelPrompt`, `chooseOwnerChannel`):
+
+- **By email** — an address typed there goes through the same double opt-in as every HEY message
+  (`requestMailAddress`: recorded unconfirmed, one confirmation sent); the rule records that email
+  was asked for and nothing is mailed until the link is opened. Choosing email switches the `alerts`
+  mail kind on again if it was off: a press, not a default.
+- **On Telegram** — only to a chat the account linked through the bot's confirm step; otherwise the
+  link step is offered first.
+- **In HEY only** — the rule exists and waits in the inbox.
+
+The press makes one ordinary alert rule per (owner, project) through
+`AlertService.ensureOwnerAlerts` — `preset = 'owner'` (`OWNER_RULE_MARKER`), scope `projects`,
+over `build.release`, `build.ship`, `research.builder_verified`, `build.status_changed` and
+`research.source_changed` (`OWNER_ALERT_TYPES`, every one of them pushable) — under the account
+lock, so a second press updates it (a channel turned on, a paused rule back on from the ledger's
+head) rather than making another. Nothing is made before a press; an owner who never answers has
+no rule and is told nothing. Only a VERIFIED claim on the page by this account may hold one
+(`not_owner` otherwise). The matcher, the hourly alert mail and the Telegram delivery do the rest:
+no new event, no new sender. Turning it off is the same as any rule (`/account/alerts`), and every
+alert email's one-click unsubscribe turns alert mail off for good. The press is counted as
+`claim.channel_set` (the channel as its outcome, the project as the page; no account, address or
+chat). `owner.integration.test.ts` covers ownership, one-rule-per-project, the channels, the matcher
+and the unsubscribe. The rule decides nothing about the project: alerts/ stays fenced out of every
+deciding module (`hey/neutrality.test.ts`).
+
 ## Matching, dedupe and retractions
 
 HEY checks new changes against every rule about once a minute.
@@ -204,7 +239,7 @@ account's rule answers 404, exactly like one that does not exist.
 | Route | |
 |---|---|
 | `GET /api/alerts` | your rules, the alertable types and the presets on this deployment |
-| `POST /api/alerts` | make one: `{preset?, eventTypes?, scope?, projects?, conditions?, channels?, name?, enabled?}` |
+| `POST /api/alerts` | make one: `{preset?, eventTypes?, scope?, projects?, narrative?, conditions?, channels?, name?, enabled?}` |
 | `GET /api/alerts/{id}` | one rule |
 | `PATCH /api/alerts/{id}` | change `name`, `scope`, `projects`, `eventTypes`, `conditions`, `channels`, `enabled` |
 | `DELETE /api/alerts/{id}` | delete it and its notifications |
@@ -212,7 +247,7 @@ account's rule answers 404, exactly like one that does not exist.
 | `POST /api/alerts/notifications` | mark read: `{"eventIds": [...]}` or `{"all": true}` |
 
 Refusals: `invalid_parameter`, `invalid_event_types` (with the reason per type),
-`unknown_projects`, `rule_limit` (409), `email_unconfirmed` (409),
+`unknown_projects`, `unknown_narrative`, `rule_limit` (409), `email_unconfirmed` (409),
 `telegram_unlinked` (409), `unknown_webhook`, `not_found`. When alerts are
 switched off on a deployment, `/account/alerts` and `/api/alerts` answer 404.
 The SDK types are `HeyAlertRule`, `HeyAlertList`, `HeyAlertNotifications` and

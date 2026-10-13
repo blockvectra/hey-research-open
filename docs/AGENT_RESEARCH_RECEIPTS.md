@@ -45,7 +45,9 @@ Evidence references are one of six kinds:
 - `hey_agent_answer` (2026-09-30, additive to v1) — one answer of HEY's agent contract
   (AgentIntelligenceResponse v1) as read: `capability`, `schemaVersion: "1"`, the answer's `url`
   (its `links.self`), `asOf`, and for a project answer `project` and `scoringVersion`. Every answer
-  carries this object as its `citation`, ready to paste.
+  carries this object as its `citation`, ready to paste — since 2026-10-14 with `text`, the citation
+  as one sentence ("Source: HEY Research Lab, builder research for Robinhood Chain — <page>, as of
+  <date>, rules <scoringVersion>"), which the validator carries and never reads.
 
 An unknown may carry `category` (2026-09-30, additive): HEY's own unknown category — `UNKNOWN`,
 `NOT_MEASURED`, `NOT_VERIFIED`, `STALE` or `INSUFFICIENT_EVIDENCE` — when it restates one of
@@ -70,6 +72,11 @@ HEY attaches no meaning to these and never turns one into a recommendation. An a
 state such as `HIGH RESEARCH CONVICTION` defines it in `researchState.definition`.
 
 ## Checking a receipt
+
+A person reads one at `/receipt#<base64url JSON>` (2026-10-14): the receipt rides in the URL
+fragment, which a browser never sends to a server; the page decodes it in the browser, shows the
+agent's claims, risks and unknowns, reads each cited HEY id from the public evidence read, and sends
+the receipt to the validator below only when the reader presses "Validate with HEY". Nothing is stored.
 
 ```bash
 curl -s https://heyresearch.xyz/api/receipts/validate \
@@ -109,7 +116,7 @@ in) is:
 
 The answer always carries `stored: false` and `endorsement: false`.
 
-Limits: 64 KB of JSON per receipt, 30 checks a minute per client. Nothing the receipt names is
+Limits: 64 KB of JSON per receipt, 120 checks a minute per client (30 until 2026-10-14, when 40% of validations were being refused). Nothing the receipt names is
 fetched, whatever URL it contains.
 
 ## Example: a project that is not HEY

@@ -74,14 +74,16 @@ export type A2aAgentParts = {
 
 /**
  * An A2A message's parts: the answer sentence as text — HEY's words, a
- * source's words quoted and labelled — and the whole answer as data.
+ * source's words quoted and labelled — and the whole answer as data. The
+ * citation line (AG-02) is the text part's last line.
  */
 export function toA2aParts(response: AgentIntelligenceResponse): A2aAgentParts {
+  const candidates = response.error?.candidates?.length ? ` Candidates: ${response.error.candidates.map((candidate) => candidate.slug).join(', ')}.` : '';
   return {
     parts: [
       {
         // HEY's own token (round 4): the disclosure travels with the answer sentence.
-        text: `${quoteForTransport(response.answer)} (${response.answerStatus}; as of ${response.asOf}; not investment advice.)${(response.disclosures ?? []).map((disclosure) => ` Disclosure: ${quoteForTransport(disclosure.statement)}.`).join('')}`,
+        text: `${quoteForTransport(response.answer)} (${response.answerStatus}; as of ${response.asOf}; not investment advice.)${(response.disclosures ?? []).map((disclosure) => ` Disclosure: ${quoteForTransport(disclosure.statement)}.`).join('')}${candidates}${response.citation ? `\n${response.citation.text}` : ''}`,
         mediaType: 'text/plain',
         metadata: { contentOrigin: response.answer.contentOrigin },
       },

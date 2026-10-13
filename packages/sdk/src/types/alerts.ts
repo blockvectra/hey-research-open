@@ -35,9 +35,11 @@ export type HeyAlertRule = {
   id: string;
   name: string;
   enabled: boolean;
-  scope: 'projects' | 'watchlist' | 'all';
+  scope: 'projects' | 'watchlist' | 'all' | 'narrative';
   /** For `projects`: the ones still published. Null for `watchlist` and `all`. */
   projects: { slug: string; name: string }[] | null;
+  /** For `narrative` (2026-10-14, additive): every published project whose primary narrative this is when the event arrives. Null otherwise. */
+  narrative: { slug: string; name: string } | null;
   eventTypes: HeyAlertEventType[];
   conditions: HeyAlertConditions;
   preset: HeyAlertPresetId | null;

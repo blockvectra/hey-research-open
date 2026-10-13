@@ -16,7 +16,7 @@ export type AgentCapability = (typeof AGENT_CAPABILITIES)[number];
 export const isAgentCapability = (value: string): value is AgentCapability => (AGENT_CAPABILITIES as readonly string[]).includes(value);
 
 export type AgentCapabilityParam = {
-  name: 'project' | 'projects' | 'address' | 'days' | 'types' | 'limit' | 'building' | 'chainId';
+  name: 'project' | 'projects' | 'address' | 'q' | 'days' | 'types' | 'limit' | 'building' | 'chainId';
   required: boolean;
   description: string;
 };
@@ -36,15 +36,27 @@ export type AgentCapabilityInfo = {
   never: string;
 };
 
-const PROJECT: AgentCapabilityParam = { name: 'project', required: true, description: 'A published project slug, e.g. "agentos".' };
 const CHAIN: AgentCapabilityParam = { name: 'chainId', required: false, description: 'Default and only accepted value: 4663, Robinhood Chain.' };
+/*
+ * One call from any identifier (2026-10-14, agent-adoption audit AG-01):
+ * research_project, builder_status and unknowns take the slug, or `q` (a name
+ * or $TICKER), or `address` — exactly one. A name or ticker goes through the
+ * one search matcher every HEY search uses: one exact project answers, with
+ * `subject.resolvedFrom`; several answer `invalid_request` (`ambiguous`) with
+ * the candidate slugs; none answers `not_found` (`not_published`). HEY never
+ * guesses. `?q=$CHIT` answered 400 "project: Required" before, so every agent
+ * paid two round trips.
+ */
+const PROJECT_OR: AgentCapabilityParam = { name: 'project', required: false, description: 'A published project slug, e.g. "agentos" (this, q or address — exactly one).' };
+const Q: AgentCapabilityParam = { name: 'q', required: false, description: 'A project name or $TICKER (2–64 characters), resolved through HEY’s project search: one exact match answers, several are listed as candidates (invalid_request, ambiguous), none is not_found. Never a guess.' };
+const ADDRESS_OR: AgentCapabilityParam = { name: 'address', required: false, description: 'A 0x contract address on Robinhood Chain: the published project HEY records it under.' };
 
 export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabilityInfo>> = {
   research_project: {
     id: 'research_project',
     question: "What is HEY's current research view of this project?",
     returns: 'Identity, builder state, the latest meaningful change and recent changes, contract identity, market and usage context (context only), tagged claims from the Research Summary, unknowns, freshness and evidence ids.',
-    params: [PROJECT, CHAIN],
+    params: [PROJECT_OR, Q, ADDRESS_OR, CHAIN],
     canonicalReads: ['/api/projects/{slug}/snapshot'],
     a2aSkill: 'research_project',
     never: 'A price view, a ranking by return or a recommendation.',
@@ -69,7 +81,7 @@ export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabi
     id: 'builder_status',
     question: 'Is this project still building, and why does HEY say so?',
     returns: 'The activity status with its methodology version, the inputs it read, the lineage from source to public value, the supporting evidence, the context the rule excludes (price, market cap, liquidity, volume, holders, usage, paid promotion, $HEY), freshness and unknown inputs.',
-    params: [PROJECT, CHAIN],
+    params: [PROJECT_OR, Q, ADDRESS_OR, CHAIN],
     canonicalReads: ['/api/projects/{slug}/explain?fact=activity.status', '/api/projects/{slug}/explain?fact=build.momentum', '/api/projects/{slug}/explain?fact=still_building'],
     a2aSkill: 'explain_fact',
     never: 'Investment advice: a building status is a record of development, not a view on the token.',
@@ -101,7 +113,8 @@ export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabi
     question: 'What does HEY not know about this project or token?',
     returns: 'Every gap as UNKNOWN, NOT_MEASURED, NOT_VERIFIED, STALE or INSUFFICIENT_EVIDENCE, with the dimension, a reason code, what HEY lacks and what an agent must not conclude from it; and the dimensions HEY did measure.',
     params: [
-      { name: 'project', required: false, description: 'A project slug (this or address).' },
+      { name: 'project', required: false, description: 'A project slug (this, q or address — exactly one).' },
+      Q,
       { name: 'address', required: false, description: 'A token or contract address, when the caller holds no slug.' },
       CHAIN,
     ],

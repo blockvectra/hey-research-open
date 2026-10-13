@@ -337,6 +337,26 @@ And never:
   the SDK stamps on every tool is dropped (MCP reads an absent `taskSupport` as forbidden), as the
   `$schema` stamps were — 19,716 bytes of 20,000 on `/mcp`, 10,760 of 11,000 on `/mcp/research`
   (19,918 and 10,855 before).
+- **An agent's first call succeeds and its answer is worth repeating (2026-10-14, agent-adoption
+  audit AG-01, AG-02, AG-04, AG-05).** The Claude connectors directory's first day was 12 connects
+  and 0 tool calls, and every answer took two calls (`find_projects` for the slug, then
+  `research_answer`) and ~24 KB of text with no line an agent could cite. So: `research_answer`
+  takes `q` (a name or `$TICKER`) or `address` beside `project` on `research_project`,
+  `builder_status` and `unknowns` — exactly one — through the one search matcher (one exact match
+  answers with `subject.resolvedFrom`; several answer `isError` with `error.candidates`, the slugs to
+  send back; none `not_published`); every answer carries `citation.text` ("Source: HEY Research Lab,
+  builder research for Robinhood Chain — <page>, as of <date>, rules <version>") and it is the tool
+  text's last line whatever the 24 KB cap cuts; the text is the lean `summary` by default (answer,
+  claims, unknowns, links, citation; `detail: "full"` for the data, freshness and evidence lines; the
+  JSON is always whole in `structuredContent` and at the resource link); the research answer's first
+  sentence is plain English from the Research Summary's own `answer` and figures ("Chit is shipping
+  consistently: 4 meaningful events in 30 days; latest ship 3 days ago."), the machine words kept
+  after it; the handshake's instructions are a trigger list (per thing a user types, the first call
+  and its arguments); and `tools/list` leads with `research_answer`, then `find_projects`
+  (`HEY_MCP_TOOL_LIST_ORDER`). The list measures 19,867 bytes of 20,000 on `/mcp` and 10,911 of 11,000 on `/mcp/research` (the `q` and `detail` arguments). A caller that
+  declares `x-hey-integration` on `/mcp` has it carried onto the loopback read, so the API row names
+  it and the answer's `links.pageAttributed` carries `utm_source=hey-agent&utm_medium=<name>`; the
+  canonical page and the citation stay clean.
 - **The handshake** names the server `hey-research`, titled `HEY Research Lab`, with
   `websiteUrl` the agent guide (`/developers/agents`). The MCP SDK in use (1.30) negotiates protocol
   versions up to `2025-11-25`; the current specification is `2026-07-28`.

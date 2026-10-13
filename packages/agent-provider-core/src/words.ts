@@ -65,6 +65,86 @@ export function changeTypeNoun(type: string): CountNoun {
   return CHANGE_TYPE_NOUNS[type] ?? noun(`${type} event`);
 }
 
+/* ------------------------------------------------------------ the citation */
+
+/** Who an answer is cited to. The same words the MCP handshake and the registry entry carry. */
+export const CITATION_PUBLISHER = 'HEY Research Lab';
+
+/**
+ * The citation as one sentence (2026-10-14, AG-02): "Source: HEY Research
+ * Lab, builder research for Robinhood Chain — https://heyresearch.xyz/project/chit,
+ * as of 2026-10-14, rules hbm-v28". The last line of every MCP text and A2A
+ * text part, and `citation.text` on the API, so an answer an agent repeats
+ * carries where it came from and when. The URL is the clean canonical page
+ * (or the answer's own URL when the answer has no page: a chain-wide window);
+ * the date is the answer's `asOf` day; the rules are the scoring version the
+ * answer rests on, else the capability's first rule.
+ */
+export function citationText(input: { chainName: string; url: string; asOf: string; rules?: string | null | undefined }): string {
+  const rules = input.rules ? `, rules ${input.rules}` : '';
+  return `Source: ${CITATION_PUBLISHER}, builder research for ${input.chainName} — ${input.url}, as of ${input.asOf.slice(0, 10)}${rules}`;
+}
+
+/* ------------------------------------------- the research answer's lead */
+
+/**
+ * The Research Summary's build answer as the subject of a plain sentence
+ * (2026-10-14, AG-02). The summary's `answer` is the canonical human reading
+ * of the status ("Shipping consistently", "Last shipped 12 days ago", "Quiet
+ * for 34 days", "Shipping again after 40 quiet days"; `BUILD_ANSWER_WORDS`
+ * and `buildAnswer` in the domain's summary composer) and the line's text is
+ * the canonical figures ("4 meaningful events in 30 days; latest ship 3 days
+ * ago."). This joins the two with a name and no new judgement: "Chit is
+ * shipping consistently: 4 meaningful events in 30 days; latest ship 3 days
+ * ago." A reading this table does not know (an UNKNOWN state's label, a
+ * later vocabulary) is kept as the summary wrote it: "Chit: No builder source
+ * linked". Every word a reader could repeat is HEY's canonical sentence.
+ */
+const BUILD_ANSWER_LEADS: readonly { pattern: RegExp; lead: (name: string, rest: string) => string }[] = [
+  { pattern: /^Shipping consistently$/i, lead: (name) => `${name} is shipping consistently` },
+  { pattern: /^Shipped this week$/i, lead: (name) => `${name} shipped this week` },
+  { pattern: /^Building$/i, lead: (name) => `${name} is building` },
+  { pattern: /^Last shipped (.+)$/i, lead: (name, rest) => `${name} last shipped ${rest}` },
+  { pattern: /^Quiet for (.+)$/i, lead: (name, rest) => `${name} has been quiet for ${rest}` },
+  { pattern: /^Quiet$/i, lead: (name) => `${name} is quiet` },
+  { pattern: /^Dormant: no ship for (.+)$/i, lead: (name, rest) => `${name} is dormant: no ship for ${rest}` },
+  { pattern: /^Dormant$/i, lead: (name) => `${name} is dormant` },
+  { pattern: /^Shipping again after (.+)$/i, lead: (name, rest) => `${name} is shipping again after ${rest}` },
+];
+
+export function buildAnswerLead(name: string, answer: string): string {
+  const trimmed = answer.trim().replace(/[.:]+$/, '');
+  for (const entry of BUILD_ANSWER_LEADS) {
+    const match = entry.pattern.exec(trimmed);
+    if (match) return entry.lead(name, match[1] ?? '');
+  }
+  return `${name}: ${trimmed}`;
+}
+
+/**
+ * The build line's figures without its status label: "Shipping: 4 meaningful
+ * events in 30 days; latest ship 3 days ago." → "4 meaningful events in 30
+ * days; latest ship 3 days ago." The label is the part before the first
+ * ": " (the summary writes `${label}: ${parts}`); a line with none is kept whole.
+ */
+export function buildLineFigures(text: string): string {
+  const index = text.indexOf(': ');
+  return (index > 0 && index < 48 ? text.slice(index + 2) : text).trim();
+}
+
+/**
+ * A project's name as the lead of HEY's own sentence, when it can stand
+ * there: short, printable, no instruction-like words. Otherwise the slug,
+ * which is HEY's own identifier. A name is a source's words; inside a
+ * `derived` sentence it is folded and checked like any other, and this keeps
+ * a long or instruction-shaped name out of the one line an agent repeats.
+ */
+const PLAIN_NAME = /^[\p{L}\p{N}][\p{L}\p{N} .'’&+\-_()$]{0,39}$/u;
+export function leadName(name: string | undefined, slug: string, looksLikeInstruction: (text: string) => boolean): string {
+  const trimmed = (name ?? '').trim();
+  return trimmed && PLAIN_NAME.test(trimmed) && !looksLikeInstruction(trimmed) ? trimmed : slug;
+}
+
 export const WORD_MEANINGFUL_EVENT = noun('meaningful event');
 export const WORD_MEANINGFUL_BUILDING_EVENT = noun('meaningful building event');
 export const WORD_CHANGE = noun('change');

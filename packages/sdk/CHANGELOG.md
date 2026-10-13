@@ -6,6 +6,12 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (agent contract, 2026-10-14)
+
+- `HeyAgentQuery.research_project`, `.builder_status` and `.unknowns` are `HeyAgentSubjectQuery`: `{ project }`, `{ q }` (a project name or `$TICKER`, resolved through HEY's project search) or `{ address }` — exactly one. One exact match answers with `subject.resolvedFrom` (`{ q }` or `{ address }`, additive); several answer `status: 'invalid_request'` with `error.code: 'ambiguous'` and `error.candidates: HeyAgentCandidate[]` (slug, name, token; HEY picks none); none answers `status: 'not_found'` with `error.code: 'not_published'`. `query.q` echoes what was asked.
+- `citation.text`, additively: the citation as one sentence — "Source: HEY Research Lab, builder research for Robinhood Chain — <page>, as of <date>, rules <scoringVersion>" — the last line of every MCP text and A2A text part.
+- `links.pageAttributed`, additively: the page with `utm_source=hey-agent&utm_medium=<the integration the caller declared>`, present only when the request carried `x-hey-integration`; `links.page` stays the clean canonical URL.
+
 ### Added ($HEY profile, 2026-10-10)
 
 - `HeyTokenProfile.treasury.reconciliation: HeyTreasuryReconciliation`, additively: whether the treasury's daily balance reads reconcile with HEY's ledger, with the first, highest and latest read per asset, the ledger's confirmed rows in the same block window and what they do not explain — or `state: 'not_read'` with its reason. Computed, never typed; unknown is never 0.

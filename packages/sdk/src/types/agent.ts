@@ -104,6 +104,8 @@ export type HeyAgentChange = {
 };
 
 export type HeyAgentSubjectProject = { slug: string; name: HeyAgentText; url: string; token?: { chainId: number; address: string } };
+/** A published project a name or ticker could mean (2026-10-14, AG-01): identity only, never a figure. */
+export type HeyAgentCandidate = { slug: string; name: HeyAgentText; url: string; token?: { chainId: number; address: string } };
 
 export type HeyAgentResearchData = {
   identity: {
@@ -267,9 +269,16 @@ type HeyAgentBase = {
   schema: 'hey.agent-intelligence-response';
   schemaVersion: '1';
   status: 'ok' | 'not_found' | 'moved' | 'invalid_request' | 'unavailable';
-  query: { chainId: number; project?: string; projects?: string[]; address?: string; days?: number; types?: string[]; limit?: number; building?: 'only' };
+  query: { chainId: number; project?: string; projects?: string[]; address?: string; q?: string; days?: number; types?: string[]; limit?: number; building?: 'only' };
   chain: { chainId: number; name: string };
-  subject: { kind: 'project' | 'contract' | 'projects' | 'chain'; project?: HeyAgentSubjectProject; projects?: HeyAgentSubjectProject[]; contract?: { chainId: number; address: string } } | null;
+  subject: {
+    kind: 'project' | 'contract' | 'projects' | 'chain';
+    project?: HeyAgentSubjectProject;
+    projects?: HeyAgentSubjectProject[];
+    contract?: { chainId: number; address: string };
+    /** How the subject was found when the caller sent `q` or `address` instead of a slug (2026-10-14, additive); absent when it named the slug. */
+    resolvedFrom?: { q?: string; address?: string };
+  } | null;
   /** The one-sentence answer, first. */
   answer: HeyAgentText;
   answerStatus: HeyAgentClaimStatus;
@@ -278,11 +287,17 @@ type HeyAgentBase = {
   freshness: HeyAgentFreshness[];
   evidence: HeyAgentEvidenceRef[];
   methodology: { rules: { id: string; version: string }[]; url: string };
-  links: { self: string; page?: string; canonical: string[] };
-  /** Put in an AgentResearchReceipt's evidence to cite this answer. Null unless status is ok. */
-  citation: { kind: 'hey_agent_answer'; capability: HeyAgentCapability; schemaVersion: '1'; url: string; asOf: string; project?: string; scoringVersion?: string } | null;
+  /** `pageAttributed` (2026-10-14, additive): the page with `utm_source=hey-agent&utm_medium=<the integration the caller declared>`; present only when the request carried `x-hey-integration`. `page` stays the clean canonical URL. */
+  links: { self: string; page?: string; pageAttributed?: string; canonical: string[] };
+  /**
+   * Put in an AgentResearchReceipt's evidence to cite this answer. Null unless status is ok. `text` (2026-10-14,
+   * additive) is the citation as a sentence — "Source: HEY Research Lab, builder research for Robinhood Chain —
+   * <page>, as of <date>, rules <scoringVersion>" — the last line of every MCP text and A2A text part.
+   */
+  citation: { kind: 'hey_agent_answer'; capability: HeyAgentCapability; schemaVersion: '1'; url: string; asOf: string; project?: string; scoringVersion?: string; text: string } | null;
   boundaries: { notAdvice: true; notProvided: string[]; marketIsContextOnly: true; disclaimer: HeyAgentText };
-  error?: { code: string; message: HeyAgentText; movedTo?: string };
+  /** `candidates` (2026-10-14, additive, code `ambiguous`): the published projects a `q` could mean, in the matcher's order; HEY picks none. */
+  error?: { code: string; message: HeyAgentText; movedTo?: string; candidates?: HeyAgentCandidate[] };
   /** Round 4 (2026-09-30, additive): `hey_own_token` when `$HEY`'s project is in the answer; it changes no figure, order or tag. */
   disclosures?: { code: 'hey_own_token'; statement: HeyAgentText; projects: string[] }[];
   asOf: string;
@@ -298,14 +313,20 @@ export type HeyAgentResponse =
 
 export type HeyAgentResponseOf<C extends HeyAgentCapability> = Extract<HeyAgentResponse, { capability: C }>;
 
-/** The parameters each capability takes; the server refuses any other. */
+/**
+ * The parameters each capability takes; the server refuses any other. research_project, builder_status
+ * and unknowns take the slug, or `q` (a name or $TICKER, resolved through HEY's project search: one exact
+ * match answers with `subject.resolvedFrom`, several are `invalid_request` `ambiguous` with
+ * `error.candidates`, none is `not_found` `not_published`), or `address` — exactly one (2026-10-14, additive).
+ */
+export type HeyAgentSubjectQuery = { project: string } | { q: string } | { address: string };
 export type HeyAgentQuery = {
-  research_project: { project: string };
+  research_project: HeyAgentSubjectQuery;
   what_changed: { project?: string; days?: number; types?: readonly string[]; limit?: number; building?: 'only' };
-  builder_status: { project: string };
+  builder_status: HeyAgentSubjectQuery;
   verify_project: { address: string; project?: string };
   compare_builders: { projects: readonly string[] };
-  unknowns: { project: string } | { address: string };
+  unknowns: HeyAgentSubjectQuery;
 };
 
 /** `GET /api/agent`: the contract described by itself. The capabilities are typed; the rest is described in words and limits. */

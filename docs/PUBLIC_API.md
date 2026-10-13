@@ -371,6 +371,13 @@ Additive, except where a figure the docs already promised to withhold was still 
   market is not live: the days of index HEY holds and does not publish. `daysRead: 0` alone read as
   "no data".
 
+### A caller walking the whole catalogue is told where the dataset is (2026-10-14, additive)
+
+Past about 500 pages of `/api/projects` from one address in a UTC day, every answer carries a
+`notice` sentence and a `Link` header (`rel="alternate"` to `/data`, the catalogue as one dataset;
+`rel="help"` to the integration-label docs) — the same page, with a note. Nothing is blocked, no
+status changes, and the count is per web process and per UTC day, so it is approximate by design.
+
 ## `GET /api/projects/{slug}`
 
 One project in full: everything in the listing, plus the long description, every registered
@@ -804,6 +811,23 @@ release, no post-launch deploy: each is `null` on its own.
 **The shape is held** (2026-09-26): the route answers through a named serialiser that the SDK's
 `HeyBuilderCard` and `builderCard(chain, token)` are held to by a contract test, and its key set is
 frozen by an end-to-end test. Nothing about the answer changed.
+
+**One line of text on request (2026-10-14, additive).** `Accept: text/plain` or `text/markdown`
+answers the same card as one line — for a bot, a terminal or an agent that prints rather than
+parses:
+
+```
+Loom — Shipping · last shipped 2d ago · Verified Builder · as of 13 Oct · heyresearch.xyz/project/loom
+```
+
+Every part restates a field of the JSON card: `hey_project_name`, `hey_status_label`,
+`latest_meaningful_ship.timestamp` as an age (or "no meaningful ship recorded" — never "0 ships"),
+"Verified Builder" only when `verified_builder` is true, `as_of` ("as of not scored" when null), and
+`hey_project_url`. A token the project's own site does not name (`activity_applies_to_token: false`)
+says "the project's own site names another contract". Markdown bolds the name and links the page.
+The JSON card is unchanged and stays the default — a browser's `Accept` and a missing header get
+JSON — and the answer carries `vary: accept`. A contract HEY has not published answers the same 404
+as a line of text.
 
 ## Partner additive fields (2026-09-26)
 
@@ -1624,6 +1648,7 @@ No cursor, or `before=<cursor>`: newest first, `nextCursor` reads older (null at
 | Parameter | Filters | Notes |
 |---|---|---|
 | `project` | a published project's slug | a hidden or unknown slug answers **404** |
+| `narrative` | a narrative's slug (2026-10-14, additive) | only projects whose **primary** narrative it is — the membership `/narrative/{slug}` and `/api/projects?narrative=` list; an unknown or inactive slug answers **404**; tombstones always pass |
 | `contract` | `<chainId>:<address>` | events about that contract or token (lower-cased) |
 | `domain` | comma list: `build`, `contract`, `market`, `token`, `research`, `lock` | |
 | `type` | comma list of event types (below) | |
@@ -1860,6 +1885,48 @@ attributed) and launch-protocol concentration (a share, never a protocol's name)
 `asOf` (the report's generation); every section carries its `method`, and `limits` says what the
 counts cannot show. Before HEY has decoded a hook every hook count is `null` and `notMeasured`
 says why. Reports written before it have no such block and are never rebuilt.
+
+Since 2026-10-14 (report version 5, growth plan A1/A9, additive) a report also carries:
+`overview.verifiedBuildersChainEvidence` (Verified Builders with Robinhood Chain evidence — the
+count a headline leads with; `overview.verifiedBuilders` is the any-chain catalogue count and is
+labelled as such), `wentQuiet` (projects HEY read as quiet or dormant inside the week, each with
+`weeksWithoutActivity` — whole weeks since the last dated meaningful ship, null when HEY holds none —
+worded "HEY read no meaningful activity for N weeks", never "abandoned"), and the week cut by
+primary narrative (`narratives[]`) and by launchpad (`launchpads[]`): `ships`, `projectsShipping`,
+`newBuilders[]`, `backToShipping[]`, `wentQuiet[]` as counts and the names of published pages,
+ordered by name — never by a count, never by volume or price — with `narrativesUnassigned` /
+`launchpadsUnassigned` counting the projects no line holds. Older reports have none of these and are
+never rebuilt. Every report and index entry links `csv`: `GET /api/reports/weekly/{week}.csv` is the
+same stored payload as rows (`report, section, subject, name, measure, value, detail, ships_rule,
+generated_at_utc, page`); a figure the report does not hold has no row.
+
+## `GET /api/reports/monthly` and `GET /api/reports/monthly/{month}` (2026-10-14)
+
+The monthly archive (`2026-09`): the closed weekly reports whose Monday falls inside the month,
+read back from `weekly_reports` and added up — never recounted from later tables — plus the stored
+coverage census of the month's newest census day, the newest week's v4-hook block (named by its
+week) and the method markers between consecutive weeks. `weeksExpected` names the weeks, and
+`weeksMissing` the ones with no closed report, which every total leaves out. `totals` are sums of
+the weeks' counts (`projectWeeksShipping` is project-weeks, not distinct projects, and says so);
+`totals.wentQuiet` is null when a week predates report v5; `buildersAtClose` is the newest week's
+catalogue count, labelled as any-chain and, where stored, with Robinhood Chain evidence; `chain` is
+summed only where every week states the figure, and a month holding a withheld or absent volume has
+`dexVolumeWithheldWeeks` instead of a total; `narratives[]` / `launchpads[]` are the weeks' cuts
+summed by name (a project named once per block), or `cutsWithheld` names the weeks that predate
+them; `coverage` is the census day's states or `notRead` with its reason. A month is final a week
+after it ends (`final`), written once and regenerated only when `version`
+(`MONTHLY_REPORT_VERSION`) moves — from the same frozen inputs. `.csv` serves the payload as rows,
+as the weekly route does. The pages: `/reports`, `/reports/monthly/{month}`.
+
+## `GET /api/share/chain-day` (2026-10-14)
+
+The builder line of the day: one fixed-template sentence from the chain's last complete UTC day
+(`/api/chain`'s `lastFullDay`) — "On Robinhood Chain yesterday (12 Oct): 46 source-backed ships
+from 40 builders · 2.53M DEX trades (context) — heyresearch.xyz/pulse". Ships and builders are what
+HEY recorded that day; the DEX trade count is labelled context; no volume, no price, no direction.
+`notRead` names a figure left off the line because HEY did not read it (never printed as 0);
+`links.x` / `links.copy` are the Pulse page with `utm_campaign=chain.day`. 404 when HEY holds no
+complete day or read nothing about it. Rate-limited as `/api/share/{subject}`.
 
 ## `GET /api/projects/{slug}/intelligence` (2026-09-13)
 
@@ -2140,7 +2207,20 @@ answers, so what it said at `asOf` is not verified (`answer_not_stored`).
 `heyEvidenceStands` is `true` only when every HEY reference was checked and stands, `false` when a
 checked one does not, `"partial"` when some were not checked, and `null` (`nothing_checked`) when
 none was. Nothing is stored and nothing the receipt names is fetched; the answer carries
-`stored: false` and `endorsement: false`. 30 checks a minute per client.
+`stored: false` and `endorsement: false`. 120 checks a minute per client (30 until 2026-10-14).
+
+## `GET /api/agent/stats` — how agents use HEY (2026-10-14)
+
+Counts, with definitions and the moment they were counted, over the last 30 days — the same read
+`/developers/agents/stats` prints, cached a minute: `mcpToolCallsByDay` (real tool calls on the
+hosted MCP endpoints by UTC day and tool — handshakes, refused calls, registries, probes, health
+checks, tool sweeps, HEY's own and test clients excluded), `mcpToolCalls`, `agentClientsActive`,
+`repeatAgentClients`, `unnamedResearchDayClients`, `protocolCalls`, `sdkRequests`, `discoveryFetches`,
+`crawlerRequests` (null with `crawlerRequestsReason` when the edge log holds no hour; a floor since
+the edge cache answers many reads), `erc8004` (HEY's own agent id, registry and registration
+transaction) and `internalRequests`. Each key's definition is in `definitions`. Counts only: no
+client name, no address, no person. Not a capability of the agent contract below: it describes HEY's
+use, never a project, and nothing here reaches what HEY says about one.
 
 ## The agent contract: `GET /api/agent/{capability}` (2026-09-30)
 
@@ -2154,12 +2234,26 @@ its gap list, peers, the token and contract reads) through pure composers in
 
 | Capability | Question | Parameters |
 | --- | --- | --- |
-| `research_project` | What is HEY's current research view of this project? | `project` |
+| `research_project` | What is HEY's current research view of this project? | `project`, `q` or `address` (exactly one) |
 | `what_changed` | What changed with this project, or on Robinhood Chain, in the last N days? | `project?`, `days` 1–30 (default 7), `types?` (comma-separated change types), `limit` 1–50 (default 25) |
-| `builder_status` | Is this project still building, and why does HEY say so? | `project` |
+| `builder_status` | Is this project still building, and why does HEY say so? | `project`, `q` or `address` (exactly one) |
 | `verify_project` | Does this contract or token appear to belong to this project? | `address`, `project?` |
 | `compare_builders` | How do these projects' building records compare over 30 days? | `projects` (2–4, comma-separated) |
-| `unknowns` | What does HEY not know about this project or token? | `project` or `address` |
+| `unknowns` | What does HEY not know about this project or token? | `project`, `q` or `address` (exactly one) |
+
+**One call from any identifier (2026-10-14, additive).** `research_project`, `builder_status` and
+`unknowns` take the slug (`project`), or `q` — a project name or `$TICKER`, 2–64 characters — or a
+0x `address`, exactly one. A `q` goes through the one project search every HEY search uses
+(`/api/search/suggest`, the A2A plain-text path, the Telegram bot): one exact match answers, and the
+answer says so in `subject.resolvedFrom` (`{ "q": "$CHIT" }` or `{ "address": "0x…" }`) while
+`links.self` and the citation name the slug it resolved to (`?project=chit`) and `query` echoes what
+was asked; several matches answer `status: invalid_request` with `error.code: ambiguous` and
+`error.candidates` (slug, name as a source's words, the tracked token — in the matcher's order; HEY
+picks none; send one back as `project`); no match answers `status: not_found` with
+`error.code: not_published`, a statement about HEY's index, never about the project. An `address`
+resolves to the published project HEY records it under (its token, a declared or follow-up
+contract); for `unknowns` a contract with no project is still an answer about the contract itself.
+Before this, `?q=$CHIT` answered 400 "project: Required" and every agent paid two round trips.
 
 Every answer carries:
 
@@ -2194,7 +2288,16 @@ Every answer carries:
 - `data` — the capability's own payload (below), or null on a refusal;
 - `methodology.rules` — the rule versions it restates (`activity.status` at the scoring version,
   `summary-v1`, `peers-v1`, `agent-freshness-v2`, `machine-text-v1`);
-- `citation` — a `hey_agent_answer` reference to put in an AgentResearchReceipt;
+- `citation` — a `hey_agent_answer` reference to put in an AgentResearchReceipt; since 2026-10-14 with
+  `text`, the citation as one sentence — "Source: HEY Research Lab, builder research for Robinhood
+  Chain — https://heyresearch.xyz/project/chit, as of 2026-10-14, rules hbm-v28" — the last line of
+  every MCP text and A2A text part, so what an agent repeats carries where it came from and when. The
+  URL is the clean canonical page (`links.page`; the answer's own URL where it has no page), never an
+  attributed one;
+- `links` — `self` (this answer, by slug), `page` (the clean canonical page), `canonical` (the reads it
+  restates) and, only when the request carried `x-hey-integration`, `pageAttributed` (2026-10-14,
+  additive): the page with `utm_source=hey-agent&utm_medium=<the declared integration>`, a link for a
+  client that opted in, never a tracker on the canonical URL;
 - `boundaries` — `notAdvice: true`, `notProvided` (investment recommendation, buy or sell signal,
   price prediction or target, position size, leverage, stop loss, ranking by expected return, risk
   score, safety verdict, smart-money label, wallet PnL or profile) and `marketIsContextOnly: true`.
@@ -2254,11 +2357,20 @@ official Robinhood Agent App.
 The same material is also published as RSS, for a reader rather than a script:
 
 ```
-/feed/ships.xml       every ship, in the order HEY recorded it (guid = ledger id, e.g. ship:<uuid>)
-/feed/this-week.xml   the weekly rollup
-/api/this-week        the weekly rollup as JSON
-/api/status           HEY's own freshness and health
+/feed/ships.xml                 every ship, newest first by its own date (guid = ledger id, e.g. ship:<uuid>)
+/feed/updates.xml               what changed on Robinhood Chain — releases, contract and docs changes, new projects
+/feed/this-week.xml             the weekly rollup
+/feed/verified-builders.xml     new Verified Builders on Robinhood Chain (research.builder_verified), newest first (2026-10-14)
+/feed/status.xml                activity-status moves — Shipping, Active, Quiet, Dormant, Resumed (2026-10-14)
+/narrative/{slug}/feed.xml      one narrative's updates, the projects whose primary narrative it is (2026-10-14)
+/project/{slug}/feed.xml        one project's changes
+/api/this-week                  the weekly rollup as JSON
+/api/status                     HEY's own freshness and health
 ```
+
+Every feed is one item per canonical ledger event, newest first by the event's own date, keyed on
+the ledger id — a list of what happened, never a ranking. The narrative page declares its feed with
+`<link rel="alternate" type="application/rss+xml">`, as the project page and `/updates` do.
 
 `/api/status`, additively (2026-10-03): a failing integrity audit makes `verdict` `critical`, and
 `integrity.failing` lists the failing checks as `{ check, label }` (the check id and its plain

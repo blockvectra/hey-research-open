@@ -137,6 +137,8 @@ export const snapshot: HeyProjectSnapshot = {
         text: 'Shipping: 4 meaningful events in 30 days; latest ship yesterday.',
         evidence: [{ id: 'ship:2ac87a66-0000-0000-0000-000000000001', label: 'GitHub release', url: 'https://github.com/agentos/sdk/releases/tag/v0.4', receiptUrl: `${BASE}/api/evidence/ship%3A2ac87a66-0000-0000-0000-000000000001` }],
         basis: 'evidence_record',
+        // The build line's human answer (2026-10-01), as the snapshot sends it: the lead of the agent answer's first sentence (AG-02).
+        answer: 'Shipping consistently',
         detailUrl: `${BASE}/api/projects/agentos/timeline`,
         observedAt: '2026-09-24T10:00:00.000Z',
         freshness: 'fresh',
@@ -614,6 +616,7 @@ export const weeklyReport: HeyWeeklyReport = {
   shipsRule: { id: 'weekly-ships-v1', counts: 'Every ship record HEY held as a live claim on a published project.', inForceFrom: '2026-09-06T00:00:00.000Z', basis: 'generated_at', current: false },
   shipsUnderCurrentRule: { ruleId: 'weekly-ships-v4', ships: 3, projectsShipping: 2, countedAt: '2026-10-02T00:00:00.000Z' },
   url: `${BASE}/reports/weekly/2026-W38`,
+  csv: `${BASE}/api/reports/weekly/2026-W38.csv`,
   disclaimer: DISCLAIMER,
 };
 

@@ -11,6 +11,7 @@ import {
   AGENT_SCHEMA,
   AGENT_SCHEMA_VERSION,
   type AgentBoundaries,
+  type AgentCandidate,
   type AgentChange,
   type AgentClaim,
   type AgentDisclosure,
@@ -19,12 +20,14 @@ import {
   type AgentIntelligenceResponse,
   type AgentPrecision,
   type AgentQuery,
+  type AgentResolvedFrom,
   type AgentResponseOf,
   type AgentResponseStatus,
   type AgentSourceType,
   type AgentSubject,
   type AgentUnknown,
 } from '../schema';
+import { citationText } from '../words';
 
 /**
  * What every composer needs and nothing it could compute a second way
@@ -46,7 +49,34 @@ export type AgentComposeContext = {
    * disclosure is added. It changes nothing else in the answer.
    */
   own?: OwnProject;
+  /**
+   * How the subject was found when the caller sent `q` or `address` instead
+   * of a slug (2026-10-14, AG-01): carried onto `subject.resolvedFrom` by
+   * every composer that answers about one project. Absent when the caller
+   * named the slug.
+   */
+  resolvedFrom?: AgentResolvedFrom;
+  /**
+   * The integration the request declared (`x-hey-integration`, 2026-10-14,
+   * AG-02): the only case in which `links.pageAttributed` is written, as the
+   * clean page plus `utm_source=hey-agent&utm_medium=<this>`. Shape-checked
+   * by the request's own label parser before it reaches here.
+   */
+  attributionMedium?: string;
 };
+
+/** The `utm_source` of a page link an agent integration opened (AG-02). */
+export const AGENT_ATTRIBUTION_SOURCE = 'hey-agent';
+const ATTRIBUTION_MEDIUM = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+
+/** The clean page with HEY's attribution labels, for a client that declared itself; nothing for one that did not. */
+export function attributedPageUrl(page: string | undefined, medium: string | undefined): string | undefined {
+  if (!page || !medium || !ATTRIBUTION_MEDIUM.test(medium)) return undefined;
+  const url = new URL(page);
+  url.searchParams.set('utm_source', AGENT_ATTRIBUTION_SOURCE);
+  url.searchParams.set('utm_medium', medium);
+  return url.toString();
+}
 
 /** What HEY never returns, as machine codes (readiness §26): research only, never a trade. */
 export const AGENT_NOT_PROVIDED = [
@@ -262,11 +292,20 @@ export function ownTokenDisclosures(ctx: AgentComposeContext, subject: AgentSubj
   return [{ code: HEY_OWN_TOKEN_DISCLOSURE_CODE, statement: heyText(HEY_OWN_TOKEN_DISCLOSURE), projects: projects.slice(0, 8) }];
 }
 
+/** A project subject with how it was found (AG-01), when the caller sent a name, ticker or contract rather than the slug. */
+export function subjectWithResolution(ctx: AgentComposeContext, subject: AgentSubject): AgentSubject {
+  return subject && ctx.resolvedFrom && subject.kind === 'project' ? { ...subject, resolvedFrom: ctx.resolvedFrom } : subject;
+}
+
 export function envelope<C extends AgentCapability>(ctx: AgentComposeContext, parts: EnvelopeParts<C>): AgentResponseOf<C> {
   const claims = (parts.claims ?? []).slice(0, AGENT_LIMITS.claims).map(withEvidenceKind).map(unknownNamesNoSource);
-  const disclosures = ownTokenDisclosures(ctx, parts.subject, parts.data);
+  const subject = subjectWithResolution(ctx, parts.subject);
+  const disclosures = ownTokenDisclosures(ctx, subject, parts.data);
   const unknowns = (parts.unknowns ?? []).slice(0, AGENT_LIMITS.unknowns);
   const asOf = ctx.now.toISOString();
+  const attributed = attributedPageUrl(parts.page, ctx.attributionMedium);
+  // The citation's rules: the scoring version the answer rests on, else the capability's own first rule (AG-02).
+  const firstRule = parts.rules?.[0];
   const response = {
     schema: AGENT_SCHEMA,
     schemaVersion: AGENT_SCHEMA_VERSION,
@@ -274,7 +313,7 @@ export function envelope<C extends AgentCapability>(ctx: AgentComposeContext, pa
     status: parts.status,
     query: ctx.query,
     chain: { chainId: ctx.chainId, name: ctx.chainName },
-    subject: parts.subject,
+    subject,
     answer: parts.answer,
     answerStatus: parts.answerStatus,
     claims,
@@ -286,7 +325,7 @@ export function envelope<C extends AgentCapability>(ctx: AgentComposeContext, pa
       rules: [...(parts.rules ?? []), { id: 'agent_freshness', version: AGENT_FRESHNESS_VERSION }, { id: 'machine_text', version: MACHINE_TEXT_VERSION }].slice(0, 12),
       url: `${ctx.baseUrl}/methodology`,
     },
-    links: { self: ctx.selfUrl, ...(parts.page ? { page: parts.page } : {}), canonical: (parts.canonical ?? []).slice(0, 12) },
+    links: { self: ctx.selfUrl, ...(parts.page ? { page: parts.page } : {}), ...(attributed ? { pageAttributed: attributed } : {}), canonical: (parts.canonical ?? []).slice(0, 12) },
     citation:
       parts.status === 'ok'
         ? {
@@ -297,6 +336,7 @@ export function envelope<C extends AgentCapability>(ctx: AgentComposeContext, pa
             asOf,
             ...(parts.citationProject ? { project: parts.citationProject } : {}),
             ...(parts.scoringVersion ? { scoringVersion: parts.scoringVersion } : {}),
+            text: citationText({ chainName: ctx.chainName, url: parts.page ?? ctx.selfUrl, asOf, rules: parts.scoringVersion ?? (firstRule ? `${firstRule.id} ${firstRule.version}` : null) }),
           }
         : null,
     boundaries: boundaries(ctx),
@@ -325,6 +365,38 @@ export function refusal<C extends AgentCapability>(
     data: null as AgentResponseOf<C>['data'],
     error: { code, message: derivedText(message), ...(movedTo ? { movedTo } : {}) },
   });
+}
+
+/** The error code and words when a name or ticker matched several published projects (AG-01). */
+export const AMBIGUOUS_CODE = 'ambiguous';
+/** The error code when a name, ticker or contract matched no published project (AG-01). */
+export const NOT_PUBLISHED_CODE = 'not_published';
+
+/**
+ * A name or ticker that several published projects could be (AG-01): an
+ * `invalid_request` that lists the candidates — slug, name as a source's
+ * words, the tracked token — in the matcher's order, and picks none. The
+ * message names HEY's own slugs, never the caller's text.
+ */
+export function ambiguousRefusal<C extends AgentCapability>(ctx: AgentComposeContext, capability: C, candidates: readonly { slug: string; name: string; url: string; token?: { chainId: number; address: string } }[]): AgentResponseOf<C> {
+  const listed: AgentCandidate[] = candidates.slice(0, 8).map((candidate) => ({
+    slug: candidate.slug,
+    name: externalText(candidate.name, 'project_record', undefined, 120),
+    url: candidate.url,
+    ...(candidate.token ? { token: { chainId: candidate.token.chainId, address: candidate.token.address.toLowerCase() } } : {}),
+  }));
+  const message = `More than one published project matches that name or ticker: ${listed.map((candidate) => candidate.slug).join(', ')}. HEY does not guess: send one of them as project, or the contract as address.`;
+  const base = refusal(ctx, capability, 'invalid_request', AMBIGUOUS_CODE, message);
+  return { ...base, error: { ...base.error!, candidates: listed } } as AgentResponseOf<C>;
+}
+
+/** No published project for the name, ticker or contract asked about (AG-01): a statement about HEY's index, never about the project. */
+export function notPublishedRefusal<C extends AgentCapability>(ctx: AgentComposeContext, capability: C, by: 'q' | 'address'): AgentResponseOf<C> {
+  const message =
+    by === 'address'
+      ? 'HEY holds no published project for that contract. That is a statement about HEY’s index, not about the token; verify_project says what HEY recorded about the contract itself.'
+      : 'HEY holds no published project matching that name or ticker. That is a statement about HEY’s index, not about the project.';
+  return refusal(ctx, capability, 'not_found', NOT_PUBLISHED_CODE, message);
 }
 
 /** The slug-only URL of a project's API resource. */

@@ -6,6 +6,17 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (2026-10-14)
+
+- `research_answer` takes the identifier a user gives: `q` (a project name or `$TICKER`) or `address` (a 0x contract) beside `project` on `research_project`, `builder_status` and `unknowns` — exactly one. A name or ticker goes through HEY's one project search: one exact match answers, with `subject.resolvedFrom`; several answer `isError` with `error.candidates` (the slugs to send back; HEY picks none); none answers `not_found` (`not_published`). One call where there were two.
+- Every answer carries `citation.text` — "Source: HEY Research Lab, builder research for Robinhood Chain — <page>, as of <date>, rules <scoringVersion>" — and it is the last line of the tool's text, whatever the output cap cuts.
+- `research_answer` takes `detail`: `summary` (the default: the answer line, the claims, the unknowns, the links and the citation, about 4 KB) or `full` (adds the data lines, the freshness schedule, the evidence list and the methodology, as before). The JSON is unchanged and always whole in `structuredContent` and at the resource link.
+
+### Changed (2026-10-14)
+
+- The research answer's first sentence is plain English from the Research Summary's own words — "Chit is shipping consistently: 4 meaningful events in 30 days; latest ship 3 days ago." — with the machine words ("chit: activity status SHIPPING…") kept after it. An unknown stays unknown ("Chit: No builder source linked: …").
+- The handshake's instructions are a trigger list: per thing a user types, the first call to make, with its arguments; `research_answer` is listed first and `find_projects` second.
+
 ### Changed (2026-10-13)
 
 - Every tool's description opens on the question it answers, in the words a user types ("Is this Robinhood Chain project still being built, what did it ship…?", "What changed on Robinhood Chain today or this week…?", "Who made this Robinhood Chain contract, and is it a known project's?"), names the inputs an agent holds (a name, a `$TICKER`, a `0x` contract), and says briefly what it is not (price advice, a safety verdict). Titles name the question too (`research_answer` is "Research a Robinhood Chain project"). Every claim is unchanged.

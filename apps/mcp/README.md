@@ -79,7 +79,7 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
 | `project_diff` | What changed for one project between two dates, never a cause. |
 | `ask_hey` | A free-text question about one project, answered only from HEY's record. |
 | `chain_overview` | The chain day by day, this week, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention. |
-| `research_answer` | HEY's agent contract (AgentIntelligenceResponse v1) for one of six capabilities — `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns` — the answer first, then claims tagged FACT, DERIVED or UNKNOWN, what HEY does not know, freshness and evidence ids. A source's words are quoted as data. |
+| `research_answer` | HEY's agent contract (AgentIntelligenceResponse v1) for one of six capabilities — `research_project`, `what_changed`, `builder_status`, `verify_project`, `compare_builders`, `unknowns` — the answer first, then claims tagged FACT, DERIVED or UNKNOWN, what HEY does not know, freshness and evidence ids. `research_project`, `builder_status` and `unknowns` take `project` (a slug), `q` (a name or `$TICKER`) or `address` (a 0x contract) — exactly one; a name several projects share answers the candidate slugs and picks none. The text is the lean summary by default (`detail: "full"` for the data, freshness and evidence lines; the whole JSON is always the resource link and `structuredContent`) and ends on the citation line: "Source: HEY Research Lab, builder research for Robinhood Chain — <page>, as of <date>, rules <version>". A source's words are quoted as data. |
 
 Plus `market_integrity` where the site publishes it.
 

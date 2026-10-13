@@ -56,6 +56,8 @@ const TELEGRAM_WEBHOOK_SECRET_PATTERN = /^[A-Za-z0-9_-]{16,256}$/;
 const TELEGRAM_BOT_USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{1,28}[Bb][Oo][Tt]$/;
 /** The Mini App's short name, as BotFather's /newapp asks for it (2026-10-06): Latin letters, digits and underscores, 3-30 characters. */
 const TELEGRAM_MINIAPP_SHORT_NAME_PATTERN = /^[A-Za-z0-9_]{3,30}$/;
+/** A channel's chat id as Telegram numbers it (`-100…` for a channel or supergroup); never a `@username`, which the bot's client does not address. */
+const TELEGRAM_CHANNEL_ID_PATTERN = /^-?\d{1,20}$/;
 
 /**
  * `Name <local@domain>` — the display name is required, so no message ever
@@ -628,8 +630,18 @@ export const serverEnvSchema = z
          * it is pruned 90 days after it was last seen. At least 32 characters when set.
          */
         actorSecret: optionalString,
+        /**
+         * HEY's own public channel (2026-10-14, docs/TELEGRAM.md "The HEY channel"): the chat id
+         * `POST_CHANNEL_DIGEST` posts the daily builder digest to, set only after the founder
+         * created the channel and made the bot an admin of it. Unset, the job is a no-op that says
+         * "channel not configured". Numeric only (`-100…`), never a username.
+         */
+        channelId: optionalString,
       })
       .superRefine((telegram, context) => {
+        if (telegram.channelId && !TELEGRAM_CHANNEL_ID_PATTERN.test(telegram.channelId)) {
+          context.addIssue({ code: z.ZodIssueCode.custom, path: ['channelId'], message: 'HEY_TELEGRAM_CHANNEL_ID is the channel’s numeric chat id (for example -1001234567890), not a @username' });
+        }
         if (telegram.actorSecret && telegram.actorSecret.length < MIN_SESSION_SECRET_LENGTH) {
           context.addIssue({ code: z.ZodIssueCode.custom, path: ['actorSecret'], message: `TELEGRAM_ACTOR_SECRET must be at least ${MIN_SESSION_SECRET_LENGTH} characters` });
         }
@@ -665,6 +677,28 @@ export const serverEnvSchema = z
     searchConsole: z.object({
       credentialsJson: optionalString,
       site: optionalString,
+    }),
+
+    /**
+     * IndexNow (2026-10-14, growth plan G-5): the key HEY serves at
+     * `/<key>.txt` and sends with each batch of changed page URLs. Optional:
+     * unset means the hourly `INDEXNOW_PING` job does nothing and says
+     * nothing. The job accepts 32–128 lower-case hex (`openssl rand -hex 32`),
+     * so the key route can never shadow `llms.txt` or `robots.txt`; a value of
+     * another shape is logged by the job and ignored, never a boot failure
+     * for an optional setting.
+     */
+    indexNow: z.object({
+      key: optionalString,
+    }),
+
+    /**
+     * The public dataset snapshot's volume (2026-10-14, growth plan A3,
+     * docs/DATASETS.md): written by the worker, read by the `/data` route and
+     * page. Unset means the compose default, `/var/lib/hey/datasets`.
+     */
+    datasets: z.object({
+      dir: optionalString,
     }),
 
     /**
@@ -848,10 +882,17 @@ function shapeEnv(raw: RawEnv) {
       botUsername: raw.TELEGRAM_BOT_USERNAME,
       miniAppShortName: raw.TELEGRAM_MINIAPP_SHORT_NAME,
       actorSecret: raw.TELEGRAM_ACTOR_SECRET,
+      channelId: raw.HEY_TELEGRAM_CHANNEL_ID,
     },
     searchConsole: {
       credentialsJson: raw.GOOGLE_SEARCH_CONSOLE_CREDENTIALS,
       site: raw.GOOGLE_SEARCH_CONSOLE_SITE,
+    },
+    indexNow: {
+      key: raw.INDEXNOW_KEY,
+    },
+    datasets: {
+      dir: raw.HEY_DATASETS_DIR,
     },
     webhooks: {
       masterKey: raw.WEBHOOK_MASTER_KEY,
@@ -952,8 +993,11 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'telegram.botUsername': 'TELEGRAM_BOT_USERNAME',
   'telegram.miniAppShortName': 'TELEGRAM_MINIAPP_SHORT_NAME',
   'telegram.actorSecret': 'TELEGRAM_ACTOR_SECRET',
+  'telegram.channelId': 'HEY_TELEGRAM_CHANNEL_ID',
   'searchConsole.credentialsJson': 'GOOGLE_SEARCH_CONSOLE_CREDENTIALS',
   'searchConsole.site': 'GOOGLE_SEARCH_CONSOLE_SITE',
+  'indexNow.key': 'INDEXNOW_KEY',
+  'datasets.dir': 'HEY_DATASETS_DIR',
   'webhooks.masterKey': 'WEBHOOK_MASTER_KEY',
   'webhooks.denyAddresses': 'WEBHOOK_DENY_ADDRESSES',
   'worker.heartbeatMs': 'WORKER_HEARTBEAT_MS',
@@ -1151,6 +1195,16 @@ export function telegramBotUrl(env: ServerEnv): string | undefined {
  */
 export function telegramMiniAppShortName(env: ServerEnv): string | undefined {
   return isTelegramBotEnabled(env) && env.telegram.miniAppShortName ? env.telegram.miniAppShortName : undefined;
+}
+
+/**
+ * HEY's own public channel (2026-10-14, docs/TELEGRAM.md "The HEY channel"): its numeric chat id,
+ * only while the bot is on and the founder has set it. Undefined, `POST_CHANNEL_DIGEST` posts nothing.
+ */
+export function telegramChannelId(env: ServerEnv): number | undefined {
+  if (!isTelegramBotEnabled(env) || !env.telegram.channelId) return undefined;
+  const id = Number(env.telegram.channelId);
+  return Number.isSafeInteger(id) ? id : undefined;
 }
 
 /** Telegram ops alerts are on when both the bot token and the chat id are set. */

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { isTelegramBotEnabled, parseServerEnv, safeParseServerEnv, telegramActorSecret, telegramBotUrl, telegramMiniAppShortName } from './env';
+import { isTelegramBotEnabled, parseServerEnv, safeParseServerEnv, telegramActorSecret, telegramBotUrl, telegramChannelId, telegramMiniAppShortName } from './env';
 
 /**
  * The HEY Telegram bot's configuration (2026-09-30, docs/TELEGRAM.md): off
@@ -78,5 +78,20 @@ describe('telegram bot configuration', () => {
     const short = safeParseServerEnv({ ...configured, TELEGRAM_ACTOR_SECRET: 'too-short' });
     expect(short.ok).toBe(false);
     if (!short.ok) expect(short.variables).toContain('TELEGRAM_ACTOR_SECRET');
+  });
+
+  it('names the HEY channel only when the bot is on and its numeric chat id is set (2026-10-14)', () => {
+    expect(telegramChannelId(parseServerEnv(configured))).toBeUndefined();
+    expect(telegramChannelId(parseServerEnv({ ...configured, HEY_TELEGRAM_CHANNEL_ID: '-1001234567890' }))).toBe(-1001234567890);
+    const { HEY_TELEGRAM_BOT_ENABLED: _flag, ...off } = configured;
+    expect(telegramChannelId(parseServerEnv({ ...off, HEY_TELEGRAM_CHANNEL_ID: '-1001234567890' }))).toBeUndefined();
+    for (const value of ['@heyresearch', 'https://t.me/heyresearch', '12 34', '']) {
+      const parsed = safeParseServerEnv({ ...configured, HEY_TELEGRAM_CHANNEL_ID: value });
+      if (value === '') expect(parsed.ok).toBe(true);
+      else {
+        expect(parsed.ok, value).toBe(false);
+        if (!parsed.ok) expect(parsed.variables).toContain('HEY_TELEGRAM_CHANNEL_ID');
+      }
+    }
   });
 });
