@@ -6,6 +6,8 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.3.0 — 2026-10-14
+
 ### Added (agent contract, 2026-10-14)
 
 - `HeyAgentQuery.research_project`, `.builder_status` and `.unknowns` are `HeyAgentSubjectQuery`: `{ project }`, `{ q }` (a project name or `$TICKER`, resolved through HEY's project search) or `{ address }` — exactly one. One exact match answers with `subject.resolvedFrom` (`{ q }` or `{ address }`, additive); several answer `status: 'invalid_request'` with `error.code: 'ambiguous'` and `error.candidates: HeyAgentCandidate[]` (slug, name, token; HEY picks none); none answers `status: 'not_found'` with `error.code: 'not_published'`. `query.q` echoes what was asked.

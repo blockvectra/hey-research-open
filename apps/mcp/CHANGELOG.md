@@ -6,6 +6,8 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.3.0 — 2026-10-14
+
 ### Added (2026-10-14)
 
 - `research_answer` takes the identifier a user gives: `q` (a project name or `$TICKER`) or `address` (a 0x contract) beside `project` on `research_project`, `builder_status` and `unknowns` — exactly one. A name or ticker goes through HEY's one project search: one exact match answers, with `subject.resolvedFrom`; several answer `isError` with `error.candidates` (the slugs to send back; HEY picks none); none answers `not_found` (`not_published`). One call where there were two.
