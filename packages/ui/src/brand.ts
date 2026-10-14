@@ -31,7 +31,7 @@ export const BRAND = {
 
 /** `{Page} | HEY Research Lab`, with the homepage carrying the full positioning. */
 export const pageTitle = (page?: string): string =>
-  page ? `${page} | ${BRAND.name}` : `${BRAND.name} — ${BRAND.chainName} Builder Intelligence`;
+  page ? `${page} | ${BRAND.name}` : `${BRAND.name} — The public record of building on ${BRAND.chainName}`;
 
 /** The explorer's own page for a token contract. */
 export const explorerTokenUrl = (address: string): string =>
