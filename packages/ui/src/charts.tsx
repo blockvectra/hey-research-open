@@ -68,26 +68,47 @@ export function BuildVsMarketChart({
    * unknown · Build Momentum 0". It is left out and counted in the caption.
    */
   const placed = all.filter((point): point is ScatterDatum & { buildMomentum: number } => point.buildMomentum !== null);
-  // Ringed points last, so no unringed bubble is drawn over a ring.
-  const data = [...placed.filter((point) => !point.underTheRadar), ...placed.filter((point) => point.underTheRadar)];
-  const unplaced = all.length - data.length;
-  const ringed = data.filter((point) => point.underTheRadar).length;
-  const held = underTheRadarTotal ?? ringed;
+  const unplaced = all.length - placed.length;
   const width = 960;
   const height = 520;
   const pad = { top: 28, right: 28, bottom: 52, left: 62 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
 
-  const x = (value: number) => pad.left + (Math.min(100, Math.max(0, value)) / 100) * plotW;
-  const y = (value: number) => pad.top + plotH - (Math.min(100, Math.max(0, value)) / 100) * plotH;
-
-  // Bubble area tracks market cap, on a log scale so one large project does not
-  // flatten everything else.
+  /*
+   * Bubble size (2026-10-14, Pulse tidy): area tracks valuation on a log scale, normalised across the
+   * drawn projects, from 4 to 13 px. The old absolute scale (6 + 2.4·log10) put almost every project
+   * between 18 and 26 px, so the sizes said nothing and the bubbles buried one another.
+   */
+  const R_MIN = 4;
+  const R_MAX = 13;
+  const logs = placed.flatMap((point) => (point.marketCapUsd && point.marketCapUsd > 0 ? [Math.log10(point.marketCapUsd)] : []));
+  const lo = logs.length ? Math.min(...logs) : 0;
+  const hi = logs.length ? Math.max(...logs) : 0;
   const radius = (cap?: number) => {
-    if (!cap || cap <= 0) return 6;
-    return Math.min(26, 6 + Math.log10(cap) * 2.4);
+    if (!cap || cap <= 0) return R_MIN;
+    const share = hi > lo ? (Math.log10(cap) - lo) / (hi - lo) : 0.5;
+    return Math.sqrt(R_MIN ** 2 + share * (R_MAX ** 2 - R_MIN ** 2));
   };
+
+  /*
+   * The scale is inset by the largest bubble and its ring (2026-10-14): a project at 0 or 100 sat
+   * centred on the frame and spilled outside it. Inset on both sides, so 50 is still the midline.
+   */
+  const insetX = R_MAX + 6;
+  const insetY = R_MAX + 18;
+  const x = (value: number) => pad.left + insetX + (Math.min(100, Math.max(0, value)) / 100) * (plotW - 2 * insetX);
+  const y = (value: number) => pad.top + plotH - insetY - (Math.min(100, Math.max(0, value)) / 100) * (plotH - 2 * insetY);
+
+  // Largest first so a small bubble is never hidden under a large one; ringed points last, so no
+  // unringed bubble is drawn over a ring.
+  const bySize = (a: ScatterDatum, b: ScatterDatum) => radius(b.marketCapUsd) - radius(a.marketCapUsd);
+  const data = [
+    ...placed.filter((point) => !point.underTheRadar).sort(bySize),
+    ...placed.filter((point) => point.underTheRadar).sort(bySize),
+  ];
+  const ringed = data.filter((point) => point.underTheRadar).length;
+  const held = underTheRadarTotal ?? ringed;
 
   if (data.length === 0) {
     return (
@@ -133,17 +154,6 @@ export function BuildVsMarketChart({
             stroke="var(--color-hey-border)"
           />
 
-          {/* Position only (2026-10-14): Under the Radar is the ring, decided by the rule. */}
-          <QuadrantLabel x={pad.left + 14} y={pad.top + 22} text="More momentum than attention" />
-          <QuadrantLabel x={pad.left + plotW - 14} y={pad.top + 22} text="Leaders" anchor="end" />
-          <QuadrantLabel x={pad.left + 14} y={pad.top + plotH - 12} text="Quiet" />
-          <QuadrantLabel
-            x={pad.left + plotW - 14}
-            y={pad.top + plotH - 12}
-            text="Market-led"
-            anchor="end"
-          />
-
           {data.map((point) => (
             <a
               key={point.slug}
@@ -155,10 +165,10 @@ export function BuildVsMarketChart({
                 <circle
                   cx={x(point.marketAttention)}
                   cy={y(point.buildMomentum)}
-                  r={radius(point.marketCapUsd) + 4}
+                  r={radius(point.marketCapUsd) + 3}
                   fill="none"
                   stroke="var(--color-hey-accent)"
-                  strokeWidth={2}
+                  strokeWidth={1.5}
                   aria-hidden="true"
                 />
               ) : null}
@@ -167,9 +177,9 @@ export function BuildVsMarketChart({
                 cy={y(point.buildMomentum)}
                 r={radius(point.marketCapUsd)}
                 fill={STATUS_FILL[point.activityStatus] ?? STATUS_FILL.UNKNOWN}
-                fillOpacity={0.18}
+                fillOpacity={0.22}
                 stroke={STATUS_FILL[point.activityStatus] ?? STATUS_FILL.UNKNOWN}
-                strokeWidth={1.5}
+                strokeWidth={1.25}
                 className="cursor-pointer hover:fill-opacity-40"
               >
                 {/* Native tooltip: no JavaScript, and screen readers can reach it. */}
@@ -191,6 +201,18 @@ export function BuildVsMarketChart({
               </circle>
             </a>
           ))}
+
+          {/* Position only (2026-10-14): Under the Radar is the ring, decided by the rule.
+              Drawn after the bubbles, on a halo, so a bubble never covers a label. */}
+          <QuadrantLabel x={pad.left + 14} y={pad.top + 22} text="More momentum than attention" />
+          <QuadrantLabel x={pad.left + plotW - 14} y={pad.top + 22} text="Leaders" anchor="end" />
+          <QuadrantLabel x={pad.left + 14} y={pad.top + plotH - 12} text="Quiet" />
+          <QuadrantLabel
+            x={pad.left + plotW - 14}
+            y={pad.top + plotH - 12}
+            text="Market-led"
+            anchor="end"
+          />
 
           <AxisLabel x={pad.left + plotW / 2} y={height - 14} text="Market attention →" />
           <AxisLabel
@@ -218,8 +240,8 @@ export function BuildVsMarketChart({
           positive Discovery Gap — so a ringed bubble can sit outside the top-left, and an unringed one inside it.
         </span>
         <span className="mt-1.5 block">
-        Each bubble is a project; size reflects its valuation (market cap, or fully diluted
-        valuation where no circulating figure exists) and colour reflects activity status.
+        Each bubble is a project; size reflects its valuation against the others drawn (market cap,
+        or fully diluted valuation where no circulating figure exists) and colour reflects activity status.
         Position describes what has happened, not what will.
         {unplaced > 0
           ? ` ${unplaced} ${unplaced === 1 ? 'project is' : 'projects are'} not placed: Build Momentum not measured.`
@@ -251,6 +273,13 @@ function QuadrantLabel({
       x={x}
       y={y}
       textAnchor={anchor}
+      // A halo in the page's own ground keeps the label readable over a bubble (2026-10-14).
+      stroke="var(--color-hey-bg)"
+      strokeWidth={4}
+      strokeOpacity={0.85}
+      strokeLinejoin="round"
+      paintOrder="stroke"
+      pointerEvents="none"
       className={cn('text-[11px] uppercase tracking-wider', strong ? 'font-semibold' : '')}
       fill={strong ? 'var(--color-hey-accent)' : 'var(--color-hey-muted)'}
     >
