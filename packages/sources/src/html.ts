@@ -253,6 +253,13 @@ export type HtmlMetadata = {
   description?: string;
   ogTitle?: string;
   ogDescription?: string;
+  /**
+   * The site's own name for itself (2026-10-14): `og:site_name`, else the
+   * `application-name` meta. Never the `<title>`, which carries taglines and
+   * page names ("Home | …"). Read by the display-name rule only to respell a
+   * name the page already carries (`packages/domain/src/projects/display-name.ts`).
+   */
+  siteName?: string;
   ogImage?: string;
   /**
    * The site's own square icon (2026-09-08): an `apple-touch-icon` first,
@@ -444,6 +451,7 @@ export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadat
 
   const seenFeeds = new Set<string>();
   let touchIcon = false;
+  let ogSiteName = false;
   const links = new ProjectLinks(baseUrl);
 
   const { title } = scanTags(page, ({ name, attributes }) => {
@@ -455,6 +463,14 @@ export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadat
       if (key === 'description') meta.description ??= sanitizeText(content);
       else if (key === 'og:title') meta.ogTitle ??= sanitizeText(content);
       else if (key === 'og:description') meta.ogDescription ??= sanitizeText(content);
+      else if (key === 'og:site_name' && !ogSiteName) {
+        // og:site_name outranks an application-name read earlier in the page.
+        const value = sanitizeText(content);
+        if (value) {
+          meta.siteName = value;
+          ogSiteName = true;
+        }
+      } else if (key === 'application-name' && !ogSiteName) meta.siteName ??= (sanitizeText(content) || undefined);
       else if (key === 'og:image') meta.ogImage ??= content;
       return;
     }

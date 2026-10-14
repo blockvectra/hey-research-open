@@ -22,6 +22,11 @@ export type ScatterDatum = {
   /** Which measure `marketCapUsd` is (2026-09-25); the tooltip names it, and an FDV is never called a market cap. */
   valuationKind?: 'marketCap' | 'fdv';
   lastMeaningfulShipAt?: Date;
+  /**
+   * Held by HEY's Under the Radar rule (2026-10-14): the point is ringed where it sits, never moved.
+   * The rule, not the top-left quadrant, decides membership.
+   */
+  underTheRadar?: boolean;
 };
 
 const STATUS_FILL: Record<string, string> = {
@@ -36,14 +41,25 @@ const STATUS_FILL: Record<string, string> = {
 /**
  * Build vs Market (UI/UX V2 section 15).
  *
- * Y is how much a project ships, X is how much the market currently notices, so
- * the top-left quadrant is the product's whole thesis made visible.
+ * Y is how much a project ships, X is how much the market currently notices.
+ *
+ * Under the Radar is the rule's, not the quadrant's (2026-10-14). The
+ * top-left quadrant was labelled "Under the radar" and tinted, so a reader
+ * took every bubble in it for the badge: production stored 18 projects under
+ * the rule, the list beside it showed 6, and the quadrant held about 3 — the
+ * rule asks for more than position (verified building, two meaningful ships
+ * in 30 days, a positive Discovery Gap), so a held project can sit anywhere
+ * and an unheld one can sit top-left. Each quadrant now names its position
+ * only, and a point the rule holds is ringed where it sits, never moved.
  */
 export function BuildVsMarketChart({
   data: all,
+  underTheRadarTotal,
   className,
 }: {
   data: readonly ScatterDatum[];
+  /** How many projects the Under the Radar rule holds in all, so the caption can say how many are drawn. */
+  underTheRadarTotal?: number;
   className?: string;
 }) {
   /*
@@ -51,8 +67,12 @@ export function BuildVsMarketChart({
    * axis (2026-10-09 red-team F4): drawn at the floor it read "Activity
    * unknown · Build Momentum 0". It is left out and counted in the caption.
    */
-  const data = all.filter((point): point is ScatterDatum & { buildMomentum: number } => point.buildMomentum !== null);
+  const placed = all.filter((point): point is ScatterDatum & { buildMomentum: number } => point.buildMomentum !== null);
+  // Ringed points last, so no unringed bubble is drawn over a ring.
+  const data = [...placed.filter((point) => !point.underTheRadar), ...placed.filter((point) => point.underTheRadar)];
   const unplaced = all.length - data.length;
+  const ringed = data.filter((point) => point.underTheRadar).length;
+  const held = underTheRadarTotal ?? ringed;
   const width = 960;
   const height = 520;
   const pad = { top: 28, right: 28, bottom: 52, left: 62 };
@@ -87,17 +107,8 @@ export function BuildVsMarketChart({
           className="h-auto w-full min-w-[640px]"
           // A group, not an image (full audit, 2026-10-03; axe nested-interactive): every bubble is a link a keyboard reaches.
           role="group"
-          aria-label={`Build momentum against market attention for ${data.length} projects. The top-left quadrant holds projects building more than the market currently notices.`}
+          aria-label={`Build momentum against market attention for ${data.length} projects. ${ringed} ${ringed === 1 ? 'is' : 'are'} ringed: held by HEY's Under the Radar rule, wherever ${ringed === 1 ? 'it sits' : 'they sit'}.`}
         >
-          {/* Quadrant fill: only the thesis quadrant is tinted. */}
-          <rect
-            x={pad.left}
-            y={pad.top}
-            width={plotW / 2}
-            height={plotH / 2}
-            fill="var(--color-hey-accent-soft)"
-          />
-
           <line
             x1={pad.left}
             y1={pad.top + plotH / 2}
@@ -122,7 +133,8 @@ export function BuildVsMarketChart({
             stroke="var(--color-hey-border)"
           />
 
-          <QuadrantLabel x={pad.left + 14} y={pad.top + 22} text="Under the radar" strong />
+          {/* Position only (2026-10-14): Under the Radar is the ring, decided by the rule. */}
+          <QuadrantLabel x={pad.left + 14} y={pad.top + 22} text="More momentum than attention" />
           <QuadrantLabel x={pad.left + plotW - 14} y={pad.top + 22} text="Leaders" anchor="end" />
           <QuadrantLabel x={pad.left + 14} y={pad.top + plotH - 12} text="Quiet" />
           <QuadrantLabel
@@ -136,8 +148,20 @@ export function BuildVsMarketChart({
             <a
               key={point.slug}
               href={`/project/${point.slug}`}
-              aria-label={`${point.name}${point.symbol ? ` (${tickerLabel(point.symbol)})` : ''}: ${activityLabel(point.activityStatus)}, Build Momentum ${formatBuildMomentum(point.buildMomentum)}, market attention ${describeAttention(point.marketAttention)}`}
+              data-under-the-radar={point.underTheRadar ? 'true' : undefined}
+              aria-label={`${point.name}${point.symbol ? ` (${tickerLabel(point.symbol)})` : ''}: ${activityLabel(point.activityStatus)}, Build Momentum ${formatBuildMomentum(point.buildMomentum)}, market attention ${describeAttention(point.marketAttention)}${point.underTheRadar ? ", Under the Radar by HEY's rule" : ''}`}
             >
+              {point.underTheRadar ? (
+                <circle
+                  cx={x(point.marketAttention)}
+                  cy={y(point.buildMomentum)}
+                  r={radius(point.marketCapUsd) + 4}
+                  fill="none"
+                  stroke="var(--color-hey-accent)"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              ) : null}
               <circle
                 cx={x(point.marketAttention)}
                 cy={y(point.buildMomentum)}
@@ -155,6 +179,7 @@ export function BuildVsMarketChart({
                     activityLabel(point.activityStatus),
                     `Build Momentum ${formatBuildMomentum(point.buildMomentum)}`,
                     `Market attention ${describeAttention(point.marketAttention)}`,
+                    ...(point.underTheRadar ? ["Under the Radar by HEY's rule"] : []),
                     point.marketCapUsd === undefined
                       ? 'Valuation not available'
                       : `${valuationKindLabel(point.valuationKind)} ${formatUsdCompact(point.marketCapUsd)}`,
@@ -178,12 +203,28 @@ export function BuildVsMarketChart({
       </div>
 
       <figcaption className="mt-3 text-[13px] text-hey-secondary">
+        <span className="flex items-center gap-2 text-hey-ink" data-testid="build-vs-market-radar-key">
+          <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" aria-hidden="true">
+            <circle cx="8" cy="8" r="6" fill="none" stroke="var(--color-hey-accent)" strokeWidth="2" />
+          </svg>
+          {held === 0
+            ? "Ringed: Under the Radar by HEY's rule. No project meets it today."
+            : ringed === held
+              ? `Ringed: the ${held === 1 ? 'project' : `${held} projects`} HEY's Under the Radar rule holds today${held === 1 ? '' : ', all drawn'}.`
+              : `Ringed: ${ringed} of the ${held} projects HEY's Under the Radar rule holds today; the rest lack a reading the chart needs to place them.`}
+        </span>
+        <span className="mt-1.5 block">
+          The rule asks for more than a position — verified building, at least two meaningful ships in 30 days and a
+          positive Discovery Gap — so a ringed bubble can sit outside the top-left, and an unringed one inside it.
+        </span>
+        <span className="mt-1.5 block">
         Each bubble is a project; size reflects its valuation (market cap, or fully diluted
         valuation where no circulating figure exists) and colour reflects activity status.
         Position describes what has happened, not what will.
         {unplaced > 0
           ? ` ${unplaced} ${unplaced === 1 ? 'project is' : 'projects are'} not placed: Build Momentum not measured.`
           : null}
+        </span>
       </figcaption>
     </figure>
   );

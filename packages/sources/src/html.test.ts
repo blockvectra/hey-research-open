@@ -183,3 +183,13 @@ describe('a docs page is one link whatever its anchor (review repair, 2026-09-27
     expect(extractHtmlMetadata(page, 'https://example.org/').docsUrls).toEqual(['https://example.org/docs', 'https://example.org/docs/api']);
   });
 });
+
+describe('the site’s own name (2026-10-14, display names)', () => {
+  it('reads og:site_name, before an application-name, and never the title', () => {
+    expect(extractHtmlMetadata('<title>Home | Sinjoh</title><meta name="application-name" content="Sinjoh App"><meta property="og:site_name" content="SinjohFinance">').siteName).toBe('SinjohFinance');
+    expect(extractHtmlMetadata('<meta property="og:site_name" content="First"><meta property="og:site_name" content="Second">').siteName).toBe('First');
+    expect(extractHtmlMetadata('<meta name="application-name" content="Penguin &amp; Swap">').siteName).toBe('Penguin & Swap');
+    expect(extractHtmlMetadata('<title>Penguin Swap</title>').siteName).toBeUndefined();
+    expect(extractHtmlMetadata('<meta property="og:site_name" content="  ">').siteName).toBeUndefined();
+  });
+});
