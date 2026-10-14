@@ -1,0 +1,1 @@
+{"jsonrpc": "2.0", "id": 1, "error": {"code": -32602, "message": "query spans 87948757 blocks (0 to 87948756), but only 10000000 are allowed for this request; narrow the block range"}}
