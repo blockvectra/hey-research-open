@@ -424,7 +424,7 @@ detector), [hey-embed](https://github.com/hey-research-lab/hey-embed),
 [hey-data](https://github.com/hey-research-lab/hey-data) (snapshots of HEY's own facts, CC BY 4.0; no
 market or provider data), and four agent-framework plugins — [plugin-hey-research](https://github.com/hey-research-lab/plugin-hey-research) (ElizaOS), [hey-agentkit](https://github.com/hey-research-lab/hey-agentkit) (Coinbase AgentKit), [hey-goat-plugin](https://github.com/hey-research-lab/hey-goat-plugin) (GOAT SDK) and [hey-virtuals-plugin](https://github.com/hey-research-lab/hey-virtuals-plugin) (Virtuals GAME and ACP) — each read-only over the published SDK — and [hey-agent-skills](https://github.com/hey-research-lab/hey-agent-skills), the `hey-research` Agent Skill and Claude Code plugin. None reads HEY's database; production does not consume any of them yet. HEY serves its own manifest at
 [`/.well-known/hey-project.json`](https://heyresearch.xyz/.well-known/hey-project.json), derived from
-the machine identity, as the working reference; `/developers#open-source` maps each package to its
+the machine identity, as the working reference; `/developers?tab=sdk#open-source` maps each package to its
 job. An outside-in check on 2026-10-02 (fresh clones and npm installs as a builder, a developer and
 an agent) led to 0.1.1 of nine of them.
 
