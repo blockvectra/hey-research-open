@@ -434,6 +434,6 @@ describe('code weeks under commit-substance-v3 (2026-10-02)', () => {
   });
 
   it('carries the classifier version', () => {
-    expect(COMMIT_SUBSTANCE_VERSION).toBe('commit-substance-v3');
+    expect(COMMIT_SUBSTANCE_VERSION).toBe('commit-substance-v4');
   });
 });

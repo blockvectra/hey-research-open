@@ -586,7 +586,9 @@ changed meaning.
   whitespace. `LOW_INFORMATION`: HEY listed and read every commit of the week and each only changed
   documentation or the README, dependency lockfiles, generated files, assets, data files (JSON, CSV
   and the like outside configuration, since `commit-substance-v2` / `hbm-v17`), whitespace or pure
-  renames — shown as "documentation or maintenance only", `countsAsBuilding: false`, and left out
+  renames, or dependency or version updates — a manifest such as `package.json`, `Cargo.toml` or
+  `go.mod` whose changed lines are all versions, counted in `files.dependency` beside the lockfiles
+  (since `commit-substance-v4` / `hbm-v29`, 2026-10-15; no field changed shape) — shown as "documentation or maintenance only", `countsAsBuilding: false`, and left out
   of activity status, Build Momentum, Still Building, Under the Radar and every count of ships
   (scoring version `hbm-v16`, founder ruling G1). `UNKNOWN`: not read in full yet; it counts
   exactly as before — the absence of HEY's reading never demotes a project.

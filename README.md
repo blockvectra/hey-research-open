@@ -539,6 +539,14 @@ gap. A repository HEY began reading during the gap, or a ship whose source HEY c
 return: the project reads Shipping or Active by the ordinary rule, and the score says why
 (`resumedWithheld`). The 14-day window and the 60-day gap are unchanged.
 
+Since scoring `hbm-v29` (`commit-substance-v4`, 2026-10-15) a dependency bump is maintenance. A
+manifest (`package.json`, `composer.json`, `Cargo.toml`, `go.mod`, `requirements*.txt`,
+`pyproject.toml`, `Gemfile`) counts as a lockfile when HEY has read its patch and every changed line
+is a dependency's version, the package's own version or the toolchain's. A commit of nothing else
+reads "dependency or version updates only" and does not count as building. A script, a field, a
+dependency added or removed, a git or URL spec, or a patch GitHub did not return keeps the manifest
+configuration, which counts.
+
 A week of code activity has one title everywhere (2026-10-03): "Code changes, week of 2026-09-28 –
 2026-10-04", the fixed UTC week it is keyed on, on the ledger, the API, the partner card and every
 page; pages that read the week add its own commit count. "Week of" always names the Monday. Every

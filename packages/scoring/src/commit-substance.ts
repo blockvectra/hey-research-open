@@ -1,9 +1,11 @@
+import { isDependencyBumpPatch } from './dependency-bump';
+
 /**
  * Commit substance (founder ruling G1, 2026-09-27).
  *
  * "Activity exists" and "development exists" are two different facts. A commit
- * that only changes documentation or the README, a dependency lockfile,
- * generated output, assets or whitespace is real activity and HEY keeps it on
+ * that only changes documentation or the README, a dependency lockfile or
+ * dependency versions (v4), generated output, assets or whitespace is real activity and HEY keeps it on
  * the record — it is simply not evidence of building. This module is the one
  * deterministic, versioned reading of what a commit changed, from the file
  * list and patches GitHub returns for it. It never calls a model, never reads
@@ -25,7 +27,7 @@
  * beyond whitespace; LOW_INFORMATION when every file is README, docs,
  * dependency lockfile, generated, asset, whitespace-only or a pure rename.
  */
-export const COMMIT_SUBSTANCE_VERSION = 'commit-substance-v3' as const;
+export const COMMIT_SUBSTANCE_VERSION = 'commit-substance-v4' as const;
 
 /*
  * commit-substance-v2 (2026-09-27, founder ruling: "data tak kira"): a data
@@ -61,6 +63,22 @@ export const COMMIT_SUBSTANCE_VERSION = 'commit-substance-v3' as const;
  *
  * The absence of HEY's reading still never demotes a project: an unread
  * sample, or a week HEY holds too few commits for, is UNKNOWN.
+ */
+
+/*
+ * commit-substance-v4 (2026-10-15, founder ruling: "buat commit-substance-v4
+ * tu"; hbm-v29). A dependency manifest — package.json, composer.json,
+ * Cargo.toml, go.mod, requirements*.txt / constraints.txt, pyproject.toml,
+ * Gemfile — whose patch changes only dependency versions, the package's own
+ * version or the toolchain's (`dependency-bump.ts`) is the `dependency` class,
+ * like the lockfile beside it, and a commit of nothing else reads
+ * `dependency_bump`: "dependency or version updates only", LOW_INFORMATION.
+ * Before, the lockfile was maintenance but the manifest was configuration, so
+ * a person bumping versions by hand made a building week while the same bump
+ * from a bot did not. A manifest with any other change (a script, a field, a
+ * dependency added or removed, a git, URL or path spec) stays configuration,
+ * and so does one whose patch GitHub did not return: a claim needs the patch
+ * that proves it, as the whitespace rule always did.
  */
 
 export const FILE_CLASSES = [
@@ -149,7 +167,11 @@ const GENERATED_FILE = [
   /\.freezed\.dart$/,
 ];
 
-/** Lockfiles: resolved dependency versions, rewritten by a package manager. Manifests are config. */
+/**
+ * Lockfiles: resolved dependency versions, rewritten by a package manager.
+ * Manifests are config by path; a manifest patch of version lines only is
+ * `dependency` (commit-substance-v4, `classifyFile`).
+ */
 const LOCKFILES = new Set([
   'package-lock.json',
   'npm-shrinkwrap.json',
@@ -400,7 +422,7 @@ export type CommitDetailInput = {
 
 export type CommitSubstanceResult = {
   substance: CommitSubstance;
-  /** Plain reasons naming the classes, e.g. `readme_only`, `lockfile_only`, `source_changed`. */
+  /** Plain reasons naming the classes, e.g. `readme_only`, `lockfile_only`, `dependency_bump` (v4), `source_changed`. */
   reasons: string[];
   classes: FileClassCounts;
   filesChanged: number;
@@ -409,17 +431,24 @@ export type CommitSubstanceResult = {
   classifierVersion: typeof COMMIT_SUBSTANCE_VERSION;
 };
 
-/** The effective class of one changed file: its path class, unless the patch shows only layout. */
-export function classifyFile(file: CommitFileInput): FileClass {
+/** A file's class, and whether it is a manifest whose patch only moved versions (commit-substance-v4). */
+function readFile(file: CommitFileInput): { kind: FileClass; dependencyBump: boolean } {
   const byPath = classifyPath(file.filename);
-  if ((file.status === 'renamed' || file.status === 'copied') && file.changes === 0) return 'rename';
+  if ((file.status === 'renamed' || file.status === 'copied') && file.changes === 0) return { kind: 'rename', dependencyBump: false };
   if (file.patch !== undefined) {
-    if (byPath !== 'generated' && isSubmodulePointerPatch(file.patch)) return 'dependency';
-    if (file.status === 'added' && patchShowsGeneratedHeader(file.patch)) return 'generated';
+    if (byPath !== 'generated' && isSubmodulePointerPatch(file.patch)) return { kind: 'dependency', dependencyBump: false };
+    if (file.status === 'added' && patchShowsGeneratedHeader(file.patch)) return { kind: 'generated', dependencyBump: false };
     // Only a class that would otherwise count can be downgraded to layout.
-    if ((SUBSTANTIVE_CLASSES.has(byPath) || byPath === 'unknown') && isWhitespaceOnlyPatch(file.patch, file.filename)) return 'whitespace';
+    if ((SUBSTANTIVE_CLASSES.has(byPath) || byPath === 'unknown') && isWhitespaceOnlyPatch(file.patch, file.filename)) return { kind: 'whitespace', dependencyBump: false };
+    // A manifest whose every changed line is a version (commit-substance-v4): the patch is the proof.
+    if (byPath === 'config' && isDependencyBumpPatch(file.patch, file.filename)) return { kind: 'dependency', dependencyBump: true };
   }
-  return byPath;
+  return { kind: byPath, dependencyBump: false };
+}
+
+/** The effective class of one changed file: its path class, unless the patch shows only layout or only version moves. */
+export function classifyFile(file: CommitFileInput): FileClass {
+  return readFile(file).kind;
 }
 
 const ONLY_REASON: Partial<Record<FileClass, string>> = {
@@ -444,8 +473,11 @@ export function classifyCommit(input: CommitDetailInput): CommitSubstanceResult 
   const classes = emptyFileClassCounts();
   let additions = 0;
   let deletions = 0;
+  let dependencyBumps = 0;
   for (const file of input.files) {
-    classes[classifyFile(file)] += 1;
+    const reading = readFile(file);
+    classes[reading.kind] += 1;
+    if (reading.dependencyBump) dependencyBumps += 1;
     additions += file.additions;
     deletions += file.deletions;
   }
@@ -472,6 +504,8 @@ export function classifyCommit(input: CommitDetailInput): CommitSubstanceResult 
 
   const present = FILE_CLASSES.filter((kind) => classes[kind] > 0);
   if (present.every((kind) => LOW_INFORMATION_CLASSES.has(kind))) {
+    // A manifest's version moves, with or without the lockfile beside them (commit-substance-v4).
+    if (present.length === 1 && present[0] === 'dependency' && dependencyBumps > 0) return result('LOW_INFORMATION', ['dependency_bump']);
     if (present.length === 1) return result('LOW_INFORMATION', [ONLY_REASON[present[0]!] ?? 'maintenance_only']);
     // README with other documentation is still documentation only.
     if (present.every((kind) => kind === 'readme' || kind === 'docs')) return result('LOW_INFORMATION', ['documentation_only']);

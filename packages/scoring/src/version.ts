@@ -362,7 +362,28 @@
  * project's consecutive deploys break cleanly: the largest under a minute is
  * 45 s and the smallest above it 84 s. 307 deploy seconds become 214 runs.
  */
-export const SCORING_VERSION = 'hbm-v28' as const;
+/*
+ * hbm-v29 (2026-10-15, founder ruling "buat commit-substance-v4 tu"): no
+ * weight, threshold or Build Momentum formula changes. The commit classifier
+ * moves to commit-substance-v4: a dependency manifest (package.json,
+ * composer.json, Cargo.toml, go.mod, requirements*.txt / constraints.txt,
+ * pyproject.toml, Gemfile) whose patch changes only dependency versions, the
+ * package's own version or the toolchain's is the `dependency` class, like
+ * its lockfile, and a commit of nothing else is `dependency_bump` —
+ * "dependency or version updates only", LOW_INFORMATION. Before, the lockfile
+ * was maintenance and the manifest beside it configuration, so a person
+ * bumping versions by hand made a building week while a bot's identical bump
+ * did not. A manifest with any other change, or whose patch GitHub did not
+ * return, stays configuration and counts as before. Weeks already read under
+ * v3 are re-read where it can matter: a commit SUBSTANTIVE on configuration
+ * alone, in a week no other commit decides, goes back to the paced detail
+ * sweep (`pnpm data:commit-substance --rejudge-config`); until it is re-read
+ * the week keeps its v3 verdict. No ship is deleted or retracted: a week
+ * re-read as maintenance stays on the timeline as context. Prompted by an
+ * outside reader's question on X: "How strict are you on 'meaningful' when
+ * commits are mostly dependency bumps?"
+ */
+export const SCORING_VERSION = 'hbm-v29' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28', 'hbm-v29'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

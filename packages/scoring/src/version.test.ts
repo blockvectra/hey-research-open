@@ -62,6 +62,7 @@ const RULES_DIGEST = createHash('sha256')
       VALUATION_CHAIN_EVIDENCE,
       VALUATION_SOURCES_DISAGREE,
       // DISCOVERY_GAP above carries withholdUnknownActivity: building HEY cannot read gets no gap (hbm-v27).
+      // COMMIT_SUBSTANCE_VERSION above: a manifest of version moves only is maintenance (commit-substance-v4, hbm-v29).
     }),
   )
   .digest('hex')
@@ -86,8 +87,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v28',
-      rules: '723bedd3d08ac2fe',
+      version: 'hbm-v29',
+      rules: 'f650b6f6253fb6ca',
     });
   });
 });

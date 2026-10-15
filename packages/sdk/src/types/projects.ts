@@ -152,7 +152,7 @@ export type HeyProject = {
  * counts are FACTs about the commits HEY read; `verdict` is DERIVED by
  * `classifierVersion`. Absent on every other ship and on a week HEY never
  * evaluated — never a zero. `LOW_INFORMATION` (documentation or maintenance
- * only: README, docs, lockfiles, generated output, assets, whitespace, data
+ * only: README, docs, lockfiles and dependency or version updates (v4), generated output, assets, whitespace, data
  * files) is kept
  * on the record and does not count as building; `UNKNOWN` (not read in full
  * yet) counts as before.

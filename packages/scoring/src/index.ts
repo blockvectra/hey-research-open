@@ -20,3 +20,4 @@ export * from './activity-words';
 export * from './research-level-words';
 export * from './commit-automation';
 export * from './feed-data-stream';
+export * from './dependency-bump';
