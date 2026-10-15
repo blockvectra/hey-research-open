@@ -136,8 +136,10 @@ it says so and offers nothing to confirm.
 
 Alertable types are the webhook-deliverable set (see
 [Webhooks](/docs/webhooks#events)), `market_integrity.event` only where
-published, plus `contract.method_first_observed`, `contract.method_resumed` and
-`build.code_activity` (2026-10-09).
+published, plus `contract.method_first_observed`, `contract.method_resumed`,
+`build.code_activity` (2026-10-09) and `contract.v4_pool_initialized` (new Uniswap
+v4 pools on a project's attributed hook, 2026-10-15) — those four in the inbox
+only, never mailed, sent to a webhook or to Telegram.
 
 ## What can never be an alert
 

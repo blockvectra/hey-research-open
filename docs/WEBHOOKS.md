@@ -46,7 +46,7 @@ hold resumes it.
 | `contract.implementation_changed` | a proxy's implementation changed (an upgrade log, or HEY saw it between two reads) | the block (log), or null, OBSERVED |
 | `contract.interface_changed`, `contract.source_verified` | the verified interface changed; the source was verified | null, OBSERVED |
 | `market.status_changed` | the token's market status moved (live, low liquidity, liquidity gone…) | null, OBSERVED |
-| `token.launch_stage_changed`, `token.verification_changed` | launch stage; token verification | null, OBSERVED |
+| `token.launch_stage_changed`, `token.verification_changed` | launch stage; token verification | null, OBSERVED; a Pons V2 graduation HEY read from the chain is the block time, EXACT, with the graduation as facts (2026-10-15) |
 | `lock.unlock_due` | a HoodLock unlock enters its last seven days | the unlock, SCHEDULED |
 | `lock.observed`, `lock.withdrawn` | HEY first read a HoodLock lock; first read it withdrawn | null, OBSERVED |
 | `event.retracted` | an event **you were sent** is no longer public: drop it | — |
@@ -82,7 +82,7 @@ a revision keeps (founder ruling 2026-10-03). Delivery by `seq` is unchanged.
 | `market_integrity.event` where HEY does not publish Market Integrity | not published there (founder decision F5); where it is published it is subscribable, `GET /api/webhooks` lists it in `eventTypes`, and an exit-pattern classification is delivered only where HEY names one. Publishing is never pushed as news: events already recorded enter the ledger as `backfill`. |
 | `market.distribution_changed` | derived from holder data (founder decision). |
 | `market.liquidity_moved`, `market.volume_spike` | market movement is context, not a change a project made; HEY sends no trading alerts. |
-| `build.code_activity`, `build.slowing`, `contract.source_unverified`, `contract.usage_changed`, `contract.method_first_observed`, `contract.method_resumed`, `research.owner_verified`, `research.narrative_assigned` | on `/api/changes`; not pushed. |
+| `build.code_activity`, `build.slowing`, `contract.source_unverified`, `contract.usage_changed`, `contract.method_first_observed`, `contract.method_resumed`, `contract.v4_pool_initialized` (2026-10-15), `research.owner_verified`, `research.narrative_assigned` | on `/api/changes`; not pushed. |
 | anything Terminal-only | never, on any public surface. |
 | project-linked address events, holder lists | never. |
 

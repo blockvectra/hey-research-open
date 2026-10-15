@@ -309,6 +309,32 @@ export type HeyLifecycleExtras = {
   firstVerifiedRelease?: { publishedAt: string; detectedAt: string };
   verifiedBuilderAt?: string;
   durations?: { deployToFirstTradeDays?: number; deployToFirstBuildingShipDays?: number; deployToFirstVerifiedReleaseDays?: number };
+  /** A Pons V2 launch's sweep, graduation and permanent lock, read from the launch factory's events (2026-10-15). */
+  launchLifecycle?: HeyLaunchLifecycle;
+};
+
+/**
+ * The launch factory's own account of a graduation (2026-10-15). Amounts are
+ * raw base-unit integers as strings (`tokenDecimals`; 18 for the quote side
+ * when `quoteAsset` is `ETH`); null is "not read", never zero. `graduatedAt`
+ * is the graduation log's block time. `evidenceId` (`ponsgrad:<chainId>:<token>`)
+ * resolves at `/api/evidence/{id}`.
+ */
+export type HeyLaunchLifecycle = {
+  evidenceId: string;
+  factory: string;
+  venue: string | null;
+  sweptAt: string | null;
+  graduatedAt: string | null;
+  graduationTx: string | null;
+  positionId: string | null;
+  seededToken: string | null;
+  seededQuote: string | null;
+  quoteAsset: 'ETH' | null;
+  permanentlyLocked: string | null;
+  tokenDecimals: number | null;
+  units: 'base_units';
+  summary: string;
 };
 
 export type HeyOnchainDay = {

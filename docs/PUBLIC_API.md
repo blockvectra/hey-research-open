@@ -1251,6 +1251,11 @@ day: counts only, `sourceType: "decoded_calls"`; a fact later evidence contradic
 project's security context — `claimType` `AUDIT_REPORT_LINKED`, `BUG_BOUNTY_LINKED` or
 `SECURITY_CONTACT_PUBLISHED`, `sourceUrl` the report, program or security.txt, `publishedAt: null`,
 precision OBSERVED; an item HEY no longer holds resolves to 404, a hidden project's to `not_public`),
+`ponsgrad:<chainId>:<token>` (2026-10-15: a Pons V2 graduation read from the launch factory's
+own `PoolGraduated` — `claimType: "pons_graduation"`, `sourceType: "explorer"`, `sourceUrl` the
+graduation transaction, `publishedAt` its block time (EXACT), `metadata` with the seeded amounts,
+the permanent lock and the sweep in raw base units, null where not read; public only beside a
+published project's token, otherwise `not_public`; a token with no graduation read is a 404),
 `sourcechange:<uuid>` (2026-09-27: a material change to what the project's official
 site declares, against HEY's earlier reading — `claimType: "SOURCE_CHANGE_OBSERVED"`,
 `sourceType: "official_site"`, `publishedAt: null`, precision OBSERVED, `metadata` with the kind and
@@ -1561,6 +1566,15 @@ Added 2026-09-26, all optional and absent when HEY did not measure them:
   `firstBuildingShip` and `firstVerifiedRelease` (`publishedAt` and `detectedAt`),
   `verifiedBuilderAt` (knowledge time), and `durations` in whole days — given only between two
   event times HEY measured, never from a knowledge time and never across a censored first trade.
+  Additive (2026-10-15): `launchLifecycle` — a Pons V2 launch's sweep, graduation and permanent
+  lock, read from the launch factory's own `LaunchSwept`, `PoolGraduated` and
+  `GraduationTokensPermanentlyLocked` events: `evidenceId` (`ponsgrad:<chainId>:<token>`),
+  `factory`, `venue` (`Uniswap v4`), `sweptAt`, `graduatedAt` (the graduation log's block time,
+  exact), `graduationTx`, `positionId`, `seededToken`, `seededQuote`, `quoteAsset` (`ETH` when the
+  factory's record names native ETH, else null), `permanentlyLocked`, `tokenDecimals`,
+  `units: "base_units"` (amounts are raw integers as strings) and `summary`, the one sentence
+  every surface prints. Every field HEY did not read is null, never zero; absent when HEY read no
+  sweep and no graduation for the token. Never a verdict on the launch.
 - `onchainDays[]` keeps `calls`, `methods`, `eventKinds`, `source` (`onchain` for the decoded
   reading, `rpc` for the node's own log count) and `window` (`utc_day` or `rolling_24h`). On a day
   the decoding source counted calls but could not index events for the contract, `events` is
@@ -1718,11 +1732,12 @@ status move — so each change is one event, not two.
 | `contract.implementation_changed` | the implementation history: an upgrade log (id `impl:<chainId>:<address>:<block>:<logIndex>`), or a change HEY saw between two reads (`impl:<chainId>:<address>:rpc:<uuid>`, with the upgrade ship as evidence, never a second event). An old log indexed late is `origin: "backfill"` | the block time, EXACT (log); null, OBSERVED (two reads) |
 | `contract.source_verified`, `contract.source_unverified`, `contract.interface_changed` | an explorer ABI diff (counts only; the names stay in the Terminal) | null, OBSERVED |
 | `contract.method_first_observed`, `contract.method_resumed` | the contract's calls per method (2026-09-27): named functions called for the first time since deployment (only where HEY read the contract back to its deployment, never its first day of use), or called again after 30+ days HEY read without a call. Id `method:<uuid>`; `facts.functions` counts them (the names stay in the Terminal), `facts.longestSilenceDays` on a resumption. A contract fact, never `countsAsBuilding`. An old day indexed by the archive backfill is `origin: "backfill"` | the UTC day of the calls, DATE |
+| `contract.v4_pool_initialized` | new Uniswap v4 pools observed using a hook HEY attributes to the project — its deployer's (while that follow-up ship stands) or one it declares (2026-10-15). One event per hook and UTC day HEY read the pools, id `v4pools:<chainId>:<hook>:<YYYY-MM-DD>` (not an evidence id); `facts.pools` counts them and `facts.newestPoolId` names the day's newest, whose receipt is `v4pool:<chainId>:<poolId>`, beside the hook's `v4hook:`. Retracted when the attribution moves or the ship is withdrawn. Days before 2026-10-16, and pools read late below a block HEY knew a week earlier, are `origin: "backfill"`. Never `countsAsBuilding`; on `/api/changes`, never a webhook | null, OBSERVED (HEY stores no block time for the Initialize log) |
 | `build.status_changed`, `build.dormant`, `build.resumed` | an activity-status move | null, OBSERVED |
 | `build.accelerating`, `build.slowing` | the development-window signals | the window's end, WINDOW |
 | `market.status_changed` | a token-market-status move | null, OBSERVED |
 | `market.liquidity_moved`, `market.volume_spike`, `market.distribution_changed`, `contract.usage_changed` | the market and usage signals (counts only, never an address) | WINDOW |
-| `token.launch_stage_changed`, `token.verification_changed` | a launch-stage or token-verification move | null, OBSERVED |
+| `token.launch_stage_changed`, `token.verification_changed` | a launch-stage or token-verification move. A Pons V2 token's move off its curve that HEY recorded at or after the block of its `PoolGraduated` (2026-10-15) is dated by that block and carries the graduation as facts (`graduatedAt`, `sweptAt`, `graduationTx`, `launchFactory`, `graduationVenue`, `positionId`, `seededTokenRaw`, `seededQuoteRaw`, `quoteAsset`, `permanentlyLockedRaw`; raw base units, absent when not read) and a second evidence id, `ponsgrad:<chainId>:<token>` | null, OBSERVED; the graduation's block time, EXACT (Pons V2, chain-read) |
 | `research.published`, `research.builder_verified` | a project page published; a builder verified | null, OBSERVED |
 | `research.owner_verified` | a verified ownership claim (how, never who) | the verification, EXACT |
 | `research.source_added` | an official source registered after the project's first day | null, OBSERVED |

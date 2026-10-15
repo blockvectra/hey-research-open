@@ -16,6 +16,7 @@ export * from './factories/registry';
 export * from './factories/indexer';
 export * from './factories/metadata';
 export * from './factories/dex-pools';
+export * from './factories/pons-lifecycle';
 export * from './adapters/pairfund';
 export * from './adapters/dexscreener';
 export * from './adapters/dexscreener-search';

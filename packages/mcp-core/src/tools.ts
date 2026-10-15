@@ -331,6 +331,7 @@ export const PUBLIC_CHANGE_TYPES = [
   'contract.usage_changed',
   'contract.method_first_observed',
   'contract.method_resumed',
+  'contract.v4_pool_initialized',
   'market.status_changed',
   'market.liquidity_moved',
   'market.volume_spike',

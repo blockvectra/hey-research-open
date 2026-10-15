@@ -2,6 +2,8 @@ import { z } from 'zod';
 
 import { chainCheckedFallbackUrl } from '../http/rpc-failover';
 
+import { decodePonsLifecycleLog, OR_TOPIC_MAX_BLOCK_RANGE, type PonsLifecycleEvent } from './pons-lifecycle';
+
 import type { SourceContext } from '../adapter';
 import type { LaunchFactoryConfig } from './registry';
 
@@ -11,7 +13,7 @@ import type { LaunchFactoryConfig } from './registry';
  */
 export type ScannableFactory = Pick<
   LaunchFactoryConfig,
-  'id' | 'chainId' | 'factoryAddress' | 'eventTopic0' | 'tokenTopicIndex' | 'tokenDataWord' | 'eventStrings' | 'version'
+  'id' | 'chainId' | 'factoryAddress' | 'eventTopic0' | 'tokenTopicIndex' | 'tokenDataWord' | 'eventStrings' | 'version' | 'lifecycleTopics' | 'lifecycleStartBlock'
 > & {
   /**
    * Every indexed topic that carries a token (a DEX pool pairs two). When
@@ -152,6 +154,12 @@ export type ScanResult = {
   poolInits: V4PoolInit[];
   /** Hook claims from a launch protocol's event, when the factory has a `launchHook`; otherwise empty. */
   launchHookClaims: LaunchHookClaim[];
+  /**
+   * The factory's lifecycle events after a launch (2026-10-15), when it has
+   * `lifecycleTopics`: read from the same answers as the launches, never a
+   * launch themselves. Otherwise empty.
+   */
+  lifecycle: PonsLifecycleEvent[];
   /** Last block fully covered — the next run resumes from here + 1. */
   lastIndexedBlock: number;
   requests: number;
@@ -180,6 +188,7 @@ const logSchema = z.object({
   blockNumber: z.string(),
   transactionHash: z.string(),
   logIndex: z.string().optional(),
+  removed: z.boolean().optional(),
 });
 
 /** The strings a registry entry says the event carries, decoded from one log. */
@@ -333,6 +342,12 @@ export type ScanOptions = {
   onProgress?: (block: number, found: number) => void;
   /** Injected in tests so a rate-limit back-off does not actually wait. */
   sleep?: (ms: number) => Promise<void>;
+  /**
+   * Ask only for the factory's `lifecycleTopics`, not its launches
+   * (2026-10-15): the lifecycle backfill reads graduations over the factory's
+   * whole history without paying for tens of thousands of launch logs.
+   */
+  lifecycleOnly?: boolean;
 };
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -347,7 +362,27 @@ export async function scanFactory(
   const launches = new Map<string, FactoryLaunch>();
   const poolInits: V4PoolInit[] = [];
   const launchHookClaims: LaunchHookClaim[] = [];
+  const lifecycle: PonsLifecycleEvent[] = [];
   const unresolvedWindows: { from: number; to: number }[] = [];
+
+  const lifecycleTopics = factory.lifecycleTopics ?? [];
+  if (options.lifecycleOnly && lifecycleTopics.length === 0) throw new Error(`${factory.id} has no lifecycle topics to read`);
+  const lifecycleFrom = factory.lifecycleStartBlock ?? 0;
+  const launchTopic = factory.eventTopic0.toLowerCase();
+  /*
+   * What one window asks for (2026-10-15): the launch topic alone, or — from
+   * the factory's `lifecycleStartBlock` on, or always for the backfill — an
+   * OR list with its lifecycle topics. The node answers an OR list over at
+   * most 100,000 blocks (inclusive, so a span of 99,999 past `from`); a single
+   * topic over the usual 2M. A window never straddles the lifecycle start, so
+   * the launches before it keep their 2M windows.
+   */
+  const windowPlan = (at: number): { topic0: string | string[]; cap: number; end: number } => {
+    if (lifecycleTopics.length === 0) return { topic0: factory.eventTopic0, cap: MAX_CHUNK, end: Number.POSITIVE_INFINITY };
+    if (options.lifecycleOnly) return { topic0: [...lifecycleTopics], cap: OR_TOPIC_MAX_BLOCK_RANGE - 1, end: Number.POSITIVE_INFINITY };
+    if (at < lifecycleFrom) return { topic0: factory.eventTopic0, cap: MAX_CHUNK, end: lifecycleFrom - 1 };
+    return { topic0: [factory.eventTopic0, ...lifecycleTopics], cap: OR_TOPIC_MAX_BLOCK_RANGE - 1, end: Number.POSITIVE_INFINITY };
+  };
 
   let from = options.fromBlock;
   let chunk = MAX_CHUNK;
@@ -366,7 +401,9 @@ export async function scanFactory(
       stopReason = 'request_cap';
       break;
     }
-    const to = Math.min(from + chunk, options.toBlock);
+    const plan = windowPlan(from);
+    const span = Math.min(chunk, plan.cap);
+    const to = Math.min(from + span, options.toBlock, plan.end);
 
     const body = JSON.stringify({
       jsonrpc: '2.0',
@@ -375,7 +412,7 @@ export async function scanFactory(
       params: [
         {
           address: factory.factoryAddress,
-          topics: [factory.eventTopic0],
+          topics: [plan.topic0],
           fromBlock: `0x${from.toString(16)}`,
           toBlock: `0x${to.toString(16)}`,
         },
@@ -462,8 +499,8 @@ export async function scanFactory(
         continue;
       }
       // A timeout means the window was too dense, not that it was empty.
-      if (chunk > MIN_CHUNK) {
-        chunk = Math.floor(chunk / 2);
+      if (span > MIN_CHUNK) {
+        chunk = Math.floor(span / 2);
         continue;
       }
       unresolvedWindows.push({ from, to });
@@ -474,6 +511,12 @@ export async function scanFactory(
     }
 
     for (const log of parsed.result ?? []) {
+      // A lifecycle event rides in the same answer and is never a launch (2026-10-15).
+      if (lifecycleTopics.length > 0 && log.topics[0]?.toLowerCase() !== launchTopic) {
+        const event = decodePonsLifecycleLog(log);
+        if (event) lifecycle.push(event);
+        continue;
+      }
       // Every log of a window read, before any token filter: a quote-only pool still names its hook.
       if (factory.hookDataWord !== undefined) {
         const init = decodeV4PoolInit(log, factory.hookDataWord);
@@ -523,6 +566,7 @@ export async function scanFactory(
     launches: [...launches.values()],
     poolInits,
     launchHookClaims,
+    lifecycle,
     lastIndexedBlock,
     requests,
     rateLimitHits,

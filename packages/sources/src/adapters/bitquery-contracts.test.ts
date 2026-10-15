@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createBitqueryContractActivityAdapter, normalizeBitqueryContractDays, BITQUERY_CONTRACT_ACTIVITY_QUERY } from './bitquery-contracts';
+import { BITQUERY_ACTIVITY_BATCH_SIZE, BITQUERY_ACTIVITY_ROW_LIMIT, createBitqueryContractActivityAdapter, normalizeBitqueryContractDays, BITQUERY_CONTRACT_ACTIVITY_QUERY } from './bitquery-contracts';
 
 const A = '0x39dbed3a2bd333467115de45665cc57f813c4571';
 const B = '0x2e8c31162b855a2ffa90f6f8634643ad6f111e18';
@@ -71,7 +71,11 @@ describe('bitquery contract activity', () => {
 
   it('refuses a batch larger than the provider accepts and one with a bad address', () => {
     const adapter = createBitqueryContractActivityAdapter();
-    const many = Array.from({ length: 101 }, (_, i) => `0x${(i + 1).toString(16).padStart(40, '0')}`);
+    // Four hundred a request since 2026-10-15: realtime bills the same five points a cube for 400 as for 100.
+    expect(BITQUERY_ACTIVITY_BATCH_SIZE).toBe(400);
+    const address = (i: number) => `0x${(i + 1).toString(16).padStart(40, '0')}`;
+    expect(adapter.canHandle({ addresses: Array.from({ length: 400 }, (_, i) => address(i)), since: new Date(), apiKey: 'k' })).toBe(true);
+    const many = Array.from({ length: 401 }, (_, i) => address(i));
     expect(adapter.canHandle({ addresses: many, since: new Date(), apiKey: 'k' })).toBe(false);
     expect(adapter.canHandle({ addresses: [A], since: new Date(), apiKey: '' })).toBe(false);
     expect(adapter.canHandle({ addresses: ['nope'], since: new Date(), apiKey: 'k' })).toBe(false);
@@ -112,6 +116,17 @@ describe('bitquery contract activity, through the schema', () => {
 
     expect(result.status).toBe('error');
     expect(result.errorCode).toBe('INVALID_RESPONSE');
+    expect(result.data).toBeUndefined();
+  });
+
+  it('refuses a whole answer when a cube fills its row limit, never storing it as a partial count (2026-10-15)', async () => {
+    expect(BITQUERY_CONTRACT_ACTIVITY_QUERY.match(new RegExp(`limit: \\{ count: ${BITQUERY_ACTIVITY_ROW_LIMIT} \\}`, 'g'))).toHaveLength(3);
+    const body = fixture();
+    const row = body.data.EVM.calls[0]!;
+    body.data.EVM.calls = Array.from({ length: BITQUERY_ACTIVITY_ROW_LIMIT }, () => row);
+    const stub = stubFetch(json(JSON.stringify(body)));
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.status).toBe('error');
     expect(result.data).toBeUndefined();
   });
 

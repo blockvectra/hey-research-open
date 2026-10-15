@@ -1,3 +1,5 @@
+import { PONS_V2_LIFECYCLE_TOPICS } from './pons-lifecycle';
+
 /**
  * Launch factory registry (Discovery Coverage V2 §12).
  *
@@ -49,6 +51,21 @@ export type LaunchFactoryConfig = {
   tokenTopicIndex: 1 | 2 | 3 | 'data';
   /** Word index of the token address in the data when `tokenTopicIndex` is `'data'`. */
   tokenDataWord?: number;
+  /**
+   * More `topics[0]` values the same request asks for (2026-10-15): the
+   * factory's own lifecycle events after the launch, read as an OR list
+   * beside `eventTopic0` so they cost no extra log request. Only a log whose
+   * `topics[0]` is `eventTopic0` is ever a launch. Set only where each topic
+   * was matched against live logs (Pons V2, `pons-lifecycle.ts`).
+   */
+  lifecycleTopics?: readonly `0x${string}`[];
+  /**
+   * The first block the launch scan asks for `lifecycleTopics` too. The node
+   * answers an OR list over at most 100,000 blocks against 2M for one topic,
+   * so a scan from `startBlock` reads the history before it at the old pace;
+   * the lifecycle before it is the backfill's (`pnpm data:pons-lifecycle`).
+   */
+  lifecycleStartBlock?: number;
   /** Creator-supplied strings the event carries, when it carries any. */
   eventStrings?: LaunchEventStrings;
   enabled: boolean;
@@ -90,9 +107,19 @@ const PONS_V1_LAUNCH_TOPIC0 =
  */
 const PONS_V2_LAUNCH_TOPIC0 =
   '0x8d4aad4953d0ca700d468f3753aa14432d1b35b43ec6409f051fb6aa43a89607' as const;
-/** The event an earlier V2 deployment emitted; kept for the history it holds. */
-const PONS_V2_EARLY_LAUNCH_TOPIC0 =
-  '0xbd886f85b7731f66269f57707414d435bf8df930d3357a10becc48a69377f6d5' as const;
+/**
+ * The earlier V2 deployment emits the same launch event as the current one
+ * (2026-10-15). This entry carried `0xbd886f85…`, which is
+ * keccak256("BuybackEnabledUpdated(address,bool,address)") — a setting
+ * change, not a launch — so the 1,044 `TokenLaunched` (`0x8d4aad49…`) it
+ * emitted between 2026-07-31 and 2026-08-01 were never read: no candidate
+ * has `discovered_via = 'PONS_V2_EARLY'`. The hourly scan's resume block for
+ * this factory is already past them, so they are read once by the recovery
+ * tool (README, "Pons V2 launch lifecycle"):
+ *
+ *   pnpm --filter @hey/worker data:rescan-launchpads --factory PONS_V2_EARLY --from-block 0 --to-block <head> --dry-run
+ */
+const PONS_V2_EARLY_LAUNCH_TOPIC0 = PONS_V2_LAUNCH_TOPIC0;
 
 /**
  * Robinlaunch (robinlaunch.fun) — bonding-curve memecoin launcher graduating
@@ -168,9 +195,13 @@ export const LAUNCH_FACTORIES: readonly LaunchFactoryConfig[] = [
     startBlock: 0,
     eventTopic0: PONS_V2_LAUNCH_TOPIC0,
     tokenTopicIndex: 1,
+    // LaunchSwept, PoolGraduated, GraduationTokensPermanentlyLocked (2026-10-15), in the same request,
+    // from a few hours before the chain head of 2026-10-15 (89,244,341); everything earlier is the backfill's.
+    lifecycleTopics: PONS_V2_LIFECYCLE_TOPICS,
+    lifecycleStartBlock: 89_000_000,
     enabled: true,
     verification:
-      'ponsfamily.com bundle (getPonsV2BrowserFactoryAddress) and official README; 24,177 bytes on 4663; launch topic read from live logs (127 launches in 3,000 blocks on 2026-09-03), and their tokens answer launchFactory() with this address',
+      'ponsfamily.com bundle (getPonsV2BrowserFactoryAddress) and official README; 24,177 bytes on 4663; launch topic read from live logs (127 launches in 3,000 blocks on 2026-09-03), and their tokens answer launchFactory() with this address; lifecycle topics matched against live logs on 2026-10-15 (fixtures/pons-v2-lifecycle-logs.json)',
     sourceUrl: 'https://github.com/ponsdotdev/ponsfamily',
   },
   {
@@ -185,7 +216,7 @@ export const LAUNCH_FACTORIES: readonly LaunchFactoryConfig[] = [
     tokenTopicIndex: 1,
     enabled: true,
     verification:
-      'earlier V2 deployment listed in the ponsfamily.com bundle; 22,757 bytes; topics[1] of a sample event answered symbol() as RYAN; no launches after 2026-09',
+      'earlier V2 deployment listed in the ponsfamily.com bundle; 22,757 bytes; topics[1] of a sample event answered symbol() as RYAN; no launches after 2026-09; launch topic corrected 2026-10-15 from BuybackEnabledUpdated (0xbd886f85…) to the TokenLaunched it emitted 1,044 times on 2026-07-31–08-01 (0x8d4aad49…, live Bitquery read)',
     sourceUrl: 'https://github.com/ponsdotdev/ponsfamily',
   },
   {

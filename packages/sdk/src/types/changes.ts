@@ -31,6 +31,8 @@ export type HeyChangeType =
   | 'contract.usage_changed'
   | 'contract.method_first_observed'
   | 'contract.method_resumed'
+  /** New Uniswap v4 pools observed initialised with a hook HEY attributes to the project, folded per hook and UTC day (2026-10-15). Never building. */
+  | 'contract.v4_pool_initialized'
   | 'market.status_changed'
   | 'market.liquidity_moved'
   | 'market.volume_spike'

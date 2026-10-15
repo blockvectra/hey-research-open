@@ -458,6 +458,8 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     signed(l.priceChange30dPct) === undefined ? undefined : `${signed(l.priceChange30dPct)} over 30 days`,
   ].filter((v): v is string => v !== undefined);
   if (life.length > 0) lines.push(`FACT lifecycle: ${life.join('; ')}.`);
+  // The API's own sentence, read from the launch factory's events (2026-10-15): never stronger than it.
+  if (l.launchLifecycle) lines.push(`FACT launch lifecycle (read from the launch factory's events, ${l.launchLifecycle.evidenceId}): ${l.launchLifecycle.summary}.`);
   const pool = market.pools;
   if (pool) {
     const pools = [

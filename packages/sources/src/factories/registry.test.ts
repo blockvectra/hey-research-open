@@ -131,4 +131,21 @@ describe('launch factory registry', () => {
       '0x8d4aad4953d0ca700d468f3753aa14432d1b35b43ec6409f051fb6aa43a89607',
     );
   });
+
+  it('reads the early Pons V2 factory for its launches, not its buyback setting (2026-10-15)', () => {
+    // 0xbd886f85… is keccak256("BuybackEnabledUpdated(address,bool,address)"): the 1,044 launches were never read.
+    expect(factoryById('PONS_V2_EARLY')?.eventTopic0).toBe(factoryById('PONS_V2')?.eventTopic0);
+    expect(LAUNCH_FACTORIES.some((factory) => factory.eventTopic0 === '0xbd886f85b7731f66269f57707414d435bf8df930d3357a10becc48a69377f6d5')).toBe(false);
+  });
+
+  it('reads a launch lifecycle only on the Pons V2 factory, beside its launch topic (2026-10-15)', () => {
+    const withLifecycle = LAUNCH_FACTORIES.filter((factory) => factory.lifecycleTopics && factory.lifecycleTopics.length > 0).map((factory) => factory.id);
+    expect(withLifecycle).toEqual(['PONS_V2']);
+    const topics = factoryById('PONS_V2')!.lifecycleTopics!;
+    expect(new Set(topics).size).toBe(3);
+    for (const topic of topics) {
+      expect(topic).toMatch(/^0x[0-9a-f]{64}$/);
+      expect(topic).not.toBe(factoryById('PONS_V2')!.eventTopic0);
+    }
+  });
 });

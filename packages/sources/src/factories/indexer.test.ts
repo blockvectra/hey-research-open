@@ -16,7 +16,12 @@ import { factoryById } from './registry';
  * The factory scanner against a stubbed RPC: log decoding, adaptive chunking,
  * rate-limit back-off and the request budget. No sleeping, no network.
  */
-const factory = factoryById('PONS_V2')!;
+/*
+ * The Pons V2 launch event alone: the chunking below is the single-topic
+ * scanner's. The lifecycle topics the registry adds to this factory
+ * (2026-10-15) and their 100,000-block ceiling are `pons-lifecycle.test.ts`'s.
+ */
+const { lifecycleTopics: _lifecycleTopics, ...factory } = factoryById('PONS_V2')!;
 const token = '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd';
 const topicFor = (address: string) => `0x${'0'.repeat(24)}${address.slice(2)}`;
 

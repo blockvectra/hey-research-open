@@ -12,9 +12,10 @@ import type { HeyWebhookEventType } from './webhooks';
 
 /**
  * The types a rule may name: the webhook types, plus a contract's functions first called or called again after a silence,
- * and a week of code activity (2026-10-09, additive) — those three shown in the inbox only; never emailed or sent to a webhook.
+ * a week of code activity (2026-10-09, additive) and new Uniswap v4 pools on a project's attributed hook (2026-10-15,
+ * additive) — those four shown in the inbox only; never emailed or sent to a webhook.
  */
-export type HeyAlertEventType = HeyWebhookEventType | 'contract.method_first_observed' | 'contract.method_resumed' | 'build.code_activity';
+export type HeyAlertEventType = HeyWebhookEventType | 'contract.method_first_observed' | 'contract.method_resumed' | 'build.code_activity' | 'contract.v4_pool_initialized';
 
 /** `deploy` and `status` added 2026-10-03; `ship` and `code` 2026-10-09 (additive). */
 export type HeyAlertPresetId = 'release' | 'ship' | 'code' | 'deploy' | 'implementation' | 'resumed' | 'status' | 'unlock' | 'docs' | 'integrity' | 'usage';

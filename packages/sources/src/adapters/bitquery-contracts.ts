@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { toNumber } from '../market';
-import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, BITQUERY_POINTS, bitqueryAnswerError, withBitqueryPoints } from './bitquery';
+import { BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, BITQUERY_POINTS, bitqueryAnswerError, withBitqueryPoints } from './bitquery';
 
 /**
  * Contract usage, a hundred contracts at a time (2026-09-14).
@@ -43,6 +43,17 @@ import { BITQUERY_BATCH_SIZE, BITQUERY_DEFAULT_BASE_URL, BITQUERY_NETWORK, BITQU
 const ADDRESS = /^0x[0-9a-fA-F]{40}$/;
 const CACHE_TTL_SECONDS = 30 * 60;
 
+/**
+ * Addresses per contract-activity request (Bitquery renewal pass, 2026-10-15): 400, not the shared hundred. Realtime
+ * bills five points a cube whatever the list's length — measured on production the same day, HEY's 400 busiest
+ * contracts over three days and today answered in 3.5 s with 1,459 / 1,338 / 1,414 rows (under the 5,000 limit)
+ * for 15 points, exactly what a batch of 100 costs. Each cube returns at most one row per contract per day, so 400
+ * contracts over the realtime window's ~5 days stay under 2,500 rows. A cube that still fills its limit is
+ * refused as a whole ({@link BITQUERY_ACTIVITY_ROW_LIMIT}), never stored as a partial count.
+ */
+export const BITQUERY_ACTIVITY_BATCH_SIZE = 400;
+export const BITQUERY_ACTIVITY_ROW_LIMIT = 5000;
+
 /*
  * Not a parameter: this document asks for a cube the historical add-on does
  * not cover, so it can only ever read `realtime` (see `BITQUERY_ARCHIVE_CUBES`).
@@ -51,7 +62,7 @@ export const BITQUERY_CONTRACT_ACTIVITY_QUERY = `query HeyContractActivity($addr
   EVM(network: ${BITQUERY_NETWORK}, dataset: realtime) {
     calls: Calls(
       where: { Block: { Time: { since: $since } }, Call: { To: { in: $addresses } } }
-      limit: { count: 5000 }
+      limit: { count: ${BITQUERY_ACTIVITY_ROW_LIMIT} }
     ) {
       Block { Date }
       Call { To }
@@ -61,7 +72,7 @@ export const BITQUERY_CONTRACT_ACTIVITY_QUERY = `query HeyContractActivity($addr
     }
     events: Events(
       where: { Block: { Time: { since: $since } }, Log: { SmartContract: { in: $addresses } } }
-      limit: { count: 5000 }
+      limit: { count: ${BITQUERY_ACTIVITY_ROW_LIMIT} }
     ) {
       Block { Date }
       Log { SmartContract }
@@ -70,7 +81,7 @@ export const BITQUERY_CONTRACT_ACTIVITY_QUERY = `query HeyContractActivity($addr
     }
     transactions: Transactions(
       where: { Block: { Time: { since: $since } }, Transaction: { To: { in: $addresses } } }
-      limit: { count: 5000 }
+      limit: { count: ${BITQUERY_ACTIVITY_ROW_LIMIT} }
     ) {
       Block { Date }
       Transaction { To }
@@ -102,7 +113,7 @@ const responseSchema = z.object({
 });
 
 export type BitqueryContractActivityInput = {
-  /** Contract addresses, at most `BITQUERY_BATCH_SIZE`; the caller chunks. */
+  /** Contract addresses, at most `BITQUERY_ACTIVITY_BATCH_SIZE`; the caller chunks. */
   addresses: readonly string[];
   /** Activity at or after this moment is counted, grouped by the UTC day it fell on. */
   since: Date;
@@ -172,7 +183,7 @@ export function createBitqueryContractActivityAdapter(): SourceAdapter<BitqueryC
     name: 'bitquery',
     canHandle: (input) =>
       input.addresses.length > 0 &&
-      input.addresses.length <= BITQUERY_BATCH_SIZE &&
+      input.addresses.length <= BITQUERY_ACTIVITY_BATCH_SIZE &&
       input.addresses.every((address) => ADDRESS.test(address)) &&
       input.apiKey.length > 0,
     async fetch(input, ctx: SourceContext): Promise<SourceResult<BitqueryContractDay[]>> {
@@ -192,7 +203,12 @@ export function createBitqueryContractActivityAdapter(): SourceAdapter<BitqueryC
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (response) => {
             if (response.errors?.length) throw bitqueryAnswerError(response.errors);
-            return normalizeBitqueryContractDays(response.data?.EVM ?? {});
+            const evm = response.data?.EVM ?? {};
+            // A cube cut at its limit would read as contracts with no use: refuse the whole answer instead.
+            for (const [cube, rows] of Object.entries(evm)) {
+              if ((rows?.length ?? 0) >= BITQUERY_ACTIVITY_ROW_LIMIT) throw new Error(`Bitquery ${cube} answer reached its ${BITQUERY_ACTIVITY_ROW_LIMIT}-row limit; not stored as a partial count`);
+            }
+            return normalizeBitqueryContractDays(evm);
           },
         },
       ), 3 * BITQUERY_POINTS.perRealtimeCube);
