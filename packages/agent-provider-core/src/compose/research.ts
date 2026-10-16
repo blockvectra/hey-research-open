@@ -47,6 +47,8 @@ const STILL_BUILDING_WITHHELD_TEXT: Readonly<Record<string, string>> = {
   no_market_reading: 'HEY holds no current market reading to measure a drawdown on',
   activity_unknown: 'HEY holds no builder source it can read, so whether the project kept building is not known',
   not_scored: 'HEY has not scored it under the current rules yet',
+  // 2026-10-16 (audit #143): a measured market whose high is not yet a week old.
+  no_tracked_high: 'HEY has not yet tracked a high old enough to measure a drawdown from',
 };
 
 const STILL_BUILDING_MEANING = 'Still Building: verified activity continuing through a market drawdown HEY tracked; a record of what happened, not a prediction and not a buy signal.';

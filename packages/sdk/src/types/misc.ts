@@ -137,6 +137,8 @@ export type HeyWeeklyReport = {
   underTheRadar: { slug: string; name: string }[];
   topBuilders: { slug: string; name: string; rank: number; overall: number; development: number; onchain: number; research: number }[];
   movers: { slug: string; name: string; rank: number; rank7d: number; gained: number }[];
+  /** The Builder Radar board `topBuilders` and `movers` were read from: its day and the rules it was ranked under (2026-10-16, additive; absent on older reports). */
+  radarBoard?: { day: string; scoringVersion?: string };
   signals: { id: string; kind: string; label: string; title: string; slug: string; name: string; observedAt: string; importance: number }[];
   signalCounts: { kind: string; group: string; count: number }[];
   /** The report rule this payload was built under; absent on reports older than v2. */
@@ -597,5 +599,7 @@ export type HeySearchSuggestion =
  * `GET /api/search/suggest?q=`: at most eight rows, HEY's own tables only.
  * `moreLaunchRecords` (additive, 2026-10-01): true when HEY may hold more
  * launch records matching `q` than the rows list; the search page lists them.
+ * `moreProjects` (additive, 2026-10-16): true when more published projects
+ * match `q` than the rows list.
  */
-export type HeySearchSuggestions = { q: string; suggestions: HeySearchSuggestion[]; moreLaunchRecords?: boolean };
+export type HeySearchSuggestions = { q: string; suggestions: HeySearchSuggestion[]; moreLaunchRecords?: boolean; moreProjects?: boolean };

@@ -36,6 +36,11 @@ export type HeyChainDay = {
   buildersVerified?: number;
   chainObservedAt?: string;
   /**
+   * The UTC day still in progress (2026-10-16, additive): its counts are partial and grow until midnight UTC, so a
+   * chart must not read its drop as a collapse. Absent on every complete day.
+   */
+  partial?: true;
+  /**
    * What the day rests on (2026-10-02, additive; machine-layer rule 9): `hey`
    * is `knowledge` — counted on the day HEY recorded it; `chain` is `observed`
    * (read within days of the day) or `reconstructed_from_chain`, absent when
@@ -201,6 +206,8 @@ export type HeyCentreProject = { slug: string; name: string; symbol?: string; ac
 
 export type HeySilentBuilders = {
   items: (HeyCentreProject & { meaningfulShips30d: number; marketAttention?: 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIGH' })[];
+  /** How many projects hold Under the Radar today in any attention band (2026-10-16); absent when not read. */
+  underTheRadarHeld?: number;
   method: string;
   disclaimer: string;
 } & HeyListingTotals;
@@ -322,6 +329,8 @@ export type HeyTimelineEntry = {
   /** How exactly the entry is dated; `WINDOW` only on a market-integrity window. */
   precision: 'EXACT' | 'DATE' | 'WEEK' | 'WINDOW' | 'OBSERVED' | 'SCHEDULED';
   title: string;
+  /** The title as of the response, only when it differs from `title` (2026-10-16): a running code week reads "Code changes, week starting 2026-10-12 (to 2026-10-16)". */
+  displayTitle?: string;
   summary?: string;
   recordedAt?: string;
   discoveryLagHours?: number;

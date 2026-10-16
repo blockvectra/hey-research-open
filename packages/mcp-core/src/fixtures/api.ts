@@ -216,7 +216,7 @@ export const snapshot: HeyProjectSnapshot = {
     valuationWithheld: 'liquidity_removed',
     tokenMarket: { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_below_floor', label: 'Liquidity no longer detected' },
     promotion: {
-      entries: [{ kind: 'MARKET_PROMOTION_OBSERVED', channel: 'boost', firstObservedAt: '2026-09-26T08:00:00.000Z', lastObservedAt: '2026-09-26T09:00:00.000Z', source: 'dexscreener' }],
+      entries: [{ kind: 'MARKET_PROMOTION_OBSERVED', channel: 'token_profile_order', channelLabel: 'Enhanced token profile', firstObservedAt: '2026-09-26T08:00:00.000Z', lastObservedAt: '2026-09-26T09:00:00.000Z', source: 'dexscreener' }],
       total: 3,
       contextOnly: true,
     },

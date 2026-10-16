@@ -7,6 +7,7 @@ import {
   buildChartModel,
   candleDirection,
   dayCoverage,
+  moveStart,
   niceTicks,
   placeEventIntraday,
   buildCodeLane,
@@ -38,6 +39,23 @@ const candle = (
  * measured direction only. Everything else — a doji, a missing open, two
  * series in one candle, today — is never given a direction.
  */
+describe('moveStart (2026-10-16, verification audit)', () => {
+  it('starts a move at a full candle’s open, else at its close, and never on today’s open candle', () => {
+    expect(moveStart(candle('2026-09-20', 1, 1.1), TODAY)).toEqual({ price: 1, atOpen: true });
+    expect(moveStart(candle('2026-09-20', 1, 1.1, { ohlcSource: 'mixed' }), TODAY)).toEqual({ price: 1.1, atOpen: false });
+    expect(moveStart({ day: '2026-09-20', close: 2, readings: 1 }, TODAY)).toEqual({ price: 2, atOpen: false });
+    expect(moveStart(candle(TODAY, 1, 1.1), TODAY)).toEqual({ price: 1.1, atOpen: false });
+    expect(moveStart({ day: '2026-09-20', readings: 0 }, TODAY)).toBeUndefined();
+  });
+
+  it('gives the caption the same start and span the header measures', () => {
+    const days = [candle('2026-09-20', 1, 1.5), candle('2026-09-21', 1.5, 1.8), candle('2026-09-22', 1.8, 2)];
+    const built = buildChartModel(days, [], { todayUtc: TODAY })!;
+    // From the 20th's open (1) to the 22nd's close (2): +100% over three days, as the header reads it.
+    expect(built.summary).toContain('Close rose 100.0% over 3 days, from');
+  });
+});
+
 describe('candleDirection', () => {
   it('is up when the close is above the open, down when below', () => {
     expect(candleDirection(candle('2026-09-20', 1, 1.1), TODAY)).toBe('up');
@@ -446,7 +464,8 @@ describe('buildChartModel at 1H', () => {
     expect(rows.map((row) => (row.length > 1 ? row[7] : 'gap'))).toEqual(['u', 'd', 'gap', 'gap', 'u', 'p']);
     expect(built.counts).toMatchObject({ up: 2, down: 1, partial: 1, gaps: 2 });
     expect(built.model.tf).toBe('1h');
-    expect(built.summary).toContain('over 6 hours');
+    // From the first bar's open to the last closed bar's close (2026-10-16, `moveStart`): five hours, not the six rows drawn.
+    expect(built.summary).toContain('over 5 hours');
     expect(built.summary).toContain('2 bars without a bar');
     expect(dayCoverage(bars, HOUR)).toEqual({ span: 6, indexed: 4, gaps: 2 });
   });

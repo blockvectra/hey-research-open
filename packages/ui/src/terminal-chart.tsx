@@ -244,6 +244,18 @@ export function candleDirection(d: CandleDay, todayUtc: string): CandleDirection
 }
 
 /**
+ * Where a price move over a range starts (2026-10-16, verification audit): the first complete candle's open when
+ * it has a full candle, else its close (a close-only or mixed day carries no open). The chart's caption and the
+ * header's change both measure from here, to the last complete close, so one range never reads two moves
+ * ("+334% over 36 days" above "rose 315.5% over 38 days"). `atOpen` says the first candle's own move is inside it.
+ */
+export function moveStart(d: CandleDay, openKey: string): { price: number; atOpen: boolean } | undefined {
+  const direction = candleDirection(d, openKey);
+  if ((direction === 'up' || direction === 'down' || direction === 'flat') && positive(d.open)) return { price: d.open, atOpen: true };
+  return positive(d.close) ? { price: d.close, atOpen: false } : undefined;
+}
+
+/**
  * The chart's timeframes (2026-09-29): the daily index, and the intraday bars
  * HEY reads for a bounded set of tokens (15m and 1h stored, 4H added up from
  * 1h). A row's key is its UTC day (`2026-09-29`) on 1D and its bar's start
@@ -825,8 +837,14 @@ export function buildChartModel(
    * day carries no open, so its close is the start, as before.
    */
   const firstOpen = rows[firstComplete]?.[1];
-  const first = typeof firstOpen === 'number' && firstOpen > 0 ? firstOpen : rows[firstComplete]?.[4];
+  const atOpen = typeof firstOpen === 'number' && firstOpen > 0;
+  const first = atOpen ? firstOpen : rows[firstComplete]?.[4];
   const last = rows[latest]?.[4];
+  /*
+   * The span the move covers, not the range's rows (2026-10-16, verification audit): from the first complete
+   * candle (its open, so the candle itself counts) to the last complete one — the header's count (`moveStart`).
+   */
+  const moveSpan = firstComplete < 0 ? 0 : latest - firstComplete + (atOpen ? 1 : 0);
   const change =
     typeof first === 'number' && typeof last === 'number' && first > 0
       ? (last / first - 1) * 100
@@ -837,7 +855,7 @@ export function buildChartModel(
       ? 'Close change not measured'
       : `Close ${change >= 0.05 ? 'rose' : change <= -0.05 ? 'fell' : 'was unchanged'}${
           Math.abs(change) >= 0.05 ? ` ${Math.abs(change).toFixed(1)}%` : ''
-        } over ${range.length} ${words.many}, from ${formatTerminalPriceLong(first!)}${typeof firstOpen === 'number' && firstOpen > 0 ? ' (first open)' : ''} to ${formatTerminalPriceLong(last!)}`;
+        } over ${moveSpan} ${moveSpan === 1 ? words.one : words.many}, from ${formatTerminalPriceLong(first!)}${typeof firstOpen === 'number' && firstOpen > 0 ? ' (first open)' : ''} to ${formatTerminalPriceLong(last!)}`;
   const eventCount = lane.length + ahead.length;
   const unit = intraday ? 'bar' : 'day';
   const summary =

@@ -62,7 +62,7 @@ export function BuildTimeline({
         <li
           key={item.id}
           id={`ship-${item.id}`}
-          className="relative scroll-mt-24 pl-6 last:[&>span:nth-child(2)]:hidden"
+          className="relative pl-6 last:[&>span:nth-child(2)]:hidden"
         >
           <span
             aria-hidden="true"
@@ -159,7 +159,8 @@ export function CodeWeekHighlights({
   return (
     <div className={className}>
       <p className="text-xs text-hey-secondary">What changed, in the repository&rsquo;s own words:</p>
-      <ul className="mt-1 list-disc space-y-0.5 pl-5 text-sm text-hey-ink/80" data-testid="code-week-highlights">
+      {/* Stacked links 6 px apart (2026-10-16, audit #169): at 2 px their 24 px target circles overlapped (WCAG 2.5.8). */}
+      <ul className="mt-1 list-disc space-y-1.5 pl-5 text-sm text-hey-ink/80" data-testid="code-week-highlights">
         {highlights.map((highlight, index) => (
           <li key={index} className="[overflow-wrap:anywhere]">
             {highlight.href ? (

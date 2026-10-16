@@ -464,7 +464,8 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     l.pairCreatedAt ? `pool created ${l.pairCreatedAt.slice(0, 10)}` : undefined,
     l.launchStage ? `stage ${l.launchStage.toLowerCase()}${(l.launchStageObservedAt ?? l.launchStageAt) ? ` (${launchStageSeenWords(l.launchStage)} ${(l.launchStageObservedAt ?? l.launchStageAt)!.slice(0, 10)})` : ''}` : undefined,
     l.firstTradeDay ? `first indexed trade ${l.firstTradeDay}${l.firstTradeCensored ? ` (the index starts ${l.tradeIndexFrom ?? 'later than the launch'}, so earlier trades may exist)` : ''}` : undefined,
-    l.lastTradeDay ? `last indexed trade ${l.lastTradeDay}` : undefined,
+    // Decoded trades only (2026-10-16, audit #124); market_integrity's last trading day also reads a provider's volume.
+    l.lastTradeDay ? `last decoded on-chain trade ${l.lastTradeDay}` : undefined,
     // The basis named (2026-10-16 parity audit P15): the high and the "now" are both the pool HEY's market reading follows, never every pool.
     l.peakLiquidityUsd === undefined ? undefined : `highest liquidity HEY recorded in the pool its market reading follows ${money(l.peakLiquidityUsd)}${l.liquidityBelowPeakPct === undefined ? '' : ` (that pool now holds ${Math.round(100 - l.liquidityBelowPeakPct)}% of it)`}`,
     signed(l.priceChange7dPct) === undefined ? undefined : `${signed(l.priceChange7dPct)} over 7 days`,
@@ -497,6 +498,8 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     ].filter((v): v is string => v !== undefined);
     // A snapshot past HEY's freshness window is that day's figure, never today's (the API's `distribution.stale`).
     if (supply.length > 0) lines.push(`FACT${dist.stale ? ' (stale)' : ''} supply (HEY's snapshot, ${dist.day}${dist.stale ? ', older than HEY reads as current' : ''}; burned and pooled supply left out of the top shares): ${supply.join(', ')}.`);
+    // Withheld, never zero (2026-10-16, audit #76): the read was a recent window of balances, not the supply.
+    if (dist.figuresWithheld) lines.push(`WITHHELD supply figures (HEY's snapshot, ${dist.day}): ${dist.figuresWithheld === 'partial_balances' ? 'not measured — the holder source returned only balances that changed in the last few days, which cannot account for the supply' : 'not measured — HEY could not tell whether the read holds every balance'}.`);
   }
   /*
    * An EMPTY run is not "no holders" (2026-09-25): the holder source reports
@@ -655,8 +658,10 @@ export function renderThisWeek(week: HeyThisWeek): string {
     lines.push('', `${label}:`, ...rows.slice(0, WEEK_ROWS));
     if (rows.length > WEEK_ROWS) lines.push(`  …and ${rows.length - WEEK_ROWS} more on ${week.links.page}`);
   };
+  // The API's own order, named (2026-10-16, audit finding 120): releases and launches first, then newest — never "most",
+  // which told an agent the first rows shipped the most when a 16-ship project sat eighth.
   section(
-    'Shipped most',
+    'What shipped (releases and launches first, then newest)',
     week.shipped.items.map((i) => `- ${one(i.project)} — ${i.ships} ${i.ships === 1 ? 'ship' : 'ships'}${i.latest ? `; latest: ${sourceWords(i.latest.title, 'release_title')}${i.latest.sourceUrl ? ` (${i.latest.sourceUrl})` : ''}` : ''}`),
   );
   section('New builders', week.newBuilders.items.map((i) => `- ${one(i.project)} — verified ${i.verifiedAt.slice(0, 10)}`));
@@ -784,7 +789,8 @@ export function renderMarketIntegrity(page: HeyMarketIntegrity): string {
       ? `DERIVED liquidity ${Math.round(m.liquidityPeakUsd).toLocaleString('en-US')} USD (held, ${m.liquidityPeakDay}) → ${Math.round(m.liquidityNowUsd).toLocaleString('en-US')} USD (${m.liquidityNowDay})${m.liquidityChangePct !== null ? `, ${m.liquidityChangePct}%` : ''}`
       : 'UNKNOWN no established liquidity level to measure against',
     ...(m.collapseDay ? [`DERIVED liquidity under a tenth of that level since ${m.collapseDay} (two consecutive daily readings)`] : []),
-    ...(m.lastTradeDay ? [`FACT last trade recorded ${m.lastTradeDay}`] : []),
+    // Its basis named (2026-10-16, audit #124): get_token_market's "last decoded on-chain trade" counts decoded trades only, so the two days may differ.
+    ...(m.lastTradeDay ? [`FACT last trading day in HEY's daily index (decoded trades, or a provider's 24h volume where none were decoded) ${m.lastTradeDay}`] : []),
     m.migrationDetected && m.migration ? `DERIVED liquidity appears to have moved (${m.migration.kind.toLowerCase()}, ${m.migration.confidence} confidence)` : m.collapse === 'COLLAPSE' || m.collapse === 'SEVERE' ? 'DERIVED no verified replacement pool for the same token found' : '',
     ...(m.sourcesDisagree ? ['UNKNOWN two market sources disagree; HEY holds this for review'] : []),
     ...(m.exitPattern && m.exitPattern.level !== 'NONE' ? [`DERIVED potential exit pattern (an evidence classification, not a finding about intent): ${m.exitPattern.reasons.join(' ')}`] : []),
@@ -843,11 +849,15 @@ export function codeSubstanceLine(substance: { verdict: string; classifierVersio
   return `\n  DERIVED what changed (${substance.classifierVersion}): ${verdict}. ${substance.summary}`;
 }
 
+/**
+ * A title or summary the API restates for the moment it answered (`displayTitle`, `summaryCurrent`; 2026-10-16) is
+ * printed in place of the stored one: a running code week by absolute days, a frozen "this week" signal dated.
+ */
 export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
   const shown = timeline.items.slice(0, limit);
   const lines = shown.map(
     (item) =>
-      `- ${recordTag(item.id)} ${item.precision} ${atPrecision(item.at, item.precision)} · ${item.kind.replace(/_/g, ' ')} · ${sourceWords(item.title, 'release_title')}${item.countsAsBuilding ? ' · counts as building' : ''}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}${codeSubstanceLine(item.codeSubstance)}`,
+      `- ${recordTag(item.id)} ${item.precision} ${atPrecision(item.at, item.precision)} · ${item.kind.replace(/_/g, ' ')} · ${sourceWords(item.displayTitle ?? item.title, 'release_title')}${item.countsAsBuilding ? ' · counts as building' : ''}${item.discoveryLagHours !== undefined ? ` (recorded ${Math.round(item.discoveryLagHours)}h later)` : ''}${item.source ? ` — ${item.source}` : ''}${codeSubstanceLine(item.codeSubstance)}`,
   );
   /*
    * Shown of the whole, and the parameter that reads on (2026-09-26, M2 G3).
@@ -878,7 +888,7 @@ export function renderChanges(page: HeyChangesPage): string {
     }
     const when = item.occurredAt ? `${item.precision} ${item.occurredAt.slice(0, 10)}${item.occurredUntil ? `–${item.occurredUntil.slice(0, 10)}` : ''}` : `OBSERVED (no source time; HEY saw it ${item.detectedAt.slice(0, 10)})`;
     const move = item.before !== undefined || item.after !== undefined ? ` (${String(item.before ?? '—')} → ${String(item.after ?? '—')})` : '';
-    lines.push(`- ${recordTag(item.id)} ${when} · ${item.type} · ${quotedName(item.project.name)} (${item.project.slug}): ${summaryWords(item.id, item.summary, item.type)}${move}`);
+    lines.push(`- ${recordTag(item.id)} ${when} · ${item.type} · ${quotedName(item.project.name)} (${item.project.slug}): ${summaryWords(item.id, item.summaryCurrent ?? item.summary, item.type)}${move}`);
     lines.push(`  id ${item.id} · revision ${item.revision}${item.origin === 'live' ? '' : ` · ${item.origin}`} · detected ${item.detectedAt.slice(0, 10)}${item.countsAsBuilding ? ' · counts as building' : ''}`);
     const substance = item.facts?.['codeSubstance'];
     if (typeof substance === 'string') {

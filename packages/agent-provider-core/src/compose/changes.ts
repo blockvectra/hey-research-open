@@ -1,4 +1,4 @@
-import type { HeyChangeUpsert } from '@hey-research-lab/sdk';
+import type { HeyChangeUpsertRead } from '@hey-research-lab/sdk';
 
 import { familyFreshness } from '../freshness';
 import { AGENT_LIMITS, type AgentChange, type AgentClaim, type AgentResponseOf, type AgentUnknown } from '../schema';
@@ -20,7 +20,7 @@ export type WhatChangedInput = {
   project?: { slug: string; name: string; url: string; token?: { chainId: number; address: string } };
   window: { days: number; from: string; to: string };
   types: string[] | null;
-  items: readonly HeyChangeUpsert[];
+  items: readonly HeyChangeUpsertRead[];
   total: number;
   byType: readonly { type: string; count: number }[];
   /**

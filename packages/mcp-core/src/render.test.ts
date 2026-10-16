@@ -607,6 +607,12 @@ describe('get_token_market', () => {
     expect(out).toContain('highest liquidity HEY recorded in the pool its market reading follows $80.0K (that pool now holds 50% of it)');
   });
 
+  it('names the last trade day by its basis, so it cannot read as market_integrity\'s (audit #124, 2026-10-16)', () => {
+    const out = renderTokenMarket({ ...fx.tokenMarket, lifecycle: { ...fx.tokenMarket.lifecycle, lastTradeDay: '2026-10-15' } }, NOW);
+    expect(out).toContain('last decoded on-chain trade 2026-10-15');
+    expect(renderMarketIntegrity(fx.marketIntegrity)).toContain("FACT last trading day in HEY's daily index (decoded trades, or a provider's 24h volume where none were decoded) 2026-09-20");
+  });
+
   it('says what an empty value-locked series is, never zero (P7)', () => {
     expect(text).toContain('UNKNOWN value locked: HEY holds no DefiLlama TVL row for this project in the window');
     const read = renderTokenMarket({ ...fx.tokenMarket, tvlDays: [{ day: '2026-09-20', tvlUsd: 2_400_000, protocolName: 'HoodLock' }], tvlRead: { state: 'STALE', day: '2026-09-20', observedAt: '2026-09-20T06:00:00Z' } }, NOW);
@@ -788,6 +794,10 @@ describe('chain_overview', () => {
     expect(text).toContain('Showing 30 of 35.');
     expect(text).toContain('a map, not a ranking');
     expect(text).toMatch(TAGGED);
+    // A whole percentile, never "95.501" (2026-10-16, audit #119).
+    const odd = renderBuildMarket({ ...fx.buildMarket, items: fx.buildMarket.items.slice(0, 1).map((p) => ({ ...p, marketAttentionPercentile: 95.501 })) });
+    expect(odd).toContain('market-attention percentile 96 (context)');
+    expect(odd).not.toContain('95.501');
   });
 });
 

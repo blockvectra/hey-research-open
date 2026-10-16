@@ -161,11 +161,18 @@ export type HeyEvidenceReceipt =
       domain: 'build' | 'contract' | 'market' | 'token' | 'research' | 'lock' | 'market_integrity';
       claimType: string;
       summary: string;
+      /** The summary as of the response, only when it differs from `summary` (2026-10-16): a running code week by absolute days ("week starting 2026-10-12 (to 2026-10-16)"). */
+      summaryCurrent?: string;
       sourceType: string;
       sourceUrl: string | null;
       /** When the source dates it; null when only HEY's observation dates it. */
       publishedAt: string | null;
-      detectedAt: string;
+      /**
+       * When HEY first detected the record. Null (2026-10-16) only for a HoodLock lock already in the
+       * locker when HEY began keeping first sightings, with `detectedAtWithheld: "predates_record"`.
+       */
+      detectedAt: string | null;
+      detectedAtWithheld?: 'predates_record';
       precision: 'EXACT' | 'DATE' | 'WEEK' | 'WINDOW' | 'OBSERVED' | 'SCHEDULED';
       /**
        * With precision WEEK (2026-10-02, additive): the fixed Monday–Sunday UTC ISO week the record
@@ -268,6 +275,8 @@ export type HeyMarketPromotion = {
   entries: {
     kind: 'MARKET_PROMOTION_OBSERVED' | 'COMMUNITY_TAKEOVER_PROFILE_OBSERVED';
     channel: string;
+    /** The channel in a reader's words ("Enhanced token profile"), 2026-10-16, additive. */
+    channelLabel: string;
     providerAt?: string;
     firstObservedAt: string;
     lastObservedAt: string;

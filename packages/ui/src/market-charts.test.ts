@@ -2,7 +2,8 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { DailyBarsChart } from './market-charts';
+import { formatTokenPrice, tokenPriceSpeech } from './format';
+import { ChartPanel, DailyBarsChart, DailyLineChart } from './market-charts';
 
 const points = [
   { day: '2026-10-01', value: 7_000 },
@@ -35,5 +36,30 @@ describe('DailyBarsChart: the day still being counted', () => {
       expect(html).not.toContain('today so far');
       expect(html).not.toContain('border-dashed');
     }
+  });
+});
+
+/** Audit #166 (2026-10-16): `$0.0₄314` has no spoken meaning; read as "$0.04314" it is 1,000× too high. */
+describe('a subscript price, spoken in full', () => {
+  it('speaks and titles the full figure only where the printed one carries a subscript', () => {
+    expect(formatTokenPrice(0.0000314)).toBe('$0.0₄314');
+    expect(tokenPriceSpeech(0.0000314)).toBe('$0.0000314');
+    expect(tokenPriceSpeech(0.0123)).toBeUndefined();
+    expect(tokenPriceSpeech(2.5)).toBeUndefined();
+  });
+
+  it('labels the chart and the panel figure with the spoken form, and hides the printed one from speech', () => {
+    const prices = [
+      { day: '2026-10-14', value: 0.0000501 },
+      { day: '2026-10-15', value: 0.0000309 },
+      { day: '2026-10-16', value: 0.0000314 },
+    ];
+    const chart = renderToStaticMarkup(createElement(DailyLineChart, { points: prices, label: 'Price', format: formatTokenPrice, speak: tokenPriceSpeech }));
+    expect(chart).toContain('aria-label="Price by day: 2026-10-14 $0.0000501; 2026-10-15 $0.0000309; 2026-10-16 $0.0000314"');
+    expect(chart).toContain('<p aria-hidden="true"');
+    const panel = renderToStaticMarkup(
+      createElement(ChartPanel, { label: 'Price', value: '$0.0₄314', valueSpeech: '$0.0000314', children: null }),
+    );
+    expect(panel).toContain('<span aria-hidden="true">$0.0₄314</span><span class="sr-only">$0.0000314</span>');
   });
 });

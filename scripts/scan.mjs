@@ -16,7 +16,10 @@ import { fileURLToPath } from 'node:url';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const manifest = JSON.parse(readFileSync(join(here, 'manifest.json'), 'utf8'));
 const SKIP_DIRS = new Set(['.git', '.claude', 'node_modules', 'dist', '.next', 'coverage', '.pnpm-store', 'test-results', 'playwright-report']);
-const BINARY = /\.(png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|mp4|mov|pdf|zip|gz|lock)$/i;
+// A `.lock` file is text and is scanned (2026-10-16); it used to be skipped with the binaries, silently.
+const BINARY = /\.(png|jpg|jpeg|gif|webp|ico|woff2?|ttf|otf|mp4|mov|pdf|zip|gz)$/i;
+/** Larger than this is not read — and is reported as a hit, never skipped in silence (2026-10-16). */
+export const SCAN_MAX_BYTES = 8 * 1024 * 1024;
 
 export function scanTree(root) {
   /*
@@ -34,7 +37,10 @@ export function scanTree(root) {
       const path = join(dir, entry);
       const stat = statSync(path);
       if (stat.isDirectory()) walk(path);
-      else if (stat.isFile() && !BINARY.test(entry) && stat.size < 8 * 1024 * 1024) {
+      else if (stat.isFile() && !BINARY.test(entry) && stat.size >= SCAN_MAX_BYTES) {
+        // A file too large to read could hold anything: it fails the scan until someone looks at it.
+        hits.push({ file: relative(root, path), line: 0, pattern: `file of ${stat.size} bytes is too large to scan` });
+      } else if (stat.isFile() && !BINARY.test(entry)) {
         const text = readFileSync(path, 'utf8');
         const lines = text.split('\n');
         for (const pattern of patterns) {

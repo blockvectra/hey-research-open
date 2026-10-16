@@ -75,6 +75,7 @@ export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<HeyStillBuildingWith
   no_market_reading: GAP_WITHHELD_WORDS.no_market_reading,
   activity_unknown: 'Not measured — activity unknown',
   not_scored: 'Not measured — not scored yet',
+  no_tracked_high: 'Not measured — no tracked high yet',
 };
 
 /**
@@ -346,11 +347,22 @@ const PROMOTION_WORDS: Record<HeyMarketPromotion['entries'][number]['kind'], str
   COMMUNITY_TAKEOVER_PROFILE_OBSERVED: 'community-takeover profile',
 };
 
+/**
+ * The kind and the channel in words (2026-10-16, audit #122): "paid promotion (Enhanced token profile)", never the
+ * provider's code ("on token_profile_order"); a channel that only restates the kind is left out.
+ */
+function promotionWords(entry: HeyMarketPromotion['entries'][number]): string {
+  const kind = PROMOTION_WORDS[entry.kind];
+  const label = entry.channelLabel;
+  const plain = (value: string) => value.toLowerCase().replace(/[-_]/g, ' ');
+  return label && !plain(kind).startsWith(plain(label)) ? `${kind} (${label})` : kind;
+}
+
 /** Paid promotion and takeover sightings (2026-09-27): presence and dates, never an amount, never a ranking input. */
 export function promotionLine(p: HeyMarketPromotion): string {
   const newest = p.entries[0];
   const when = newest ? (newest.providerAt ? `${newest.providerAt.slice(0, 10)} (the provider's date)` : `${newest.firstObservedAt.slice(0, 10)} (first seen by HEY)`) : undefined;
-  return `- FACT promotion or takeover seen ${p.total} time${p.total === 1 ? '' : 's'}${newest ? `; newest: ${PROMOTION_WORDS[newest.kind]} on ${newest.channel}, ${when}` : ''}. Context only: paid promotion never reaches a ranking, a score or a signal of building.`;
+  return `- FACT promotion or takeover seen ${p.total} time${p.total === 1 ? '' : 's'}${newest ? `; newest: ${promotionWords(newest)}, ${when}` : ''}. Context only: paid promotion never reaches a ranking, a score or a signal of building.`;
 }
 
 const METRIC_LABEL = { fees24h: 'fees 24h', revenue24h: 'revenue 24h', dexVolume24h: 'DEX volume 24h' } as const;
@@ -497,8 +509,10 @@ export function renderEvidence(r: HeyEvidenceReceipt): string {
   }
   const lines: string[] = [`# Evidence ${r.id}`, `${quotedName(r.project.name)} — ${r.project.url}`, ''];
   // A status or market-state move and a signal are rules HEY applied: DERIVED, as explain_fact says (audit §45 #8).
-  lines.push(`${recordTag(r.id)} ${r.claimType} (${r.domain}): ${summaryWords(r.id, r.summary)}`);
-  lines.push(`When: ${atPrecision(r.publishedAt, r.precision, r.detectedAt)} (${r.precision}); HEY first knew ${r.detectedAt.slice(0, 16).replace('T', ' ')} UTC; recorded ${r.recordedAt.slice(0, 10)}.`);
+  lines.push(`${recordTag(r.id)} ${r.claimType} (${r.domain}): ${summaryWords(r.id, r.summaryCurrent ?? r.summary)}`);
+  // A lock already in the locker when HEY began keeping first sightings has no first-seen time (2026-10-16): say so, never date it by a re-read.
+  const firstKnew = r.detectedAt ? `HEY first knew ${r.detectedAt.slice(0, 16).replace('T', ' ')} UTC` : 'UNKNOWN when HEY first knew: it predates HEY\'s first sightings';
+  lines.push(`When: ${atPrecision(r.publishedAt, r.precision, r.detectedAt ?? undefined)} (${r.precision}); ${firstKnew}; recorded ${r.recordedAt.slice(0, 10)}.`);
   lines.push(`Source: ${r.sourceType}${r.sourceUrl ? ` — ${r.sourceUrl}` : ' (no public URL; HEY\'s own observation)'}${r.verification ? `; backing: ${pretty(r.verification)}` : ''}${r.countsAsBuilding ? '; counts toward activity status' : ''}.`);
   if (r.sources && r.sources.length > 0) lines.push('', 'Evidence rows:', ...r.sources.map((row) => `- ${row.sourceType}: ${row.sourceUrl} (observed ${row.observedAt.slice(0, 10)})`));
   lines.push('', r.disclaimer);
@@ -607,7 +621,11 @@ const AUTHORSHIP_WORDS: Record<NonNullable<HeyContract['verifiedSource']['author
   TEMPLATE: 'a launchpad template, not project-authored code',
   EXPLORER_MATCHED: "a bytecode match to someone else's source",
   PROJECT_AUTHORED: 'source published for this address',
-  UNCONFIRMED: "not yet known (the explorer's record has not been read)",
+  /*
+   * Verified, and HEY read the verified source, but not yet how the explorer verified it (2026-10-16, audit #123):
+   * "the explorer's record has not been read" sat beside "verified source: yes; compiler …; name …" in one answer.
+   */
+  UNCONFIRMED: 'not yet known — HEY read the verified source but not yet how the explorer verified it (published for this address, or matched to identical bytecode published elsewhere)',
 };
 
 /** Sourcify's answer: NOT_READ is never "not verified". */
@@ -704,12 +722,12 @@ export function renderDiff(d: HeyDiff): string {
 /** Rows of the build × market map printed before the answer points at the rest. */
 const MAP_ROWS = 30;
 
-/** `GET /api/chain/build-market` as text: two measures side by side, a map and not a ranking. */
+/** `GET /api/chain/build-market` as text: two measures side by side, a map and not a ranking. The percentile is whole, as every other surface prints it ("95.501" until 2026-10-16, audit #119). */
 export function renderBuildMarket(page: HeyBuildMarket): string {
   const shown = page.items.slice(0, MAP_ROWS);
   return [
     '# Build Momentum beside market attention (a map, not a ranking)',
-    ...shown.map((p) => `- ${quotedName(p.name, p.symbol)}: DERIVED Build Momentum ${p.buildMomentum}; DERIVED market-attention percentile ${p.marketAttentionPercentile} (context) — ${p.url}`),
+    ...shown.map((p) => `- ${quotedName(p.name, p.symbol)}: DERIVED Build Momentum ${p.buildMomentum}; DERIVED market-attention percentile ${Math.round(p.marketAttentionPercentile)} (context) — ${p.url}`),
     '',
     shownOf(shown.length, page.items.length, 'The rest are in GET /api/chain/build-market.'),
     `Method: ${page.method}`,

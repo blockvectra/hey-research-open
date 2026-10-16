@@ -54,6 +54,7 @@ export function ChartNote({ message, hint, className }: { message: string; hint?
 export function ChartPanel({
   label,
   value,
+  valueSpeech,
   note,
   tone = 'neutral',
   children,
@@ -62,6 +63,8 @@ export function ChartPanel({
 }: {
   label: string;
   value?: string | undefined;
+  /** The value as it should be spoken and titled, when the printed form does not read aloud (a subscript price). */
+  valueSpeech?: string | undefined;
   note?: string | undefined;
   tone?: ChartTone;
   children: ReactNode;
@@ -75,7 +78,16 @@ export function ChartPanel({
           <span aria-hidden="true" className="inline-block size-[7px] rounded-full" style={{ background: TONES[tone].stroke }} />
           {label}
         </span>
-        {value ? <span className="text-[13px] font-medium tabular-nums">{value}</span> : null}
+        {value ? (
+          valueSpeech ? (
+            <span className="text-[13px] font-medium tabular-nums" title={valueSpeech}>
+              <span aria-hidden="true">{value}</span>
+              <span className="sr-only">{valueSpeech}</span>
+            </span>
+          ) : (
+            <span className="text-[13px] font-medium tabular-nums">{value}</span>
+          )
+        ) : null}
       </figcaption>
       <div className="mt-2.5">{children}</div>
       {note ? <p className="mt-1.5 text-[12px] text-hey-muted">{note}</p> : null}
@@ -89,6 +101,7 @@ export function DailyLineChart({
   label,
   tone = 'neutral',
   format = formatUsdCompact,
+  speak,
   className,
   testId,
 }: {
@@ -96,9 +109,12 @@ export function DailyLineChart({
   label: string;
   tone?: ChartTone;
   format?: (value: number) => string | undefined;
+  /** A value as it should be spoken and titled when `format`'s figure does not read aloud (2026-10-16, audit #166). */
+  speak?: (value: number) => string | undefined;
   className?: string;
   testId?: string;
 }) {
+  const said = (value: number) => speak?.(value) ?? format(value) ?? value;
   if (points.length < 2) {
     return <ChartNote className={className} message={`Not enough days for ${label.toLowerCase()} yet.`} hint="One reading a day; the line appears from the second." />;
   }
@@ -119,7 +135,7 @@ export function DailyLineChart({
   const gradient = nextId();
   return (
     <div className={className} data-testid={testId}>
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" preserveAspectRatio="none" aria-label={`${label} by day: ${points.map((p) => `${p.day} ${format(p.value) ?? p.value}`).join('; ')}`}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-auto w-full" role="img" preserveAspectRatio="none" aria-label={`${label} by day: ${points.map((p) => `${p.day} ${said(p.value)}`).join('; ')}`}>
         <defs>
           <linearGradient id={gradient} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor={colour.fill} stopOpacity="0.22" />
@@ -130,11 +146,12 @@ export function DailyLineChart({
         <path d={line} fill="none" stroke={colour.stroke} strokeWidth={1.75} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
         {points.map((p, i) => (
           <circle key={p.day} cx={x(i)} cy={y(p.value)} r={i === points.length - 1 ? 3.5 : 1.5} fill={colour.stroke} opacity={i === points.length - 1 ? 1 : 0.55}>
-            <title>{`${p.day}: ${format(p.value) ?? p.value}`}</title>
+            <title>{`${p.day}: ${said(p.value)}`}</title>
           </circle>
         ))}
       </svg>
-      <p className="mt-1 flex justify-between text-[11px] tabular-nums text-hey-muted">
+      {/* The chart's label already reads every day aloud; these marks are for the eye (2026-10-16, audit #166). */}
+      <p aria-hidden="true" className="mt-1 flex justify-between text-[11px] tabular-nums text-hey-muted">
         <span>{shortDay(points[0]!.day)}</span>
         <span>high {format(max) ?? max}</span>
         <span>{shortDay(last.day)}</span>

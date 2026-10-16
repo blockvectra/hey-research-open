@@ -3,7 +3,7 @@
 HEY answers one question: **which projects on Robinhood Chain are still building, what have
 they shipped, and which of them are not yet getting much market attention?** That is the shape of a question
 someone asks an assistant, so HEY is an MCP server — thirteen tools an assistant can call
-while answering, hosted at `https://heyresearch.xyz/mcp` or run beside the assistant, and a
+while answering, fourteen where HEY publishes Market Integrity, hosted at `https://heyresearch.xyz/mcp` or run beside the assistant, and a
 **research profile** at `https://heyresearch.xyz/mcp/research` (round 4, 2026-09-30): builder
 intelligence first — no market-move, Under the Radar or valuation tool, and the ledger without market
 events; research_answer still carries the market context of HEY's agent contract (the valuation with its kind, source and reading date, and the market status), labelled context only and never a builder judgement (wording corrected 2026-10-03: it said "builder intelligence only").
@@ -108,7 +108,7 @@ anything else must be https, because the key rides on every request). Set `HEY_A
 read with your key's allowance; the server never prints the key. Start it with
 `HEY_MARKET_INTEGRITY=public` only where the site publishes Market Integrity.
 
-## The thirteen tools
+## The thirteen tools, and a fourteenth
 
 One tool per real question. The twenty-two tools before 2026-09-26 were replaced, not
 aliased: nothing was published and the MCP had been called once. `research_answer`
@@ -132,7 +132,8 @@ see **Folded tools** below; they still answer.
 | `chain_overview` | "How active is Robinhood Chain?" — day by day, this week's rollup, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention. | `chain_activity`, `this_week`, `weekly_report`, `upcoming_unlocks` |
 | `research_answer` | The agent contract (2026-09-30): one bounded answer, AgentIntelligenceResponse v1, for `capability` = `research_project` (HEY's current view of one project), `what_changed` (the ledger over 1–30 days for a project or the chain, with the window's true total), `builder_status` (the status, its rule and version, inputs, lineage, evidence ids and what the rule never reads), `verify_project` (VERIFIED, UNVERIFIED, CONTRACT_MISMATCH or UNKNOWN attribution of a contract, with reasons), `compare_builders` (2–4 projects' building records over 30 days, no winner) or `unknowns` (every gap as UNKNOWN, NOT_MEASURED, NOT_VERIFIED, STALE or INSUFFICIENT_EVIDENCE, each with its coverage state and what not to conclude, and the dimensions measured, not applicable and withheld — every coverage dimension's state, what `get_project_coverage` answered). The answer first, then tagged claims, unknowns, freshness per data family and evidence ids; a source's words are quoted as data. Reads `GET /api/agent/{capability}`, the same JSON REST serves and A2A carries. | — |
 
-`market_integrity` is a thirteenth, offered only where the site publishes Market Integrity. It
+`market_integrity` is a fourteenth, offered only where the site publishes Market Integrity — as
+heyresearch.xyz does, so its hosted `tools/list` names fourteen (corrected 2026-10-16). It
 lists every event HEY stands behind with its id, its time as precisely as HEY knows it, and its
 words with the reading dates and sources; there, `get_changes` also accepts the
 `market_integrity` domain and the `market_integrity.event` type (2026-09-27).
@@ -180,14 +181,14 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
 
 - `building-with-token` — verified shipping, active or resumed, with a token whose market is live.
 - `still-building` — verified activity continuing through a market drawdown HEY tracked, on an
-  active market that is more than a launch curve; on a thinner one Still Building is not
+  active market that is more than a launch curve or a launch pool; on a thinner one Still Building is not
   measured (`stillBuildingWithheld: "market_too_thin"`, hbm-v19). With no tracked token, no
   current market reading or building HEY cannot read it is not measured either (`no_token`,
   `no_market_reading`, `activity_unknown`, hbm-v21), never "does not hold".
 - `under-the-radar` — **eligible under HEY's Under the Radar rule** (status shipping, active
   or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one
-  of them a ship rather than a commit summary; a fresh reading of an active market, not a thin
-  one or only a launch curve, for the project's own token) **and a positive Discovery Gap**: the
+  of them a ship rather than a commit summary; a fresh reading of an active market beyond
+  a launch curve or a launch pool, for the project's own token) **and a positive Discovery Gap**: the
   market-attention percentile is below the build percentile. A token whose market is not
   active has no Discovery Gap at all (`discoveryGapWithheld: "market_too_thin"`, hbm-v18). A
   market active only because another pool of the token holds the liquidity is measured on that
@@ -252,9 +253,9 @@ the site.
   `project_diff` each end carries its own kind, and two ends of different kinds are said to be
   two measures, not one figure moving.
 - **Says what a week of commits changed, at the API's strength** (2026-09-27): in
-  `get_project_timeline` a code week carries `DERIVED what changed (commit-substance-v1):
-  changed code | documentation or maintenance only | substance not fully read` and the API's own
-  sentence; in `get_changes` a `build.code_activity` event carries the same verdict and the
+  `get_project_timeline` a code week carries `DERIVED what changed (<classifierVersion>, today
+  commit-substance-v4): changed code | documentation or maintenance only | substance not fully read`
+  and the API's own sentence; in `get_changes` a `build.code_activity` event carries the same verdict and the
   FACT count of commits read. A documentation-only week says it is not counted as building; an
   unread week says it is unread, never that it is documentation. No commit message or author is
   ever in an answer.

@@ -649,7 +649,7 @@ export function CardGrid({ children, className }: { children: ReactNode; classNa
 }
 
 /** Helpful empty states rather than blank screens (UI/UX V2 section 39). */
-export function EmptyState({ title, hint }: { title: string; hint?: string }) {
+export function EmptyState({ title, hint }: { title: string; hint?: ReactNode }) {
   return (
     <div className="lg-panel p-12 text-center" data-variant="empty">
       <p className="text-[15px] font-medium">{title}</p>

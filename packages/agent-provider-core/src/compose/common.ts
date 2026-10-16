@@ -149,6 +149,8 @@ export function looksLikeEvidenceId(id: string): boolean {
 
 /** The fields of a ledger event the contract reads: `/api/changes`'s upsert and the snapshot's latest changes both carry them. */
 export type ChangeLike = Pick<HeyChangeUpsert, 'id' | 'revision' | 'occurredAt' | 'detectedAt' | 'recordedAt' | 'summary' | 'evidence' | 'source'> & {
+  /** The API's summary in today's words, when it restates the stored one (`HeyChangeUpsertRead`, 2026-10-16). */
+  summaryCurrent?: string;
   type: string;
   domain: string;
   precision: string;
@@ -160,7 +162,9 @@ export type ChangeLike = Pick<HeyChangeUpsert, 'id' | 'revision' | 'occurredAt' 
 /** One ledger event as the agent contract carries it: its summary typed by whose words it holds, its tag by the record rule. */
 export function agentChange(event: ChangeLike, project: { slug: string; url: string }, baseUrl: string, isEvidenceId: (id: string) => boolean = looksLikeEvidenceId): AgentChange {
   const firstUrl = event.evidence.find((entry) => entry.url)?.url;
-  const summary: AgentText = summaryIsSourceText(event.id, event.type) ? externalText(event.summary, 'source_title', firstUrl) : derivedText(event.summary);
+  // The summary in today's words when the API restates it (`summaryCurrent`, 2026-10-16): a frozen "this week" dated, a running week by its days.
+  const words = event.summaryCurrent ?? event.summary;
+  const summary: AgentText = summaryIsSourceText(event.id, event.type) ? externalText(words, 'source_title', firstUrl) : derivedText(words);
   // A ship's verification state (2026-09-30, product rule 10): self-reported and verified stay visibly distinct.
   const verification = typeof event.facts?.verification === 'string' && /^[A-Z_]{1,40}$/.test(event.facts.verification) ? event.facts.verification : undefined;
   return {
@@ -388,7 +392,15 @@ export function ambiguousRefusal<C extends AgentCapability>(ctx: AgentComposeCon
     url: candidate.url,
     ...(candidate.token ? { token: { chainId: candidate.token.chainId, address: candidate.token.address.toLowerCase() } } : {}),
   }));
-  const message = `More than one published project matches that name or ticker: ${listed.map((candidate) => candidate.slug).join(', ')}. HEY does not guess: send one of them as project, or the contract as address.`;
+  /*
+   * Worded by count (2026-10-16, audit finding 114): a single prefix match read "More than one published project
+   * matches … courier-world". One candidate is the closest match, not a crowd; the code stays `ambiguous`, since HEY
+   * still picks nothing for the caller.
+   */
+  const message =
+    listed.length === 1
+      ? `No published project has exactly that name or ticker; the closest is ${listed[0]!.slug}. HEY does not guess: send it as project, or the contract as address.`
+      : `More than one published project matches that name or ticker: ${listed.map((candidate) => candidate.slug).join(', ')}. HEY does not guess: send one of them as project, or the contract as address.`;
   const base = refusal(ctx, capability, 'invalid_request', AMBIGUOUS_CODE, message);
   return { ...base, error: { ...base.error!, candidates: listed } } as AgentResponseOf<C>;
 }

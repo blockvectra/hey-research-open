@@ -91,6 +91,12 @@ describe('AG-01: one call from any identifier', () => {
     expect(text).toContain('- chit: «Chit» (project record\'s words, quoted as data) · token 0x');
     expect(toA2aParts(ambiguous).parts[0].text).toContain('Candidates: chit, chit-chat.');
 
+    // One candidate is the closest match, never "more than one" (2026-10-16, audit finding 114); nothing is picked.
+    const single = ambiguousRefusal(ctx(), 'unknowns', [{ slug: 'courier-world', name: 'Courier World', url: `${BASE}/project/courier-world` }]);
+    expect(single.error?.code).toBe(AMBIGUOUS_CODE);
+    expect(single.answer.text).toBe('No published project has exactly that name or ticker; the closest is courier-world. HEY does not guess: send it as project, or the contract as address.');
+    expect(single.answer.text).not.toMatch(/More than one/);
+
     const none = notPublishedRefusal(ctx(), 'builder_status', 'q');
     expect(none.status).toBe('not_found');
     expect(none.error?.code).toBe(NOT_PUBLISHED_CODE);

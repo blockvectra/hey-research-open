@@ -23,7 +23,7 @@ Base URL: `https://heyresearch.xyz`
 | Rule | What it means in the JSON |
 |---|---|
 | Identity is `(chainId, contractAddress)` | `token` is the pair, never the ticker alone. `symbol` is shown, but it is not the identity. |
-| Absent means unknown | A field HEY has no answer for is **left out**, never sent as `null` or `0`. Nothing downstream can average a fact that was never claimed. |
+| Absent means unknown | A field HEY has no answer for is **left out**, never sent as `0` — and never as `null`, except a field documented below as nullable, where `null` has the stated meaning (`marketAttention` with `marketAttentionWithheld` beside it, `codeSubstance.basis` on a verdict that is not `LOW_INFORMATION`, a velocity's `previous` while its `state` is `NEW`, and the like; corrected 2026-10-16). Nothing downstream can average a fact that was never claimed. |
 | Provenance travels with the fact | A ship carries `sourceUrl` and `verification`; a market figure carries the `source` that reported it. One exception, and it is the roll-up rather than the record: `/api/this-week` prints a bare `marketCapUsd` on its list items, with no `source` and no `observedAt` — read it as the figure the project listing carries, and take the provenance from `/api/projects` (2026-09-19). |
 | Self-reported ≠ verified | `verification` distinguishes them, always. |
 | Research depth is stated | `researchLevel` and `catalogStatus` say whether HEY merely indexed a record or actually researched it, so an `INDEXED` row is not read as a claim. |
@@ -85,7 +85,7 @@ Every public read route answers an error in one envelope:
 
 | Status | `error` | Retryable | When |
 |---|---|---|---|
-| 400 | `bad_request`, `invalid_parameter`, `invalid_address`, `batch_too_large` | no | the request is malformed as sent |
+| 400 | `bad_request`, `invalid_parameter`, `invalid_address`, `batch_too_large`, `unknown_fact` | no | the request is malformed as sent (`unknown_fact`: `/explain` was asked for a fact it does not explain) |
 | 401 | `unauthorized` | no | the key is not valid |
 | 401 | `key_required` | no | a keyed-only (bulk) route was called without a key |
 | 403 | `forbidden` | no | the key or account is held, or a partner key is not granted the route's group; `reason` says which |
@@ -103,6 +103,15 @@ zero-width characters, even where it quotes what the caller asked for (2026-09-3
 404 for an unknown path carry the same headers (they used to carry none). Before 2026-09-26 a few
 routes put a sentence in `error` (the per-minute 429, `compare`, `ask`); that sentence is now the
 `message`, and `error` is the code.
+
+Since 2026-10-16 the envelope also covers `/api/projects/{slug}/around/{eventId}`,
+`/api/projects/{slug}/relationships`, `/api/v4-hooks[/{address}]`, `/api/reports/monthly[/{month}]`,
+`/api/share/*`, `/api/export/*` and `/api/agent/stats`, whose errors carried no `requestId` before,
+and a partner's calls to them count in its usage. `/api/logo` (the logo image proxy) refuses a
+request as `invalid_parameter` with a `message` and the old word as `reason` (`missing_url`,
+`host_not_allowed`, `bad_size`). A malformed address is `invalid_address` on `/api/contracts` and
+`/api/v4-hooks`, but `bad_request` on `/api/token/{chainId}/{address}` and `/api/v1/scan`: their
+code predates `invalid_address` and a code never changes, so switch on both.
 
 ### Versioning
 
@@ -232,9 +241,11 @@ been served for longer): `websiteUrl`, the project's own site; `trades24h`
 (`{buys, sells, source, observedAt}`), the day's buy and sell counts from the same market
 snapshot; `priceChange24hPct`, a plain number; and `logoUrl`, an absolute image URL as HEY recorded it.
 
-**An unrecognised value is dropped, not refused.** A caller who invents a filter gets the
-unfiltered listing rather than a 400 to handle — and the `query` object in every response
-echoes the request *as it was understood*, which is how you find out a filter was ignored.
+**An unrecognised value is refused (2026-10-02).** A value a parameter does not read —
+`sort=price`, `kind=banana` — answers `400 invalid_parameter` with the values it does read (see
+"Unknown values are refused" under `/api/ships`); it was dropped before, which handed a caller the
+unfiltered listing. `limit` and `offset` are still capped, not refused. The `query` object in every
+response echoes the request *as it was understood*.
 
 ```json
 {
@@ -267,9 +278,9 @@ echoes the request *as it was understood*, which is how you find out a filter wa
 ```
 
 Paging: follow `nextOffset` until it is absent. It is absent at the end of a listing rather
-than pointing past it. Only `/api/projects` and `/api/ships` carry `nextOffset`; `/api/signals`
-and `/api/builders` carry `total` alone, so a caller pages those by adding `limit` to `offset`
-until `offset` reaches `total` (2026-09-18).
+than pointing past it. `/api/projects`, `/api/ships` and `/api/signals` carry `nextOffset`;
+`/api/builders` carries `total` alone, so a caller pages it by adding `limit` to `offset` until
+`offset` reaches `total` (2026-09-18; `/api/signals` corrected 2026-10-16).
 
 Project detail (`/api/projects/<slug>`) also carries two facts about the tracked token, kept apart
 from `activityStatus` (2026-09-11): `tokenVerification` (`status` VERIFIED, UNVERIFIED or MISMATCH,
@@ -282,6 +293,10 @@ the reading behind `liquidityUsd` and `volume24hUsd` was observed (`evaluatedAt`
 rule last ran, which can be days later), and `figuresScope` is always `reading_pool` — those pool
 figures describe the pool the status reading follows, while the project's `volume24h` is the card
 reading's figure and may count every pool, so the two can differ without contradicting each other.
+`peakLiquidityUsd` (basis named 2026-10-16) is the highest liquidity any single reading of the token
+reported, among readings whose liquidity was at most ten times the valuation read with it — one
+reading, not a level held, so one outlying reading can set it. The level a market held is Market Integrity's `liquidityPeakUsd`:
+the highest liquidity held on two consecutive daily closes of HEY's index.
 
 Every listed project with a token also carries `tokenMarket` (2026-09-25): `{ status, reason? }`,
 the same state the card shows. It is why a listing sometimes has no `marketCap` — a dead market's
@@ -401,6 +416,18 @@ The rule is on `/methodology`.
 A slug that is not published answers `404` with `{ "error": "not_found" }`. It looks
 identical to a slug that never existed, which is what the pages do too.
 
+### When the gap and the badges were written: `score.cohortEvaluatedAt` (2026-10-16, additive)
+
+`score.calculatedAt` dates the per-project score: the activity status and Build Momentum. The
+Discovery Gap, Under the Radar and Still Building are written by the cohort rebuild, which
+re-ranks every published project about every fifteen minutes and rewrites them in place without
+touching `calculatedAt`. `score.cohortEvaluatedAt` is when the rebuild last wrote them: a run that
+finds the same figures writes nothing, so it dates the figures as they stand. Absent on a score no
+rebuild has written since the field existed. `explain?fact=discovery_gap` and
+`explain?fact=still_building` carry it as their `observedAt`. The gap's own components also name
+the market reading its attention side was taken from (`marketReadingAt` among the explain
+inputs): the newest reading of the last seven days, the one the market card shows.
+
 ### Why a Discovery Gap is absent: `score.discoveryGapWithheld` (2026-09-30, additive)
 
 Since scoring version `hbm-v18` a Discovery Gap is measured only on an **active market**. A
@@ -463,6 +490,7 @@ same field is on the snapshot as `build.stillBuildingWithheld`:
 | `no_market_reading` | Not measured — HEY holds no market reading from the last day (`hbm-v21`). |
 | `activity_unknown` | Not measured — HEY holds no builder source it can read, so whether the project kept building is not known (`hbm-v21`). |
 | `not_scored` | Not measured — HEY has no score for the project under the current scoring version yet (`hbm-v21`; sent by the reader, never stored). |
+| `no_tracked_high` | Not measured — the market is measured, but HEY holds no plausible reading at least 7 days old from the last 90 days to be the drawdown's high: a market HEY began reading this week (2026-10-16; it read "not met" before). |
 
 The list may grow; read an unknown value as "not measured". The field is absent when the badge
 was measured (held or not met). SDK: `HeyStillBuildingWithheld`. OpenAPI: `#/components/schemas/StillBuildingWithheld`.
@@ -574,29 +602,48 @@ changed meaning.
 ```json
 "codeSubstance": {
   "verdict": "SUBSTANTIVE",
-  "classifierVersion": "commit-substance-v1",
+  "classifierVersion": "commit-substance-v4",
   "countsAsBuilding": true,
   "commitsListed": 14, "commitsRead": 3, "changedCode": 1,
   "documentationOrMaintenance": 2, "substanceUnknown": 0, "notRead": 11,
   "files": { "source": 2, "test": 1, "docs": 0, "readme": 2, "dependency": 0, "config": 0, "ci": 0,
              "generated": 0, "asset": 0, "whitespace": 0, "rename": 0, "data": 0, "unknown": 0 },
   "weekFullyListed": true,
+  "automatedCommits": 0,
+  "sampled": false,
+  "basis": null,
   "summary": "3 commits read: 1 changed code, 2 documentation or maintenance only. 11 other commits were not needed to decide the week."
 }
 ```
 
 - The counts are **FACT**s about the human, non-merge commits HEY listed and read (`files` counts
-  changed files by class over the commits read). `verdict` is **DERIVED** by `classifierVersion`.
-- `SUBSTANTIVE`: at least one commit changed source code, tests, configuration or CI beyond
-  whitespace. `LOW_INFORMATION`: HEY listed and read every commit of the week and each only changed
-  documentation or the README, dependency lockfiles, generated files, assets, data files (JSON, CSV
-  and the like outside configuration, since `commit-substance-v2` / `hbm-v17`), whitespace or pure
-  renames, or dependency or version updates — a manifest such as `package.json`, `Cargo.toml` or
-  `go.mod` whose changed lines are all versions, counted in `files.dependency` beside the lockfiles
-  (since `commit-substance-v4` / `hbm-v29`, 2026-10-15; no field changed shape) — shown as "documentation or maintenance only", `countsAsBuilding: false`, and left out
-  of activity status, Build Momentum, Still Building, Under the Radar and every count of ships
-  (scoring version `hbm-v16`, founder ruling G1). `UNKNOWN`: not read in full yet; it counts
-  exactly as before — the absence of HEY's reading never demotes a project.
+  changed files by class over the commits read). `verdict` is **DERIVED** by `classifierVersion`;
+  the current rules are `commit-substance-v4` (scoring `hbm-v29`, 2026-10-15), and every week says
+  which rules read it.
+- `SUBSTANTIVE`: at least one commit changed source code, tests or configuration beyond whitespace.
+  CI configuration alone (`.github/workflows/…`) is maintenance, not building (`ci_only`, since
+  `commit-substance-v3` / `hbm-v22`, 2026-10-02). `LOW_INFORMATION`: each commit HEY read only
+  changed documentation or the README, dependency lockfiles, CI configuration, generated files,
+  assets, data files (JSON, CSV and the like outside configuration, since `commit-substance-v2` /
+  `hbm-v17`), whitespace or pure renames, or dependency or version updates — a manifest such as
+  `package.json`, `Cargo.toml` or `go.mod` whose patch HEY read and whose changed lines are all
+  versions, counted in `files.dependency` beside the lockfiles (`dependency_bump`, since
+  `commit-substance-v4` / `hbm-v29`, 2026-10-15; a manifest with any other change, or with no patch,
+  stays configuration; no field changed shape) — shown as "documentation or maintenance only",
+  `countsAsBuilding: false`, and left out of activity status, Build Momentum, Still Building, Under
+  the Radar and every count of ships (scoring version `hbm-v16`, founder ruling G1). `UNKNOWN`: not
+  read in full yet; it counts exactly as before — the absence of HEY's reading never demotes a
+  project.
+- `basis` says what a `LOW_INFORMATION` verdict rests on (null on any other verdict):
+  - `all_read` — HEY listed and read every commit of the week;
+  - `burst_sample` — a burst week of 25 or more human commits is read on a sample of up to 10
+    commits: `SUBSTANTIVE` once 3 of them change code, `LOW_INFORMATION` ("mostly maintenance or
+    automation", `sampled: true`) when the sample is read and too few could, `UNKNOWN` until then;
+  - `automated_only` — every commit HEY holds for the week came from a bot account or an automated
+    stream (a templated subject repeated on a clock, or one carrying its own changing timestamp or
+    figures), and HEY holds at least as many as the week's summary counted.
+  Bot and automated-stream commits are never counted toward a week; `automatedCommits` is how many
+  HEY held and set aside (commit-substance-v3, additive, 2026-10-02).
 - A `LOW_INFORMATION` week is not listed by `/api/ships` or a project's `ships[]` (they list
   building); the project's `/timeline` keeps it, with `countsAsBuilding: false`.
 - `/api/changes` restates it on `build.code_activity` as flat facts: `codeSubstance`,
@@ -686,7 +733,7 @@ GET /api/token/4663/0xa0000000000000000000000000000000000000a1
     "tokenVerification": { "status": "VERIFIED" },
     "badgeUrl": "https://heyresearch.xyz/badge/agentos.svg"
   },
-  "scanUrl": "https://heyresearch.xyz/scan?address=0x…",
+  "scanUrl": "https://heyresearch.xyz/scan/0x…",
   "disclaimer": "…"
 }
 ```
@@ -748,8 +795,9 @@ token's), `activity_applies_to_token` (2026-09-27: `false` exactly on `MISMATCH`
 `activity_applies_to_token` is `false`: nothing invites a reader from a disowned token to the
 project), and the disclaimer. `found: false` is a 200 for an unpublished token, for a chain HEY does
 not index (`reason: "chain"`) and, since 2026-09-27, for the zero address (`reason: "not_a_token"`,
-not metered); a malformed `token`, and the burn address, are a 400. `chain` defaults to 4663. Same limits and cache as
-`/api/token`; a database read only. Documented for bots in [Putting HEY in your bot](/developers/integrations).
+not metered); a malformed `token`, and the burn address, are a 400. `chain` defaults to 4663. Same limits as
+`/api/token`, but never a shared cache: every answer is `private, max-age=60`, so each partner call reaches HEY and is
+counted (2026-10-05; `/api/token` is `public, max-age=60, s-maxage=60, stale-while-revalidate=300`); a database read only. Documented for bots in [Putting HEY in your bot](/developers/integrations).
 
 ## `GET /api/v1/builder?chain={chainId}&token={address}` (2026-09-20)
 
@@ -962,7 +1010,8 @@ Two context blocks, added 2026-09-27 (additive; both absent when HEY holds nothi
   firstObservedAt, lastObservedAt, source }`. `kind` is `MARKET_PROMOTION_OBSERVED` or
   `COMMUNITY_TAKEOVER_PROFILE_OBSERVED`; `providerAt` is the provider's own date and absent when it
   gave none (then only `firstObservedAt`, HEY's observation, dates it). No amount, spend or reach is
-  ever sent.
+  ever sent. Since 2026-10-16 (additive) each entry carries `channelLabel`, the channel in a reader's
+  words (`token_profile_order` → "Enhanced token profile").
 
 Neither block is an input to activity status, Build Momentum, the Discovery Gap, the Radar or any
 ordering, neither is a change event (they never appear in `latestChanges`, `/api/changes` or a
@@ -1063,7 +1112,7 @@ calls-per-method read and the decoded usage read; no provider in the request pat
   collection start are absent, never zero.
 - `markers[]` — `{ kind: "release" | "deployment" | "implementation_change", day, evidenceId, label,
   relation: "context_only_not_a_cause" }`, dated beside the series. HEY never says one caused a
-  change in use.
+  change in use. Since 2026-10-16 (additive) a GitHub release carries `repository` (`owner/repo`).
 - `methodology` — the five rules above in words; `computedAt`; `disclaimer`.
 
 Usage is its own dimension: it never feeds activity status, Build Momentum, the Discovery Gap, the
@@ -1273,6 +1322,12 @@ A receipt carries `project`, `domain`, `claimType`, `summary`, `sourceType`, `so
 `recordedAt` and `metadata`; a ship also lists every evidence row behind it (`sources[]`, each
 with its `evidenceRowId`).
 
+A `lock:` receipt's `detectedAt` is HEY's first sighting of the lock (2026-10-16), never the latest
+sweep of the locker; a lock that was already there when HEY began keeping first sightings answers
+`detectedAt: null` with `detectedAtWithheld: "predates_record"`. Its `metadata.lastReadAt` is the
+latest sweep and, for a withdrawn lock, `metadata.withdrawnObservedAt` the first sweep that read it
+withdrawn.
+
 A record HEY no longer stands behind answers `{ id, withdrawn: true, withdrawalReason }`
 (`retracted`, `disputed`, `context_only`, `review_false_positive`, `announced_ship_withdrawn`,
 `superseded`), with `project` when the project is public. A `context_only` follow-up deployment
@@ -1370,6 +1425,7 @@ read sums are never returned. Every part is read or says why it was not.
     "nakamotoHalf": 3,                            // addresses holding half of the supply left once those are out; null on an explorer read (not counted)
     "sharesStated": true,                         // false: no share is stated (supply unknown, or balances exceed it)
     "ranked": 4, "named": 2                       // largest balances read, and how many HEY could name (counts only)
+    // "figuresWithheld": "partial_balances"      // additive, 2026-10-16: a Bitquery read whose balances cannot account for the supply; holdersTotal, the shares and nakamotoHalf are then null
   },
   "activity": {
     "state": "read", "readAt": "…", "since": "2026-10-08",
@@ -1441,6 +1497,11 @@ tell (`type=releases` returned every ship). `/api/projects` follows the same rul
 Radar, `/api/builders`, is HEY's ranking by builder signals), `stage`, `age`, `deployed` and the
 dollar floors. `limit` and `offset` are still capped, not refused.
 
+**An unknown project is not found (2026-10-16).** `project` naming no published project — a typo,
+or a project that left the catalogue — answers **404 `not_found`** ("No published project has the
+slug …"), as `/api/changes?project=` does. It used to answer `200` with `total: 0`, which told the
+caller the project shipped nothing.
+
 **A code week names its fixed week (2026-10-02).** A `CODE_ACTIVITY` ship carries `codeWeek`:
 `isoWeek`, `start` (Monday 00:00 UTC) and `end` (the next Monday, exclusive), `repository`,
 `commits` (human, non-merge commits in that week; `null` when HEY holds no count) with
@@ -1452,18 +1513,37 @@ display title HEY prints. `title` on the ship itself is the same week's title wi
 "Active development: 100+ commits since …" before, which named spans two neighbouring weeks could
 share). The field and its meaning — the ship's title — are unchanged; only its words are the week's.
 
+**A week still running (additive, 2026-10-16).** `title` never depends on the clock, so a week in
+progress still names its Sunday ("week of 2026-10-12 – 2026-10-18" on Friday the 16th). Three
+additive fields say what HEY's pages say instead: `codeWeek.complete` (`false` while `end` is still
+ahead of the response), `displayTitle` on a ship and on a timeline entry ("Code changes, week
+starting 2026-10-12 (to 2026-10-16)", present only when it differs from `title`), and
+`summaryCurrent` on an `/api/evidence/{id}` receipt (the same words for its `summary`). Print
+`displayTitle ?? title`; key and compare on `title`. The partner card's
+`last_code_activity.summary` is HEY's own sentence for the week and uses the same words (it never
+names a day after `as_of`). A code week's stored ship `summary` counts the week's own active days
+("3 active days in acme/app."), never the rolling read it came from ("19 active days … since
+2026-09-28"); a count the read stopped inside the week says "at least" and is dated.
+
 ## CSV exports (2026-10-02)
 
 `GET /api/export/projects` — the current Explore result as CSV (the page's **Download CSV**
 link writes its applied filters into the URL: `tab`, `kindGroup`, `kind`, `status`, `narrative`,
 `level`, `ready`, `stage`, `minLiquidity`, `minVolume`, `minMarketCap`, `maxMarketCap`, `age`,
 `deployed`, `has`, `launchpad`, `sort`, `q`). `GET /api/export/ships` — the ships feed for a
-window (`since`, `until`, `type` incl. `releases`, `has`, `q`, `sort`, `project`). Both: at most
+window (`since`, `until`, `type` incl. `releases`, `has`, `q`, `sort`, `project`; additive since
+2026-10-16: `narrative`, a primary narrative's slug, and `view=feed`, which folds a repository's
+releases of one UTC day and a deploy run to one row as `/ships` does — absent or `view=records`,
+every ship record as before; `/ships`' own **Download CSV** link sets `view=feed`). Both: at most
 **1,000 rows** in the listing's own order (`x-hey-rows`, and `x-hey-truncated: true` when more
 matched), UTF-8 with a BOM, dates in UTC, every row stamped `as_of_utc`; an empty cell is not
 measured, never zero. An export costs 21 requests from the per-minute bucket (a 48-row page each),
 so a keyless client can take about five a minute. Cells that a spreadsheet would run as a formula
-are prefixed with `'`. A value not understood is the same `400 invalid_parameter`.
+are prefixed with `'`. A value not understood is the same `400 invalid_parameter`. Since
+2026-10-16 an anonymous file is cacheable for 60 seconds (`public, s-maxage=60`, as the JSON
+routes; a keyed answer stays `private, no-store`), and a ships file whose code-week details HEY
+could not read carries `x-hey-partial: code_weeks_not_read` — its `week_start`, `week_end` and
+`what_changed` cells are then empty (not read, never zero) — and is never cached.
 
 Project columns: identity, `kind`, `primary_narrative`, `activity_status` and its words,
 `research_level`, `verified_builder`, the latest ship (title, type, date, evidence URL),
@@ -1496,8 +1576,10 @@ supply — 2026-09-25) and the `source` that won the day, rolled up from HEY's r
 `sellVolumeUsd`, `tradeCloseUsd`, `transfers` (`tradesSource: "bitquery"`). `lifecycle` carries
 when HEY recorded the launch, when the pool was created, the launch stage and since when, the
 first and last indexed trade day (over the whole daily index HEY keeps, not the `days`
-window — 2026-09-25), the highest liquidity HEY saw and how far below it liquidity
-sits (`liquidityBelowPeakPct`), and the 7- and 30-day price moves from HEY's own closes.
+window — 2026-09-25), the highest liquidity HEY saw in a single reading (`peakLiquidityUsd`, the
+same figure as the project's `tokenMarket.peakLiquidityUsd`; not the level held two days running)
+and how far below it liquidity sits (`liquidityBelowPeakPct`), and the 7- and 30-day price moves
+from HEY's own closes.
 `checks[]` is what HEY checked on the contract — on chain, upgradeable proxy, deployer (and how
 many other projects' tokens it deployed), whether the project's own sources name the contract,
 the launch record, liquidity against its high, trades on the latest day — each a `finding` in
@@ -1537,11 +1619,21 @@ Added 2026-09-25, all optional and absent when HEY holds nothing:
   on a person.
 - `pools` — the latest pool reading from the chain: `day`, `observedAt`, `pools`, `liquidityUsd`
   and `depthOnePctUsd` (how much can be sold before the price moves 1%, added across the pools).
+  Since 2026-10-16 (additive) `indexMissesReadingPool: true` says HEY's chain index holds under 1%
+  of the liquidity the market reading reports, so these pools and this depth describe another pool
+  than the reading's; absent when the index holds it or a figure is unknown. A Uniswap v4 pool id
+  in the reading no longer decides it: the index has held v4 pools since 2026-09-26.
 - `distribution` — a summary of HEY's snapshot of the token's largest balances: `day`,
   `observedAt`, `holdersTotal` (distinct addresses holding a balance — addresses, never people),
   `top10SharePct`, `top50SharePct` (burned and pooled supply left out), `burnedSharePct`,
   `pooledSharePct`. No address and no balance. Since 2026-10-16 (additive) `stale: true` says the
   snapshot is older than HEY's distribution freshness window: that day's figures, not today's.
+  Since 2026-10-16 (additive) `figuresWithheld` says why `holdersTotal` and every share are absent:
+  `partial_balances` — the holder source answers from a window of about nine days and knows only
+  balances that changed in it, and the balances it returned cannot account for the supply (even
+  counting every unlisted address at the smallest listed balance they reach under 95%, or a
+  HoodLock locker HEY reads is missing) — or `coverage_not_measured`, when HEY could not tell.
+  Never a zero: the figures are not measured.
 - `tvlRead` (2026-10-16, always present) — what `tvlDays[]` is a reading of, so an empty series is
   never read as "no value locked": `{ state: "MEASURED" | "STALE", day, observedAt }` for the newest
   row, or `{ state: "NONE_HELD", reason: "no_tvl_row_in_window" }` when HEY holds no DefiLlama TVL row
@@ -1643,6 +1735,14 @@ points back at the record it indexes (`ship:<uuid>`, `signal:<uuid>`, `abi:<uuid
 `state:<projectUuid>:<key>:<id>`, `claim:<uuid>`, `source:<uuid>:added`,
 `narrative:<projectUuid>:<slug>`, `lock:<chainId>:<lockId>:due`); the ledger is never a new
 source of facts. Read from HEY's own tables; no provider is called.
+
+**`summaryCurrent` (additive, 2026-10-16).** An upsert whose stored `summary` reads differently today
+carries the current words beside it, and only then: a signal title stored with a frozen "this
+week" is dated ("477 address-days of contract calls in the 7 days to 30 Sep"), a running code week
+reads by absolute days, and a trading collapse stored as "2068.3 trades a day … over the last
+seven" reads "2,068 trades a day … in the seven days to 2026-09-28". `summary` stays the ledger's
+text, which a mirror keys on; webhook payloads and alerts carry the ledger's event only and never
+this field. New Market Integrity revisions date the recent window themselves (`facts.recentWeekEnd`).
 
 ### Sync (mirroring)
 
@@ -1772,7 +1872,7 @@ status move — so each change is one event, not two.
 | `research.narrative_assigned` | a narrative assigned | the assignment, EXACT |
 | `lock.unlock_due` | a HoodLock unlock entering its last seven days | the unlock, SCHEDULED |
 | `lock.observed`, `lock.withdrawn` | the first sweep that read a HoodLock lock, and the first that read it withdrawn (forward-only from migration 0138; locks already there when collection began say nothing) | null, OBSERVED (the locker gives no times; `detectedAt` is HEY's) |
-| `market_integrity.event` | a Market Integrity finding the current evaluation stands behind (only where HEY publishes Market Integrity; id `integrity:<tokenUuid>:<key>`) | a collapse, trading stop or lock event: its day or window, DATE/WINDOW/EXACT; a trading collapse, a source conflict or a builder × market conflict: null, OBSERVED |
+| `market_integrity.event` | a Market Integrity finding the current evaluation stands behind (only where HEY publishes Market Integrity; id `integrity:<tokenUuid>:<key>`). A HoodLock withdrawal HEY saw happen is `lock.withdrawn` only, never this type too (2026-10-16: its twin is retracted); trading findings read complete UTC days, never today's partial one | a collapse, trading stop or lock event: its day or window, DATE/WINDOW/EXACT; a trading collapse, a source conflict or a builder × market conflict: null, OBSERVED |
 
 **What the ledger cannot tell you.** State moves (status, market status, launch stage,
 verification, publication) are recorded from the deploy of migration 0136 (`ledger.transitionsFrom`);
@@ -1861,7 +1961,16 @@ HEY Signal: measured changes about published projects. `group` (`development`, `
 `concentration_rose`, `trading_narrow`, `launch_graduated`, `project_published`,
 `builder_verified` and `token_verified` (`packages/domain/src/signals/vocabulary.ts`, private
 repository) —
-`slug`, `days` (default 30), `order=newest|importance`, `limit` ≤ 100, `offset`. The unfiltered feed leaves out
+`slug`, `days` (default 30), `order=newest|importance`, `limit` ≤ 100, `offset`.
+
+**Unknown values are refused (2026-10-16).** A `group`, `kind`, `order` or `include` HEY does not
+read, a `slug` that is not a slug, or a `days` that is not a whole number answers **400
+`invalid_parameter`** with `errors[]` (each naming the parameter, the value and, for a vocabulary,
+`allowed`), as `/api/changes`, `/api/ships` and `/api/projects` do. It used to be dropped, which
+answered `kind=zzz` with the whole feed. A `slug` no published project has answers **404
+`not_found`**, never an empty feed. `days` beyond 1–365, `limit` and `offset` are still capped.
+
+The unfiltered feed leaves out
 `project_published` (a launch record, thousands after a promotion pass); pass `group=launch`,
 `kind=project_published` or `include=published` to see them. Each item carries
 `before`, `after`, `changePct` and `unit` where the rule measured figures, `evidence[]` (labels and
@@ -1909,8 +2018,10 @@ The Builder Radar. `filter` (`all`, `pons`, `virtuals`, `other-launch`, `no-toke
 volume take no part. Ranks are recomputed daily and kept. On-chain use is **address-days of
 calls** to the project's own contracts over 7 days: each UTC day's distinct caller count, added
 across days and contracts, so an address calling on several days is counted again — never
-distinct addresses and never people (the emitted-event count stands in where HEY has no caller
-count). The `onchain` filter sorts by that sub-score.
+distinct addresses and never people. A day with no caller count is not read (`builders-v4`,
+2026-10-16; before it the emitted-event count stood in). The `onchain` filter sorts by that
+sub-score. The scoring version `method` names is the one the day's board was ranked under, read
+from its rows (2026-10-16); a Radar version change re-ranks the day at the next scheduler tick.
 
 ## `GET /api/reports/weekly` and `GET /api/reports/weekly/{week}` (2026-09-13)
 
@@ -1960,6 +2071,16 @@ them; `coverage` is the census day's states or `notRead` with its reason. A mont
 after it ends (`final`), written once and regenerated only when `version`
 (`MONTHLY_REPORT_VERSION`) moves — from the same frozen inputs. `.csv` serves the payload as rows,
 as the weekly route does. The pages: `/reports`, `/reports/monthly/{month}`.
+
+What `totals.ships` adds up (2026-10-16, additive; version 2): `shipsLabel` is "Verified ships" only
+when every week was counted under one rule that counts corroborated building, and otherwise "Ship
+records as published" — September 2026 adds two weeks counted as every live ship record
+(`weekly-ships-v1`) to two counted under later rules; `shipsCountingRules` is how many rules the
+weeks were counted under. `headline` says the same words ("3,549 ship records as published across 4
+weeks, under 3 counting rules, …"), worded at read time from the stored totals, never recounted.
+`recountedUnderCurrentRule` (`ruleId`, `ships`, `projectWeeksShipping`, `countedAt`) is today's
+recount over the same weeks' windows from today's records — a second, labelled figure, never the
+month as published — absent when every week was counted under today's rule.
 
 ## `GET /api/share/chain-day` (2026-10-14)
 
@@ -2041,7 +2162,7 @@ price, and none names a winner.
 
 | Route | Answers |
 |---|---|
-| `GET /api/chain/silence` | projects building with comparatively little market attention (HEY's stored Under the Radar decision), each with `meaningfulShips30d` and `marketAttention` |
+| `GET /api/chain/silence` | projects building with comparatively little market attention (HEY's stored Under the Radar decision narrowed to the Low and Very low attention bands), each with `meaningfulShips30d` and `marketAttention`; `underTheRadarHeld` (2026-10-16, additive) counts the projects holding Under the Radar in any attention band, so an empty list says how close the chain is. Under the Radar itself is relative to the cohort — more building than market attention — and its holders may have Typical or higher attention |
 | `GET /api/chain/accelerating` | builders whose velocity is ACCELERATING by the project page's own rule (last 30 days ≥ 1.5× the 30 before and at least two more; watched 60 days or longer), each with `velocity` |
 | `GET /api/chain/comebacks` | projects whose activity status is RESUMED |
 | `GET /api/chain/unlocks?days=30` | HoodLock's own schedule: locks still holding that unlock within `days` (1–365), each `precision: SCHEDULED` with a `proof` link |
@@ -2065,7 +2186,9 @@ guessed), `tokensTraded`, `poolsTraded`, `transactions`, `transfers` (from Bitqu
 is set), and what HEY saw: `launches` recorded, `projectsPublished`, `ships`, `buildersShipping`,
 and `buildersVerified` (2026-09-26: published projects HEY recorded as Verified Builders that day —
 knowledge time; absent on days rolled up before it was counted).
-`today` names the partial day in progress and `lastFullDay` the last complete one.
+`today` names the partial day in progress and `lastFullDay` the last complete one. Since
+2026-10-16 the in-progress row itself carries `partial: true` (additive; absent on every complete
+day), so a client charting `days` can tell its drop from a collapse.
 
 ## `GET /api/contracts/{chainId}/{address}` (2026-09-26)
 
@@ -2125,6 +2248,9 @@ The points HEY persisted for a project, day by day. `series` is a comma list of 
   `state: "UNAVAILABLE"` on a deployment whose change ledger is not live yet. Market Integrity has
   no history series; its events are on `/api/changes` and its route once published.
 - A series that cannot apply (a project with no token) is `state: "NOT_APPLICABLE"` with a reason.
+- `tvl` with no DefiLlama row for the project in the window is `state: "UNAVAILABLE"` with a reason
+  that opens with `no_tvl_row_in_window` (2026-10-16), the market read's `tvlRead` `NONE_HELD`: it
+  was `MEASURED` with no points, which read as a measured series with nothing locked.
 
 ## `GET /api/projects/{slug}/diff?from=YYYY-MM-DD&to=YYYY-MM-DD` (2026-09-26)
 
@@ -2292,7 +2418,8 @@ answer says so in `subject.resolvedFrom` (`{ "q": "$CHIT" }` or `{ "address": "0
 `links.self` and the citation name the slug it resolved to (`?project=chit`) and `query` echoes what
 was asked; several matches answer `status: invalid_request` with `error.code: ambiguous` and
 `error.candidates` (slug, name as a source's words, the tracked token — in the matcher's order; HEY
-picks none; send one back as `project`); no match answers `status: not_found` with
+picks none; send one back as `project`) — a single non-exact match answers the same way, its message
+naming it as the closest rather than "more than one" (2026-10-16); no match answers `status: not_found` with
 `error.code: not_published`, a statement about HEY's index, never about the project. An `address`
 resolves to the published project HEY records it under (its token, a declared or follow-up
 contract); for `unknowns` a contract with no project is still an answer about the contract itself.

@@ -71,6 +71,8 @@ export type HeyUsageMarker = {
   day: string;
   evidenceId: string;
   label: string;
+  /** A GitHub release's `owner/repo` (2026-10-16, additive); absent for anything else. */
+  repository?: string;
   relation: 'context_only_not_a_cause';
 };
 

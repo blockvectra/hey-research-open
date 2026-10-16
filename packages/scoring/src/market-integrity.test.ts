@@ -375,8 +375,9 @@ describe('market integrity: the findings production published wrongly (mi-v4)', 
     expect(disputed(NOW)).toEqual(['conflict:READINGS_DISAGREE']);
     // Busy trading, then a quiet week: the collapse is keyed by its busiest week, not by the month it was seen in.
     const busy = [...HEALTHY, ...HEALTHY];
-    const quiet = [...busy.map(() => 500), 5, 4, 6, 5, 4, 3, 5];
-    const collapseKeys = evaluateMarketIntegrity(input({ days: series([...busy, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000], quiet) }))
+    // Seven quiet complete days, and today's partial count (2026-10-16: the recent window reads complete days).
+    const quiet = [...busy.map(() => 500), 5, 4, 6, 5, 4, 3, 5, 2];
+    const collapseKeys = evaluateMarketIntegrity(input({ days: series([...busy, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000], quiet) }))
       .events.filter((event) => event.kind === 'MARKET_ACTIVITY_COLLAPSE')
       .map((event) => event.key);
     expect(collapseKeys).toHaveLength(1);
@@ -395,7 +396,17 @@ describe('market integrity: the findings production published wrongly (mi-v4)', 
     expect(evaluateMarketIntegrity(input({ days: series(read, trades).map((d, i) => (i >= HEALTHY.length ? { ...d, volumeUsd: 0 } : d)) })).tradingStopped).toBe(true);
   });
 
-  it('names the source of the level it held and of the current reading', () => {
+  it("never reads today's partial row as a trade: a stale rolling volume on it does not end trading stopped (2026-10-16)", () => {
+    const read = [...HEALTHY, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000, 80_000];
+    const trades = [...HEALTHY.map(() => 120), null, null, null, null, null, null, null, null];
+    const days = series(read, trades).map((d, i) => (i >= HEALTHY.length ? { ...d, volumeUsd: 0 } : d));
+    // Early in the day only CoinGecko has read, and its frozen 24 h volume repeats an old day's.
+    const morning = days.map((d, i) => (i === days.length - 1 ? { ...d, volumeUsd: 213.66, source: 'coingecko' } : d));
+    const result = evaluateMarketIntegrity(input({ days: morning }));
+    expect(result.tradingStopped).toBe(true);
+  });
+
+    it('names the source of the level it held and of the current reading', () => {
     const days = series(HEALTHY).map((d, i) => ({ ...d, source: i < 5 ? 'geckoterminal' : 'dexscreener' }));
     const result = evaluateMarketIntegrity(input({ days }));
     expect(result.history.currentSource).toBe('dexscreener');

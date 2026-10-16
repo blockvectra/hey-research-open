@@ -93,7 +93,14 @@ export type HeyChangeUpsert = {
 /** The event is no longer public: drop your copy. It names nothing else. */
 export type HeyChangeRetract = { id: string; revision: number; op: 'retract'; recordedAt: string };
 
-export type HeyChangeEvent = HeyChangeUpsert | HeyChangeRetract;
+/**
+ * An upsert as `GET /api/changes` answers it (2026-10-16): the ledger's event, and its summary in today's words
+ * only when that differs from the stored `summary` — a frozen "this week" signal title dated, a running code week
+ * by absolute days. Never in a webhook payload or an alert, which carry the ledger's event only.
+ */
+export type HeyChangeUpsertRead = HeyChangeUpsert & { summaryCurrent?: string };
+
+export type HeyChangeEvent = HeyChangeUpsertRead | HeyChangeRetract;
 
 export type HeyChangesPage = {
   query: Record<string, string | number>;

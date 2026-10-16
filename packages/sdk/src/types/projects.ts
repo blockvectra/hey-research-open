@@ -192,6 +192,8 @@ export type HeyCodeSubstance = {
 export type HeyShip = {
   id: string;
   title: string;
+  /** The title as of the response, only when it differs from `title` (2026-10-16): a running code week reads "Code changes, week starting 2026-10-12 (to 2026-10-16)". */
+  displayTitle?: string;
   summary?: string;
   eventType: string;
   publishedAt: string;
@@ -244,6 +246,8 @@ export type HeyCodeWeek = {
   highlights: { subject: string; sha: string; committedAt: string; readAsCode: boolean; url?: string }[];
   /** The one display title every HEY surface prints for the week. */
   title: string;
+  /** Whether the week had ended when the response was made (2026-10-16): false while `end` is still ahead. */
+  complete: boolean;
 };
 
 /** Present when the request named a market field: how many matching rows carry each figure. */
@@ -351,6 +355,8 @@ export type HeyProjectDetail = HeyProject & {
     /** Why Still Building was not measured (2026-09-30, additive), beside `stillBuilding: false`: `market_too_thin` and the other market reasons. Absent when it was measured, or on a score from before the rule. */
     stillBuildingWithheld?: HeyStillBuildingWithheld;
     calculatedAt: string;
+    /** When the cohort rebuild last wrote `discoveryGap`, Under the Radar and `stillBuilding` (2026-10-16, additive); `calculatedAt` dates the status and momentum only. */
+    cohortEvaluatedAt?: string;
     /** The algorithm version the figures were produced by. */
     scoringVersion: string;
   };
@@ -442,7 +448,15 @@ export type HeyTokenMarket = {
    */
   contract?: { deployer?: string; deployerShared?: boolean; creationTx?: string; createdAt?: string } & HeyMarketContractExtras;
   /** The token's pools on the latest day HEY read: how many, their liquidity, and how much can be sold before the price moves 1%, added across them. */
-  pools?: { day: string; observedAt: string; pools?: number; liquidityUsd?: number; depthOnePctUsd?: number } & HeyPoolStructure;
+  pools?: {
+    day: string;
+    observedAt: string;
+    pools?: number;
+    liquidityUsd?: number;
+    depthOnePctUsd?: number;
+    /** HEY's chain index holds under 1% of the reading's liquidity, so these pools and this depth are another pool's (2026-10-16). Absent otherwise. */
+    indexMissesReadingPool?: true;
+  } & HeyPoolStructure;
   /** How old the newest on-chain day is (2026-09-26). */
   onchainFreshness?: HeyOnchainFreshness;
   /**
@@ -463,6 +477,13 @@ export type HeyTokenMarket = {
     top50SharePct?: number;
     burnedSharePct?: number;
     pooledSharePct?: number;
+    /**
+     * Why the count and shares are absent (2026-10-16, additive):
+     * `partial_balances` — the holder source returned only balances that
+     * changed in its recent window, which cannot account for the supply;
+     * `coverage_not_measured` — HEY could not tell. Absent when they stand.
+     */
+    figuresWithheld?: 'partial_balances' | 'coverage_not_measured';
   };
   /**
    * HEY's latest attempt to read the distribution. When it found no balance
@@ -906,7 +927,9 @@ export type HeyStillBuildingWithheld =
   | 'active_pool_not_read'
   | 'no_market_reading'
   | 'activity_unknown'
-  | 'not_scored';
+  | 'not_scored'
+  /** 2026-10-16 (additive): a measured market with no plausible reading old enough to be a drawdown's high yet. */
+  | 'no_tracked_high';
 
 /**
  * Still Building as three states (2026-09-30), beside the v1 boolean:

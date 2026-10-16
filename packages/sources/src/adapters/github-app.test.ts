@@ -42,7 +42,7 @@ describe('github app adapter', () => {
     expect((stub.requests[0]!.init?.headers as Record<string, string>).authorization).toBe('Bearer a.b.c');
     expect(result.data).toEqual({
       kind: 'installation_token',
-      token: 'ghs_16C7e42F292c6912E7710c838347Ae178B4a',
+      token: 'ghs_fixture-installation-token-not-a-real-one',
       expiresAt: new Date('2026-10-05T13:00:00Z'),
       permissions: { metadata: 'read', contents: 'read' },
     });

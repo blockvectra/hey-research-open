@@ -324,7 +324,8 @@ export function BubbleList({
           ))}
         </ul>
       ) : null}
-      <ol className="space-y-1">
+      {/* Rows 8 px apart (2026-10-16, audit #169): 4 px left the address links' 24 px target circles overlapping (WCAG 2.5.8). */}
+      <ol className="space-y-2">
         {shown.map((node) => (
           <li key={node.address} className="flex items-baseline justify-between gap-3 text-t-ui">
             <span className="flex min-w-0 items-baseline gap-2">

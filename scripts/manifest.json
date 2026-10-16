@@ -53,12 +53,16 @@
     "vitest"
   ],
   "dbTypesFrom": "packages/db/src/schema/enums.ts",
-  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see. HEY's own API keys (2026-09-30): an account key `hey_` and a partner key `heyp_`, each 43 url-safe characters; a digit is required so a long snake_case identifier such as a foreign-key name is not taken for one. An Ory API key `ory_<two letters>_…` and a CoinGecko API key `CG-…` (S2, 2026-10-16).",
+  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see. HEY's own API keys (2026-09-30): an account key `hey_` and a partner key `heyp_`, each 43 url-safe characters; a digit is required so a long snake_case identifier such as a foreign-key name is not taken for one. An Ory API key `ory_<two letters>_…` and a CoinGecko API key `CG-…` (S2, 2026-10-16). An Anthropic key `sk-ant-…` (the AI key this deployment holds), the OpenAI project, service-account and admin keys, an AWS access key id `AKIA`/`ASIA` (the S3 settings) and GitHub's OAuth, user-to-server, installation and refresh tokens `gho_`/`ghu_`/`ghs_`/`ghr_` (2026-10-16): `sk-[A-Za-z0-9]{20,}` needs twenty letters straight after `sk-`, so it saw none of the first two.",
   "forbidden": [
     "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY",
     "ghp_[A-Za-z0-9]{20,}",
+    "gh[osur]_[A-Za-z0-9]{30,}",
     "github_pat_[A-Za-z0-9_]{20,}",
     "sk-[A-Za-z0-9]{20,}",
+    "sk-ant-[A-Za-z0-9_-]{20,}",
+    "sk-(proj|svcacct|admin)-[A-Za-z0-9_-]{20,}",
+    "(?<![A-Z0-9])(AKIA|ASIA)[0-9A-Z]{16}(?![A-Z0-9])",
     "npm_[A-Za-z0-9]{30,}",
     "(?<![A-Za-z0-9_-])re_[A-Za-z0-9_-]{20,}",
     "\\d{8,10}:AA[\\w-]{30,}",

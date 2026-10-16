@@ -122,7 +122,7 @@ const VIEWS = ['shipping-in-silence', 'accelerating', 'builder-radar'] as const;
  * all three to the scoring constants.
  */
 export const UNDER_THE_RADAR_RULE =
-  'status shipping, active or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of an active market, not a thin one or only a launch curve, for the project\'s own token';
+  'status shipping, active or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of an active market beyond a launch curve or a launch pool, for the project\'s own token';
 
 /**
  * One definition per surface (2026-09-26, M2 G1/G2), in the domain's words.
@@ -757,8 +757,9 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       'chain_overview',
       {
         ...describe('chain_overview', [
-          'How active is Robinhood Chain as a whole? view: days (default; trades, volume, tokens, transactions, launches, ships per day), this-week, weekly-report (an ISO week, or the latest),',
-          'unlocks (scheduled HoodLock unlocks with proof), build-market (Build Momentum beside market attention). Aggregates only; nobody is named.',
+          'How active is Robinhood Chain? view: days (default; trades, volume, tokens, transactions, launches, ships per day), this-week, weekly-report (an ISO week, or the latest),',
+          // Only days is aggregate (2026-10-16, audit #119): the other views list published projects by name, never as a ranking.
+          'unlocks (scheduled HoodLock unlocks with proof), build-market (Build Momentum beside market attention). days names no one; other views name projects.',
         ]),
         inputSchema: {
           view: z.enum(['days', 'this-week', 'weekly-report', 'unlocks', 'build-market']).optional(),

@@ -231,6 +231,9 @@ describe('external text in the MCP renderers is quoted data, never an instructio
       underTheRadar: { ...thisWeek.underTheRadar, items: thisWeek.underTheRadar.items.map(hostileWeekProject) },
     });
     expectContained(week);
+    // The API's order, named (2026-10-16, audit finding 120): never "Shipped most" over a list not ordered by count.
+    expect(week).toContain('What shipped (releases and launches first, then newest):');
+    expect(week).not.toContain('Shipped most');
 
     const hostileGroup = { slug: 'x', name: NAME };
     const report = renderWeeklyReport({

@@ -28,6 +28,12 @@ describe('rpc log count', () => {
     expect(isLogWindowTooLarge('missing rpc result')).toBe(false);
   });
 
+  it("treats HEY's own response-size cap as a window to split (2026-10-16)", () => {
+    // The HTTP client's TOO_LARGE message says "exceeded", which "exceeds" never matched.
+    expect(isLogWindowTooLarge('response exceeded 5242880 bytes')).toBe(true);
+    expect(isLogWindowTooLarge('logs matched by query exceeds limit of 10000')).toBe(true);
+  });
+
   it('refuses a window that runs backwards before asking', () => {
     expect(createRpcLogCountAdapter().canHandle({ rpcUrl: RPC, address: TOKEN, fromBlock: 10, toBlock: 9 })).toBe(false);
   });

@@ -67,9 +67,9 @@ describe('get_project_snapshot: protocol economics', () => {
 describe('get_project_snapshot: market promotion', () => {
   it('prints presence and dates, the provider’s date when it gave one, never an amount, and never as building', () => {
     const text = renderSnapshot(fx.snapshot, NOW);
-    expect(text).toContain('- FACT promotion or takeover seen 3 times; newest: paid promotion on boost, 2026-09-26 (first seen by HEY). Context only: paid promotion never reaches a ranking, a score or a signal of building.');
-    const dated = promotionLine({ entries: [{ kind: 'COMMUNITY_TAKEOVER_PROFILE_OBSERVED', channel: 'community-takeover', providerAt: '2026-09-20T00:00:00.000Z', firstObservedAt: '2026-09-21T00:00:00.000Z', lastObservedAt: '2026-09-21T00:00:00.000Z', source: 'dexscreener' }], total: 1, contextOnly: true });
-    expect(dated).toContain('seen 1 time; newest: community-takeover profile on community-takeover, 2026-09-20 (the provider\'s date)');
+    expect(text).toContain('- FACT promotion or takeover seen 3 times; newest: paid promotion (Enhanced token profile), 2026-09-26 (first seen by HEY). Context only: paid promotion never reaches a ranking, a score or a signal of building.');
+    const dated = promotionLine({ entries: [{ kind: 'COMMUNITY_TAKEOVER_PROFILE_OBSERVED', channel: 'community-takeover', channelLabel: 'Community takeover', providerAt: '2026-09-20T00:00:00.000Z', firstObservedAt: '2026-09-21T00:00:00.000Z', lastObservedAt: '2026-09-21T00:00:00.000Z', source: 'dexscreener' }], total: 1, contextOnly: true });
+    expect(dated).toContain('seen 1 time; newest: community-takeover profile, 2026-09-20 (the provider\'s date)');
     expect(text).not.toMatch(/\$\d|amount|spent/i);
   });
 
@@ -135,6 +135,13 @@ describe('get_contract: verified source, Sourcify, clones and method counts (202
     expect(text).toContain('matched by the explorer to source published for identical bytecode, not published for this address (full match)');
     expect(text).toContain("- DERIVED whose code: a bytecode match to someone else's source (bytecode matched to other source)");
     expect(text).toContain('- FACT Sourcify holds no source for it (checked 2026-09-27)');
+  });
+
+  it('never says the explorer was not read beside a verified source it read (2026-10-16, audit #123)', () => {
+    const contract = { ...fx.contract, verifiedSource: { ...fx.contract.verifiedSource, authorship: { kind: 'UNCONFIRMED' as const, reason: 'verification_method_not_read' } } };
+    const text = renderContract(contract);
+    expect(text).toContain('- DERIVED whose code: not yet known — HEY read the verified source but not yet how the explorer verified it');
+    expect(text).not.toContain('has not been read');
   });
 
   it('never reads an unread Sourcify answer as unverified', () => {

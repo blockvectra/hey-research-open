@@ -166,6 +166,13 @@ export function discoveryGapWithheldReason(value: unknown): DiscoveryGapWithheld
  *   cannot read (activity UNKNOWN) — HEY never measured the badge;
  * - `not_scored` (F2): never persisted by the scorer; the readers send it for
  *   a project with no score under the current rules yet.
+ *
+ * 2026-10-16 (audit #143, F2 enforced), appended the same way:
+ * - `no_tracked_high`: a current, plausible reading of a measured market, but
+ *   no plausible reading at least `minDrawdownAgeDays` old in the tracked-high
+ *   window — a market HEY began reading under a week ago. There is no high to
+ *   measure a drawdown from, so the badge is not measured; it used to read
+ *   "No market context available." as measured and not met.
  */
 export const STILL_BUILDING_WITHHELD_REASONS = [
   'market_not_live',
@@ -177,6 +184,7 @@ export const STILL_BUILDING_WITHHELD_REASONS = [
   'no_market_reading',
   'activity_unknown',
   'not_scored',
+  'no_tracked_high',
 ] as const;
 export type StillBuildingWithheldReason = (typeof STILL_BUILDING_WITHHELD_REASONS)[number];
 
@@ -190,6 +198,7 @@ export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<StillBuildingWithhel
   no_market_reading: DISCOVERY_GAP_WITHHELD_WORDS.no_market_reading,
   activity_unknown: 'Not measured — activity unknown',
   not_scored: 'Not measured — not scored yet',
+  no_tracked_high: 'Not measured — no tracked high yet',
 };
 
 /** A stored reason read back: one of the list, or undefined for anything else (a row scored before hbm-v19). */

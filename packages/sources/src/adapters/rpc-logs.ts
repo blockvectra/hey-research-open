@@ -55,9 +55,14 @@ const rpcSchema = envelope.superRefine((value, context) => {
   else if (value.result === undefined) context.addIssue({ code: z.ZodIssueCode.custom, message: 'missing rpc result' });
 });
 
-/** The node's own reasons for refusing a window: the caller halves it and asks again. */
+/**
+ * The node's own reasons for refusing a window: the caller halves it and asks again.
+ * HEY's own response-size cap ("response exceeded N bytes", TOO_LARGE) is one too
+ * (2026-10-16): "exceeds" alone never matched it, so a busy contract's oversized
+ * day was an error instead of a smaller window.
+ */
 export function isLogWindowTooLarge(message: string | undefined): boolean {
-  return /timed out|more than \d+ results|query returned more|block range|too many|exceeds|limit/i.test(message ?? '');
+  return /timed out|more than \d+ results|query returned more|block range|too many|exceed(?:s|ed)|limit/i.test(message ?? '');
 }
 
 export function createRpcLogCountAdapter(): SourceAdapter<RpcLogCountInput, LogCount> {

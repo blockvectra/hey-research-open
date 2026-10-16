@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { layoutMapNodes, type MapNodeData } from './map';
+import { layoutMapNodes, mapHueFor, mapLabelBox, mapNodeTooltip, mapNodeValuation, UNCLASSIFIED_HUE, type MapNodeData } from './map';
 
 /**
  * Map layout invariants (UI/UX V2 section 28).
@@ -117,5 +117,58 @@ describe('layoutMapNodes', () => {
     const small = placed.find((item) => item.slug === 'small');
     const big = placed.find((item) => item.slug === 'big');
     expect(big?.r ?? 0).toBeGreaterThan(small?.r ?? 0);
+  });
+
+  it('never sizes a launch pool as a market, and labels its figure as the card does (2026-10-16)', () => {
+    const pool: MapNodeData = { ...node('pool', null, 10_000_000), launchPool: true, valuationKind: 'fdv' };
+    const placed = layoutMapNodes([node('small', null, 1_000), pool, node('none', null, 0)], []);
+
+    const r = (slug: string) => placed.find((item) => item.slug === slug)?.r ?? 0;
+    expect(r('pool')).toBe(r('none'));
+    expect(r('small')).toBeGreaterThan(r('pool'));
+    expect(mapNodeValuation(pool)).toBe('$10M · launch pool');
+    expect(mapNodeTooltip(pool, new Date())).toContain('Valuation $10M · launch pool');
+    expect(mapNodeTooltip(pool, new Date())).not.toContain('Fully diluted valuation');
+    expect(mapNodeValuation(node('bare', null, 0))).toBeUndefined();
+  });
+});
+
+/** Audit #10 (2026-10-16): seventeen narratives cycled through seven colours, and Unclassified had no legend entry. */
+describe('mapHueFor', () => {
+  const order = ['n0', 'n1', 'n2', 'n3', 'n4', 'n5', 'n6', 'n7'];
+
+  it('gives the six largest narratives six different colours and never repeats one', () => {
+    const hues = order.slice(0, 6).map((slug) => mapHueFor(slug, order));
+    expect(new Set(hues).size).toBe(6);
+  });
+
+  it('folds every narrative past the sixth into one grey that no top narrative uses', () => {
+    const top = order.slice(0, 6).map((slug) => mapHueFor(slug, order));
+    expect(mapHueFor('n6', order)).toBe(mapHueFor('n7', order));
+    expect(top).not.toContain(mapHueFor('n6', order));
+  });
+
+  it('draws a project with no narrative in its own style, never a narrative colour', () => {
+    expect(mapHueFor(null, order)).toBe(UNCLASSIFIED_HUE);
+    expect(order.map((slug) => mapHueFor(slug, order))).not.toContain(UNCLASSIFIED_HUE);
+  });
+});
+
+describe('map labels', () => {
+  it('never places a name over another project\'s circle', () => {
+    const nodes = Array.from({ length: 80 }, (_, index) =>
+      node(`project-${index}`, index % 3 === 0 ? null : `n${index % 4}`, (index + 1) * 50_000),
+    );
+    const placed = layoutMapNodes(nodes, ['n1', 'n2', 'n3']);
+    expect(placed.filter((item) => item.labelled).length).toBeGreaterThan(0);
+    for (const label of placed.filter((item) => item.labelled)) {
+      const box = mapLabelBox(label);
+      for (const other of placed) {
+        if (other.slug === label.slug) continue;
+        const nx = Math.max(box.x, Math.min(other.x, box.x + box.w));
+        const ny = Math.max(box.y, Math.min(other.y, box.y + box.h));
+        expect(Math.hypot(other.x - nx, other.y - ny)).toBeGreaterThanOrEqual(other.r + 3);
+      }
+    }
   });
 });

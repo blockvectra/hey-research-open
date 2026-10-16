@@ -326,8 +326,18 @@ export function evaluateMarketIntegrity(input: MarketIntegrityInput): MarketInte
   const prior = liquid.at(-2) ?? null;
   const indexStale = !last || daysBetween(last.day, today) > C.staleIndexDays;
   const lastLiquidityDay = [...liquid].reverse().find((d) => d.liquidityUsd > TOKEN_MARKET.dustLiquidityUsd)?.day ?? null;
+  /*
+   * Complete UTC days only (2026-10-16). Today's row is still being written:
+   * early in the day it holds whichever source read first, and a CoinGecko
+   * rolling volume frozen since 3 Oct made piptrade "trade" every morning
+   * until GeckoTerminal's 0 won the day back — its TRADING_STOPPED event was
+   * retracted and republished every day (805 upserts, 794 retractions of
+   * market_integrity.event in seven days). The last trade, the days observed
+   * after it and the recent trading window read days that are over.
+   */
+  const completeDays = days.filter((d) => d.day < today);
   const lastTradeDay =
-    [...days].reverse().find((d) => (d.trades !== null ? d.trades > 0 : d.volumeUsd !== null && d.volumeUsd > TOKEN_MARKET.inactiveVolumeUsd))?.day ?? null;
+    [...completeDays].reverse().find((d) => (d.trades !== null ? d.trades > 0 : d.volumeUsd !== null && d.volumeUsd > TOKEN_MARKET.inactiveVolumeUsd))?.day ?? null;
 
   // Collapse: the last two observations, consecutive, both at or below the level.
   let collapse: CollapseLevel = 'NONE';
@@ -431,14 +441,15 @@ export function evaluateMarketIntegrity(input: MarketIntegrityInput): MarketInte
         peakWeekEnd = d.day;
       }
     }
-    const recent = tradesPerDay(days, shiftDay(today, -6), today);
+    // The last seven complete days (2026-10-16): today's partial count is not a day of trading.
+    const recent = tradesPerDay(days, shiftDay(today, -7), shiftDay(today, -1));
     if (recent !== null && peakRate > 0) {
       activity = { peakTradesPerDay: round(peakRate, 1), recentTradesPerDay: round(recent, 1), changePct: round(((recent - peakRate) / peakRate) * 100), peakWeekEnd };
     }
   }
   const activityCollapsed = activity !== null && activity.peakTradesPerDay >= C.activityPeakMinTradesPerDay && activity.recentTradesPerDay <= activity.peakTradesPerDay * C.activityCollapseShare;
   // mi-v4: HEY read the market after the last trade — two observed days since, and an index that is not stale.
-  const observedAfterLastTrade = lastTradeDay === null ? 0 : days.filter((d) => d.day > lastTradeDay).length;
+  const observedAfterLastTrade = lastTradeDay === null ? 0 : completeDays.filter((d) => d.day > lastTradeDay).length;
   const tradingStopped =
     established && !indexStale && lastTradeDay !== null && observedAfterLastTrade >= C.confirmDays && daysBetween(lastTradeDay, today) >= C.inactiveTradeDays;
 

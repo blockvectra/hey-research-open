@@ -152,6 +152,15 @@ export function formatTerminalPriceLong(value: number): string {
   return `$${value.toLocaleString('en-US', { maximumSignificantDigits: 6 })}`;
 }
 
+/**
+ * What a screen reader should say for `formatTokenPrice`'s figure, when it differs (2026-10-16, audit #166): a
+ * subscript zero count (`$0.0₄314`) has no spoken meaning — read as "$0.04314" it is 1,000× too high — so such a
+ * figure is spoken, and titled, in full (`$0.0000314`). Undefined when the printed figure already reads aloud.
+ */
+export function tokenPriceSpeech(value: number): string | undefined {
+  return /[₀-₉]/.test(formatTokenPrice(value)) ? formatTerminalPriceLong(value) : undefined;
+}
+
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
 
 /** A day key (`2026-09-23`) or a Date, read as a UTC calendar day. */

@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.hey-research-lab/hey-research",
   "title": "HEY Research Lab",
-  "description": "Evidence-backed Robinhood Chain research: builders, ships, contracts, changes, market context.",
+  "description": "The public record of building on Robinhood Chain — every ship with its source.",
   "version": "0.3.1",
   "websiteUrl": "https://heyresearch.xyz/developers/agents",
   "repository": {
