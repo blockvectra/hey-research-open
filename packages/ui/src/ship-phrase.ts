@@ -148,10 +148,27 @@ export function cardShipPhrase(ship: CardShipPhraseInput, options: { now?: Date;
  * of …", the stored title since then, `codeWeekStoredTitle`) is kept; every
  * other ship keeps its title.
  */
-export function displayShipTitle(ship: { eventType: string; title: string; publishedAt: Date }): string {
+export function displayShipTitle(ship: { eventType: string; title: string; publishedAt: Date }, now: Date = new Date()): string {
   const title = plainText(ship.title);
-  if (ship.eventType !== 'CODE_ACTIVITY' || title.startsWith('Code changes')) return title;
+  if (ship.eventType !== 'CODE_ACTIVITY' || title.startsWith('Code changes')) return runningWeekTitle(title, now);
   const monday = weekStart(ship.publishedAt);
   const day = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-  return `Code changes, week of ${day(monday)} – ${day(monday + 6 * DAY_MS)}`;
+  return runningWeekTitle(`Code changes, week of ${day(monday)} – ${day(monday + 6 * DAY_MS)}`, now);
+}
+
+const MONTH_WORDS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
+const WEEK_TITLE = /^Code changes, week of (\d{4})-(\d{2})-(\d{2}) – (\d{4}-\d{2}-\d{2})(.*)$/s;
+
+/**
+ * The week in progress reads "Code changes this week (since Mon 12 Oct)", never a range ending in days that
+ * have not happened (2026-10-16, verification audit: a card's hover title still printed the range). The same
+ * rule as the domain's `codeWeekTitleAt`, which this package cannot import; `ship-phrase.test.ts` pins the words.
+ */
+export function runningWeekTitle(title: string, now: Date): string {
+  const match = WEEK_TITLE.exec(title);
+  if (!match) return title;
+  const [, year, month, day, lastDay, rest] = match;
+  const today = now.toISOString().slice(0, 10);
+  if (today < `${year}-${month}-${day}` || today > lastDay!) return title;
+  return `Code changes this week (since Mon ${Number(day)} ${MONTH_WORDS[Number(month) - 1]})${rest ?? ''}`;
 }

@@ -819,7 +819,13 @@ export function buildChartModel(
 
   /* The whole chart as one sentence, for the figure's caption. */
   const firstComplete = rows.findIndex((_, i) => complete(i));
-  const first = rows[firstComplete]?.[4];
+  /*
+   * From the first complete candle's open where it has one (2026-10-16, verification audit): measured from its
+   * close, a range with one complete down candle read "Close was unchanged … 0 up days, 1 down". A close-only
+   * day carries no open, so its close is the start, as before.
+   */
+  const firstOpen = rows[firstComplete]?.[1];
+  const first = typeof firstOpen === 'number' && firstOpen > 0 ? firstOpen : rows[firstComplete]?.[4];
   const last = rows[latest]?.[4];
   const change =
     typeof first === 'number' && typeof last === 'number' && first > 0
@@ -831,7 +837,7 @@ export function buildChartModel(
       ? 'Close change not measured'
       : `Close ${change >= 0.05 ? 'rose' : change <= -0.05 ? 'fell' : 'was unchanged'}${
           Math.abs(change) >= 0.05 ? ` ${Math.abs(change).toFixed(1)}%` : ''
-        } over ${range.length} ${words.many}, from ${formatTerminalPriceLong(first!)} to ${formatTerminalPriceLong(last!)}`;
+        } over ${range.length} ${words.many}, from ${formatTerminalPriceLong(first!)}${typeof firstOpen === 'number' && firstOpen > 0 ? ' (first open)' : ''} to ${formatTerminalPriceLong(last!)}`;
   const eventCount = lane.length + ahead.length;
   const unit = intraday ? 'bar' : 'day';
   const summary =

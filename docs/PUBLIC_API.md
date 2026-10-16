@@ -1681,6 +1681,10 @@ entered the ledger, or when HEY first knew indexed history — kept by every lat
 so nothing is skipped across the change; treat cursors as opaque. Sync (`after=`, `detectedSince`) is unchanged — ledger `seq` order, every
 revision delivered — which is what a mirror needs.
 
+A browse lists **each event once, at its current revision** (2026-10-16): an event revised since its
+first arrival is shown as it reads now, never beside its older versions, and a tombstone appears
+only while it is the event's latest word. Sync still delivers every revision.
+
 ### Filters
 
 | Parameter | Filters | Notes |

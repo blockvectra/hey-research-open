@@ -103,6 +103,14 @@ describe('cardShipPhrase (public UX review, 2026-09-28)', () => {
   });
 });
 
+describe('displayShipTitle — a running week reads as running (2026-10-16)', () => {
+  it('says "this week (since Mon …)" while the week runs, its range once it has ended', () => {
+    const ship = { eventType: 'CODE_ACTIVITY', title: 'Code changes, week of 2026-10-12 – 2026-10-18', publishedAt: new Date('2026-10-15T10:00:00Z') };
+    expect(displayShipTitle(ship, new Date('2026-10-16T05:00:00Z'))).toBe('Code changes this week (since Mon 12 Oct)');
+    expect(displayShipTitle(ship, new Date('2026-10-19T00:00:00Z'))).toBe('Code changes, week of 2026-10-12 – 2026-10-18');
+  });
+});
+
 describe('displayShipTitle — a code week by its fixed week (2026-10-02)', () => {
   it('names the Monday–Sunday UTC week the ship is dated in, never the rolling title', () => {
     expect(displayShipTitle({ eventType: 'CODE_ACTIVITY', title: 'Active development: 100+ commits since 2026-08-22 across 1 contributor', publishedAt: new Date('2026-10-01T10:00:00Z') })).toBe('Code changes, week of 2026-09-28 – 2026-10-04');
