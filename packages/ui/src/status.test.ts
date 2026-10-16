@@ -95,5 +95,7 @@ describe('token market and verification chips', () => {
 
   it('says "No token tracked" once, in one wording', () => {
     expect(tokenMarketLabel('TOKEN_NOT_LAUNCHED')).toBe('No token tracked');
+    // A traded market on a depth reading over a week old (2026-10-16, ruling #139).
+    expect(tokenMarketLabel('INSUFFICIENT_DATA', 'liquidity_not_current')).toBe('Readings not confirmed');
   });
 });

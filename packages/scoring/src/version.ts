@@ -383,7 +383,29 @@
  * outside reader's question on X: "How strict are you on 'meaningful' when
  * commits are mostly dependency bumps?"
  */
-export const SCORING_VERSION = 'hbm-v29' as const;
+/*
+ * hbm-v30 (2026-10-16, founder delegation "kau buat semua sekali", the full
+ * audit's rulings #26, #103 and #147): no weight, threshold or Build Momentum
+ * formula changes. Three rules only withhold, never award:
+ * - #26: a tracked token whose verification is UNVERIFIED while another
+ *   published project's tracked token (a different contract) carries the same
+ *   ticker, case-insensitive, gets no Discovery Gap — withheld as
+ *   `token_not_the_projects` (`DISCOVERY_GAP.withholdContestedUnverifiedTicker`,
+ *   `unverifiedTickerContestedSql`) — and so no Under the Radar. TeraWallet was
+ *   Under the Radar on a $TERA its own page said HEY could not attribute. The
+ *   market stays in the population, keeps its percentile and its Still
+ *   Building.
+ * - #103: Under the Radar holds only when the project's market attention is
+ *   TYPICAL or lower — its market-context percentile below 60
+ *   (`UNDER_THE_RADAR.maxMarketAttention`, `underTheRadarAttentionAllows`). All
+ *   18 holders on 2026-10-16 sat at or above the 57th percentile, one at the
+ *   98.9th, which the API named HIGH. The population is unchanged (hbm-v18).
+ * - #147: the gap is withheld as `no_market_reading` when the reading it would
+ *   use is older than a day (`DISCOVERY_GAP.requireFreshReading`), the
+ *   freshness Under the Radar and Still Building already required; the market
+ *   cohort still keeps readings up to seven days for the others' percentiles.
+ */
+export const SCORING_VERSION = 'hbm-v30' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28', 'hbm-v29'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28', 'hbm-v29', 'hbm-v30'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

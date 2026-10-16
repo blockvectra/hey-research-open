@@ -263,6 +263,7 @@ export function tokenMarketWords(status: string, reason?: string | null, label?:
   if (label) return label.toLowerCase();
   if (reason === 'not_a_fungible_token') return 'not a fungible token';
   if (reason === 'reading_not_current') return 'no current reading';
+  if (reason === 'liquidity_not_current') return 'readings not confirmed';
   if (status === 'ACTIVE_MARKET' && (reason ?? '').startsWith('launch_pool')) return 'launch pool only';
   return TOKEN_MARKET_WORDS[status] ?? status.toLowerCase().replace(/_/g, ' ');
 }
@@ -467,7 +468,7 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     // Decoded trades only (2026-10-16, audit #124); market_integrity's last trading day also reads a provider's volume.
     l.lastTradeDay ? `last decoded on-chain trade ${l.lastTradeDay}` : undefined,
     // The basis named (2026-10-16 parity audit P15): the high and the "now" are both the pool HEY's market reading follows, never every pool.
-    l.peakLiquidityUsd === undefined ? undefined : `highest liquidity HEY recorded in the pool its market reading follows ${money(l.peakLiquidityUsd)}${l.liquidityBelowPeakPct === undefined ? '' : ` (that pool now holds ${Math.round(100 - l.liquidityBelowPeakPct)}% of it)`}`,
+    l.peakLiquidityUsd === undefined ? undefined : `highest liquidity the token held on two consecutive daily closes ${money(l.peakLiquidityUsd)}${l.liquidityBelowPeakPct === undefined ? '' : ` (the pool its market reading follows now holds ${Math.round(100 - l.liquidityBelowPeakPct)}% of it)`}`,
     signed(l.priceChange7dPct) === undefined ? undefined : `${signed(l.priceChange7dPct)} over 7 days`,
     signed(l.priceChange30dPct) === undefined ? undefined : `${signed(l.priceChange30dPct)} over 30 days`,
   ].filter((v): v is string => v !== undefined);

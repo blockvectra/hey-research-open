@@ -590,6 +590,8 @@ describe('get_token_market', () => {
     expect(renderTokenMarket(older as HeyTokenMarket, NOW)).toContain('DERIVED market status: launch pool only');
     expect(tokenMarketWords('INSUFFICIENT_DATA', 'not_a_fungible_token')).toBe('not a fungible token');
     expect(tokenMarketWords('ACTIVE_MARKET', 'reading_not_current')).toBe('no current reading');
+    // A traded market on a depth reading over a week old (2026-10-16, ruling #139).
+    expect(tokenMarketWords('INSUFFICIENT_DATA', 'liquidity_not_current')).toBe('readings not confirmed');
     expect(tokenMarketWords('ACTIVE_MARKET', 'liquidity_and_volume')).toBe('active market');
     const row = projectLine({ ...fx.agentos, tokenMarket: { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading', label: 'Launch pool only' } }, NOW);
     expect(row).toContain('market: launch pool only');
@@ -604,7 +606,7 @@ describe('get_token_market', () => {
 
   it('names the basis of liquidity against its high: the pool the market reading follows (P15)', () => {
     const out = renderTokenMarket({ ...fx.tokenMarket, lifecycle: { ...fx.tokenMarket.lifecycle, peakLiquidityUsd: 80_000, liquidityBelowPeakPct: 50 } }, NOW);
-    expect(out).toContain('highest liquidity HEY recorded in the pool its market reading follows $80.0K (that pool now holds 50% of it)');
+    expect(out).toContain('highest liquidity the token held on two consecutive daily closes $80.0K (the pool its market reading follows now holds 50% of it)');
   });
 
   it('names the last trade day by its basis, so it cannot read as market_integrity\'s (audit #124, 2026-10-16)', () => {

@@ -124,6 +124,19 @@ export function isDataTemplate(template: string): boolean {
   return templateCarriesFigures(template) && templateHasOwnWords(template) && !new RegExp(FEED_RELEASE_PATTERN).test(template);
 }
 
+/**
+ * A title that names its own date or version (2026-10-16, the full audit's rulings): a placeholder
+ * the feed templating writes for a calendar date, a clock time, a year, a week or quarter (`<time>`)
+ * or a version (`<v>`). Such a title names one entry, so the same title at the same link read again
+ * is that entry republished; "Weekly update" names none and is never folded.
+ */
+export const FEED_DATED_TITLE_PATTERN = '<time>|<v>';
+
+/** Whether a feed title carries a date or a version (`FEED_DATED_TITLE_PATTERN` on its template). */
+export function titleCarriesDateOrVersion(title: string): boolean {
+  return new RegExp(FEED_DATED_TITLE_PATTERN).test(feedTitleTemplate(title));
+}
+
 export type FeedEntrySubject = { title: string; publishedAt: Date };
 
 export type DataFeedReading = {

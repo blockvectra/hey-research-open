@@ -191,6 +191,18 @@ export const UNDER_THE_RADAR = {
    * −1.5 carried the flag. The read-side predicate stays as a guard.
    */
   requirePositiveGap: true,
+  /**
+   * Building ahead of attention, never beside high attention (hbm-v30,
+   * 2026-10-16, founder delegation "kau buat semua sekali", audit #103): the
+   * flag holds only when the project's market attention — its market-context
+   * percentile named in `marketAttention`'s five bands — is TYPICAL or lower
+   * (below the 60th percentile), never ELEVATED or HIGH. Every one of the 18
+   * Under the Radar projects on 2026-10-16 sat at or above the 57th percentile,
+   * one at the 98.9th with a gap of 0.4, while the API rated it HIGH. The
+   * population the percentiles rank against is unchanged (hbm-v18). Unknown
+   * attention never holds the flag, since the flag needs a measured market.
+   */
+  maxMarketAttention: 'TYPICAL',
 } as const;
 
 /** PRD V4 section 13.3. All thresholds are configuration and versioned. */
@@ -287,6 +299,27 @@ export const DISCOVERY_GAP = {
    * awards.
    */
   withholdUnknownActivity: true,
+  /**
+   * A token contested by its ticker is not measured (hbm-v30, 2026-10-16,
+   * founder delegation "kau buat semua sekali", audit #26): when the tracked
+   * token's verification is UNVERIFIED and another published project's tracked
+   * token — a different contract — carries the same ticker (case-insensitive,
+   * without a leading `$`), the gap is withheld as `token_not_the_projects`,
+   * and so Under the Radar. TeraWallet was Under the Radar on a $TERA its own
+   * page said HEY could not attribute. Only the gap: the market stays in the
+   * population the others are ranked against, keeps its percentile, and Still
+   * Building is unchanged by this rule.
+   */
+  withholdContestedUnverifiedTicker: true,
+  /**
+   * A gap needs a current reading (hbm-v30, 2026-10-16, founder delegation
+   * "kau buat semua sekali", audit #147): the market reading the gap would use
+   * must be no older than one day, the freshness Under the Radar and Still
+   * Building already require; an older one (the market cohort keeps readings up
+   * to seven days) withholds the gap as `no_market_reading`. The reading stays
+   * in the population the others are ranked against.
+   */
+  requireFreshReading: true,
 } as const;
 
 /** Discovery Gap component weights (PRD V4 section 13.1). */

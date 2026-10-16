@@ -293,10 +293,11 @@ the reading behind `liquidityUsd` and `volume24hUsd` was observed (`evaluatedAt`
 rule last ran, which can be days later), and `figuresScope` is always `reading_pool` — those pool
 figures describe the pool the status reading follows, while the project's `volume24h` is the card
 reading's figure and may count every pool, so the two can differ without contradicting each other.
-`peakLiquidityUsd` (basis named 2026-10-16) is the highest liquidity any single reading of the token
-reported, among readings whose liquidity was at most ten times the valuation read with it — one
-reading, not a level held, so one outlying reading can set it. The level a market held is Market Integrity's `liquidityPeakUsd`:
-the highest liquidity held on two consecutive daily closes of HEY's index.
+`peakLiquidityUsd` (token-market-2026-10-16, founder ruling #138) is the highest liquidity the
+token held on two consecutive daily closes of HEY's index — the lower of two closes at most two
+days apart, at its highest; the same basis as Market Integrity's `liquidityPeakUsd`. It is never one
+reading: before 2026-10-16 it was the highest single reading, and one outlying reading could set
+it. Absent when no two closes held a level (never 0).
 
 Every listed project with a token also carries `tokenMarket` (2026-09-25): `{ status, reason? }`,
 the same state the card shows. It is why a listing sometimes has no `marketCap` — a dead market's
@@ -426,7 +427,8 @@ finds the same figures writes nothing, so it dates the figures as they stand. Ab
 rebuild has written since the field existed. `explain?fact=discovery_gap` and
 `explain?fact=still_building` carry it as their `observedAt`. The gap's own components also name
 the market reading its attention side was taken from (`marketReadingAt` among the explain
-inputs): the newest reading of the last seven days, the one the market card shows.
+inputs). Since `hbm-v30` (2026-10-16) a gap is published only on a reading from the last day, so
+that reading is at most a day old; an older one withholds the gap as `no_market_reading`.
 
 ### Why a Discovery Gap is absent: `score.discoveryGapWithheld` (2026-09-30, additive)
 
@@ -450,11 +452,30 @@ snapshot as `build.discoveryGapWithheld`, and the reason is never a zero:
 |---|---|
 | `market_too_thin` | Not measured — market too thin: the market is live but not active, only a launch curve, or active only as a launch pool ("Launch pool only", `hbm-v22`). |
 | `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
-| `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token. |
+| `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token, or (since `hbm-v30`) the token is unverified and another published project's token carries the same ticker. |
 | `active_pool_not_read` | Not measured — the market is active only because another pool of the same token holds the liquidity, and HEY holds no current reading of that pool (`hbm-v21`). |
 | `no_token` | Not measured — the project has no tracked token. |
-| `no_market_reading` | Not measured — HEY holds no current market reading to place it. |
+| `no_market_reading` | Not measured — HEY holds no market reading from the last day to place it (a day since `hbm-v30`; seven days before). |
 | `no_build_momentum` | Not measured — HEY has recorded no building to compare. |
+| `activity_unknown` | Not measured — HEY holds no builder source it can read (`hbm-v27`). |
+
+**Three more withholdings (`hbm-v30`, 2026-10-16, delegated rulings).** No field changed shape;
+`scoringVersion` reads `hbm-v30` on a score written under them. Each only withholds:
+
+- **A token HEY cannot tell from a lookalike.** When the tracked token's verification is
+  `UNVERIFIED` and another published project's tracked token — a different contract — carries the
+  same ticker (case-insensitive, without a leading `$`), the gap is absent with
+  `token_not_the_projects`, and the project is not Under the Radar. The market stays in the
+  population the others are compared against and keeps its `marketContextPercentile`; Still
+  Building is not changed by this rule.
+- **A stale reading.** The gap needs a market reading from the last day, as Under the Radar and
+  Still Building already did; with only an older one (the population keeps readings up to seven
+  days) it is absent with `no_market_reading`.
+- **Under the Radar needs low attention.** `underTheRadar` is `true` only when the project's market
+  attention — `development.marketAttention` on `/api/projects/{slug}/intelligence`, the market-context
+  percentile in five bands — is `TYPICAL` or lower (below the 60th percentile), never `ELEVATED` or
+  `HIGH`. A positive gap beside high attention is still published as a gap; it is no longer "building
+  ahead of attention". The population the percentiles rank against is unchanged.
 
 **A rescued market (`hbm-v21`, 2026-10-01).** A token whose market is active only because
 another pool of the same token holds the liquidity (market status reason
@@ -1576,8 +1597,8 @@ supply — 2026-09-25) and the `source` that won the day, rolled up from HEY's r
 `sellVolumeUsd`, `tradeCloseUsd`, `transfers` (`tradesSource: "bitquery"`). `lifecycle` carries
 when HEY recorded the launch, when the pool was created, the launch stage and since when, the
 first and last indexed trade day (over the whole daily index HEY keeps, not the `days`
-window — 2026-09-25), the highest liquidity HEY saw in a single reading (`peakLiquidityUsd`, the
-same figure as the project's `tokenMarket.peakLiquidityUsd`; not the level held two days running)
+window — 2026-09-25), the highest liquidity the token held on two consecutive daily closes (`peakLiquidityUsd`, the
+same figure as the project's `tokenMarket.peakLiquidityUsd`; since 2026-10-16, never one reading)
 and how far below it liquidity sits (`liquidityBelowPeakPct`), and the 7- and 30-day price moves
 from HEY's own closes.
 `checks[]` is what HEY checked on the contract — on chain, upgradeable proxy, deployer (and how
@@ -1614,6 +1635,14 @@ Added 2026-09-25, all optional and absent when HEY holds nothing:
   claims neither "traded in the last day" nor "did not". A market active only in another pool
   (`liquidity_in_another_pool`) sends no valuation (`valuationWithheld: liquidity_in_another_pool`):
   the reading follows the thin pool, and founder ruling F1 never measures the market there.
+  Since 2026-10-16 (token market rules `token-market-2026-10-16`, founder rulings #17, #134, #139):
+  `liquidity_not_current` (`INSUFFICIENT_DATA`, live, not measured, labelled "Readings not
+  confirmed") means the token traded in the last day but the newest depth reading is more than 7
+  days old, so HEY does not call it an active market; a 24h volume a source repeats unchanged
+  beside an unchanged price for more than 36 hours is not a volume reading (with no other, the
+  reason is `volume_unknown`); and a Pons V2 launch that graduated into a two-sided Uniswap v4 pool
+  seeded with a quote is judged on a reading of that pool by the ordinary thresholds, never as
+  `launch_pool_*` — only a reading from before the graduation, or a pool seeded with no quote, is.
 - `contract` — `deployer`, `deployerShared` (that deployer launched other projects HEY tracks: a
   launch service, not one team), `creationTx`, `createdAt`. A fact about the contract, never a label
   on a person.

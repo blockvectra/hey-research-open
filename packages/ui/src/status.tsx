@@ -24,6 +24,7 @@ import {
   LAUNCH_POOL_ONLY_LABEL,
   NOT_FUNGIBLE_LABEL,
   READING_NOT_CURRENT_LABEL,
+  READINGS_NOT_CONFIRMED_LABEL,
   TOKEN_MARKET_LABELS,
   type UnconfirmedMarketReason,
 } from '@hey/scoring/market-status-words';
@@ -304,14 +305,22 @@ const READING_NOT_CURRENT_PRESENTATION = {
   help: 'HEY’s newest reading of this market is more than 36 hours old, so whether it traded in the last day is not known. The figures shown are that reading’s, with its date.',
   tone: 'muted' as MarketTone,
 };
+/* A traded market on a depth reading over a week old (2026-10-16, ruling #139): "Readings not confirmed", never "Active market". */
+const LIQUIDITY_NOT_CURRENT_PRESENTATION = {
+  label: READINGS_NOT_CONFIRMED_LABEL,
+  help: 'The token traded in the last day, but HEY’s newest reading of its pool’s liquidity is more than 7 days old. How deep the market is now is not known, so HEY does not call it an active market.',
+  tone: 'muted' as MarketTone,
+};
 const marketPresentation = (status: TokenMarketStatusValue, reason?: string | null) =>
   reason === 'not_a_fungible_token'
     ? NOT_FUNGIBLE_PRESENTATION
     : reason === 'reading_not_current'
       ? READING_NOT_CURRENT_PRESENTATION
-      : isLaunchPoolOnlyMarket(status, reason)
-        ? LAUNCH_POOL_ONLY_PRESENTATION
-        : (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA);
+      : reason === 'liquidity_not_current'
+        ? LIQUIDITY_NOT_CURRENT_PRESENTATION
+        : isLaunchPoolOnlyMarket(status, reason)
+          ? LAUNCH_POOL_ONLY_PRESENTATION
+          : (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA);
 
 export function TokenMarketChip({ status, reason, className }: { status: TokenMarketStatusValue; reason?: string | null; className?: string }) {
   const presentation = marketPresentation(status, reason);
@@ -343,6 +352,7 @@ const TOKEN_MARKET_REASON_HELP: Readonly<Record<UnconfirmedMarketReason, string>
     'The latest reading reports a large pool, but almost nothing traded in it and HEY’s own chain index does not find that liquidity. HEY does not show a figure it cannot believe, and claims neither a live market nor a drain.',
   volume_unknown:
     'The pool holds liquidity, but no reading from the last 36 hours reports its 24 h volume. Whether it trades is unknown, not zero, so HEY does not call it an active market.',
+  liquidity_not_current: LIQUIDITY_NOT_CURRENT_PRESENTATION.help,
   removal_unconfirmed:
     'The latest reading finds almost no liquidity, but HEY has not measured a drain: the pool that held the market has not been read empty on two days, or a later reading still found it. HEY claims neither a live market nor a removal until it has.',
 };

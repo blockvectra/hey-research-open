@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { commitSubjectTemplate } from './commit-automation';
-import { detectDataFeed, FEED_DATA, feedTitleTemplate, isDataTemplate, type FeedEntrySubject } from './feed-data-stream';
+import { detectDataFeed, FEED_DATA, feedTitleTemplate, isDataTemplate, titleCarriesDateOrVersion, type FeedEntrySubject } from './feed-data-stream';
 
 /**
  * Data feeds are not ship sources (2026-10-08). The positive fixtures are
@@ -128,5 +128,27 @@ describe('detectDataFeed — release feeds and a team\'s writing stay ship sourc
     const recent = feed(Array.from({ length: FEED_DATA.window }, (_, index) => `Post ${String.fromCharCode(97 + (index % 26))}${String.fromCharCode(97 + Math.floor(index / 26))} of our journey`));
     // Fifty fresh posts with no figures push the old digest out of the window.
     expect(detectDataFeed([...old, ...recent]).dataFeed).toBe(false);
+  });
+});
+
+/**
+ * A republished entry is folded only when its title names its own date or version (2026-10-16,
+ * the full audit's rulings): a feed that reuses "Weekly update" keeps every post.
+ */
+describe('titleCarriesDateOrVersion', () => {
+  it.each([
+    'Chainstack updates: October 7, 2026',
+    'Changelog — 2026-10-01',
+    'Release v1.2',
+    'Acme 2.10.0-rc.1 is out',
+    'Product update, 3 Oct 2026',
+    'Q3 2026 in review',
+    'Week 40 recap',
+  ])('%s carries one', (title) => {
+    expect(titleCarriesDateOrVersion(title)).toBe(true);
+  });
+
+  it.each(['Weekly update', 'Getting started', 'This Week in Acme #42', 'Introducing limit orders', 'Acme TVL reaches $12M'])('%s carries none', (title) => {
+    expect(titleCarriesDateOrVersion(title)).toBe(false);
   });
 });

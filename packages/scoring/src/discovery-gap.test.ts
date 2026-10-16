@@ -7,8 +7,9 @@ import {
   isUnderTheRadarEligible,
   marketBand,
   marketContextPercentile,
+  underTheRadarAttentionAllows,
 } from './discovery-gap';
-import { STILL_BUILDING } from './config';
+import { STILL_BUILDING, UNDER_THE_RADAR } from './config';
 
 const now = new Date('2026-09-01T00:00:00Z');
 const DAY = 24 * 60 * 60 * 1000;
@@ -249,5 +250,19 @@ describe('still building', () => {
       expect(isUnderTheRadarEligible({ ...radar, events: [code(2), ship(9)] })).toBe(true);
       expect(isUnderTheRadarEligible({ ...radar, events: [code(2, 'LOW_INFORMATION'), ship(9)] })).toBe(false);
     });
+  });
+});
+
+describe('Under the Radar attention (hbm-v30, 2026-10-16, audit #103)', () => {
+  it('allows TYPICAL attention or lower, never ELEVATED or HIGH', () => {
+    expect(UNDER_THE_RADAR.maxMarketAttention).toBe('TYPICAL');
+    expect([0, 10, 19.9, 20, 39.9, 40, 59.9].map(underTheRadarAttentionAllows)).toEqual([true, true, true, true, true, true, true]);
+    expect([60, 70, 79.9, 80, 98.9, 100].map(underTheRadarAttentionAllows)).toEqual([false, false, false, false, false, false]);
+  });
+
+  it('never holds the flag on unknown attention', () => {
+    expect(underTheRadarAttentionAllows(null)).toBe(false);
+    expect(underTheRadarAttentionAllows(undefined)).toBe(false);
+    expect(underTheRadarAttentionAllows(Number.NaN)).toBe(false);
   });
 });

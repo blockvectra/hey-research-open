@@ -8,6 +8,7 @@ import {
   STILL_BUILDING,
   UNDER_THE_RADAR,
 } from './config';
+import { marketAttention, type MarketAttention } from './intelligence';
 import { clampScore, percentileRank, renormalizeWeights } from './math';
 import { SCORING_VERSION } from './version';
 
@@ -289,6 +290,22 @@ export function isUnderTheRadarEligible(input: EligibilityInput): boolean {
   // A commit summary is evidence of work, not of a ship (hbm-v6).
   if (UNDER_THE_RADAR.requireShipBeyondCommits && !hasShipBeyondCommits(recent)) return false;
   return true;
+}
+
+/** The five attention bands, lowest first (`marketAttention`). */
+const ATTENTION_ORDER: readonly MarketAttention[] = ['VERY_LOW', 'LOW', 'TYPICAL', 'ELEVATED', 'HIGH'];
+
+/**
+ * Whether the project's market attention allows Under the Radar (hbm-v30,
+ * 2026-10-16, audit #103): its market-context percentile — the stored
+ * `market_context_percentile`, the figure the API names as `marketAttention` —
+ * falls in `UNDER_THE_RADAR.maxMarketAttention` or a lower band. No percentile
+ * is unknown attention and never holds the flag. Only withholds, never awards.
+ */
+export function underTheRadarAttentionAllows(marketContextPercentile: number | null | undefined): boolean {
+  const band = marketAttention(marketContextPercentile);
+  if (band === null) return false;
+  return ATTENTION_ORDER.indexOf(band) <= ATTENTION_ORDER.indexOf(UNDER_THE_RADAR.maxMarketAttention);
 }
 
 /** A meaningful event that is not a code-activity summary: a release, a deploy follow-up, a feature, a docs update. */

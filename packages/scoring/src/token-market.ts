@@ -142,6 +142,29 @@ export const TOKEN_MARKET = {
    * vouches for trading on its own.
    */
   currentReadingMaxHours: 36,
+  /**
+   * A depth reading older than this no longer makes a market active
+   * (2026-10-16, founder delegation, audit #139). A fresh decoded trade
+   * record still says the token traded (`currentReadingMaxHours` above), but
+   * it carries no depth: volt-inu was "Active market" on $209K of liquidity
+   * DEX Screener read 27 days earlier. Past a week the status is
+   * `liquidity_not_current`, "Readings not confirmed" — never ACTIVE_MARKET,
+   * and never a dead market: the 30-day `staleDays` still decides that.
+   */
+  activeLiquidityMaxDays: 7,
+  /**
+   * A 24h volume a source repeats unchanged, beside an unchanged price, for
+   * longer than this is not a measured volume (2026-10-16, founder
+   * delegation, audit #134): a rolling 24-hour figure that never moves is a
+   * frozen feed. CoinGecko reported piptrade's $213.66 with the same price on
+   * every reading from 2 October while GeckoTerminal measured $0 each day.
+   * The sweep reads it from HEY's own `market_snapshots` history (one source,
+   * one pool, every reading since the figure last changed) and drops it, so
+   * the classifier sees no volume reading from it: `volume_unknown`, never
+   * "traded". A $0 is never frozen — no trades and no price move is what a
+   * market nobody trades reports.
+   */
+  repeatedVolumeMaxHours: 36,
 } as const;
 
 /**
@@ -169,8 +192,22 @@ export const TOKEN_MARKET = {
  * a volume for — not the current one, not a fresh trade record, not any
  * reading of the last `currentReadingMaxHours`, which is now read when the
  * first two carry none — is `volume_unknown`, never ACTIVE_MARKET.
+ *
+ * token-market-2026-10-16 (full audit, founder delegation "kau buat semua
+ * sekali", rulings #17, #134, #139, #138):
+ *  - a Pons V2 launch that graduated into a two-sided Uniswap v4 pool, seeded
+ *    with a quote above 0, is not judged by the launch-pool test on a reading
+ *    taken after the graduation (`graduatedTwoSidedPoolAt`): the ordinary
+ *    thresholds judge that pool. A pool on its curve or seeded with no quote
+ *    stays "Launch pool only";
+ *  - a 24h volume repeated unchanged beside an unchanged price for more than
+ *    `repeatedVolumeMaxHours` is no volume reading (the sweep drops it);
+ *  - a depth reading older than `activeLiquidityMaxDays` makes no market
+ *    active, whatever trades vouch for it (`liquidity_not_current`);
+ *  - `tokens.peak_liquidity_usd`, which `hadMarket` reads, is the level held
+ *    on two consecutive daily closes (`sustainedPeak`), never one reading.
  */
-export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-10-12' as const;
+export const TOKEN_MARKET_RULES_VERSION = 'token-market-2026-10-16' as const;
 
 /**
  * A drain HEY measured in one series of readings (2026-09-27). The sweep's SQL
@@ -207,8 +244,20 @@ export type TokenMarketEvidence = {
   };
   /** The newest reading of any kind, to tell "stale" from "never read". */
   latestObservedAt?: Date;
-  /** The highest liquidity HEY ever recorded for this token. */
+  /**
+   * The highest level the token's liquidity held on two consecutive daily
+   * closes of HEY's index (2026-10-16, ruling #138: the sustained peak Market
+   * Integrity reads, never one reading). Absent: no two closes held one.
+   */
   peakLiquidityUsd?: number;
+  /**
+   * When the token's Pons V2 launch graduated into a two-sided Uniswap v4 pool
+   * — the graduation read on chain and a quote above 0 seeded beside the token
+   * (2026-10-16, ruling #17; `graduatedIntoTwoSidedPool` in `@hey/domain`).
+   * A reading taken at or after it describes that pool, which the launch-pool
+   * test does not judge. Absent: no such graduation read, which claims nothing.
+   */
+  graduatedTwoSidedPoolAt?: Date;
   now: Date;
   /**
    * The newest trade reading (Market Lens, 2026-09-12): a decoded on-chain
@@ -427,10 +476,27 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     freshTrades !== undefined || now.getTime() - latest.observedAt.getTime() <= TOKEN_MARKET.currentReadingMaxHours * 3_600_000;
   const notCurrent: TokenMarketClassification = { status: 'INSUFFICIENT_DATA', reason: READING_NOT_CURRENT_REASON };
 
-  if (latest.fdvUsd !== undefined && latest.fdvUsd > 0 && latest.liquidityUsd >= latest.fdvUsd * TOKEN_MARKET.ownSupplyShareOfFdv) {
+  /*
+   * A depth reading older than a week makes no market active (2026-10-16,
+   * ruling #139): a fresh trade record says the token traded, never how deep
+   * its pool is now. Checked where a status would otherwise be ACTIVE_MARKET.
+   */
+  const liquidityCurrent = now.getTime() - latest.observedAt.getTime() <= TOKEN_MARKET.activeLiquidityMaxDays * DAY_MS;
+  const liquidityNotCurrent: TokenMarketClassification = { status: 'INSUFFICIENT_DATA', reason: LIQUIDITY_NOT_CURRENT_REASON };
+  /*
+   * A graduated Pons pool is a pool, not launch inventory (2026-10-16, ruling
+   * #17): seeded with the token and a quote above 0, its "liquidity" is two
+   * sides, and whether it crosses half the FDV follows the price, not what the
+   * pool is (factor 55%, Chit 41%, one factory, one graduation). Only a
+   * reading taken at or after the graduation describes that pool.
+   */
+  const graduatedAt = evidence.graduatedTwoSidedPoolAt;
+  const graduatedPoolReading = graduatedAt !== undefined && latest.observedAt.getTime() >= graduatedAt.getTime();
+  if (!graduatedPoolReading && latest.fdvUsd !== undefined && latest.fdvUsd > 0 && latest.liquidityUsd >= latest.fdvUsd * TOKEN_MARKET.ownSupplyShareOfFdv) {
     // A launch pool still holding the supply: trades are the only market fact it carries.
     if (volume !== undefined && volume > TOKEN_MARKET.inactiveVolumeUsd) {
-      return tradingCurrent ? { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading' } : notCurrent;
+      if (!tradingCurrent) return notCurrent;
+      return liquidityCurrent ? { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading' } : liquidityNotCurrent;
     }
     // No volume figure from any reading is not "no trades" (reconciliation row 1, 2026-09-25):
     // it was the dead-market reason, applied to ~650 launch pools HEY never saw a volume for.
@@ -542,6 +608,7 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
   if (volume <= TOKEN_MARKET.inactiveVolumeUsd) {
     return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
   }
+  if (!liquidityCurrent) return liquidityNotCurrent;
   return { status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' };
 }
 
@@ -583,6 +650,14 @@ export function tokenMarketDecidedVolume(evidence: TokenMarketEvidence, classifi
  * not measured: whether it traded is unknown, never "active", never zero.
  */
 export const VOLUME_UNKNOWN_REASON = 'volume_unknown' as const;
+
+/**
+ * The reason a liquid, traded market carries when its depth reading is older
+ * than `activeLiquidityMaxDays` (2026-10-16, ruling #139). Not dead — it
+ * traded — and not measured: how deep the pool is now is not known, so it is
+ * never ACTIVE_MARKET. Labelled "Readings not confirmed".
+ */
+export const LIQUIDITY_NOT_CURRENT_REASON = 'liquidity_not_current' as const;
 
 /**
  * The reason a token that is not fungible carries (2026-10-03): decimals 0,
@@ -712,6 +787,7 @@ export const TOKEN_MARKET_REASONS = [
   'not_a_fungible_token',
   'reading_not_current',
   'volume_unknown',
+  'liquidity_not_current',
 ] as const;
 
 /**
