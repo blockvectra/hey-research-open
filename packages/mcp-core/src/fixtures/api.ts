@@ -52,7 +52,7 @@ export const agentos: HeyProject = {
   lastShippedAt: '2026-09-24T10:00:00.000Z',
   primaryNarrative: { slug: 'ai-agents', name: 'AI Agents' },
   token: { chainId: 4663, contractAddress: '0xcab100000000000000000000000000000000cb07' },
-  tokenMarket: { status: 'ACTIVE_MARKET' },
+  tokenMarket: { status: 'ACTIVE_MARKET', label: 'Active market' },
   marketCap: { usd: 208_594, source: 'dexscreener', observedAt: '2026-09-25T20:00:00.000Z', kind: 'fdv' },
   liquidity: { usd: 41_000, source: 'dexscreener', observedAt: '2026-09-25T20:00:00.000Z', kind: 'market' },
   hasBuilderSource: true,
@@ -214,7 +214,7 @@ export const snapshot: HeyProjectSnapshot = {
   },
   market: {
     valuationWithheld: 'liquidity_removed',
-    tokenMarket: { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_below_floor' },
+    tokenMarket: { status: 'LIQUIDITY_REMOVED', reason: 'liquidity_below_floor', label: 'Liquidity no longer detected' },
     promotion: {
       entries: [{ kind: 'MARKET_PROMOTION_OBSERVED', channel: 'boost', firstObservedAt: '2026-09-26T08:00:00.000Z', lastObservedAt: '2026-09-26T09:00:00.000Z', source: 'dexscreener' }],
       total: 3,
@@ -447,6 +447,7 @@ export const tokenMarket: HeyTokenMarket = {
   symbol: 'AOS',
   token: { chainId: 4663, contractAddress: '0xcab100000000000000000000000000000000cb07' },
   marketStatus: 'ACTIVE_MARKET',
+  marketStatusLabel: 'Active market',
   verification: 'VERIFIED',
   contract: { deployer: '0xdep0000000000000000000000000000000000001', deployerShared: true, createdAt: '2026-08-01T12:00:00.000Z', creationTx: '0xtx' },
   pools: { day: '2026-09-24', observedAt: '2026-09-24T23:00:00Z', pools: 2, liquidityUsd: 40_000, depthOnePctUsd: 350, dominantPoolShare: 82.4 },
@@ -460,6 +461,7 @@ export const tokenMarket: HeyTokenMarket = {
   checks: [{ key: 'proxy', label: 'Proxy', finding: 'No proxy pattern detected at the last check.', tone: 'plain', provenance: 'RPC storage read' }],
   onchainDays: [{ day: '2026-09-24', events: null, truncated: false, calls: 1204, source: 'bitquery', window: 'utc_day' }],
   tvlDays: [],
+  tvlRead: { state: 'NONE_HELD', reason: 'no_tvl_row_in_window' },
   url: `${BASE}/project/agentos/market`,
   disclaimer: DISCLAIMER,
 };

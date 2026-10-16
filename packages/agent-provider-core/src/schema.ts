@@ -258,6 +258,8 @@ const researchData = z
         liquidityKind: code.optional(),
         volume24hUsd: z.number().nullable(),
         tokenMarketStatus: code.nullable(),
+        /** `tokenMarketStatus` in HEY's own words (2026-10-16, additive): the API's `tokenMarket.label`. */
+        tokenMarketLabel: z.string().max(80).optional(),
         url,
       })
       .strict()

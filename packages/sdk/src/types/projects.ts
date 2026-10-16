@@ -135,8 +135,13 @@ export type HeyProject = {
    * why a listing sometimes carries no `marketCap`: a dead market's valuation
    * is withheld. Absent for a project without a token. About the market,
    * never about the team.
+   *
+   * `label` (2026-10-16, additive) is the status in HEY's own words, from the
+   * one rule every page reads: "Launch pool only", "Not a fungible token" and
+   * "No current reading" where the reason says so, never "Active market" over
+   * a launch pool's own inventory. Quote it rather than re-deriving words.
    */
-  tokenMarket?: { status: string; reason?: string };
+  tokenMarket?: { status: string; reason?: string; label: string };
   /**
    * Whether the project itself names the tracked contract (on every project
    * since 2026-09-25): `MISMATCH` means its own site names a different one.
@@ -378,6 +383,8 @@ export type HeyProjectDetail = HeyProject & {
   tokenMarket?: {
     status: string;
     reason?: string;
+    /** The status in HEY's own words (2026-10-16, additive): the same `label` as the listing's `tokenMarket`. */
+    label: string;
     evaluatedAt?: string;
     liquidityUsd?: number;
     /** What `liquidityUsd` is, by the same rule as `liquidity.kind` (2026-09-25). */
@@ -423,6 +430,8 @@ export type HeyTokenMarket = {
   marketStatus: string;
   /** The reason code behind `marketStatus` (`launch_pool_no_trades`, `no_volume_24h`, …), when HEY recorded one. */
   marketStatusReason?: string;
+  /** `marketStatus` in HEY's own words (2026-10-16, additive): "Launch pool only", "Not a fungible token", "No current reading" where the reason says so. */
+  marketStatusLabel: string;
   verification: string;
   /**
    * The contract's own provenance, read from the chain: who deployed it, in
@@ -446,6 +455,9 @@ export type HeyTokenMarket = {
   distribution?: {
     day: string;
     observedAt: string;
+    /** True when the snapshot is older than HEY's distribution freshness window (2026-10-16, additive): that day's figures, not today's. */
+    stale?: boolean;
+    /** How many distinct addresses held a balance on `day` — addresses, never people. */
     holdersTotal?: number;
     top10SharePct?: number;
     top50SharePct?: number;
@@ -541,6 +553,14 @@ export type HeyTokenMarket = {
   /** `callers` is how many distinct addresses called the contract that day, when HEY read it: a count, never the addresses. `events` is null on a blind-spot day (2026-09-26). */
   onchainDays: HeyOnchainDay[];
   tvlDays: { day: string; tvlUsd: number; protocolName: string }[];
+  /**
+   * What `tvlDays` is a reading of (2026-10-16, additive): an empty `tvlDays`
+   * is not "no value locked". `MEASURED` or `STALE` with the newest row's day
+   * and read time; `NONE_HELD` when HEY holds no DefiLlama TVL row for the
+   * project in the window (not listed, not matched or not read) — unknown,
+   * never zero.
+   */
+  tvlRead: { state: 'MEASURED' | 'STALE'; day: string; observedAt: string } | { state: 'NONE_HELD'; reason: 'no_tvl_row_in_window' };
   url: string;
   disclaimer: string;
 };
@@ -724,6 +744,12 @@ export type HeyDevelopmentIntelligence = {
     | { state: 'MEASURED'; samples: number; windowDays: number; medianHours: number; maxHours: number };
   /** Market context only, never an input to the figures above; null without a live market reading. */
   marketAttention: 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIGH' | null;
+  /**
+   * Why `marketAttention` is not measured (additive, 2026-10-16): the Discovery Gap's own market-side
+   * reason — `market_too_thin`, `market_not_live`, `no_token`, `token_not_the_projects`,
+   * `active_pool_not_read`, `no_market_reading`. Present only when it is not measured.
+   */
+  marketAttentionWithheld?: string;
   /** Now against thirty days ago; a side with no reading is null. */
   changes: {
     windowDays: number;

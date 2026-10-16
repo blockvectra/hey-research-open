@@ -532,6 +532,13 @@ contract stays on the timeline with its creating transaction. Chain feeds show t
 line ("4 contracts deployed by the project's deployer at 16:02:38 UTC on 30 Sep") and `/signals`
 announces it once, by count.
 
+Since 2026-10-16 a follow-up deploy is found within about an hour: an hourly Bitquery read asks which
+of the watched token deployers created a contract since the last read, and those deployers are read at
+once through the explorer, exactly as the daily or weekly deployer watch reads them. The explorer read
+alone records the ship, dated to its block with its creating transaction as evidence, and every
+follow-up rule applies unchanged; the Bitquery answer is a trigger, never evidence, and nothing from it
+is stored.
+
 Since scoring `hbm-v25` (2026-10-07) Resumed building is called only on a gap HEY watched: every
 ship of the comeback must come from a source HEY was already reading when the gap began — the
 earliest attachment of the sources its evidence names, at or before the last update before the

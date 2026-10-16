@@ -32,6 +32,12 @@ export type TimelineItem = {
    * the domain (`codeWeekDetails`); the timeline only lists them.
    */
   highlights?: readonly { text: string; href?: string }[];
+  /**
+   * The repository the ship came from, `owner/repo` (2026-10-16, audit U3): set
+   * by the page only when its ships come from more than one repository, so two
+   * weeks of code from two repositories never read as the same week twice.
+   */
+  repo?: string;
 };
 
 export function BuildTimeline({
@@ -76,7 +82,14 @@ export function BuildTimeline({
 
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
             {/* Release notes arrive as Markdown; the timeline shows the words (QA sweep 2026-09-04). */}
-            <h3 className="text-sm font-medium break-words">{emailSafe(shortenHexInText(plainText(item.title)))}</h3>
+            <h3 className="text-sm font-medium break-words">
+              {emailSafe(shortenHexInText(plainText(item.title)))}
+              {item.repo ? (
+                <span className="ml-1.5 font-mono text-[12px] font-normal text-hey-secondary [overflow-wrap:anywhere]" data-testid="timeline-repo">
+                  {item.repo}
+                </span>
+              ) : null}
+            </h3>
             <time dateTime={item.publishedAt.toISOString()} className="text-xs text-hey-secondary">
               {formatRelativeTime(item.publishedAt, now)}
             </time>
@@ -89,9 +102,18 @@ export function BuildTimeline({
             <span>{formatVerification(item.verificationStatus)}</span>
           </p>
 
-          <ShipSummary summary={readableSummary(item.summary)} className="mt-2 text-sm" />
-
-          <CodeWeekHighlights highlights={item.highlights} className="mt-2" />
+          {/*
+            A code week leads with what changed (2026-10-16, audit U1): the commit subjects first, the
+            stored count and its caveat after them, quieter. Any other ship keeps its summary first.
+          */}
+          {item.highlights && item.highlights.length > 0 ? (
+            <>
+              <CodeWeekHighlights highlights={item.highlights} className="mt-2" />
+              <ShipSummary summary={readableSummary(item.summary)} className="mt-1.5" tone="secondary" />
+            </>
+          ) : (
+            <ShipSummary summary={readableSummary(item.summary)} className="mt-2 text-sm" />
+          )}
 
           {item.substanceNote ? (
             <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{emailSafe(item.substanceNote)}</p>
@@ -106,7 +128,8 @@ export function BuildTimeline({
                   target="_blank"
                   // Counted as an evidence open by the page's one listener (`ValueClicks`, 2026-10-05).
                   data-evidence="ship"
-                  className="inline-block text-sm text-hey-ink underline decoration-hey-border-strong underline-offset-4 transition-colors hover:decoration-hey-ink"
+                  // At least 24px to press (WCAG 2.5.8; 2026-10-16, audit U13).
+                  className="inline-flex min-h-6 items-center text-sm text-hey-ink underline decoration-hey-border-strong underline-offset-4 transition-colors hover:decoration-hey-ink"
                 >
                   View evidence
                 </a>
@@ -164,14 +187,28 @@ export function CodeWeekHighlights({
  * `npm install @scope/pkg@1.2.3`, which Cloudflare's e-mail obfuscation
  * rewrote in the HTML — #418 and "[email protected]" on seven project pages.
  */
-export function ShipSummary({ summary, className }: { summary: ReadableSummary | undefined; className?: string }) {
+export function ShipSummary({
+  summary,
+  className,
+  tone = 'primary',
+}: {
+  summary: ReadableSummary | undefined;
+  className?: string;
+  /**
+   * `secondary` (2026-10-16, audit U1): under a code week's commit subjects the
+   * stored summary is the count and its caveat, so it reads quieter. The tone
+   * is the component's, never a caller's colour class (`cn` does not merge).
+   */
+  tone?: 'primary' | 'secondary';
+}) {
   if (!summary) return null;
+  const toneClass = tone === 'secondary' ? 'text-[13px] leading-snug text-hey-secondary' : 'leading-relaxed text-hey-ink/80';
   const expandable = summary.truncated || summary.items.length > 1;
   if (!expandable) {
-    return <p className={cn('leading-relaxed text-hey-ink/80 break-words', className)} data-testid="ship-summary">{emailSafe(summary.short)}</p>;
+    return <p className={cn(toneClass, 'break-words', className)} data-testid="ship-summary" data-tone={tone}>{emailSafe(summary.short)}</p>;
   }
   return (
-    <details className={cn('group leading-relaxed text-hey-ink/80', className)} data-testid="ship-summary">
+    <details className={cn('group', toneClass, className)} data-testid="ship-summary" data-tone={tone}>
       <summary className="cursor-pointer list-none break-words marker:hidden [&::-webkit-details-marker]:hidden">
         <span className="group-open:hidden">{emailSafe(summary.short)}</span>{' '}
         <span className="whitespace-nowrap text-hey-secondary underline underline-offset-4 group-open:hidden">Show all</span>

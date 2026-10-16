@@ -423,6 +423,8 @@ export type HeyCompare = {
     /** The intelligence layer's twelve-week consistency: `activeWeeks` is null while HEY has watched the project for fewer than twelve weeks. Not the page's "CONSISTENCY"; that is `buildMomentumConsistency`. */
     consistency?: { activeWeeks: number | null; windowWeeks: number };
     marketAttention?: string;
+    /** Why `marketAttention` is absent (additive, 2026-10-16): attention is measured only where the Discovery Gap measures the market. */
+    marketAttentionWithheld?: string;
     /** The category every HEY card prints (additive, 2026-10-02): the primary narrative (null for none or the catch-all "Other"), then the kind; `label` is the card's words, e.g. "Infrastructure" or "Uncategorised". */
     category: { label: string; narrative: { slug: string; name: string } | null; projectKind: string };
     /** The Build Momentum component the project page prints as "CONSISTENCY" (additive, 2026-10-02): 0–100 rounded as printed, with the weeks it counts. Absent when Build Momentum is not measured. */

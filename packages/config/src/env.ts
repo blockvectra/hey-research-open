@@ -196,6 +196,13 @@ export const serverEnvSchema = z
       bitqueryMethodDailyRequests: optionalString
         .transform((value) => (value === undefined ? undefined : Number(value)))
         .pipe(z.number().finite().nonnegative().optional()),
+      /**
+       * The Bitquery trigger stream (2026-10-16): one always-on subscription to the Pons V2 factory's
+       * logs, the v4 PoolManager's Initialize, HoodLock's logs and Upgraded on watched proxies, used only
+       * to re-read them over RPC sooner.
+       * Off unless exactly "true"; it also needs BITQUERY_API_KEY. Worker only.
+       */
+      bitqueryStreamEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
     }),
 
     /*
@@ -802,6 +809,7 @@ function shapeEnv(raw: RawEnv) {
       coingeckoApiKey: raw.COINGECKO_API_KEY,
       bitqueryApiKey: raw.BITQUERY_API_KEY,
       bitqueryMethodDailyRequests: raw.BITQUERY_METHOD_DAYS_DAILY_REQUESTS,
+      bitqueryStreamEnabled: raw.BITQUERY_STREAM_ENABLED,
       geckoterminalBaseUrl: raw.GECKOTERMINAL_BASE_URL,
     },
     uniswap: {
@@ -931,6 +939,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'market.coingeckoApiKey': 'COINGECKO_API_KEY',
   'market.bitqueryApiKey': 'BITQUERY_API_KEY',
   'market.bitqueryMethodDailyRequests': 'BITQUERY_METHOD_DAYS_DAILY_REQUESTS',
+  'market.bitqueryStreamEnabled': 'BITQUERY_STREAM_ENABLED',
   'market.geckoterminalBaseUrl': 'GECKOTERMINAL_BASE_URL',
   'uniswap.enabled': 'UNISWAP_ENABLED',
   'uniswap.swapEnabled': 'UNISWAP_SWAP_ENABLED',

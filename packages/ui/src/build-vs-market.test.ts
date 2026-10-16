@@ -61,4 +61,10 @@ describe('Build vs Market rings what the Under the Radar rule holds', () => {
     expect(html).toContain('No project meets it today.');
     expect(html).not.toContain('data-under-the-radar');
   });
+
+  it('counts the projects left off because their market attention is not measured (2026-10-16, audit I2)', () => {
+    const html = renderToStaticMarkup(createElement(BuildVsMarketChart, { data: [point({})], underTheRadarTotal: 0, attentionNotMeasured: 889 }));
+    expect(html).toContain('889 projects are left off: market attention not measured');
+    expect(renderToStaticMarkup(createElement(BuildVsMarketChart, { data: [point({})], underTheRadarTotal: 0 }))).not.toContain('left off');
+  });
 });

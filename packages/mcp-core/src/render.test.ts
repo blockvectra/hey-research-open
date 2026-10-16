@@ -246,7 +246,7 @@ describe('get_project_snapshot', () => {
   it('never renders a valuation FACT beside sources that disagree (2026-10-09 red-team F2)', () => {
     const market = {
       marketCap: { usd: 2_489_661_474, source: 'dexscreener', observedAt: '2026-10-08T12:00:00.000Z', kind: 'fdv' as const },
-      tokenMarket: { status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume' },
+      tokenMarket: { status: 'ACTIVE_MARKET', reason: 'liquidity_and_volume', label: 'Active market' },
       url: fx.snapshot.market!.url,
     };
     const agreed = renderSnapshot({ ...fx.snapshot, market }, NOW);
@@ -322,9 +322,22 @@ describe('get_project_snapshot', () => {
   });
 
   it('prints the latest changes at their precision, with ids, and where the rest are', () => {
-    expect(text).toContain('- EXACT 2026-09-24 10:00 UTC · build.release: «Released v0.4» (id ship:2ac87a66-0000-0000-0000-000000000001)');
+    expect(text).toContain('- EXACT 2026-09-24 10:00 UTC · build.release: «Released v0.4» (event ship:2ac87a66-0000-0000-0000-000000000001; evidence ship:2ac87a66-0000-0000-0000-000000000001)');
     expect(text).toContain('- WEEK week of 2026-09-14 · build.code_activity');
+    expect(text).toContain('42 commits by 3 contributors (event ship:2ac87a66-0000-0000-0000-000000000002; no evidence id to open)');
     expect(text).toContain('get_changes with project=agentos');
+  });
+
+  it('names the evidence id get_evidence opens, never an event id with a suffix (2026-10-16 parity audit P3)', () => {
+    const latest = fx.snapshot.latestChanges;
+    if (!latest.available) throw new Error('fixture');
+    const added = { ...latest.items[0]!, id: 'source:5e5e0000-0000-0000-0000-000000000001:added', type: 'research.source_added' as const, domain: 'research' as const, summary: 'Official source added', evidence: [{ id: 'source:5e5e0000-0000-0000-0000-000000000001', label: 'Source' }] };
+    const out = renderSnapshot({ ...fx.snapshot, latestChanges: { ...latest, items: [added] } }, NOW);
+    expect(out).toContain('(event source:5e5e0000-0000-0000-0000-000000000001:added; evidence source:5e5e0000-0000-0000-0000-000000000001)');
+    expect(out).toContain('Open an evidence id with get_evidence id=<evidence id>; an event id is not one.');
+    // The coverage pointer names a listed tool, never the folded get_project_coverage (P8).
+    expect(out).not.toContain('get_project_coverage');
+    expect(out).toContain('research_answer with capability unknowns and project=agentos');
   });
 
   it('lists what HEY does not know, and never a score', () => {
@@ -565,6 +578,39 @@ describe('get_token_market', () => {
     expect(text).toContain('the largest pool holds 82.4% of measured pool liquidity');
     expect(text).not.toMatch(/holds \d{3,}%/);
     expect(text).toContain('no address but the contract’s deployer is named');
+  });
+
+  it('renders the market status in the API\'s words: a launch pool is never an active market (2026-10-16 parity audit P1)', () => {
+    const pool = renderTokenMarket({ ...fx.tokenMarket, marketStatusReason: 'launch_pool_trading', marketStatusLabel: 'Launch pool only' }, NOW);
+    expect(pool).toContain('DERIVED market status: launch pool only (launch pool trading)');
+    expect(pool).not.toContain('active market');
+    // A server that predates the label: the same rule over the reason code.
+    const older = { ...fx.tokenMarket, marketStatusReason: 'launch_pool_trading' } as Partial<HeyTokenMarket>;
+    delete older.marketStatusLabel;
+    expect(renderTokenMarket(older as HeyTokenMarket, NOW)).toContain('DERIVED market status: launch pool only');
+    expect(tokenMarketWords('INSUFFICIENT_DATA', 'not_a_fungible_token')).toBe('not a fungible token');
+    expect(tokenMarketWords('ACTIVE_MARKET', 'reading_not_current')).toBe('no current reading');
+    expect(tokenMarketWords('ACTIVE_MARKET', 'liquidity_and_volume')).toBe('active market');
+    const row = projectLine({ ...fx.agentos, tokenMarket: { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading', label: 'Launch pool only' } }, NOW);
+    expect(row).toContain('market: launch pool only');
+  });
+
+  it('counts distinct addresses, never holders, and dates a stale distribution (P6)', () => {
+    expect(text).toContain('1,830 distinct addresses holding it');
+    expect(text).not.toMatch(/\bholders\b/);
+    const stale = renderTokenMarket({ ...fx.tokenMarket, distribution: { ...fx.tokenMarket.distribution!, stale: true } }, NOW);
+    expect(stale).toContain("FACT (stale) supply (HEY's snapshot, 2026-09-24, older than HEY reads as current;");
+  });
+
+  it('names the basis of liquidity against its high: the pool the market reading follows (P15)', () => {
+    const out = renderTokenMarket({ ...fx.tokenMarket, lifecycle: { ...fx.tokenMarket.lifecycle, peakLiquidityUsd: 80_000, liquidityBelowPeakPct: 50 } }, NOW);
+    expect(out).toContain('highest liquidity HEY recorded in the pool its market reading follows $80.0K (that pool now holds 50% of it)');
+  });
+
+  it('says what an empty value-locked series is, never zero (P7)', () => {
+    expect(text).toContain('UNKNOWN value locked: HEY holds no DefiLlama TVL row for this project in the window');
+    const read = renderTokenMarket({ ...fx.tokenMarket, tvlDays: [{ day: '2026-09-20', tvlUsd: 2_400_000, protocolName: 'HoodLock' }], tvlRead: { state: 'STALE', day: '2026-09-20', observedAt: '2026-09-20T06:00:00Z' } }, NOW);
+    expect(read).toContain('FACT (stale) value locked (DefiLlama, «HoodLock», 2026-09-20, stale): latest $2.40M.');
   });
 
   it('states the day cap and where the rest are', () => {

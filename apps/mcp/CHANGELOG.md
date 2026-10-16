@@ -6,6 +6,13 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+### Changed (2026-10-16)
+
+- Market status in the API's own words (`tokenMarket.label`, `marketStatusLabel`): a launch pool that traded is "launch pool only", never "active market".
+- `get_project_snapshot` names each latest change's evidence id (the id `get_evidence` opens), never the event id, and points to `research_answer` (capability `unknowns`) for coverage instead of the folded `get_project_coverage`.
+- `get_token_market` says "distinct addresses holding it", marks a stale distribution, names the pool behind liquidity against its high, and says when HEY holds no value-locked reading (never zero).
+- `get_changes`, `get_token_market` and `get_project_snapshot` descriptions refreshed (first-arrival browse order, launch graduation and permanent lock, evidence ids).
+
 ## 0.3.0 — 2026-10-14
 
 ### Added (2026-10-14)

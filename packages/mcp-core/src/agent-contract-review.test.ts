@@ -75,6 +75,15 @@ describe('research_project after the adversarial review', () => {
     expect(answer.data?.marketContext?.liquidityKind).toBe('launch_inventory');
     expect(agentIntelligenceResponseSchema.safeParse(answer).success).toBe(true);
   });
+
+  it('carries the API’s own words for the market status: a launch pool is never an active market (2026-10-16 parity audit P1)', () => {
+    const snapshot = clone(fx.snapshot) as HeyProjectSnapshot;
+    (snapshot.market as { tokenMarket?: unknown }).tokenMarket = { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading', label: 'Launch pool only' };
+    const answer = composeResearch(ctx, { snapshot, gaps: [] });
+    expect(answer.data?.marketContext).toMatchObject({ tokenMarketStatus: 'ACTIVE_MARKET', tokenMarketLabel: 'Launch pool only' });
+    expect(agentIntelligenceResponseSchema.safeParse(answer).success).toBe(true);
+    expect(renderAgentResponseText(answer)).toContain('market status Launch pool only (ACTIVE_MARKET)');
+  });
 });
 
 describe('research_answer on MCP after the adversarial review', () => {

@@ -6,6 +6,16 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (2026-10-16, additive)
+
+- `HeyProject.tokenMarket.label` and the dossier's `tokenMarket.label`: the market status in HEY's own words ("Launch pool only", "Not a fungible token", "No current reading", else the status's label).
+- `HeyTokenMarket.marketStatusLabel` (the same words), `distribution.stale` (a snapshot older than HEY's freshness window) and `tvlRead` (`MEASURED` / `STALE` with the newest row's day, or `NONE_HELD` — an empty `tvlDays` is unknown, never zero).
+- `HeyAgentResponse` research `marketContext.tokenMarketLabel`.
+
+### Changed (2026-10-16)
+
+- `changes.list` without a cursor (or with `before`) is newest first by each event's first arrival, so a revised old event never leads; `after` and `detectedSince` keep ledger order.
+
 ## 0.3.0 — 2026-10-14
 
 ### Added (agent contract, 2026-10-14)

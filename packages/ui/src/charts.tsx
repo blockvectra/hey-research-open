@@ -55,11 +55,14 @@ const STATUS_FILL: Record<string, string> = {
 export function BuildVsMarketChart({
   data: all,
   underTheRadarTotal,
+  attentionNotMeasured,
   className,
 }: {
   data: readonly ScatterDatum[];
   /** How many projects the Under the Radar rule holds in all, so the caption can say how many are drawn. */
   underTheRadarTotal?: number;
+  /** How many ranked builders are left off because the Discovery Gap does not measure their market (2026-10-16). */
+  attentionNotMeasured?: number;
   className?: string;
 }) {
   /*
@@ -245,6 +248,9 @@ export function BuildVsMarketChart({
         Position describes what has happened, not what will.
         {unplaced > 0
           ? ` ${unplaced} ${unplaced === 1 ? 'project is' : 'projects are'} not placed: Build Momentum not measured.`
+          : null}
+        {attentionNotMeasured && attentionNotMeasured > 0
+          ? ` ${attentionNotMeasured.toLocaleString('en-US')} ${attentionNotMeasured === 1 ? 'project is' : 'projects are'} left off: market attention not measured — market too thin, a launch pool or no live market.`
           : null}
         </span>
       </figcaption>

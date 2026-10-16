@@ -251,7 +251,19 @@ const TOKEN_MARKET_WORDS: Record<string, string> = {
   TOKEN_NOT_LAUNCHED: 'no token',
 };
 
-export function tokenMarketWords(status: string): string {
+/**
+ * The market state in the API's own words (2026-10-16, parity audit P1): the
+ * `label` the API sends (`tokenMarket.label`, `marketStatusLabel`), from the
+ * one label rule every page reads. A launch pool that traded is "launch pool
+ * only", never "active market"; a token that is not fungible and a reading
+ * that is not current have their own words. An answer from a server that
+ * predates the label falls back to the same rule over the reason code.
+ */
+export function tokenMarketWords(status: string, reason?: string | null, label?: string | null): string {
+  if (label) return label.toLowerCase();
+  if (reason === 'not_a_fungible_token') return 'not a fungible token';
+  if (reason === 'reading_not_current') return 'no current reading';
+  if (status === 'ACTIVE_MARKET' && (reason ?? '').startsWith('launch_pool')) return 'launch pool only';
   return TOKEN_MARKET_WORDS[status] ?? status.toLowerCase().replace(/_/g, ' ');
 }
 
@@ -294,7 +306,7 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.primaryNarrative) parts.push(quoteExternal(project.primaryNarrative.name, 'narrative'));
   if (project.launchedVia) parts.push(`via ${quoteExternal(project.launchedVia.name, 'launchpad')}`);
   // The market's state before its figures: it is why a dead market prints no valuation (2026-09-25).
-  if (project.tokenMarket) parts.push(`market: ${tokenMarketWords(project.tokenMarket.status)}`);
+  if (project.tokenMarket) parts.push(`market: ${tokenMarketWords(project.tokenMarket.status, project.tokenMarket.reason, project.tokenMarket.label)}`);
   // Context, and only ever with the provider that reported it; an unknown kind is a valuation, never a market cap.
   if (project.marketCap) parts.push(`${money(project.marketCap.usd)} ${valuationWord(project.marketCap.kind)} (${project.marketCap.source})`);
   // Never a figure the reading cannot support (round 4, 2026-09-30): the gate's words, not a number.
@@ -405,7 +417,7 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
   const lines: string[] = [
     `# ${quotedName(market.name, market.symbol)} — market, from HEY's own daily index`,
     `Contract ${market.token.contractAddress} on chain ${market.token.chainId}.`,
-    `DERIVED market status: ${tokenMarketWords(market.marketStatus)}${market.marketStatusReason ? ` (${market.marketStatusReason.replace(/_/g, ' ')})` : ''}. A reading of the market, not of the team.`,
+    `DERIVED market status: ${tokenMarketWords(market.marketStatus, market.marketStatusReason, market.marketStatusLabel)}${market.marketStatusReason ? ` (${market.marketStatusReason.replace(/_/g, ' ')})` : ''}. A reading of the market, not of the team.`,
     `${market.verification === 'UNVERIFIED' ? 'UNKNOWN' : 'FACT'} token verification: ${market.verification.toLowerCase()}.`,
   ];
   /*
@@ -453,7 +465,8 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     l.launchStage ? `stage ${l.launchStage.toLowerCase()}${(l.launchStageObservedAt ?? l.launchStageAt) ? ` (${launchStageSeenWords(l.launchStage)} ${(l.launchStageObservedAt ?? l.launchStageAt)!.slice(0, 10)})` : ''}` : undefined,
     l.firstTradeDay ? `first indexed trade ${l.firstTradeDay}${l.firstTradeCensored ? ` (the index starts ${l.tradeIndexFrom ?? 'later than the launch'}, so earlier trades may exist)` : ''}` : undefined,
     l.lastTradeDay ? `last indexed trade ${l.lastTradeDay}` : undefined,
-    l.peakLiquidityUsd === undefined ? undefined : `highest liquidity HEY saw ${money(l.peakLiquidityUsd)}${l.liquidityBelowPeakPct === undefined ? '' : ` (now ${Math.round(100 - l.liquidityBelowPeakPct)}% of it)`}`,
+    // The basis named (2026-10-16 parity audit P15): the high and the "now" are both the pool HEY's market reading follows, never every pool.
+    l.peakLiquidityUsd === undefined ? undefined : `highest liquidity HEY recorded in the pool its market reading follows ${money(l.peakLiquidityUsd)}${l.liquidityBelowPeakPct === undefined ? '' : ` (that pool now holds ${Math.round(100 - l.liquidityBelowPeakPct)}% of it)`}`,
     signed(l.priceChange7dPct) === undefined ? undefined : `${signed(l.priceChange7dPct)} over 7 days`,
     signed(l.priceChange30dPct) === undefined ? undefined : `${signed(l.priceChange30dPct)} over 30 days`,
   ].filter((v): v is string => v !== undefined);
@@ -475,13 +488,15 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
   if (dist) {
     const share = (v: number) => `${Math.round(v * 10) / 10}%`;
     const supply = [
-      dist.holdersTotal === undefined ? undefined : `${dist.holdersTotal.toLocaleString('en-US')} holders`,
+      // Addresses, never people (product usage rule 2): the count is of distinct addresses with a balance.
+      dist.holdersTotal === undefined ? undefined : `${dist.holdersTotal.toLocaleString('en-US')} distinct addresses holding it`,
       dist.top10SharePct === undefined ? undefined : `largest 10 balances hold ${share(dist.top10SharePct)}`,
       dist.top50SharePct === undefined ? undefined : `largest 50 hold ${share(dist.top50SharePct)}`,
       dist.burnedSharePct === undefined ? undefined : `${share(dist.burnedSharePct)} burned`,
       dist.pooledSharePct === undefined ? undefined : `${share(dist.pooledSharePct)} in pools`,
     ].filter((v): v is string => v !== undefined);
-    if (supply.length > 0) lines.push(`FACT supply (HEY's snapshot, ${dist.day}; burned and pooled supply left out of the top shares): ${supply.join(', ')}.`);
+    // A snapshot past HEY's freshness window is that day's figure, never today's (the API's `distribution.stale`).
+    if (supply.length > 0) lines.push(`FACT${dist.stale ? ' (stale)' : ''} supply (HEY's snapshot, ${dist.day}${dist.stale ? ', older than HEY reads as current' : ''}; burned and pooled supply left out of the top shares): ${supply.join(', ')}.`);
   }
   /*
    * An EMPTY run is not "no holders" (2026-09-25): the holder source reports
@@ -516,7 +531,18 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     for (const check of market.checks) lines.push(`- FACT ${check.label}: ${check.finding}${check.tone === 'noted' ? ' [noted]' : ''}${check.provenance ? ` — ${check.provenance}` : ''}`);
   }
   if (market.onchainDays.length > 0) lines.push('', `FACT contract events by day (UTC; "not indexed" is unknown, not zero): ${market.onchainDays.slice(-DAY_ROWS).map((d) => `${d.day} ${d.events === null ? 'not indexed' : d.events}${d.truncated ? '+' : ''}`).join(', ')}.`);
-  if (market.tvlDays.length > 0) lines.push(`FACT value locked (DefiLlama, ${quoteExternal(market.tvlDays[0]!.protocolName, 'defillama')}): latest ${money(market.tvlDays[market.tvlDays.length - 1]!.tvlUsd)}.`);
+  /*
+   * Value locked in its read state (2026-10-16, the API's `tvlRead`): an empty series is not "no value locked".
+   * A server that predates the field prints the series alone, as before.
+   */
+  const tvlRead = market.tvlRead as HeyTokenMarket['tvlRead'] | undefined;
+  const newestTvl = market.tvlDays[market.tvlDays.length - 1];
+  if (newestTvl) {
+    const read = tvlRead && tvlRead.state !== 'NONE_HELD' ? `, ${tvlRead.day}${tvlRead.state === 'STALE' ? ', stale' : ''}` : '';
+    lines.push(`FACT${tvlRead?.state === 'STALE' ? ' (stale)' : ''} value locked (DefiLlama, ${quoteExternal(market.tvlDays[0]!.protocolName, 'defillama')}${read}): latest ${money(newestTvl.tvlUsd)}.`);
+  } else if (tvlRead?.state === 'NONE_HELD') {
+    lines.push('UNKNOWN value locked: HEY holds no DefiLlama TVL row for this project in the window — not listed, not matched or not read; never zero.');
+  }
   lines.push(
     '',
     TAG_LEGEND,

@@ -25,7 +25,7 @@ import type {
   HeyStillBuildingWithheld,
 } from '@hey-research-lab/sdk';
 
-import { quoteExternal, stillBuildingStateOf, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
+import { looksLikeEvidenceId, quoteExternal, stillBuildingStateOf, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
 
 import { activityTag, atPrecision, composedWords, derivedWords, liquidityWords, money, quotedName, recordTag, shownOf, STILL_BUILDING_MEANING, stillBuildingEvidence, summaryWords, TAG_LEGEND, tokenMarketWords, valuationWord } from './render';
 
@@ -242,7 +242,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   const m = s.market;
   if (!m) lines.push('- NOT APPLICABLE: no tracked token, so no market.');
   else {
-    if (m.tokenMarket) lines.push(`- DERIVED token market: ${tokenMarketWords(m.tokenMarket.status)}${m.tokenMarket.reason ? ` (${pretty(m.tokenMarket.reason)})` : ''}. A reading of the market, not of the team.`);
+    if (m.tokenMarket) lines.push(`- DERIVED token market: ${tokenMarketWords(m.tokenMarket.status, m.tokenMarket.reason, m.tokenMarket.label)}${m.tokenMarket.reason ? ` (${pretty(m.tokenMarket.reason)})` : ''}. A reading of the market, not of the team.`);
     // Sources that disagree are not FACT (2026-10-09 red-team F2): the API's own `sourcesDisagree`, never a stronger claim.
     if (m.marketCap)
       lines.push(
@@ -317,9 +317,13 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     if (s.latestChanges.items.length === 0) lines.push('- FACT no public change recorded yet.');
     for (const c of s.latestChanges.items) {
       if (c.op === 'retract') lines.push(`- RETRACTED ${c.id}`);
-      else lines.push(`- ${c.precision} ${atPrecision(c.occurredAt, c.precision, c.detectedAt)} · ${c.type}: ${summaryWords(c.id, c.summary, c.type)} (id ${c.id})`);
+      else {
+        // An event id is not an evidence id (machine rule 5): get_evidence opens the event's first typed evidence id, the one its receipt link names.
+        const evidenceId = c.evidence.map((entry) => entry.id).find(looksLikeEvidenceId);
+        lines.push(`- ${c.precision} ${atPrecision(c.occurredAt, c.precision, c.detectedAt)} · ${c.type}: ${summaryWords(c.id, c.summary, c.type)} (event ${c.id}; ${evidenceId ? `evidence ${evidenceId}` : 'no evidence id to open'})`);
+      }
     }
-    lines.push(`  More: get_changes with project=${i.slug}, or ${s.latestChanges.url}`);
+    lines.push(`  Open an evidence id with get_evidence id=<evidence id>; an event id is not one. More: get_changes with project=${i.slug}, or ${s.latestChanges.url}`);
   } else lines.push(`- UNKNOWN changes: ${s.latestChanges.reason} — ${s.latestChanges.url}`);
 
   lines.push('', '## Freshness');
@@ -328,7 +332,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     const gaps = mustNotConclude(s.coverage);
     lines.push('', '## What HEY does not know');
     lines.push(gaps.length ? `- UNKNOWN: ${gaps.join(', ')}. Do not read these as zero or as "none".` : '- Every dimension is measured or does not apply.');
-    lines.push(`  Per dimension: get_project_coverage slug=${i.slug}`);
+    lines.push(`  Per dimension: research_answer with capability unknowns and project=${i.slug}, or ${s.links.coverage}`);
   }
 
   const l = s.links;

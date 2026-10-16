@@ -503,8 +503,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       'get_project_snapshot',
       {
         ...describe('get_project_snapshot', [
-          'Where does this Robinhood Chain project stand? One read by slug — the Research Summary, identity, activity status and Build Momentum, last ships, market context with its kind or why it is withheld, on-chain use, 7-day usage (distinct caller addresses, not people),',
-          'verification, HoodLock locks, latest changes, freshness and what HEY does not know. Context blocks, never building: paid promotion (presence and dates), DefiLlama protocol economics (measured, not tracked or unread), developer footprint. Not price advice.',
+          'Where does this Robinhood Chain project stand? One read by slug — the Research Summary, identity, activity status and Build Momentum, last ships, market context with its kind or why it is withheld, on-chain use, 7-day usage (calls; caller addresses per day, not people),',
+          'verification, HoodLock locks, latest changes with evidence ids, freshness and what HEY does not know. Context blocks, never building: paid promotion (presence and dates), DefiLlama protocol economics (measured, not tracked or unread), developer footprint. Not price advice.',
         ]),
         inputSchema: { slug },
       },
@@ -524,7 +524,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           research
             ? 'What changed on Robinhood Chain today or this week, or for one project or contract? The change ledger without market readings: releases, ships, status moves, contract deploys and upgrades, verification, sources, unlocks — one event per change with its own time and precision, when HEY first knew, and its evidence.'
             : 'What changed on Robinhood Chain today or this week, or for one project or contract? The change ledger: releases, ships, status moves, contract deploys and upgrades, verification, sources, unlocks — one event per change with its own time and precision, when HEY first knew, and its evidence.',
-          'Newest first; for today pass detectedSince; to follow, pass after=c1.0 and keep each cursor. A retraction means HEY no longer makes that claim. Facts, never causes.',
+          'Newest first by first arrival; for today pass detectedSince; to sync, pass after=c1.0 and keep each cursor. A retraction means HEY no longer makes that claim. Facts, never causes.',
         ]),
         inputSchema: {
           project: z.string().max(120).optional().describe('A project slug.'),
@@ -647,7 +647,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       {
         ...describe('get_token_market', [
           "Does this token still trade? Context beside the building, from HEY's daily index: current reading (valuation kind, provider), price, liquidity, volume and trades by day, lifecycle",
-          '(deploy, launchpad claim, stage, first trade), pools and depth, supply concentration (shares only, no addresses), contract checks.',
+          "(deploy, launchpad claim, stage, first trade, launch graduation, permanent lock), pools and depth, supply concentration (shares only, no addresses), contract checks.",
           'include=["moves"] adds each day-on-day valuation move with the building events published before it — a sequence, never a cause. Not price advice.',
         ]),
         inputSchema: {

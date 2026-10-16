@@ -87,8 +87,36 @@ export function isRetryableInProcess(code: SourceErrorCode): boolean {
  */
 const SECRET_PARAM = /([?&](?:apikey|api_key|key|token|access_token|auth|password)=)[^&#\s]*/gi;
 
+/**
+ * Keys in a URL's path and its userinfo (S1, 2026-10-16): providers that take the key as a path segment
+ * (`/v2/<key>/…`, an RPC URL ending in its project key) or as `user:pass@`, so a query-parameter rule alone printed
+ * them in job errors and on /status. Any path segment of 20 or more characters is redacted — a key's length; a word
+ * of a route is shorter — and so is any userinfo. A contract address in a path is redacted with it: the price of
+ * never printing a key.
+ */
+const URL_IN_TEXT = /\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>]+/gi;
+const LONG_PATH_SEGMENT_MIN = 20;
+
+function redactUrl(url: string): string {
+  const scheme = url.indexOf('://') + 3;
+  const pathStart = url.indexOf('/', scheme);
+  const authority = url.slice(scheme, pathStart === -1 ? undefined : pathStart);
+  const at = authority.lastIndexOf('@');
+  const host = at === -1 ? authority : `REDACTED@${authority.slice(at + 1)}`;
+  if (pathStart === -1) return `${url.slice(0, scheme)}${host}`;
+  const rest = url.slice(pathStart);
+  const cut = rest.search(/[?#]/);
+  const path = cut === -1 ? rest : rest.slice(0, cut);
+  const tail = cut === -1 ? '' : rest.slice(cut);
+  const redactedPath = path
+    .split('/')
+    .map((segment) => (segment.length >= LONG_PATH_SEGMENT_MIN ? 'REDACTED' : segment))
+    .join('/');
+  return `${url.slice(0, scheme)}${host}${redactedPath}${tail}`;
+}
+
 export function redactSecrets(message: string): string {
-  return message.replace(SECRET_PARAM, '$1REDACTED');
+  return message.replace(URL_IN_TEXT, (url) => redactUrl(url)).replace(SECRET_PARAM, '$1REDACTED');
 }
 
 export class SourceError extends Error {

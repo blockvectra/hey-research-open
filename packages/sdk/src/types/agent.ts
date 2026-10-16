@@ -158,6 +158,8 @@ export type HeyAgentResearchData = {
     liquidityKind?: string;
     volume24hUsd: number | null;
     tokenMarketStatus: string | null;
+    /** `tokenMarketStatus` in HEY's own words (2026-10-16, additive): the API's `tokenMarket.label` — "Launch pool only", never "Active market" over a launch pool. */
+    tokenMarketLabel?: string;
     url: string;
   } | null;
   usageContext: {

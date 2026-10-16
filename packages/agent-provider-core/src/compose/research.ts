@@ -452,6 +452,8 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
             ...(market.liquidity?.kind ? { liquidityKind: market.liquidity.kind } : {}),
             volume24hUsd: market.volume24h?.usd ?? null,
             tokenMarketStatus: market.tokenMarket?.status ?? null,
+            // The API's own words for the status (2026-10-16): a launch pool that traded is "Launch pool only", never "Active market".
+            ...(market.tokenMarket?.label ? { tokenMarketLabel: market.tokenMarket.label } : {}),
             url: market.url,
           }
         : null,

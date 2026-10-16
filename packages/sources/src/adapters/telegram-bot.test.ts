@@ -35,7 +35,8 @@ describe('telegram bot adapter', () => {
     expect(JSON.stringify(ok)).not.toContain(TOKEN);
     const refused = await adapter.fetch({ token: TOKEN, method: 'sendMessage', chatId: 1, text: 'x' }, testContext({ fetchImpl: stubFetch({ status: 403, body: readFixture('telegram-error-blocked.json') }).fetchImpl }));
     expect(JSON.stringify(refused)).not.toContain(TOKEN);
-    expect(refused.errorMessage).toContain('<redacted>');
+    // The error model redacts the token's path segment itself (S1, 2026-10-16), before the adapter's own redaction.
+    expect(refused.errorMessage).toMatch(/<redacted>|REDACTED/);
   });
 
   it('reports a blocked chat as a 403, never as data', async () => {

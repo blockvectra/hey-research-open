@@ -1,0 +1,108 @@
+{
+  "_note": "Frames of the graphql-ws (subscriptions-transport-ws) protocol in the shape Bitquery's streaming endpoint sent them to the 2026-10-15 probe (connection_ack, ka, data). The data frame's rows are shaped like the probe's Events rows with the 2026-10-16 document's fields; hashes and blocks are illustrative.",
+  "ack": { "type": "connection_ack" },
+  "ka": { "type": "ka" },
+  "data": {
+    "type": "data",
+    "id": "1",
+    "payload": {
+      "data": {
+        "EVM": {
+          "Events": [
+            {
+              "Block": { "Number": "89310412", "Time": "2026-10-16T08:12:03Z" },
+              "Transaction": { "Hash": "0x5A0F3D1E2C4B6A798877665544332211FFEEDDCCBBAA99887766554433221100" },
+              "Log": {
+                "Index": "3",
+                "SmartContract": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e",
+                "Signature": { "Name": "", "SignatureHash": "8d4aad4953d0ca700d468f3753aa14432d1b35b43ec6409f051fb6aa43a89607" }
+              }
+            },
+            {
+              "Block": { "Number": 89310415, "Time": "2026-10-16T08:12:03Z" },
+              "Transaction": { "Hash": "0x1111111111111111111111111111111111111111111111111111111111111111" },
+              "Log": {
+                "Index": 7,
+                "SmartContract": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e",
+                "Signature": { "Name": "Trade", "SignatureHash": "0x2222222222222222222222222222222222222222222222222222222222222222" }
+              }
+            },
+            {
+              "Block": { "Number": "89310420", "Time": "2026-10-16T08:12:04Z" },
+              "Transaction": { "Hash": "0x9ac26a1db2e4b2322a84c688bb31bebb437a2a2587cdeb51d7b6052662ee1ebf" },
+              "Log": {
+                "Index": "0",
+                "SmartContract": "0x8366A39CC670B4001A1121B8F6A443A643E40951",
+                "Signature": { "Name": "Initialize", "SignatureHash": "0xdd466e674ea557f56295e2d0218a125ea4b4f0f6f3307b95f85e6110838d6438" }
+              }
+            },
+            {
+              "Block": { "Number": "89310421", "Time": "2026-10-16T08:12:04Z" },
+              "Transaction": { "Hash": "0x3333333333333333333333333333333333333333333333333333333333333333" },
+              "Log": {
+                "Index": "1",
+                "SmartContract": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e",
+                "Signature": { "Name": "PoolGraduated", "SignatureHash": null }
+              }
+            },
+            {
+              "Block": { "Number": "89310422", "Time": "2026-10-16T08:12:04Z" },
+              "Transaction": { "Hash": "0xnot-a-hash" },
+              "Log": { "Index": "2", "SmartContract": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e", "Signature": { "Name": "PoolGraduated" } }
+            },
+            {
+              "Block": { "Number": "89310423", "Time": "2026-10-16T08:12:04Z" },
+              "Transaction": { "Hash": "0x4444444444444444444444444444444444444444444444444444444444444444" },
+              "Log": { "Index": "2", "SmartContract": "0x000000000000000000000000000000000000dead", "Signature": { "Name": "Transfer" } }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "dataMore": {
+    "type": "data",
+    "id": "1",
+    "payload": {
+      "data": {
+        "EVM": {
+          "Events": [
+            {
+              "Block": { "Number": "89310600", "Time": "2026-10-16T08:13:00Z" },
+              "Transaction": { "Hash": "0x5555555555555555555555555555555555555555555555555555555555555555" },
+              "Log": { "Index": "4", "SmartContract": "0xd0f7d8c6e9f6d80c297bebe4f7fd1b9c8125c32f", "Signature": { "Name": "Locked", "SignatureHash": "0x6666666666666666666666666666666666666666666666666666666666666666" } }
+            },
+            {
+              "Block": { "Number": "89310601", "Time": "2026-10-16T08:13:00Z" },
+              "Transaction": { "Hash": "0x7777777777777777777777777777777777777777777777777777777777777777" },
+              "Log": { "Index": "0", "SmartContract": "0x9d2ed15300000000000000000000000000000001", "Signature": { "Name": "Upgraded", "SignatureHash": "bc7cd75a20ee27fd9adebab32041f755214dbc6bffa90cc0225b39da2e5c2d3b" } }
+            },
+            {
+              "Block": { "Number": "89310602", "Time": "2026-10-16T08:13:00Z" },
+              "Transaction": { "Hash": "0x8888888888888888888888888888888888888888888888888888888888888888" },
+              "Log": { "Index": "1", "SmartContract": "0x00000000000000000000000000000000000beef1", "Signature": { "Name": "Upgraded", "SignatureHash": "0xbc7cd75a20ee27fd9adebab32041f755214dbc6bffa90cc0225b39da2e5c2d3b" } }
+            },
+            {
+              "Block": { "Number": "89310603", "Time": "2026-10-16T08:13:00Z" },
+              "Transaction": { "Hash": "0x9999999999999999999999999999999999999999999999999999999999999999" },
+              "Log": { "Index": "2", "SmartContract": "0x00000000000000000000000000000000000beef2", "Signature": { "Name": "Upgraded", "SignatureHash": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" } }
+            },
+            {
+              "Block": { "Number": "89310604", "Time": "2026-10-16T08:13:00Z" },
+              "Transaction": { "Hash": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" },
+              "Log": { "Index": "5", "SmartContract": "0x7ed598bcef8bd9edd8c97a195c6d13f40801ec7e", "Signature": { "Name": "", "SignatureHash": "0x308c390e00000000000000000000000000000000000000000000000000000000" } }
+            }
+          ]
+        }
+      }
+    }
+  },
+  "dataWithErrors": {
+    "type": "data",
+    "id": "1",
+    "payload": { "data": null, "errors": [{ "message": "Streaming time limit exceeded for your plan" }] }
+  },
+  "error": { "type": "error", "id": "1", "payload": [{ "message": "Cannot query field \"SignatureHash\" on type \"EVM_Log_Signature\"" }] },
+  "connectionError": { "type": "connection_error", "payload": { "message": "Unauthorized: invalid token ory_at_SECRETSECRET" } },
+  "complete": { "type": "complete", "id": "1" }
+}

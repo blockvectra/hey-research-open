@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { SOURCE_ERROR_CODES, SourceError, errorCodeForStatus, isRetryableErrorCode, isRetryableInProcess } from './errors';
+import { SOURCE_ERROR_CODES, SourceError, errorCodeForStatus, isRetryableErrorCode, isRetryableInProcess, redactSecrets } from './errors';
 
 describe('normalized error model', () => {
   it('maps HTTP statuses onto the shared codes', () => {
@@ -81,5 +81,17 @@ describe('a SourceError never carries a credential', () => {
     expect(new SourceError('TIMEOUT', 'request to https://x.example/a?page=2 timed out').message).toBe(
       'request to https://x.example/a?page=2 timed out',
     );
+  });
+
+  it('never carries a key in a URL path segment or userinfo (S1, 2026-10-16)', () => {
+    const key = 'a1B2c3D4e5F6g7H8i9J0kLmN';
+    const error = new SourceError('UPSTREAM_ERROR', `request to https://eth.example-rpc.io/v2/${key} timed out`);
+    expect(error.message).toBe('request to https://eth.example-rpc.io/v2/REDACTED timed out');
+    expect(redactSecrets(`fetch failed for https://user:${key}@api.example.com/x?apikey=${key}`)).toBe('fetch failed for https://REDACTED@api.example.com/x?apikey=REDACTED');
+    expect(redactSecrets(`wss://node.example.com/ws/${key}/stream#frag`)).toBe('wss://node.example.com/ws/REDACTED/stream#frag');
+    // Short route words stay readable; text that is not a URL is untouched.
+    expect(redactSecrets('https://api.github.com/repos/owner/repo/releases?per_page=10 answered 502')).toBe('https://api.github.com/repos/owner/repo/releases?per_page=10 answered 502');
+    expect(redactSecrets(`a plain sentence with ${key} in it`)).toBe(`a plain sentence with ${key} in it`);
+    expect(new SourceError('NETWORK', `no route to https://host.example/${key}`).message).not.toContain(key);
   });
 });

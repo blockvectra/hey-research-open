@@ -290,6 +290,11 @@ withheld. The dossier's `tokenMarket` is the same object with more in it. Since 
 listed project whose reading HEY holds but will not publish also carries **`valuationWithheld`**,
 the reason code or status (`launch_pool_no_trades`, `readings_implausible`, `NO_LIQUIDITY`); it is
 absent when HEY holds no reading at all, so a withheld figure and an unknown one never look alike.
+Since 2026-10-16 (additive) `tokenMarket.label` — on the listing, the dossier and the snapshot — is
+the status in HEY's own words, from the one label rule every page reads: "Launch pool only" for an
+`ACTIVE_MARKET` whose reason is a launch pool's own inventory, "Not a fungible token" and "No current
+reading" for those reasons, otherwise the status's label ("Active market", "Low liquidity", …).
+Quote it rather than deriving words from the code: the MCP, A2A and the Telegram bot all do.
 Since round 4 (2026-09-30) `valuationWithheld` also carries the valuation gate's reason when the
 reading's valuation is **not plausible from the readings HEY has**: `valuation_over_liquidity` (at
 least 10,000× the liquidity measured in the same reading) or `unlisted_over_ceiling` (above $10B on
@@ -1503,6 +1508,8 @@ accounts. A project without a token is `404`.
 
 Added 2026-09-25, all optional and absent when HEY holds nothing:
 
+- `marketStatusLabel` (2026-10-16, always present) — `marketStatus` in HEY's own words, the same rule
+  as the listing's `tokenMarket.label`: "Launch pool only", never "Active market", over a launch pool.
 - `marketStatusReason` — the reason code behind `marketStatus` (`launch_pool_no_trades`,
   `no_volume_24h`, …). The market is not live when the status is `NO_LIQUIDITY`,
   `LIQUIDITY_REMOVED` or `MARKET_ABANDONED`, or the reason is `launch_pool_no_trades`,
@@ -1531,8 +1538,15 @@ Added 2026-09-25, all optional and absent when HEY holds nothing:
 - `pools` — the latest pool reading from the chain: `day`, `observedAt`, `pools`, `liquidityUsd`
   and `depthOnePctUsd` (how much can be sold before the price moves 1%, added across the pools).
 - `distribution` — a summary of HEY's snapshot of the token's largest balances: `day`,
-  `observedAt`, `holdersTotal`, `top10SharePct`, `top50SharePct` (burned and pooled supply left
-  out), `burnedSharePct`, `pooledSharePct`. No address and no balance.
+  `observedAt`, `holdersTotal` (distinct addresses holding a balance — addresses, never people),
+  `top10SharePct`, `top50SharePct` (burned and pooled supply left out), `burnedSharePct`,
+  `pooledSharePct`. No address and no balance. Since 2026-10-16 (additive) `stale: true` says the
+  snapshot is older than HEY's distribution freshness window: that day's figures, not today's.
+- `tvlRead` (2026-10-16, always present) — what `tvlDays[]` is a reading of, so an empty series is
+  never read as "no value locked": `{ state: "MEASURED" | "STALE", day, observedAt }` for the newest
+  row, or `{ state: "NONE_HELD", reason: "no_tvl_row_in_window" }` when HEY holds no DefiLlama TVL row
+  for the project in the window (DefiLlama may not list it, HEY may not have matched it, or not read
+  it) — unknown, never zero.
 - `distributionRead` (2026-09-25) — what HEY's latest attempt to read the distribution found:
   `outcome` (`mapped`, `no_balance_change_in_window`, `no_supply` or `read_failed`), `checkedAt`,
   and a plain-sentence `note` for every outcome but `mapped`. The holder source reports only
@@ -1658,6 +1672,14 @@ curl "https://heyresearch.xyz/api/changes?detectedSince=2026-09-26T00:00:00Z"
 ### Browse
 
 No cursor, or `before=<cursor>`: newest first, `nextCursor` reads older (null at the end).
+
+Since 2026-10-16 a browse is ordered by each event's **first arrival** (when its first revision
+entered the ledger, or when HEY first knew indexed history — kept by every later revision), then
+`seq`: a revision of old history gets a new `seq` but never leads a browse. A browse page hands out a
+`c2.<seq>` cursor (the last item's), and the next page starts below that row's (arrival, seq). A
+`c1.<seq>` browse cursor issued before 2026-10-16 keeps its old meaning — every event below that seq —
+so nothing is skipped across the change; treat cursors as opaque. Sync (`after=`, `detectedSince`) is unchanged — ledger `seq` order, every
+revision delivered — which is what a mirror needs.
 
 ### Filters
 
@@ -1960,7 +1982,7 @@ never from a price. Every figure is measured or carries a `state` that says why 
 | `cadence` | median days between release days over 365 days (same-day releases count once), newer vs older half, `direction` FASTER / STEADY / SLOWER | `state: INSUFFICIENT_RELEASES` — fewer than three release days |
 | `consistency` | active weeks of the last 12, current and longest streak (weeks), days since the last meaningful ship, longest silence (days), comebacks after 60+ quiet days | `activeWeeks: null` — watched under 12 weeks; day counts null with no meaningful event |
 | `discoveryLag` | median and maximum hours from publication to HEY recording an event, over 90 days | `state: INSUFFICIENT_SAMPLES` — fewer than three events published while HEY was watching (backfilled history is excluded) |
-| `marketAttention` | the market-context percentile the Discovery Gap uses, as VERY_LOW … HIGH. Context only; it feeds none of the above | `null` without a live market reading |
+| `marketAttention` | the market-context percentile the Discovery Gap uses, as VERY_LOW … HIGH. Context only; it feeds none of the above | `null` without a live market reading, and **since 2026-10-16** also where the Discovery Gap does not measure the market (a thin market, a launch pool or curve); `marketAttentionWithheld` (additive) says why — `market_too_thin`, `market_not_live`, `no_token`, … |
 | `changes` | Build Momentum and liquidity now against the newest reading at least 30 days old; `sameRules` is false when the two carry different scoring versions | either side null when HEY holds no reading for it |
 
 `observedSince` is when HEY began watching the project, the floor under every window.

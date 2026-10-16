@@ -84,4 +84,47 @@ describe('a code week in the timeline', () => {
   it('draws nothing without highlights', () => {
     expect(renderToStaticMarkup(createElement(CodeWeekHighlights, { highlights: [] }))).toBe('');
   });
+
+  it('leads with what changed and keeps the count caveat quieter after it (2026-10-16, audit U1)', () => {
+    const html = renderToStaticMarkup(
+      createElement(BuildTimeline, {
+        now: new Date('2026-10-02T00:00:00Z'),
+        items: [
+          {
+            id: 'w1',
+            title: 'Code changes, week of 2026-09-28 – 2026-10-04 · 12 commits',
+            summary: '12 commits this week; the count stops at the newest 100 commits listed.',
+            eventType: 'CODE_ACTIVITY',
+            publishedAt: new Date('2026-10-01T10:00:00Z'),
+            verificationStatus: 'SOURCE_LINKED',
+            highlights: [{ text: 'Add swap router' }],
+          },
+        ],
+      }),
+    );
+    expect(html.indexOf('Add swap router')).toBeLessThan(html.indexOf('the count stops'));
+    expect(html).toMatch(/data-testid="ship-summary" data-tone="secondary"/);
+  });
+
+  it('keeps an ordinary ship summary first and at full tone', () => {
+    const html = renderToStaticMarkup(
+      createElement(BuildTimeline, {
+        items: [{ id: 'r1', title: 'v1.2.0', summary: 'New router.', eventType: 'RELEASE', publishedAt: new Date('2026-10-01T10:00:00Z'), verificationStatus: 'PUBLICLY_VERIFIED' }],
+      }),
+    );
+    expect(html).toMatch(/data-testid="ship-summary" data-tone="primary"/);
+  });
+
+  it('names the repository in the heading when the page passes one (2026-10-16, audit U3)', () => {
+    const html = renderToStaticMarkup(
+      createElement(BuildTimeline, {
+        items: [
+          { id: 'a', title: 'Code changes, week of 2026-09-28 – 2026-10-04', eventType: 'CODE_ACTIVITY', publishedAt: new Date('2026-10-01T10:00:00Z'), verificationStatus: 'SOURCE_LINKED', repo: 'o/app' },
+          { id: 'b', title: 'Code changes, week of 2026-09-28 – 2026-10-04', eventType: 'CODE_ACTIVITY', publishedAt: new Date('2026-10-01T10:00:00Z'), verificationStatus: 'SOURCE_LINKED', repo: 'o/contracts' },
+        ],
+      }),
+    );
+    expect(html.match(/data-testid="timeline-repo"/g)).toHaveLength(2);
+    expect(html).toContain('o/contracts');
+  });
 });

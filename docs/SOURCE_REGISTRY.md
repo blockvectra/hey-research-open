@@ -816,6 +816,19 @@ factory reader (`REFRESH_LAUNCH_STAGE`, `getLaunchedToken(token).phase`, daily, 
 | Mobula | Needs an API key (429 without). Could be added behind an optional env key later; not required and not integrated |
 | CoinGecko `/simple/token_price/{platform}` | One address per free call; `/coins/markets` prices 250 ids per call instead |
 
+## Bitquery stream — trigger only (`bitquery-stream`, 2026-10-16)
+
+| | |
+|---|---|
+| Endpoint | `wss://streaming.bitquery.io/graphql?token=…`, subprotocol `graphql-ws` (legacy subscriptions-transport-ws: `connection_init`/`connection_ack`, `start`/`data`, `ka`, `stop`, `connection_terminate`) |
+| Switch | `BITQUERY_STREAM_ENABLED=true` plus `BITQUERY_API_KEY`; off by default, worker only, one owner per deployment (Postgres advisory lock) |
+| Subscription | One `Events` cube, `any:` of four conditions: Pons V2 factory (all logs), v4 PoolManager `Initialize`, HoodLock locker (all logs), `Upgraded` by name on any contract. Fields: block number and time, transaction hash, log index, contract, signature name and hash — no arguments, no accounts |
+| What it may prove | Nothing (`bitquery_stream`, tier DISCOVERY, context only). A trigger row (`chain_event_triggers`) asks `REFRESH_CHAIN_TRIGGERS` to re-read over RPC through the owning path; only that read is written |
+| Address rule | Only the three fixed contracts, or a proxy `contract_implementations` already watches; any other `Upgraded` is dropped in memory and the insert re-checks the watch |
+| Cost | Stream-minutes, its own allowance (100,000 a cycle, 13th → 12th), never points. HEY books each started minute and stops at 1,600 a UTC day. Measured volume ≈ 11.7K events and ≈ 3.2 MB a day before the in-memory filters |
+| Fallback | The hourly launch scan, the six-hourly HoodLock sweep and the daily upgrade watch, unchanged |
+| Known gap | `Upgraded` is filtered by Bitquery's decoded name, the filter the existing upgrade adapter uses; a proxy whose logs Bitquery does not decode is still read by the daily storage watch. An upgrade found this way is dated when HEY read it, as before (the watch's draft has no slot for the log's block time) |
+
 ## Cost
 
 **One paid source.** Bitquery Pro, $179 a month, points-metered: it decodes the trades, contract
