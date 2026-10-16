@@ -6,6 +6,15 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.3.2 — 2026-10-16
+
+### Changed (2026-10-16)
+
+- Change and evidence text uses each event's current words (`summaryCurrent`): a running code week never shows a future end date, rolling-window signals name their window.
+- `get_token_market` says when distribution figures are withheld and why; a launch pool is "launch pool only"; the last trade day is named by what it counts.
+- `get_changes` lists each event once, at its current revision; market-status moves on a launch pool read "Launch pool only".
+- Tool descriptions match the scoring rules of 2026-10-16 (hbm-v30) and the tool count (thirteen, fourteen where Market Integrity is published).
+
 ## 0.3.1 — 2026-10-16
 
 ### Changed (2026-10-16)

@@ -3,7 +3,7 @@
   "name": "io.github.hey-research-lab/hey-research",
   "title": "HEY Research Lab",
   "description": "The public record of building on Robinhood Chain — every ship with its source.",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "websiteUrl": "https://heyresearch.xyz/developers/agents",
   "repository": {
     "url": "https://github.com/hey-research-lab/hey-research-open",
@@ -21,7 +21,7 @@
       "registryType": "npm",
       "registryBaseUrl": "https://registry.npmjs.org",
       "identifier": "@hey-research-lab/mcp",
-      "version": "0.3.1",
+      "version": "0.3.2",
       "transport": {
         "type": "stdio"
       },

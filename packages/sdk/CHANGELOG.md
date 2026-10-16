@@ -6,6 +6,17 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.3.2 — 2026-10-16
+
+### Added (2026-10-16, additive)
+
+- Ships and timeline entries: `displayTitle` (a running code week reads "this week (since Mon …)"; `title` is unchanged) and `codeWeek.complete`.
+- Change upserts and evidence receipts: `summaryCurrent`, the stored summary in today's words. `HeyChangeUpsertRead` types what `changes.list` returns.
+- Market detail: `distribution.figuresWithheld` (`partial_balances` or `coverage_not_measured`: a holder read that cannot account for the supply keeps no count or shares), `pools` (day, liquidity, depth at 1%, `indexMissesReadingPool`).
+- Scores: `cohortEvaluatedAt`; Still Building withheld reason `no_tracked_high`.
+- Lock evidence receipts: `detectedAt` is `null` with `detectedAtWithheld: 'predates_record'` when HEY holds no first sighting.
+- `/api/chain` days: `partial` on the day in progress. `/api/chain/silence`: `underTheRadarHeld`. Weekly reports: `radarBoard`. Search suggestions: `moreProjects`. Usage markers: `repository`. Promotion entries: `channelLabel`.
+
 ## 0.3.1 — 2026-10-16
 
 ### Added (2026-10-16, additive)
