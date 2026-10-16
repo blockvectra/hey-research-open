@@ -6,6 +6,8 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.3.1 — 2026-10-16
+
 ### Changed (2026-10-16)
 
 - Market status in the API's own words (`tokenMarket.label`, `marketStatusLabel`): a launch pool that traded is "launch pool only", never "active market".

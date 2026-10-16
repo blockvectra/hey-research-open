@@ -6,6 +6,8 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.3.1 — 2026-10-16
+
 ### Added (2026-10-16, additive)
 
 - `HeyProject.tokenMarket.label` and the dossier's `tokenMarket.label`: the market status in HEY's own words ("Launch pool only", "Not a fungible token", "No current reading", else the status's label).
