@@ -63,7 +63,7 @@ allowlist and 60-a-minute JSON-RPC bucket as `/mcp`. It offers seven tools:
 
 | Tool | On the research profile |
 |---|---|
-| `research_answer` | Unchanged: the agent contract, all six capabilities. Its market context stays labelled context only. |
+| `research_answer` | Unchanged: the agent contract, every capability (`chain_brief` since 2026-10-18). Its market context stays labelled context only. |
 | `find_projects` | Identity only: a name, ticker, slug or contract through `/api/search/suggest` (at most eight rows, no market figure), or a `0x…` address through the token lookup. No surface, no market filter, no sort. |
 | `get_changes` | The ledger without market events: with no `domain` or `type` it asks for `build, contract, token, research, lock`; a `market.*` type is refused. |
 | `get_project_timeline` | Lenses `build` (the default), `code`, `onchain`, `locks`; no `market` or `everything`. |
@@ -165,7 +165,10 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
   `claims` with each `id` and `status`, `evidence`, `data`), open to every additive field; the
   whole schema is `components.schemas.AgentIntelligenceResponse` in `/openapi.json` and the Zod
   schema in `@hey/agent-provider-core`. A client that validates gets the contract's own
-  answer.
+  answer. `detail: "compact"` (2026-10-18, opt-in) returns the same summary text and the same
+  answer without its capability `data` (`dataOmitted: "compact"`, `full`: the whole answer's URL,
+  also the resource link) — every claim, unknown and evidence id kept — for a client that hands
+  `structuredContent` to the model; the default stays whole.
 - **Every other tool** returns `{ schema: "hey.mcp-api-answer", api, data, notice }`: the public
   API object the text was rendered from, unchanged (its shape is the partner contract and never
   changes meaning), the URL it is at, and a notice that its names, titles, summaries and
@@ -182,13 +185,16 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
 - `building-with-token` — verified shipping, active or resumed, with a token whose market is live.
 - `still-building` — verified activity continuing through a market drawdown HEY tracked, on an
   active market that is more than a launch curve or a launch pool; on a thinner one Still Building is not
-  measured (`stillBuildingWithheld: "market_too_thin"`, hbm-v19). With no tracked token, no
+  measured (`stillBuildingWithheld: "market_too_thin"`, hbm-v19), and since hbm-v31 nor on an
+  active market whose reading carries under $1,000 of 24-hour volume. With no tracked token, no
   current market reading or building HEY cannot read it is not measured either (`no_token`,
-  `no_market_reading`, `activity_unknown`, hbm-v21), never "does not hold".
+  `no_market_reading`, `activity_unknown`, hbm-v21), never "does not hold"; nor on a token HEY
+  cannot tell from a lookalike (`token_not_the_projects`) or when every builder source is
+  unavailable (`builder_sources_unavailable`, hbm-v31).
 - `under-the-radar` — **eligible under HEY's Under the Radar rule** (status shipping, active
   or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one
   of them a ship rather than a commit summary; a fresh reading of an active market beyond
-  a launch curve or a launch pool, for the project's own token) **and a positive Discovery Gap**: the
+  a launch curve or a launch pool, trading $1,000+ a day, for the project's own token) **and a positive Discovery Gap**: the
   market-attention percentile is below the build percentile. A token whose market is not
   active has no Discovery Gap at all (`discoveryGapWithheld: "market_too_thin"`, hbm-v18). A
   market active only because another pool of the token holds the liquidity is measured on that

@@ -4,7 +4,7 @@ import { familyFreshness } from '../freshness';
 import { AGENT_LIMITS, type AgentChange, type AgentClaim, type AgentResponseOf, type AgentUnknown } from '../schema';
 import { derivedText, externalText, heyText } from '../text';
 import { changeTypeNoun, countOf, inTheLastDays, WORD_CHANGE } from '../words';
-import { agentChange, envelope, isContextChange, looksLikeEvidenceId, type AgentComposeContext } from './common';
+import { agentChange, envelope, isContextChange, looksLikeEvidenceId, type AgentCodeWeeks, type AgentComposeContext } from './common';
 
 /**
  * what_changed (2026-09-30): the canonical change ledger over a window of
@@ -32,6 +32,11 @@ export type WhatChangedInput = {
   building?: readonly { type: string; count: number }[];
   /** The caller asked for `building=only`: every event here counts as building. */
   buildingOnly?: boolean;
+  /**
+   * The items lead with the events that count as building, each group newest first (2026-10-18, persona audit
+   * PA-7): what the caller did when `building` was not asked for. Absent, the items are the window's newest.
+   */
+  buildingFirst?: boolean;
   ledger: { projectorRanAt: string | null; newestRecordedAt: string | null; collectionStart: string | null; transitionsFrom?: string | null };
   moreUrl: string;
   /** The ledger's position when the answer was made and the sync URL from it (AG-7); absent when it could not be read. */
@@ -39,6 +44,8 @@ export type WhatChangedInput = {
   /** Gaps that limit which changes HEY can see for this project (no builder source, contracts not watched …). */
   unknowns?: AgentUnknown[];
   isEvidenceId?: (id: string) => boolean;
+  /** The code weeks among `items` (PB-25), by event id: what each week changed. */
+  codeWeeks?: AgentCodeWeeks;
 };
 
 const LEDGER_DIMENSIONS: ReadonlySet<string> = new Set(['activityStatus', 'changeLedger', 'builderEvidence', 'repositories', 'releases', 'contractDeployment', 'contractActivity', 'contractInterface', 'sourceChanges', 'locks', 'officialDocs']);
@@ -50,7 +57,7 @@ export function ledgerRelevantUnknowns(unknowns: readonly AgentUnknown[]): Agent
 
 export function composeWhatChanged(ctx: AgentComposeContext, input: WhatChangedInput): AgentResponseOf<'what_changed'> {
   const isEvidenceId = input.isEvidenceId ?? looksLikeEvidenceId;
-  const all = input.items.map((event) => agentChange(event, { slug: event.project.slug, url: event.project.url }, ctx.baseUrl, isEvidenceId));
+  const all = input.items.map((event) => agentChange(event, { slug: event.project.slug, url: event.project.url }, ctx.baseUrl, isEvidenceId, input.codeWeeks?.get(event.id)));
   /*
    * The contract's size bound, held when the answer is made (2026-09-30,
    * adversarial review): fifty events over thirty days could reach 69 KB,
@@ -152,7 +159,7 @@ function composeWindow(ctx: AgentComposeContext, input: WhatChangedInput, items:
         ? derivedText(`${countOf(input.total, WORD_CHANGE)} that count as building ${recorded}${typeWords(buildingRows)}; showing the newest ${items.length}.${partialWords}`)
         : buildingTotal !== undefined
           ? derivedText(
-              `${countOf(input.total, WORD_CHANGE)} ${recorded}. ${buildingTotal === 0 ? 'None of them counts as building' : `${buildingTotal} ${buildingTotal === 1 ? 'counts' : 'count'} as building${typeWords(buildingRows)}`}${contextRows.length > 0 ? `; the other ${input.total - buildingTotal} are context and HEY’s own records${typeWords(contextRows)}` : ''}. Showing the newest ${items.length} of every type; ask with building=only for building alone.${partialWords}`,
+              `${countOf(input.total, WORD_CHANGE)} ${recorded}. ${buildingTotal === 0 ? 'None of them counts as building' : `${buildingTotal} ${buildingTotal === 1 ? 'counts' : 'count'} as building${typeWords(buildingRows)}`}${contextRows.length > 0 ? `; the other ${input.total - buildingTotal} are context and HEY’s own records${typeWords(contextRows)}` : ''}. ${input.buildingFirst ? `Showing ${items.length}: the newest that count as building first, then the newest of the rest` : `Showing the newest ${items.length} of every type`}; ask with building=only for building alone.${partialWords}`,
             )
           : derivedText(`${countOf(input.total, WORD_CHANGE)} ${recorded}${typeWords(input.byType)}; showing the newest ${items.length}.${partialWords}`);
 

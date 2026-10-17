@@ -56,6 +56,8 @@ export const agentRequestSchema = z.discriminatedUnion('capability', [
     })
     .strict(),
   z.object({ capability: z.literal('unknowns'), project: slug.optional(), q: q.optional(), address: address.optional(), chainId }).strict(),
+  // chain_brief (2026-10-18, PB-26): the rolling week, so nothing but the chain.
+  z.object({ capability: z.literal('chain_brief'), chainId }).strict(),
 ]);
 
 export type AgentCapabilityRequest = z.infer<typeof agentRequestSchema>;
@@ -90,14 +92,23 @@ export function parseAgentRequest(raw: unknown): ParsedAgentRequest {
    * — which a crafted URL can make any sentence — is not repeated. The
    * message names what the capability does take; the other issues name only
    * HEY's own field names.
+   *
+   * A name that is an identifier is said back (2026-10-18, persona audit PB-27): "an unknown parameter" left the
+   * caller to guess which of its parameters was wrong. A short identifier carries no sentence; anything else is
+   * still "an unknown parameter", as MCP's argument guard says it.
    */
   if (!issue || issue.code === 'unrecognized_keys') {
-    return { ok: false, code: 'invalid_request', message: `${capability}: an unknown parameter. It takes ${takes(capability as AgentCapability)}.` };
+    const keys = issue?.code === 'unrecognized_keys' ? issue.keys : [];
+    const sayable = keys.length > 0 && keys.every((key) => SAYABLE_PARAMETER.test(key));
+    return { ok: false, code: 'invalid_request', message: `${capability}: ${sayable ? `does not take ${keys.join(', ')}` : 'an unknown parameter'}. It takes ${takes(capability as AgentCapability)}.` };
   }
   const field = issue.path.filter((part): part is string | number => typeof part === 'string' || typeof part === 'number').map(String);
   const known = field.length > 0 && KNOWN_PARAMS.has(field[0]!) ? field.join('.') : capability;
   return { ok: false, code: 'invalid_request', message: `${known}: ${issue.message}.` };
 }
+
+/** A parameter name safe to say back: an identifier, short (the MCP argument guard's rule). */
+const SAYABLE_PARAMETER = /^[A-Za-z_][A-Za-z0-9_]{0,39}$/;
 
 const KNOWN_PARAMS: ReadonlySet<string> = new Set(['capability', 'project', 'projects', 'address', 'q', 'days', 'types', 'limit', 'building', 'chainId']);
 
@@ -108,6 +119,7 @@ const TAKES: Readonly<Record<AgentCapability, string>> = {
   verify_project: 'address, project and chainId',
   compare_builders: 'projects and chainId',
   unknowns: 'project, q or address (one of them), and chainId',
+  chain_brief: 'chainId only',
 };
 const takes = (capability: AgentCapability): string => TAKES[capability];
 

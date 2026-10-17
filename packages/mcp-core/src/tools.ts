@@ -43,7 +43,7 @@ export const HEY_MCP_PROFILES = ['full', 'research'] as const;
  * The words now say that instead of promising less than the tool returns.
  */
 export const HEY_MCP_RESEARCH_PROFILE_SCOPE =
-  "builder intelligence first: no market-move, Under the Radar or valuation tool, and the ledger without market events; research_answer still carries the market context of HEY's agent contract (the valuation with its kind, source and reading date, and the market status), labelled context only and never a builder judgement";
+  "builder intelligence first: no market-move, Under the Radar or valuation tool, and the ledger without market events; research_answer still carries the market context of HEY's agent contract (the valuation with its kind, source and reading date, and the market status), labelled context only and never a builder judgement, and one project's Under the Radar state with its Discovery Gap or why it is not measured";
 export type HeyMcpProfile = (typeof HEY_MCP_PROFILES)[number];
 
 /** Where each profile is served, relative to the site's origin. */
@@ -178,7 +178,7 @@ export const HEY_MCP_TOOLS = [
   {
     name: 'research_answer',
     title: 'Research a Robinhood Chain project',
-    summary: 'Is this project still being built, what did it ship, what changed? One bounded answer in HEY’s agent contract (AgentIntelligenceResponse v1) for one of six questions: research a project, what changed, builder status with its evidence, whether a contract belongs to a project, a builder comparison, and what HEY does not know (every coverage dimension’s state).',
+    summary: 'Is this project still being built, what did it ship, what changed? One bounded answer in HEY’s agent contract (AgentIntelligenceResponse v1) for one of seven questions: research a project, what changed, the week on the chain, builder status with its evidence, whether a contract belongs to a project, a builder comparison, and what HEY does not know (every coverage dimension’s state).',
     routes: ['/api/agent/{capability}'],
     replaces: ['compare_projects', 'get_project_coverage'],
     profiles: ['full', 'research'],
@@ -208,7 +208,8 @@ export const HEY_MCP_QUESTIONS = [
     tools: ['research_answer', 'find_projects'],
     research: true,
   },
-  { question: 'What changed on Robinhood Chain today or this week, or on one project?', answer: 'get_changes (or research_answer with what_changed)', tools: ['get_changes', 'research_answer'], research: true },
+  { question: 'What is happening on Robinhood Chain this week, in one answer?', answer: 'research_answer with chain_brief', tools: ['research_answer'], research: true },
+  { question: 'What changed on Robinhood Chain today or this week, or on one project?', answer: 'research_answer with what_changed and building "only" (or get_changes)', tools: ['research_answer', 'get_changes'], research: true },
   { question: 'Which projects are building ahead of their market attention?', answer: 'find_projects with surface under-the-radar or shipping-in-silence', tools: ['find_projects'], research: false },
   { question: 'Who made this contract, and is it a known project’s?', answer: 'get_contract, or research_answer with verify_project', tools: ['get_contract', 'research_answer'], research: true },
   { question: 'What does HEY not know about this project?', answer: 'research_answer with unknowns', tools: ['research_answer'], research: true },
@@ -321,6 +322,7 @@ export const PUBLIC_CHANGE_TYPES = [
   'build.release',
   'build.code_activity',
   'build.ship',
+  'build.owner_update',
   'build.status_changed',
   'build.dormant',
   'build.resumed',

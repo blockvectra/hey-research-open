@@ -327,7 +327,11 @@ export type HeyProjectDetail = HeyProject & {
   isClaimed: boolean;
   submitted: boolean;
   narratives: { slug: string; name: string; isPrimary: boolean }[];
-  sources: { url: string; sourceType: string; isVerified: boolean; confidence: string; contextOnly: boolean; contextReason?: string }[];
+  /**
+   * `id` is the source's evidence id, `source:<uuid>` (2026-10-18, additive); `contextWords`, on a context-only
+   * source, says in one sentence why it is held and what would make it count.
+   */
+  sources: { id: string; url: string; sourceType: string; isVerified: boolean; confidence: string; contextOnly: boolean; contextReason?: string; contextWords?: string }[];
   market?: {
     /** The reading's valuation; `valuationKind` says which measure (2026-09-26). */
     marketCapUsd?: number;
@@ -650,7 +654,29 @@ export type HeyTokenLookup = {
    * Robinhood's factory — never any project's token. Present only with `status: 'unknown'`.
    */
   issuer?: { issuerName: string; kind: string; symbol: string | null; sentence: string };
+  /** Additive (2026-10-18): published projects carrying this token's name or ticker on another contract. With `status: 'unknown'` only. */
+  publishedNamesakes?: HeyPublishedNamesakes;
   disclaimer: string;
+};
+
+/**
+ * Published projects that carry an unpublished token's name or ticker on another contract (2026-10-18, additive).
+ * Facts only: each project's own tracked contract, what it shares, and whether its address ends in the same four
+ * characters — never which token is real. Present only when HEY holds a name or a ticker for the token; `total: 0`
+ * is a reading of HEY's catalogue; `line` is the one sentence every HEY surface prints, beside a namesake only.
+ */
+export type HeyPublishedNamesakes = {
+  total: number;
+  items: {
+    slug: string;
+    name: string;
+    symbol: string | null;
+    contractAddress: string;
+    shares: 'name' | 'ticker' | 'name_and_ticker';
+    sharesAddressEnding: boolean;
+    url: string;
+  }[];
+  line?: string;
 };
 
 /** `GET /api/v1/scan?chain=&token=`: the partner card. `found: false` means print nothing rather than guess. */
@@ -675,6 +701,8 @@ export type HeyScanCard =
       indexed?: boolean;
       research_state?: 'not_researched' | 'not_published' | 'not_indexed';
       launched_via?: string;
+      /** Additive (2026-10-18), beside `scan_url` only: published projects carrying this token's name or ticker on another contract. */
+      publishedNamesakes?: HeyPublishedNamesakes;
       disclaimer: string;
     }
   | {
@@ -818,7 +846,21 @@ export type HeyProjectIntelligence = {
 
 /* ----------------------------------------------------------------- queries */
 
-/** The activity surfaces the site itself offers, as `tab`. */
+/**
+ * The activity surfaces the site itself offers, as `tab` (each value's meaning is the OpenAPI `tab`
+ * parameter's and the API changelog's at heyresearch.xyz/developers/changelog):
+ *
+ * - `building-with-token`: shipping, active or resumed, with a tracked token whose market is live and was read in the last 7 days.
+ * - `still-building`: holds Still Building. Robinhood Chain builders only.
+ * - `under-the-radar`: holds Under the Radar. Robinhood Chain builders only.
+ * - `shipping-now`: status SHIPPING. Robinhood Chain builders only.
+ * - `most-active`: shipping, active or resumed, by Build Momentum. Robinhood Chain builders only.
+ * - `new-builders`: published on HEY in the last 7 days with a builder source HEY reads and at least one counted ship.
+ *   **Changed 2026-10-17** (0.3.3): before, every page published in the window — now `new-on-hey`.
+ * - `new-on-hey`: every project published on HEY in the last 7 days, builder or not (added 2026-10-17).
+ * - `back-from-dormancy`: status RESUMED. Robinhood Chain builders only.
+ * - `utility`: kind UTILITY, INFRASTRUCTURE, APPLICATION or RWA. `memes`: kind MEME.
+ */
 export type HeyProjectSurface =
   | 'building-with-token'
   | 'still-building'
@@ -838,7 +880,12 @@ export type HeyCardFact = 'token' | 'x' | 'marketCap' | 'launchpad' | 'liveMarke
 
 export type HeyLaunchStage = 'curve' | 'graduated' | 'dex';
 
-/** `GET /api/projects`: unknown values are dropped by the API, and the echoed `query` shows what was understood. */
+/**
+ * `GET /api/projects`. A value a parameter does not read (`tab=new`, `sort=byPrice`) is refused with a 400
+ * `invalid_parameter` naming the allowed values — `HeyApiError` with `apiCode: 'invalid_parameter'` — never
+ * dropped (since 2026-10-02; this comment said otherwise until 0.3.3). A parameter the listing does not read
+ * at all is named back in `ignoredParameters`, and the echoed `query` shows what was understood.
+ */
 export type HeyProjectsQuery = {
   /** Free text — name, ticker or contract prefix; under two characters is no query. */
   q?: string;
@@ -901,7 +948,9 @@ export type HeyShipsQuery = {
  * Why a project has no Discovery Gap (2026-09-30): it is not measured, and
  * this says why — never a zero. `market_too_thin`: the tracked token's market
  * is not active (low liquidity, no trades, insufficient data) or is only a
- * launch curve, so a gap would measure the thin market, not the building.
+ * launch curve, so a gap would measure the thin market, not the building —
+ * and since hbm-v31 (2026-10-18) also an active market whose reading carries
+ * a 24-hour volume below $1,000.
  */
 export type HeyDiscoveryGapWithheld =
   | 'no_token'
@@ -941,7 +990,9 @@ export type HeyStillBuildingWithheld =
   | 'activity_unknown'
   | 'not_scored'
   /** 2026-10-16 (additive): a measured market with no plausible reading old enough to be a drawdown's high yet. */
-  | 'no_tracked_high';
+  | 'no_tracked_high'
+  /** 2026-10-18 (hbm-v31, additive): every repository, changelog and feed HEY reads the project's building from is unavailable (a repository answering 404). */
+  | 'builder_sources_unavailable';
 
 /**
  * Still Building as three states (2026-09-30), beside the v1 boolean:

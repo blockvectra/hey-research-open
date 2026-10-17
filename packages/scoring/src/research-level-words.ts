@@ -26,6 +26,25 @@ export function researchLevelWords(level: string | null | undefined): { label: s
 }
 
 /**
+ * The RESEARCHED level on a page HEY reads no builder source for (persona
+ * audit PB-4, 2026-10-18): /project/bv7x wore a blue capitalised
+ * "RESEARCHED" pill styled like Verified Builder, directly above "Token
+ * unverified" and "No builder source linked", and a reader from X took it for
+ * "HEY checked this and it's OK". There the level says what it is — a profile
+ * filled from public sources — as quiet text, never a badge.
+ */
+export const RESEARCHED_NO_BUILDER_SOURCE_WORDS = {
+  label: 'Profile from public sources',
+  help: 'HEY filled this profile from public sources and reads no builder source for it yet, so the level says nothing about building, the token or whether the project can be trusted.',
+} as const;
+
+/** The level's words for one page: the RESEARCHED level without a builder source HEY reads gets its own; every other is `researchLevelWords`. */
+export function researchLevelWordsFor(level: string | null | undefined, hasBuilderSource: boolean | undefined): { label: string; help: string; quiet: boolean } {
+  if (level === 'RESEARCHED' && hasBuilderSource === false) return { ...RESEARCHED_NO_BUILDER_SOURCE_WORDS, quiet: true };
+  return { ...researchLevelWords(level), quiet: false };
+}
+
+/**
  * The build answer when HEY has not read a project's building sources yet,
  * worded by its research level:
  *

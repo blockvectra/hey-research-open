@@ -71,4 +71,17 @@ describe('peerContextLines', () => {
     expect(lines.join('\n')).not.toMatch(/DERIVED Build Momentum/);
     expect(lines.join('\n')).not.toContain('not measured for this project, so not compared: Build Momentum');
   });
+
+  it('never prints a second Build Momentum: no comparison is an unknown comparison, and an earlier run is named (persona audit PB-20)', () => {
+    const few = dimension({ metric: 'build_momentum', label: 'Build Momentum', value: 45, cohortSize: 2, median: null, range: null, statsReason: 'not_enough_comparable_projects', comparison: null, line: 'Build Momentum 45 — not enough comparable projects (2 measured RWA projects; 8 needed).' });
+    const lines = peerContextLines(context({ dimensions: [few] }), { buildMomentum: 43.1 }).join('\n');
+    expect(lines).toContain('- UNKNOWN peer comparison, not enough comparable projects in the cohort: Build Momentum (2 measured; 8 needed).');
+    expect(lines).not.toMatch(/UNKNOWN Build Momentum/);
+    expect(lines).not.toContain('45');
+    // A compared value the daily run read before the current score: whose reading it is, and the current one.
+    const compared = dimension({ metric: 'build_momentum', label: 'Build Momentum', value: 44.7, line: 'Build Momentum 44.7 — above the median (30) of 9 researched DEX projects.' });
+    const text = peerContextLines(context({ dimensions: [compared] }), { buildMomentum: 43.1 }).join('\n');
+    expect(text).toContain("- DERIVED Build Momentum 44.7 — above the median (30) of 9 researched DEX projects. (the peer run's reading of 2026-09-26 02:00 UTC; the current Build Momentum is 43.1)");
+    expect(peerContextLines(context({ dimensions: [compared] }), { buildMomentum: 44.7 }).join('\n')).not.toContain("peer run's reading");
+  });
 });

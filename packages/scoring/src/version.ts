@@ -405,7 +405,35 @@
  *   freshness Under the Radar and Still Building already required; the market
  *   cohort still keeps readings up to seven days for the others' percentiles.
  */
-export const SCORING_VERSION = 'hbm-v30' as const;
+/*
+ * hbm-v31 (2026-10-18, founder delegation "repair semua sekali", persona
+ * audit PA-17): no weight, threshold or Build Momentum formula changes. Three
+ * rules only withhold, never award:
+ * - a fresh market reading whose measured 24-hour volume is below $1,000
+ *   (`DISCOVERY_GAP.minVolume24hUsd`, `marketVolumeTooThin`) is not a measured
+ *   market: no Discovery Gap, no Under the Radar and no Still Building, each
+ *   withheld as `market_too_thin`, as a market that is not ACTIVE_MARKET is
+ *   (hbm-v18, hbm-v19). The volume read is the one on the reading the gap is
+ *   taken from, persisted as `components.marketVolumeThin`; no volume figure
+ *   is unknown and never trips it. The market stays in the population and
+ *   keeps its percentile. Two of the three Under the Radar projects on
+ *   2026-10-18 (verge-snowy-x402, $27.51 of volume; fable, $162) sat on
+ *   graduated Pons pools ACTIVE_MARKET under the 2026-10-16 graduated-pool
+ *   rule, their liquidity above their valuation, and both held Still
+ *   Building.
+ * - Still Building is not measured, never NOT_HELD, when the Discovery Gap is
+ *   withheld as `token_not_the_projects` because the tracked token is
+ *   UNVERIFIED and another published project's token carries its ticker
+ *   (`STILL_BUILDING.withholdContestedUnverifiedTicker`; hbm-v30 withheld the
+ *   gap only);
+ * - and when every builder source of the project — each own repository,
+ *   changelog and feed the refresh reads — is unavailable
+ *   (`STILL_BUILDING.withholdUnavailableBuilderSources`,
+ *   `builder_sources_unavailable`, `builderSourcesUnavailableSql`). zip-c00899
+ *   held Still Building on 2026-10-18 with its one repository answering 404
+ *   and its gap withheld as not the project's token.
+ */
+export const SCORING_VERSION = 'hbm-v31' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28', 'hbm-v29', 'hbm-v30'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28', 'hbm-v29', 'hbm-v30', 'hbm-v31'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

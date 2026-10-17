@@ -148,7 +148,7 @@ export const snapshot: HeyProjectSnapshot = {
         label: 'Product usage',
         tag: 'FACT',
         // The snapshot's own `usage` below, restated: one object, one reading.
-        text: "4 of 4 watched contracts active · 1,842 calls in 7 days (532 calls to the contracts' own functions).",
+        text: "4 of 4 watched contracts active · 1,842 calls in 7 days (532 calls to the contracts' own functions; 1,310 ERC-20 token transfers and approvals, which trading alone produces).",
         evidence: [
           {
             id: 'method:5b2d0000-0000-0000-0000-000000000001',
@@ -484,7 +484,7 @@ export const contract: HeyContract = {
   token: { symbol: 'AOS' },
   watched: true,
   creation: { tx: '0xtx', at: '2026-08-01T12:00:00.000Z', block: 1_200_000, precision: 'EXACT' },
-  deployer: { address: '0xdep0000000000000000000000000000000000001', sharedAcrossTrackedProjects: true, otherProjectsCount: 12 },
+  deployer: { address: '0xdep0000000000000000000000000000000000001', sharedAcrossTrackedProjects: true, otherProjectsCount: 12, serialLauncher: { measured: false } },
   verifiedSource: {
     state: 'MEASURED',
     verified: true,
@@ -595,6 +595,7 @@ export const chain: HeyChain = {
   today: '2026-09-26',
   volumeNote: 'Volume counts decoded DEX trades against the known quote assets.',
   launchesNote: 'launches counts tokens on the day HEY first recorded them.',
+  shipsNote: 'ships counts ship records of Robinhood Chain builders that are building evidence a public source corroborates, each record once.',
   disclaimer: DISCLAIMER,
 };
 

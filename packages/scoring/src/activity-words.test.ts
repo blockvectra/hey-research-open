@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { ACTIVITY_NOT_MEASURABLE, ACTIVITY_STATUS_WORDS, activityPresentation, activityStatusLabel, NO_BUILDER_SIGNAL, projectActivityWords, unknownActivityReason } from './activity-words';
+import { ACTIVITY_NOT_MEASURABLE, ACTIVITY_STATUS_WORDS, activityPresentation, BUILDER_SOURCE_HELD, activityStatusLabel, NO_BUILDER_SIGNAL, projectActivityWords, unknownActivityReason } from './activity-words';
 
 describe('activity words: one table for the chip, the summary and the API (2026-10-01)', () => {
   it('says why an UNKNOWN is unknown from three facts', () => {
@@ -29,5 +29,17 @@ describe('activity words: one table for the chip, the summary and the API (2026-
     const all = [...Object.values(ACTIVITY_STATUS_WORDS), NO_BUILDER_SIGNAL, ACTIVITY_NOT_MEASURABLE].map((words) => `${words.label} ${words.help}`).join(' ');
     // "Dormant … Not the same as abandoned." is the one place the word appears, to deny it.
     expect(all).not.toMatch(/\b(dead|rug|scam|buy|sell)\b/i);
+  });
+});
+
+/* A builder source held as context is held, not missing (persona audit PB-11, 2026-10-18). */
+describe('held_as_context', () => {
+  it('names a source HEY holds only as context, and never outranks a ship on record or a readable source', () => {
+    expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: false, heldBuilderSource: true })).toBe('held_as_context');
+    expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: false, heldBuilderSource: true, lastMeaningfulShipAt: new Date() })).toBe('no_readable_source');
+    expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: true, heldBuilderSource: true })).toBeNull();
+    expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: false })).toBe('no_builder_signal');
+    expect(activityPresentation('UNKNOWN', 'held_as_context')).toEqual(BUILDER_SOURCE_HELD);
+    expect(`${BUILDER_SOURCE_HELD.label} ${BUILDER_SOURCE_HELD.help}`).not.toMatch(/\b(dead|rug|scam|buy|sell)\b/i);
   });
 });

@@ -24,6 +24,7 @@ export * from './compose/status';
 export * from './compose/verify';
 export * from './compose/compare';
 export * from './compose/unknowns';
+export * from './compose/brief';
 export * from './adapters/text';
 export * from './adapters/provider';
 export * from './adapters/robinhood';

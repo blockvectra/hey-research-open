@@ -76,6 +76,7 @@ export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<HeyStillBuildingWith
   activity_unknown: 'Not measured — activity unknown',
   not_scored: 'Not measured — not scored yet',
   no_tracked_high: 'Not measured — no tracked high yet',
+  builder_sources_unavailable: 'Not measured — builder sources unavailable',
 };
 
 /**
@@ -140,6 +141,9 @@ export const REASON_WORDS: Readonly<Record<string, string>> = {
   no_api_description_linked: 'the official site links no API description (HEY reads one only when linked)',
   api_description_disallowed: 'the site asks crawlers not to read its API description',
   no_baseline_yet: 'one reading so far: the first read is a baseline, never a change',
+  docs_link_found_not_added_yet: 'a docs link found on the official site, added as a source on the next pass',
+  docs_link_held_site_not_tied: "a docs link found on the site, held until the site is tied to the project",
+  docs_link_held: 'a docs link found on the site, held as context: nothing yet ties it to the project',
   meme_no_docs_expected: 'a meme token: no docs expected',
   site_disallows_reading: "the site's robots.txt asks HEY not to read it",
   no_official_site: 'no corroborated official site',
@@ -298,7 +302,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   lines.push(...(s.usage ? usageLines(s.usage) : ["- UNKNOWN usage: HEY could not read this project's usage just now."]));
 
   lines.push('', '## Peer context (one dimension at a time, never a score)');
-  lines.push(...peerContextLines(s.peerContext));
+  lines.push(...peerContextLines(s.peerContext, { buildMomentum: s.build.buildMomentum }));
 
   lines.push('', '## Verification and sources');
   const v = s.verification;
@@ -326,7 +330,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
       else {
         // An event id is not an evidence id (machine rule 5): get_evidence opens the event's first typed evidence id, the one its receipt link names.
         const evidenceId = c.evidence.map((entry) => entry.id).find(looksLikeEvidenceId);
-        lines.push(`- ${c.precision} ${atPrecision(c.occurredAt, c.precision, c.detectedAt)} · ${c.type}: ${summaryWords(c.id, c.summary, c.type)} (event ${c.id}; ${evidenceId ? `evidence ${evidenceId}` : 'no evidence id to open'})`);
+        lines.push(`- ${c.precision} ${atPrecision(c.occurredAt, c.precision, c.detectedAt)} · ${c.type}: ${summaryWords(c.id, c.summaryCurrent ?? c.summary, c.type)} (event ${c.id}; ${evidenceId ? `evidence ${evidenceId}` : 'no evidence id to open'})`);
       }
     }
     lines.push(`  Open an evidence id with get_evidence id=<evidence id>; an event id is not one. More: get_changes with project=${i.slug}, or ${s.latestChanges.url}`);
@@ -548,6 +552,8 @@ function deployerWords(d: NonNullable<HeyContract['deployer']>): string {
   const n = d.otherProjectsCount;
   const others = `${n} other tracked ${n === 1 ? 'project' : 'projects'}`;
   if (d.sharedAcrossTrackedProjects) return ` — HEY marks this deployer shared: it also deployed the token of ${others} (a launch service, not one team; none of its later deployments is credited to a project)`;
+  // HEY's serial-launcher flag (2026-10-18): the rule that holds its follow-ups as context, said as the rule, never a label for a person.
+  if (d.serialLauncher?.measured && d.serialLauncher.value) return ' — HEY marks this deployer a serial launcher: it created 100 or more contracts in 90 days, so none of its later deployments is credited to a project';
   return n > 0 ? ` — the same account also deployed the token of ${others}` : '';
 }
 
@@ -717,7 +723,9 @@ export function renderDiff(d: HeyDiff): string {
   lines.push('', '## Changes recorded in the window (by the time HEY recorded them)');
   if (d.changes.state === 'UNAVAILABLE') lines.push(`- UNKNOWN: ${d.changes.reason}`);
   else {
-    lines.push(`- FACT ${d.changes.total} change${d.changes.total === 1 ? '' : 's'}${d.changes.truncated ? ' (counted up to the cap; more exist)' : ''}${d.changes.partial && d.changes.collectedFrom ? ` (partial: the ledger began recording on ${d.changes.collectedFrom.slice(0, 10)}, so only from then)` : ''}: ${Object.entries(d.changes.byType).map(([type, n]) => `${type} ${n}`).join(', ') || 'none'}`);
+    // One event, one count (PA-5): the revisions HEY recorded are said beside the events, never as more changes.
+    const revised = d.changes.revisions !== undefined && d.changes.revisions > d.changes.total ? ` (${d.changes.revisions} revisions)` : '';
+    lines.push(`- FACT ${d.changes.total} event${d.changes.total === 1 ? '' : 's'}${revised}${d.changes.truncated ? ' (counted up to the cap; more exist)' : ''}${d.changes.partial && d.changes.collectedFrom ? ` (partial: the ledger began recording on ${d.changes.collectedFrom.slice(0, 10)}, so only from then)` : ''}: ${Object.entries(d.changes.byType).map(([type, n]) => `${type} ${n}`).join(', ') || 'none'}`);
     lines.push(`  Read them: get_changes with project=${d.project.slug} and since/until, or ${d.changes.url}`);
   }
   lines.push('', 'Two readings side by side, never a cause.', d.method, TAG_LEGEND, d.disclaimer);
@@ -748,17 +756,30 @@ export function renderBuildMarket(page: HeyBuildMarket): string {
  * cohort is too small says so; nothing is combined into one number, and a
  * position against a median is never a judgement.
  */
-export function peerContextLines(p: HeyPeerContext | undefined): string[] {
+export function peerContextLines(p: HeyPeerContext | undefined, current: { buildMomentum?: number | undefined } = {}): string[] {
   if (!p) return ["- UNKNOWN peer context: HEY could not read it just now."];
   if (p.state === 'NOT_COMPUTED') return [`- UNKNOWN peer context (${p.reason ?? 'not_computed_yet'}): the daily run has not placed this project yet.`];
   if (p.state === 'NO_COHORT' || !p.cohort) return [`- NOT APPLICABLE peer context (${p.reason ?? 'no_cohort'}): no comparable group of the same type, so nothing is compared.`];
   // A run the daily job has not replaced says so, with its date (2026-09-28): an older context never passes for today's.
   const stale = p.freshness?.state === 'STALE' ? ` STALE: not recomputed in ${p.freshness.staleAfterHours} hours; as of ${p.freshness.asOf.slice(0, 10)}.` : '';
   const lines = [`- DERIVED cohort: ${quoteExternal(p.cohort.label, 'narrative')} (${p.rulesVersion}; a median from ${p.minimums.median} measured projects, a percentile from ${p.minimums.percentile}; ${p.computedAt ? `computed ${p.computedAt.slice(0, 10)}` : 'not dated'}).${stale}`];
+  /*
+   * Tagged by what is unknown (2026-10-18, persona audit PB-20): a measured value with no comparison is not an
+   * unknown value, so it is never "UNKNOWN Build Momentum 45" beside "DERIVED Build Momentum 43.1"; the comparison
+   * is what is not held, said from the structured fields with no figure. A compared Build Momentum the daily run
+   * read before the current score says whose reading it is, so two figures never pass for one.
+   */
+  const notCompared: string[] = [];
   for (const d of p.dimensions) {
     if (d.state !== 'MEASURED') continue;
-    lines.push(`- ${d.median === null ? 'UNKNOWN' : 'DERIVED'} ${derivedWords(d.line)}`);
+    if (d.median === null) {
+      notCompared.push(`${d.label} (${d.cohortSize.toLocaleString('en-US')} measured; ${p.minimums.median} needed)`);
+      continue;
+    }
+    const earlier = d.metric === 'build_momentum' && current.buildMomentum !== undefined && d.value !== null && Math.abs(d.value - current.buildMomentum) >= 0.05;
+    lines.push(`- DERIVED ${derivedWords(d.line)}${earlier ? ` (the peer run's reading${p.computedAt ? ` of ${p.computedAt.slice(0, 16).replace('T', ' ')} UTC` : ''}; the current Build Momentum is ${current.buildMomentum})` : ''}`);
   }
+  if (notCompared.length > 0) lines.push(`- UNKNOWN peer comparison, not enough comparable projects in the cohort: ${notCompared.join(', ')}. The values themselves are in the lines above, not compared.`);
   const recomputing = p.dimensions.filter((d) => d.state !== 'MEASURED' && d.reason === 'recomputing_after_scoring_change');
   for (const d of recomputing) lines.push(`- UNKNOWN ${derivedWords(d.line)}`);
   const unmeasured = p.dimensions.filter((d) => d.state !== 'MEASURED' && !recomputing.includes(d)).map((d) => d.label);
@@ -782,8 +803,10 @@ export function usageLines(u: HeyUsageSummary): string[] {
   const partial = u.daysCovered !== undefined && u.daysCovered < u.window.days;
   const span = partial ? ` over the ${u.daysCovered} of ${u.window.days} days HEY holds (${pretty(u.reason)}; the rest unknown, not zero)` : ` in ${u.window.days} d`;
   const contracts = u.activeContracts === undefined ? '' : `${n(u.activeContracts)} active of ${n(u.watchedContracts)} watched contract${u.watchedContracts === 1 ? '' : 's'} · `;
+  // The API's caveat, by share (2026-10-18): ERC-20 transfers and approvals are what trading alone produces, never product use.
+  const tradingCaveat = (u.erc20Calls ?? 0) > 0 ? ' ERC-20 transfers and approvals are what trading alone produces; by themselves they are not use of the product.' : '';
   lines.push(
-    `- FACT ${contracts}${n(u.calls)} calls${span} (${u.window.from} to ${u.window.to}); ${n(u.erc20Calls ?? 0)} of them the ERC-20 surface, ${n(u.otherCalls ?? 0)} the contracts' own functions.${u.state === 'STALE' ? ' STALE: the rollup is behind.' : ''}`,
+    `- FACT ${contracts}${n(u.calls)} calls${span} (${u.window.from} to ${u.window.to}); ${n(u.erc20Calls ?? 0)} of them the ERC-20 surface, ${n(u.otherCalls ?? 0)} the contracts' own functions.${tradingCaveat}${u.state === 'STALE' ? ' STALE: the rollup is behind.' : ''}`,
   );
   const callers = u.callerAddresses;
   if (callers) {

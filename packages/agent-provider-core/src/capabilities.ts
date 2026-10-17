@@ -1,7 +1,7 @@
 /**
  * The six agent capabilities (2026-09-30, Robinhood Agent Apps readiness §2).
  *
- * HEY's agent product is small on purpose: six questions an agent working
+ * HEY's agent product is small on purpose: six questions (seven since chain_brief, 2026-10-18) an agent working
  * for a person can ask about Robinhood Chain projects, each answered from
  * one or two canonical reads HEY already serves. Nothing here is a new
  * measurement; each capability names the canonical reads it restates.
@@ -10,7 +10,11 @@
  * MCP tool (`research_answer`), the A2A skills (the `contract` option) and
  * the docs. A test holds every surface to this list.
  */
-export const AGENT_CAPABILITIES = ['research_project', 'what_changed', 'builder_status', 'verify_project', 'compare_builders', 'unknowns'] as const;
+/*
+ * chain_brief (2026-10-18, persona audit PB-26 / AG-6): a seventh, additive — "what is happening on Robinhood
+ * Chain?" in one call, restating `/api/this-week` and the building changes of the same window.
+ */
+export const AGENT_CAPABILITIES = ['research_project', 'what_changed', 'builder_status', 'verify_project', 'compare_builders', 'unknowns', 'chain_brief'] as const;
 export type AgentCapability = (typeof AGENT_CAPABILITIES)[number];
 
 export const isAgentCapability = (value: string): value is AgentCapability => (AGENT_CAPABILITIES as readonly string[]).includes(value);
@@ -64,7 +68,7 @@ export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabi
   what_changed: {
     id: 'what_changed',
     question: 'What changed with this project, or on Robinhood Chain, in the last N days?',
-    returns: 'Canonical change-ledger events in the window, newest first, with the true total by type and how many count as building (led by those), each event with its own time, precision, when HEY knew and its evidence.',
+    returns: 'Canonical change-ledger events in the window, with the true total by type and how many count as building; the events shown lead with those that count as building, each group newest first, each event with its own time, precision, when HEY knew and its evidence.',
     params: [
       { name: 'project', required: false, description: 'A project slug; omit for the whole chain (projects building on Robinhood Chain).' },
       { name: 'days', required: false, description: '1–30; default 7. The window is on when the event happened, or when HEY detected it where no source dates it.' },
@@ -121,5 +125,14 @@ export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabi
     canonicalReads: ['/api/projects/{slug}/coverage', '/api/projects/{slug}/snapshot'],
     a2aSkill: 'check_project_coverage',
     never: 'Negative evidence: a gap is what HEY does not hold, never a finding about the project.',
+  },
+  chain_brief: {
+    id: 'chain_brief',
+    question: 'What is happening on Robinhood Chain this week?',
+    returns: 'The rolling week as /api/this-week counts it — ships and the projects behind them, builders newly verified, status recoveries, Still Building and Under the Radar held today, each with its method — and the newest changes that count as building in the same window (what each code week shipped), with the true total and where to read on.',
+    params: [CHAIN],
+    canonicalReads: ['/api/this-week', '/api/changes'],
+    a2aSkill: 'what_changed',
+    never: 'A market reading, a ranking or a pick: a count of what HEY recorded, never a view on any token.',
   },
 };

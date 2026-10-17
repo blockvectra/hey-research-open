@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { DISCOVERY_GAP } from './config';
 import { DISCOVERY_GAP_WITHHELD_REASONS, DISCOVERY_GAP_WITHHELD_WORDS, discoveryGapWithheldReason } from './discovery-gap';
-import { discoveryGapMarketMeasurable, TOKEN_MARKET_REASONS, type TokenMarketStatusValue } from './token-market';
+import { discoveryGapMarketMeasurable, marketVolumeTooThin, TOKEN_MARKET_REASONS, type TokenMarketStatusValue } from './token-market';
 import { SCORING_VERSION, SCORING_VERSIONS } from './version';
 
 /*
@@ -46,5 +46,18 @@ describe('Discovery Gap on thin markets', () => {
     expect(SCORING_VERSIONS.indexOf(SCORING_VERSION)).toBeGreaterThanOrEqual(SCORING_VERSIONS.indexOf('hbm-v18'));
     // The token market vocabulary is untouched by it: the rule reads the status, never a reason of its own.
     expect(TOKEN_MARKET_REASONS).not.toContain('market_too_thin');
+  });
+
+  /*
+   * hbm-v31 (2026-10-18, founder delegation "repair semua sekali", PA-17): a
+   * market that barely trades is not measured. verge-snowy-x402 ($27.51) and
+   * fable ($162) were Under the Radar on graduated Pons pools.
+   */
+  it('reads a measured 24h volume below $1,000 as too thin, and an unknown volume as nothing', () => {
+    expect(DISCOVERY_GAP.minVolume24hUsd).toBe(1_000);
+    for (const volume of [0, 27.51, 162, 999.99]) expect(marketVolumeTooThin(volume), String(volume)).toBe(true);
+    for (const volume of [1_000, 1_000.01, 250_000]) expect(marketVolumeTooThin(volume), String(volume)).toBe(false);
+    // Unknown is never a trip wire.
+    for (const volume of [null, undefined, Number.NaN, Number.POSITIVE_INFINITY]) expect(marketVolumeTooThin(volume), String(volume)).toBe(false);
   });
 });

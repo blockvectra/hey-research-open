@@ -215,6 +215,26 @@ describe('typed output on every tool (structuredContent + outputSchema)', () => 
     expect(textOf(result)).toContain('# HEY research_project');
   });
 
+  it('detail compact leaves the data out of structuredContent and says where the whole is; the default stays whole (persona audit PB-24)', async () => {
+    const { client } = await connect();
+    const whole = await client.callTool({ name: 'research_answer', arguments: { capability: 'research_project', project: 'agentos' } });
+    const compact = await client.callTool({ name: 'research_answer', arguments: { capability: 'research_project', project: 'agentos', detail: 'compact' } });
+    expect(compact.isError).toBeFalsy();
+    const lean = compact.structuredContent as Record<string, unknown> & { links: { self: string }; claims: unknown[]; evidence: unknown[] };
+    expect(lean).not.toHaveProperty('data');
+    expect(lean.dataOmitted).toBe('compact');
+    expect(lean.full).toBe(lean.links.self);
+    // Every claim, unknown and evidence id the whole answer holds.
+    const full = whole.structuredContent as { claims: unknown[]; evidence: unknown[]; unknowns: unknown[]; data: unknown };
+    expect(lean.claims).toEqual(full.claims);
+    expect(lean.evidence).toEqual(full.evidence);
+    expect(lean.unknowns).toEqual(full.unknowns);
+    expect(full.data).toBeTruthy();
+    expect(JSON.stringify(lean).length).toBeLessThan(JSON.stringify(full).length);
+    // The same summary text either way.
+    expect(textOf(compact)).toBe(textOf(whole));
+  });
+
   it.each([
     ['find_projects', { query: AOS }, '/api/token/4663/'],
     ['get_project_snapshot', { slug: 'agentos' }, '/api/projects/agentos/snapshot'],

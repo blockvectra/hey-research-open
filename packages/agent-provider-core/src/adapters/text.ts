@@ -1,4 +1,4 @@
-import type { AgentChange, AgentClaim, AgentIntelligenceResponse, AgentUnknown } from '../schema';
+import type { AgentChange, AgentClaim, AgentIntelligenceResponse, AgentResearchData, AgentUnknown } from '../schema';
 import { quoteForTransport, QUOTED_TEXT_LEGEND, type AgentText } from '../text';
 
 /**
@@ -33,11 +33,28 @@ function claimLine(claim: AgentClaim): string {
   return `- ${claim.status} ${claim.id}${value}: ${q(claim.statement)}${when}${observed} · freshness ${claim.freshness}${context}${reason}${basis}${evidence}`;
 }
 
+/** What a code week changed (PB-25): "29 commits, e.g. «feat: …»" — the count as HEY holds it, the subjects quoted as a source's words. */
+function codeWords(change: AgentChange): string {
+  const code = change.code;
+  if (!code) return '';
+  const count = code.commits === null ? 'commits not counted' : `${code.commitsAtLeast ? 'at least ' : ''}${code.commits} commit${code.commits === 1 ? '' : 's'}`;
+  const examples = code.highlights.length > 0 ? `, e.g. ${code.highlights.map((highlight) => q(highlight.subject)).join(', ')}` : '';
+  return ` · ${count}${examples}`;
+}
+
 function changeLine(change: AgentChange): string {
   const when = change.occurredAt ? `${day(change.occurredAt)} (${change.precision})` : `HEY saw it ${day(change.detectedAt)} (${change.precision})`;
   const evidence = change.evidence.length > 0 ? ` · evidence ${change.evidence.map((ref) => ref.id).join(', ')}` : '';
   const verification = change.verification === 'SELF_REPORTED' ? ' · self-reported by the project, not verified' : change.verification === 'DISPUTED' ? ' · disputed' : '';
-  return `- ${when} ${change.status} ${change.type} — ${change.project.slug}: ${q(change.summary)}${change.countsAsBuilding ? ' · counts as building' : ''}${verification}${evidence}`;
+  return `- ${when} ${change.status} ${change.type} — ${change.project.slug}: ${q(change.summary)}${codeWords(change)}${change.countsAsBuilding ? ' · counts as building' : ''}${verification}${evidence}`;
+}
+
+/** Under the Radar beside Still Building (PA-6): its state, the gap or why it is withheld; nothing when the answer does not carry it. */
+function underTheRadarWords(state: AgentResearchData['builderState']): string {
+  const radar = state.underTheRadar;
+  if (!radar) return '';
+  const gap = typeof state.discoveryGap === 'number' ? `, Discovery Gap ${state.discoveryGap}` : state.discoveryGapWithheld ? `, Discovery Gap not measured (${state.discoveryGapWithheld})` : '';
+  return `; Under the Radar ${radar.state}${radar.state === 'NOT_MEASURED' && radar.reason ? ` (${radar.reason})` : ''}${gap}`;
 }
 
 function unknownLine(unknown: AgentUnknown): string {
@@ -60,7 +77,7 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
       if (summary) return d.latestMeaningfulChange ? ['Latest meaningful change:', changeLine(d.latestMeaningfulChange)] : [];
       const lines = [
         `Identity: ${d.identity.slug} — ${q(d.identity.name)}${d.identity.symbol ? ` (${q(d.identity.symbol)})` : ''}; kind ${d.identity.projectKind}; research level ${d.identity.researchLevel}; first recorded by HEY ${day(d.identity.firstRecordedByHeyAt)}.`,
-        `Builder state: ${d.builderState.activityStatus}; last meaningful ship ${d.builderState.lastMeaningfulShipAt ? day(d.builderState.lastMeaningfulShipAt) : 'none recorded or not measured'}; meaningful events in 30 days ${d.builderState.meaningfulEvents30d ?? 'not measured'}; Build Momentum ${d.builderState.buildMomentum ?? 'not measured'}; Still Building ${d.builderState.stillBuildingState ?? (d.builderState.stillBuilding ? 'HELD' : 'no')}${d.builderState.scoringVersion ? ` (${d.builderState.scoringVersion})` : ''}.`,
+        `Builder state: ${d.builderState.activityStatus}; last meaningful ship ${d.builderState.lastMeaningfulShipAt ? day(d.builderState.lastMeaningfulShipAt) : 'none recorded or not measured'}; meaningful events in 30 days ${d.builderState.meaningfulEvents30d ?? 'not measured'}; Build Momentum ${d.builderState.buildMomentum ?? 'not measured'}; Still Building ${d.builderState.stillBuildingState ?? (d.builderState.stillBuilding ? 'HELD' : 'no')}${underTheRadarWords(d.builderState)}${d.builderState.scoringVersion ? ` (${d.builderState.scoringVersion})` : ''}.`,
         `Contract identity: ${d.contractIdentity.token ? `token ${d.contractIdentity.token.address} on chain ${d.contractIdentity.token.chainId}, verification ${d.contractIdentity.token.verification ?? 'unknown'}${d.contractIdentity.token.verificationReason ? ` (${d.contractIdentity.token.verificationReason})` : ''}` : 'no token'}; owner verified ${d.contractIdentity.ownerVerified ? 'yes' : 'no'}.`,
       ];
       if (d.latestMeaningfulChange) lines.push('Latest meaningful change:', changeLine(d.latestMeaningfulChange));
@@ -115,6 +132,17 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
         ...(d.missing.length > 0 ? [`Not found: ${d.missing.join(', ')}.`] : []),
         q(d.method),
         `Not compared: ${d.excludedContext.map((entry) => entry.item).join(', ')}.`,
+      ];
+    }
+    case 'chain_brief': {
+      const d = response.data;
+      return [
+        `Window: ${d.window.label} (${day(d.window.from)} to ${day(d.window.to)}).`,
+        `Shipped: ${d.shipped.ships} ships from ${d.shipped.projects} projects (${d.shipped.rule.id}). Newly verified builders: ${d.newlyVerifiedBuilders.total}. Status recoveries: ${d.statusRecoveries.total} of ${d.statusRecoveries.comparable} projects read more than once.`,
+        `Held today: Still Building ${d.stillBuilding.total}; Under the Radar ${d.underTheRadar.total} (strict by design).`,
+        `Building changes: showing ${d.building.shown} of ${d.building.total}, newest first; read further at ${d.building.more}`,
+        ...d.building.items.map(changeLine),
+        `The week: ${d.weekUrl}`,
       ];
     }
     case 'unknowns': {

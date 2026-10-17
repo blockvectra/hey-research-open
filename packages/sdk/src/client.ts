@@ -111,7 +111,53 @@ export type HeyClientOptions = {
    * `.`, `_` and `-`; anything else is ignored by the server. Optional.
    */
   integration?: string;
+  /**
+   * What the client does about a temporary rate limit (2026-10-18, persona
+   * audit PB-31). By default the walks — `pages()`, `items()`, `sync()` —
+   * wait out a 429 by its `retry-after` and pace their pages by the budget
+   * HEY states (`RateLimit-*`); a single call still throws at once.
+   */
+  rateLimit?: HeyRateLimitOptions;
+  /** How the client waits; `setTimeout` by default. Tests pass their own. */
+  sleep?: (ms: number) => Promise<void>;
 };
+
+/**
+ * Waiting out a rate limit (2026-10-18, persona audit PB-31): 94% of the
+ * SDK's requests were refused, nearly all of them 429s from walks that asked
+ * for the next page the moment the last one arrived. A monthly `quota` is
+ * never waited for: it lasts until the month resets.
+ */
+export type HeyRateLimitOptions = {
+  /** `walks` (the default): the walks wait and pace; `always`: every call waits; `never`: nothing waits, as before 0.3.3. */
+  wait?: 'walks' | 'always' | 'never';
+  /** Waits per request before the 429 is thrown; default 3. */
+  maxRetries?: number;
+  /** The longest single wait, in seconds; a `retry-after` beyond it throws at once. Default 60. */
+  maxWaitSeconds?: number;
+};
+
+/** The per-minute budget HEY stated on its last answer (`RateLimit-Limit`, `RateLimit-Policy`, `RateLimit-Remaining`). */
+type StatedBudget = { limit: number; windowSeconds: number; remaining: number | undefined };
+
+/** Without a stated budget, a walk paces by the anonymous policy: 120 a minute. */
+const FALLBACK_PAGE_INTERVAL_MS = 500;
+
+/** Above this share of the bucket left, a walk does not pace at all. */
+const PACE_BELOW_SHARE = 0.1;
+
+/** The budget a response states; undefined when it states none. */
+function statedBudget(headers: Headers | undefined): StatedBudget | undefined {
+  const limit = Number(headers?.get('ratelimit-limit'));
+  if (!Number.isFinite(limit) || limit <= 0) return undefined;
+  const window = /;\s*w=(\d+)/.exec(headers?.get('ratelimit-policy') ?? '');
+  const remaining = headers?.get('ratelimit-remaining');
+  return {
+    limit,
+    windowSeconds: window ? Number(window[1]) : 60,
+    remaining: typeof remaining === 'string' && /^\d+$/.test(remaining) ? Number(remaining) : undefined,
+  };
+}
 
 export type QueryParams = Record<string, string | number | boolean | readonly string[] | undefined>;
 
@@ -175,6 +221,12 @@ export class HeyClient {
   private readonly apiKey: string | undefined;
   private readonly userAgent: string;
   private readonly integration: string | undefined;
+  private readonly wait: 'walks' | 'always' | 'never';
+  private readonly maxRetries: number;
+  private readonly maxWaitSeconds: number;
+  private readonly sleep: (ms: number) => Promise<void>;
+  private budget: StatedBudget | undefined;
+  private lastRequestAt = 0;
 
   constructor(options: HeyClientOptions = {}) {
     this.baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/+$/, '');
@@ -184,6 +236,58 @@ export class HeyClient {
     const prefix = options.userAgent?.trim();
     this.userAgent = prefix ? `${prefix} ${USER_AGENT}` : USER_AGENT;
     this.integration = options.integration?.trim() || undefined;
+    this.wait = options.rateLimit?.wait ?? 'walks';
+    this.maxRetries = Math.max(0, Math.floor(options.rateLimit?.maxRetries ?? 3));
+    this.maxWaitSeconds = Math.max(0, options.rateLimit?.maxWaitSeconds ?? 60);
+    this.sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
+  }
+
+  /**
+   * A call, again after each temporary rate limit (`rate_limited`, never a
+   * monthly `quota`), at most `maxRetries` times, each wait the `retry-after`
+   * HEY sent (one second when it sent none). A wait longer than
+   * `maxWaitSeconds` is not waited: the error is thrown at once.
+   */
+  private async patiently<T>(call: () => Promise<T>): Promise<T> {
+    for (let attempt = 0; ; attempt += 1) {
+      try {
+        return await call();
+      } catch (error) {
+        if (!(error instanceof HeyApiError) || error.code !== 'rate_limited' || attempt >= this.maxRetries) throw error;
+        const seconds = error.retryAfterSeconds ?? 1;
+        if (seconds > this.maxWaitSeconds) throw error;
+        await this.sleep(seconds * 1000);
+      }
+    }
+  }
+
+  /**
+   * One step of a walk: after its first page, paced by the budget HEY stated
+   * (none while more than a tenth of the bucket is left; else the policy's
+   * interval, 500 ms at 120 a minute), and patient with a rate limit unless
+   * `wait` is `never`.
+   */
+  private walker(): <T>(call: () => Promise<T>) => Promise<T> {
+    let first = true;
+    return async <T>(call: () => Promise<T>): Promise<T> => {
+      if (this.wait === 'never') return call();
+      if (!first) {
+        const interval = this.pageInterval();
+        const waited = Date.now() - this.lastRequestAt;
+        if (interval > waited) await this.sleep(interval - waited);
+      }
+      first = false;
+      // Under `always`, `get` is already patient: one set of retries, never one inside another.
+      return this.wait === 'always' ? call() : this.patiently(call);
+    };
+  }
+
+  /** Milliseconds between a walk's pages: none with budget to spare, else the stated policy's interval. */
+  private pageInterval(): number {
+    const budget = this.budget;
+    if (!budget) return FALLBACK_PAGE_INTERVAL_MS;
+    if (budget.remaining !== undefined && budget.remaining > budget.limit * PACE_BELOW_SHARE) return 0;
+    return Math.ceil((budget.windowSeconds * 1000) / budget.limit);
   }
 
   /**
@@ -196,6 +300,10 @@ export class HeyClient {
    * as a query the caller made.
    */
   async get<T>(path: string, params: QueryParams = {}): Promise<T> {
+    return this.wait === 'always' ? this.patiently(() => this.request<T>(path, params)) : this.request<T>(path, params);
+  }
+
+  private async request<T>(path: string, params: QueryParams): Promise<T> {
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === '') continue;
@@ -232,14 +340,23 @@ export class HeyClient {
 
     if (!response.ok) {
       const body: unknown = await response.json().catch(() => undefined);
-      throw errorFromResponse({ status: response.status, body, retryAfter: response.headers?.get('retry-after') ?? null, baseUrl: this.baseUrl });
+      throw errorFromResponse({
+        status: response.status,
+        body,
+        retryAfter: response.headers?.get('retry-after') ?? null,
+        baseUrl: this.baseUrl,
+        requestId: response.headers?.get('x-request-id') ?? null,
+      });
     }
 
+    // The budget HEY stated, for the walks' pacing; an answer that states none keeps the last one.
+    this.budget = statedBudget(response.headers) ?? this.budget;
     return (await response.json()) as T;
   }
 
   /** One request, never following a redirect itself. */
   private async fetchOnce(url: URL): Promise<Response> {
+    this.lastRequestAt = Date.now();
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), this.timeoutMs);
     try {
@@ -294,7 +411,7 @@ export class HeyClient {
       this.get(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens: options.lens, limit: options.limit, before: options.before }),
     /** Every page of a project's timeline, older and older, until `nextCursor` is null. */
     timelinePages: (slug: string, options: { lens?: string; limit?: number } = {}): AsyncIterable<HeyTimeline> =>
-      cursorPages((before) => this.projects.timeline(slug, { ...options, ...(before ? { before } : {}) })),
+      ((step) => cursorPages((before) => step(() => this.projects.timeline(slug, { ...options, ...(before ? { before } : {}) }))))(this.walker()),
     /** `GET /api/projects/{slug}/market-integrity`: the tracked token market beside the builder activity, and their conflicts (404 until published). */
     marketIntegrity: (slug: string): Promise<HeyMarketIntegrity> => this.get(`/api/projects/${encodeURIComponent(slug)}/market-integrity`),
     /** `GET /api/projects/{slug}/market-moves?days=&min=`: day-on-day market moves with what shipped in the week up to each — a sequence, never a cause. */
@@ -355,7 +472,7 @@ export class HeyClient {
     contracts: (slug: string): Promise<HeyProjectContracts> => this.get(`/api/projects/${encodeURIComponent(slug)}/contracts`),
     /** Every page, following `nextOffset` from `query.offset`. */
     pages: (query: HeyProjectsQuery = {}): AsyncIterable<HeyPage<HeyProject>> =>
-      nextOffsetPages((offset) => this.projects.list({ ...query, offset }), query.offset ?? 0),
+      ((step) => nextOffsetPages((offset) => step(() => this.projects.list({ ...query, offset })), query.offset ?? 0))(this.walker()),
     /** Every project across every page. */
     items: (query: HeyProjectsQuery = {}): AsyncIterable<HeyProject> => itemsOf(this.projects.pages(query)),
   };
@@ -364,7 +481,7 @@ export class HeyClient {
     /** `GET /api/ships`: a record of ships, not of projects. */
     list: (query: HeyShipsQuery = {}): Promise<HeyPage<HeyShip>> => this.get('/api/ships', query),
     pages: (query: HeyShipsQuery = {}): AsyncIterable<HeyPage<HeyShip>> =>
-      nextOffsetPages((offset) => this.ships.list({ ...query, offset }), query.offset ?? 0),
+      ((step) => nextOffsetPages((offset) => step(() => this.ships.list({ ...query, offset })), query.offset ?? 0))(this.walker()),
     items: (query: HeyShipsQuery = {}): AsyncIterable<HeyShip> => itemsOf(this.ships.pages(query)),
   };
 
@@ -377,7 +494,7 @@ export class HeyClient {
     get: (id: string): Promise<HeySignalDetail> => this.get(`/api/signals/${encodeURIComponent(id)}`),
     /** Every page, stepping by what each page held until `total`. */
     pages: (query: HeySignalsQuery = {}): AsyncIterable<HeySignalPage> =>
-      totalPages((offset) => this.signals.list({ ...query, offset }), query.offset ?? 0),
+      ((step) => totalPages((offset) => step(() => this.signals.list({ ...query, offset })), query.offset ?? 0))(this.walker()),
   };
 
   /* ------------------------------------------------------------- changes */
@@ -398,19 +515,19 @@ export class HeyClient {
     list: (query: HeyChangesQuery = {}): Promise<HeyChangesPage> => this.get('/api/changes', changeParams(query)),
     /** Browse every page, newest first, following `nextCursor` as `before`. */
     pages: (query: Omit<HeyChangesQuery, 'after' | 'detectedSince'> = {}): AsyncIterable<HeyChangesPage> =>
-      cursorPages((before) => this.changes.list({ ...query, ...(before ? { before } : {}) }), query.before),
+      ((step) => cursorPages((before) => step(() => this.changes.list({ ...query, ...(before ? { before } : {}) })), query.before))(this.walker()),
     /** Every event, newest first. */
     items: (query: Omit<HeyChangesQuery, 'after' | 'detectedSince'> = {}): AsyncIterable<HeyChangeEvent> => itemsOf(this.changes.pages(query)),
     /** Sync forward from `cursor` (default the start, `c1.0`) to the head, page by page. */
     sync: (cursor = 'c1.0', query: Omit<HeyChangesQuery, 'after' | 'before' | 'detectedSince'> = {}): AsyncIterable<HeyChangesPage> =>
-      cursorPages((after) => this.changes.list({ ...query, after: after ?? cursor }), cursor),
+      ((step) => cursorPages((after) => step(() => this.changes.list({ ...query, after: after ?? cursor })), cursor))(this.walker()),
   };
 
   readonly builders = {
     /** `GET /api/builders`: the Builder Radar. */
     list: (query: HeyBuildersQuery = {}): Promise<HeyBuildersPage> => this.get('/api/builders', query),
     pages: (query: HeyBuildersQuery = {}): AsyncIterable<HeyBuildersPage> =>
-      totalPages((offset) => this.builders.list({ ...query, offset }), query.offset ?? 0),
+      ((step) => totalPages((offset) => step(() => this.builders.list({ ...query, offset })), query.offset ?? 0))(this.walker()),
   };
 
   readonly reports = {
@@ -497,7 +614,7 @@ export class HeyClient {
   /* ------------------------------------------------------ the agent contract */
 
   readonly agent = {
-    /** `GET /api/agent` (2026-09-30): the agent contract described by itself — six capabilities, their parameters, schema, freshness contract and boundaries. */
+    /** `GET /api/agent` (2026-09-30): the agent contract described by itself — its capabilities, their parameters, schema, freshness contract and boundaries. */
     capabilities: (): Promise<HeyAgentCatalogue> => this.get('/api/agent'),
     /**
      * `GET /api/agent/{capability}` (2026-09-30): one AgentIntelligenceResponse

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildNotReadWords, RESEARCH_LEVEL_WORDS, researchLevelWords, VERIFIED_BUILDER_SCOPE_WORDS, verifiedBuilderScopeWords } from './research-level-words';
+import {
+  buildNotReadWords,
+  RESEARCH_LEVEL_WORDS,
+  RESEARCHED_NO_BUILDER_SOURCE_WORDS,
+  researchLevelWords,
+  researchLevelWordsFor,
+  VERIFIED_BUILDER_SCOPE_WORDS,
+  verifiedBuilderScopeWords,
+} from './research-level-words';
 
 /* Round 2 (2026-10-01): the badge's word and the build line's word come from one table. */
 describe('research level words', () => {
@@ -30,5 +38,19 @@ describe('what the Verified Builder badge verified', () => {
     expect(verifiedBuilderScopeWords({ researchLevel: 'VERIFIED_BUILDER', isClaimed: true })).toBe(VERIFIED_BUILDER_SCOPE_WORDS.claimed);
     expect(VERIFIED_BUILDER_SCOPE_WORDS.unclaimed).toMatch(/not claimed yet/);
     for (const level of ['RESEARCHED', 'INDEXED', undefined]) expect(verifiedBuilderScopeWords({ researchLevel: level, isClaimed: true })).toBeUndefined();
+  });
+});
+
+/* Persona audit PB-4 (2026-10-18): a RESEARCHED pill on a page with no builder source read as "HEY checked this, it's OK". */
+describe('researchLevelWordsFor', () => {
+  it('says what RESEARCHED is, quietly, where HEY reads no builder source; every other case keeps the badge words', () => {
+    expect(researchLevelWordsFor('RESEARCHED', false)).toEqual({ ...RESEARCHED_NO_BUILDER_SOURCE_WORDS, quiet: true });
+    expect(researchLevelWordsFor('RESEARCHED', true)).toEqual({ ...RESEARCH_LEVEL_WORDS.RESEARCHED, quiet: false });
+    // Unknown is not "no source": the badge stays as it was.
+    expect(researchLevelWordsFor('RESEARCHED', undefined).quiet).toBe(false);
+    expect(researchLevelWordsFor('VERIFIED_BUILDER', false)).toEqual({ ...RESEARCH_LEVEL_WORDS.VERIFIED_BUILDER, quiet: false });
+    expect(researchLevelWordsFor('INDEXED', false).label).toBe('Indexed');
+    expect(RESEARCHED_NO_BUILDER_SOURCE_WORDS.help).toMatch(/says nothing about building, the token/);
+    expect(RESEARCHED_NO_BUILDER_SOURCE_WORDS.label).not.toMatch(/research|verified|checked/i);
   });
 });

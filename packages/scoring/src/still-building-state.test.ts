@@ -73,4 +73,17 @@ describe('stillBuildingState', () => {
     expect(Object.keys(STILL_BUILDING_WITHHELD_WORDS).sort()).toEqual([...STILL_BUILDING_WITHHELD_REASONS].sort());
     for (const words of Object.values(STILL_BUILDING_WITHHELD_WORDS)) expect(words).not.toMatch(/\b0\b|zero|undervalued|cheap|buy|gem/i);
   });
+
+  /*
+   * hbm-v31 (2026-10-18, PA-17): every builder source unavailable is not
+   * measured, never NOT_HELD; a contested ticker and a thin volume reuse the
+   * existing market reasons.
+   */
+  it('NOT_MEASURED when every builder source is unavailable (hbm-v31)', () => {
+    expect(STILL_BUILDING_WITHHELD_REASONS.at(-1)).toBe('builder_sources_unavailable');
+    expect(stillBuildingState(false, { stillBuildingWithheld: 'builder_sources_unavailable' }, SCORING_VERSION)).toBe('NOT_MEASURED');
+    expect(stillBuildingWithheldOf(false, { stillBuildingWithheld: 'builder_sources_unavailable' }, SCORING_VERSION)).toBe('builder_sources_unavailable');
+    expect(STILL_BUILDING_WITHHELD_WORDS.builder_sources_unavailable).toBe('Not measured — builder sources unavailable');
+  });
 });
+

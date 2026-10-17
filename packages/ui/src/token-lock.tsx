@@ -88,6 +88,27 @@ export function tokenLockHelp(lock: TokenLockFacts): string {
 }
 
 /**
+ * The smallest share of supply a project card names as locked (persona audit
+ * PB-10, 2026-10-18). Sherwood Protocol's homepage card wore "<0.01%
+ * HoodLock" — the card's only extra chip, read by a skimming reader as
+ * "locked" — for a lock that held next to nothing. Below this share the card
+ * leaves the chip out; the project page still states the exact figure.
+ */
+export const TOKEN_LOCK_CARD_MIN_PCT = 1;
+
+/**
+ * What a project card may say about a lock, or undefined for no chip: the
+ * lock as it is at `TOKEN_LOCK_CARD_MIN_PCT` or more (or when HEY does not
+ * know the supply — an unknown share is not a small one), a pair lock alone
+ * when the token share is below it, and nothing otherwise.
+ */
+export function cardTokenLock(lock: TokenLockFacts | undefined): TokenLockFacts | undefined {
+  if (!lock) return undefined;
+  if (lock.supplyPct === undefined || lock.supplyPct >= TOKEN_LOCK_CARD_MIN_PCT) return lock;
+  return lock.pairLocked ? { pairLocked: true } : undefined;
+}
+
+/**
  * The compact card form: the locker's name and, when HEY knows it, the share.
  *
  * It sits in the contract row rather than on a line of its own, because the

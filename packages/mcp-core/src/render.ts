@@ -332,8 +332,20 @@ export function projectLine(project: HeyProject, now?: Date): string {
  * a value HEY cannot read is a 400 `invalid_parameter` naming the values it
  * accepts, which the tool reports as an error. Only a parameter name HEY does
  * not know is ignored. The note said every unrecognised filter was ignored.
+ *
+ * Since 2026-10-17 (AG-1) every tool refuses an argument it does not take before HEY is asked, naming what it
+ * takes, and the API names a parameter it did not read in `ignoredParameters`; the note still said "ignored",
+ * which taught a model that a typo is harmless (2026-10-18, persona audit PB-27).
  */
-export const QUERY_ECHO_RULE = 'A parameter name HEY does not know is ignored; a value it cannot read is refused with the values it accepts.';
+export const QUERY_ECHO_RULE = 'An argument the tool does not take is refused, naming the ones it takes; a value HEY cannot read is refused with the values it accepts.';
+
+/**
+ * A listing's text in two parts (2026-10-18, persona audit PA-5): its rows, and the footer that says how many
+ * of how many were shown and how to read on. Joined, they are the text a renderer always returned; the MCP
+ * output cap cuts the rows and keeps the footer whole.
+ */
+export type RenderedParts = { body: string; footer: string };
+export const joinParts = (parts: RenderedParts): string => (parts.footer ? `${parts.body}\n${parts.footer}` : parts.body);
 
 export function queryEcho(query: Record<string, unknown> | undefined): string {
   if (!query) return QUERY_ECHO_RULE;
@@ -563,19 +575,29 @@ const CHAIN_ROWS = 31;
 export function renderChain(chain: HeyChain): string {
   const lines: string[] = [`# Robinhood Chain (chain ${chain.chainId}), day by day`, chain.lastFullDay ? `Last full day: ${chain.lastFullDay}.${chain.today ? ` ${chain.today} is still being indexed.` : ''}` : 'UNKNOWN: no full day indexed yet.', ''];
   const days = [...chain.days].reverse();
+  /*
+   * Building first, the market after it and labelled (2026-10-18, persona audit PB-21): every row led with DEX trades
+   * and dollar volume and ended on ships, so "how active is Robinhood Chain?" was answered by trading. A day still
+   * being indexed says so on its own row, and its volume — a part-day sum the 10× median guard does not judge, and
+   * $2.19B from 1.1M trades on 2026-10-17, above every full day — is left out until the day is complete.
+   */
   for (const d of days.slice(0, CHAIN_ROWS)) {
-    const parts = [
+    const building = [
+      d.ships === undefined ? undefined : `${d.ships} verified ships${d.buildersShipping === undefined ? '' : ` from ${d.buildersShipping} builders`}`,
+      d.buildersVerified === undefined ? undefined : `${d.buildersVerified} newly verified builders`,
+      d.projectsPublished === undefined ? undefined : `${d.projectsPublished} projects published`,
+    ].filter((v): v is string => v !== undefined);
+    const market = [
       d.dexTrades === undefined ? undefined : `${d.dexTrades.toLocaleString('en-US')} DEX trades`,
-      d.dexVolumeUsd === undefined ? undefined : `${money(d.dexVolumeUsd)} volume`,
+      d.dexVolumeUsd === undefined || d.partial ? undefined : `${money(d.dexVolumeUsd)} volume`,
       d.tokensTraded === undefined ? undefined : `${d.tokensTraded.toLocaleString('en-US')} tokens traded`,
       d.poolsTraded === undefined ? undefined : `${d.poolsTraded.toLocaleString('en-US')} pools`,
       d.transactions === undefined ? undefined : `${d.transactions.toLocaleString('en-US')} transactions`,
       d.launches === undefined ? undefined : `${d.launches.toLocaleString('en-US')} launches recorded by HEY`,
-      d.projectsPublished === undefined ? undefined : `${d.projectsPublished} projects published`,
-      d.ships === undefined ? undefined : `${d.ships} verified ships${d.buildersShipping === undefined ? '' : ` from ${d.buildersShipping} builders`}`,
-      d.buildersVerified === undefined ? undefined : `${d.buildersVerified} newly verified builders`,
     ].filter((v): v is string => v !== undefined);
-    lines.push(`- FACT ${d.day}: ${parts.length > 0 ? parts.join(', ') : 'no figure indexed (unknown, not zero)'}`);
+    const partial = d.partial ? ' (partial, still being indexed; volume left out until the day is complete)' : '';
+    const figures = [...(building.length > 0 ? [building.join(', ')] : []), ...(market.length > 0 ? [`market context: ${market.join(', ')}`] : [])];
+    lines.push(`- FACT ${d.day}${partial}: ${figures.length > 0 ? figures.join('; ') : 'no figure indexed (unknown, not zero)'}`);
   }
   lines.push('', shownOf(Math.min(days.length, CHAIN_ROWS), days.length, `Newest first; the older days are in GET /api/chain?days=${days.length}.`));
   // The API's own disclaimer travels with the answer, as on every other listing (audit §45 #9).
@@ -686,12 +708,24 @@ export function renderThisWeek(week: HeyThisWeek): string {
  * bot would render, in the words HEY uses for it: `activityLabel` rather than
  * the enum, because integrators left to translate `DORMANT` write *dead*.
  */
+/** Published projects carrying an unpublished address's name or ticker on another contract (2026-10-18, PB-22): facts, names quoted as record data. */
+function namesakeLines(namesakes: HeyTokenLookup['publishedNamesakes']): string[] {
+  if (!namesakes) return [];
+  const lines = namesakes.items.map(
+    (n) =>
+      `- FACT ${quotedName(n.name, n.symbol)} is published on HEY on a different contract, ${n.contractAddress}, sharing its ${n.shares === 'name_and_ticker' ? 'name and ticker' : n.shares}${n.sharesAddressEnding ? '; that address ends in the same four characters as this one' : ''}. On chain a token is its contract, never its name or ticker. ${n.url}`,
+  );
+  const more = namesakes.total - namesakes.items.length;
+  return more > 0 ? [...lines, `- and ${more} more published ${more === 1 ? 'namesake' : 'namesakes'}.`] : lines;
+}
+
 export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
   if (lookup.status !== 'published' || !lookup.project) {
     return [
       `# ${lookup.contractAddress} — HEY publishes no page for this address`,
       '',
       'UNKNOWN: that is an answer, not an error. Most addresses are not indexed projects, and an address HEY holds but has not reviewed reads the same way.',
+      ...namesakeLines(lookup.publishedNamesakes),
       `A live read of the chain for it: ${lookup.scanUrl}`,
       '',
       lookup.disclaimer,
@@ -796,8 +830,16 @@ export function renderMarketIntegrity(page: HeyMarketIntegrity): string {
   const builder = `${activityTag(page.builderActivity.status)} builder activity: ${page.builderActivity.status?.toLowerCase() ?? 'unknown'}${page.builderActivity.lastMeaningfulShipAt ? `, last meaningful ship ${page.builderActivity.lastMeaningfulShipAt.slice(0, 10)}` : ''}`;
   const m = page.marketIntegrity;
   if (!m) return `# ${page.slug} — market integrity\n${page.url}\n${builder}\nUNKNOWN HEY holds no market-integrity evaluation for this project (no tracked token, or not evaluated yet).\n\n${page.note}`;
+  /*
+   * When, and which status is current (2026-10-18, persona audit PB-17): the engine's state is what it read at its
+   * own evaluation, and quorum's read "active market" here while get_project_snapshot said Trading inactive. The
+   * current status every surface prints leads, with its time; the evaluation's own is dated and labelled as such.
+   */
+  const stamp = (iso: string) => `${iso.slice(0, 16).replace('T', ' ')} UTC`;
+  const current = page.tokenMarket;
   const lines = [
-    `DERIVED token market: ${m.state.toLowerCase().replace(/_/g, ' ')}`,
+    ...(current ? [`DERIVED token market now: ${current.label} (${current.status}${current.evaluatedAt ? `, evaluated ${stamp(current.evaluatedAt)}` : ''})`] : []),
+    `DERIVED token market at the integrity evaluation (${stamp(m.evaluatedAt)}): ${m.state.toLowerCase().replace(/_/g, ' ')}${current && current.status !== m.state ? ' — since changed; the line above is current' : ''}`,
     m.liquidityPeakUsd !== null && m.liquidityNowUsd !== null
       ? `DERIVED liquidity ${Math.round(m.liquidityPeakUsd).toLocaleString('en-US')} USD (held, ${m.liquidityPeakDay}) → ${Math.round(m.liquidityNowUsd).toLocaleString('en-US')} USD (${m.liquidityNowDay})${m.liquidityChangePct !== null ? `, ${m.liquidityChangePct}%` : ''}`
       : 'UNKNOWN no established liquidity level to measure against',
@@ -867,6 +909,11 @@ export function codeSubstanceLine(substance: { verdict: string; classifierVersio
  * printed in place of the stored one: a running code week by absolute days, a frozen "this week" signal dated.
  */
 export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
+  return joinParts(renderTimelineParts(timeline, limit));
+}
+
+/** The timeline as rows and its paging footer (PA-5): the MCP cap cuts rows, never the cursor that reads on. */
+export function renderTimelineParts(timeline: HeyTimeline, limit = 30): RenderedParts {
   const shown = timeline.items.slice(0, limit);
   const lines = shown.map(
     (item) =>
@@ -882,7 +929,10 @@ export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
       : timeline.nextCursor
         ? `For older entries, call get_project_timeline again with before=${timeline.nextCursor}.`
         : undefined;
-  return `# ${quotedName(timeline.project.name)} — timeline (lens: ${timeline.lens})\n${timeline.project.url}\nEach entry is tagged FACT (a record with its source) or DERIVED (a rule HEY applied: a return to building HEY detected, a market-integrity reading), dated at the precision shown (EXACT, DATE, WEEK, WINDOW, OBSERVED = HEY's own observation, SCHEDULED = not yet happened).\n${lines.length ? lines.join('\n') : 'Nothing HEY holds falls under this lens.'}\n\n${shownOf(shown.length, total, more)}\n\n${timeline.disclaimer}`;
+  return {
+    body: `# ${quotedName(timeline.project.name)} — timeline (lens: ${timeline.lens})\n${timeline.project.url}\nEach entry is tagged FACT (a record with its source) or DERIVED (a rule HEY applied: a return to building HEY detected, a market-integrity reading), dated at the precision shown (EXACT, DATE, WEEK, WINDOW, OBSERVED = HEY's own observation, SCHEDULED = not yet happened).\n${lines.length ? lines.join('\n') : 'Nothing HEY holds falls under this lens.'}`,
+    footer: `\n${shownOf(shown.length, total, more)}\n\n${timeline.disclaimer}`,
+  };
 }
 
 /**
@@ -892,6 +942,11 @@ export function renderTimeline(timeline: HeyTimeline, limit = 30): string {
  * on, so a model never mistakes a page for the whole.
  */
 export function renderChanges(page: HeyChangesPage): string {
+  return joinParts(renderChangesParts(page));
+}
+
+/** The ledger page as rows and its footer — shown, the cursor, the ledger facts, the legend (PA-5): the MCP cap cuts rows only. */
+export function renderChangesParts(page: HeyChangesPage): RenderedParts {
   const lines: string[] = ['# What changed — the HEY change ledger', 'Each event is tagged FACT (a record with its source) or DERIVED (a rule HEY applied: a status or market-state move, a window HEY measured, a market-integrity reading); `occurredAt` only when a source dates it, else OBSERVED (HEY\'s own knowledge time).', ''];
   if (page.items.length === 0) lines.push('No change matches in this page.');
   for (const item of page.items) {
@@ -900,7 +955,12 @@ export function renderChanges(page: HeyChangesPage): string {
       continue;
     }
     const when = item.occurredAt ? `${item.precision} ${item.occurredAt.slice(0, 10)}${item.occurredUntil ? `–${item.occurredUntil.slice(0, 10)}` : ''}` : `OBSERVED (no source time; HEY saw it ${item.detectedAt.slice(0, 10)})`;
-    const move = item.before !== undefined || item.after !== undefined ? ` (${String(item.before ?? '—')} → ${String(item.after ?? '—')})` : '';
+    /*
+     * A token market's move is said by its labels only (PB-27): the summary already reads "from Low liquidity to Launch
+     * pool only", and the stored codes beside it ("LOW_LIQUIDITY → ACTIVE_MARKET") showed the code a launch pool must
+     * never be read as. The codes stay in the JSON's `before` and `after`.
+     */
+    const move = item.type !== 'market.status_changed' && (item.before !== undefined || item.after !== undefined) ? ` (${String(item.before ?? '—')} → ${String(item.after ?? '—')})` : '';
     lines.push(`- ${recordTag(item.id)} ${when} · ${item.type} · ${quotedName(item.project.name)} (${item.project.slug}): ${summaryWords(item.id, item.summaryCurrent ?? item.summary, item.type)}${move}`);
     lines.push(`  id ${item.id} · revision ${item.revision}${item.origin === 'live' ? '' : ` · ${item.origin}`} · detected ${item.detectedAt.slice(0, 10)}${item.countsAsBuilding ? ' · counts as building' : ''}`);
     const substance = item.facts?.['codeSubstance'];
@@ -911,9 +971,12 @@ export function renderChanges(page: HeyChangesPage): string {
     }
     for (const evidence of item.evidence) if (evidence.url) lines.push(`  evidence: ${quoteExternal(evidence.label, 'evidence_label')} — ${evidence.url}`);
   }
+  const body = lines.join('\n');
+  lines.length = 0;
   lines.push('');
   const sync = page.query.mode === 'sync';
-  if (page.hasMore && page.nextCursor) lines.push(`Showing ${page.items.length}; more exist. Call get_changes again with ${sync ? 'after' : 'before'}=${page.nextCursor}.`);
+  // The ledger pages without counting the whole (PB-27): said, with where a counted window is, never left as "more exist".
+  if (page.hasMore && page.nextCursor) lines.push(`Showing ${page.items.length}; more exist — the ledger pages without counting the total (research_answer what_changed gives a window's true total). Call get_changes again with ${sync ? 'after' : 'before'}=${page.nextCursor}.`);
   else lines.push(`Showing ${page.items.length}; that is the end of this ${sync ? 'sync (keep the cursor to read what comes next)' : 'listing'}.${sync && page.nextCursor ? ` Cursor: ${page.nextCursor}.` : ''}`);
   const facts = [
     page.ledger.collectionStart ? `ledger from ${page.ledger.collectionStart.slice(0, 10)}` : undefined,
@@ -922,7 +985,7 @@ export function renderChanges(page: HeyChangesPage): string {
   ].filter((fact): fact is string => Boolean(fact));
   if (facts.length > 0) lines.push(`Ledger: ${facts.join('; ')}.`);
   lines.push(queryEcho(page.query), 'A change is a record HEY kept, never a cause and never a recommendation.', TAG_LEGEND, '', page.disclaimer);
-  return lines.join('\n');
+  return { body, footer: lines.join('\n') };
 }
 
 export function renderCompare(page: HeyCompare): string {

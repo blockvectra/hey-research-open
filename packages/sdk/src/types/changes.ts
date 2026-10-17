@@ -17,6 +17,8 @@ export type HeyChangeType =
   | 'build.release'
   | 'build.code_activity'
   | 'build.ship'
+  /** A project owner's own update HEY has not checked yet (2026-10-18): never a release, never building; revised to the release or ship it is once a moderator verifies it. */
+  | 'build.owner_update'
   | 'build.status_changed'
   | 'build.dormant'
   | 'build.resumed'

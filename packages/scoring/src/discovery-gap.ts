@@ -174,6 +174,17 @@ export function discoveryGapWithheldReason(value: unknown): DiscoveryGapWithheld
  *   window — a market HEY began reading under a week ago. There is no high to
  *   measure a drawdown from, so the badge is not measured; it used to read
  *   "No market context available." as measured and not met.
+ *
+ * hbm-v31 (2026-10-18, founder delegation "repair semua sekali", PA-17),
+ * appended the same way:
+ * - `builder_sources_unavailable`: every builder source of the project — each
+ *   repository, changelog and feed of its own the refresh reads — is
+ *   unavailable (a repository answering 404), so whether it kept building
+ *   through a decline is not something HEY can see. The same ruling withholds
+ *   the badge as `token_not_the_projects` on a token whose ticker another
+ *   published project's token carries, and as `market_too_thin` on a market
+ *   whose 24-hour volume is below `DISCOVERY_GAP.minVolume24hUsd` — reasons
+ *   already on the list.
  */
 export const STILL_BUILDING_WITHHELD_REASONS = [
   'market_not_live',
@@ -186,6 +197,7 @@ export const STILL_BUILDING_WITHHELD_REASONS = [
   'activity_unknown',
   'not_scored',
   'no_tracked_high',
+  'builder_sources_unavailable',
 ] as const;
 export type StillBuildingWithheldReason = (typeof STILL_BUILDING_WITHHELD_REASONS)[number];
 
@@ -200,6 +212,7 @@ export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<StillBuildingWithhel
   activity_unknown: 'Not measured — activity unknown',
   not_scored: 'Not measured — not scored yet',
   no_tracked_high: 'Not measured — no tracked high yet',
+  builder_sources_unavailable: 'Not measured — builder sources unavailable',
 };
 
 /** A stored reason read back: one of the list, or undefined for anything else (a row scored before hbm-v19). */

@@ -143,7 +143,9 @@ describe('find_projects', () => {
     expect(text).toContain('Showing 2 of 17. For more, call find_projects again with the same arguments and offset=2.');
     expect(text).toContain('Query as HEY read it');
     // Only unknown parameter names are ignored; an unreadable value is refused (full audit 2026-10-03).
-    expect(text).toContain('A parameter name HEY does not know is ignored; a value it cannot read is refused with the values it accepts.');
+    // Refused, never "ignored" (persona audit PB-27): every tool refuses an argument it does not take.
+    expect(text).toContain('An argument the tool does not take is refused, naming the ones it takes; a value HEY cannot read is refused with the values it accepts.');
+    expect(text).not.toContain('is ignored');
     expect(text).not.toContain('ignored rather than refused');
     expect(text).toContain('STILL BUILDING (down 62% from the HEY-tracked high, 5 verified ships since)');
     expect(text).toContain(STILL_BUILDING_MEANING);
@@ -211,6 +213,24 @@ describe('lookup_token', () => {
     expect(text).toContain('DERIVED 4 meaningful ships in 30 days');
     expect(text).toContain('https://github.com/agentos/sdk/releases/tag/v0.4');
     expect(text).toContain('FACT verified: the project names this contract itself.');
+  });
+
+  it('names a published project carrying the address’s name or ticker on another contract, its name quoted (PB-22, 2026-10-18)', () => {
+    const chit = '0xd5230000000000000000000000000000000050d8';
+    const text = renderTokenLookup(
+      {
+        ...fx.lookupUnknown,
+        publishedNamesakes: {
+          total: 2,
+          items: [{ slug: 'chit', name: 'Chit', symbol: 'CHIT', contractAddress: chit, shares: 'name_and_ticker', sharesAddressEnding: true, url: 'https://heyresearch.xyz/project/chit' }],
+        },
+      },
+      NOW,
+    );
+    expect(text).toContain(`- FACT «Chit» («CHIT») is published on HEY on a different contract, ${chit}, sharing its name and ticker; that address ends in the same four characters as this one.`);
+    expect(text).toContain('- and 1 more published namesake.');
+    expect(text).not.toMatch(/scam|fake|copycat|real one/i);
+    expect(renderTokenLookup(fx.lookupUnknown, NOW)).not.toContain('published on HEY on a different contract');
   });
 
   it('answers an unindexed address plainly, and a zero HEY did not measure is not printed', () => {
@@ -368,7 +388,7 @@ describe('get_project_snapshot', () => {
 
   it('prints product usage as its own dimension: calls and contracts, callers per day as addresses, never a window sum', () => {
     expect(text).toContain('## Usage (its own dimension, never building or a ranking)');
-    expect(text).toContain("- FACT 4 active of 4 watched contracts · 1,842 calls in 7 d (2026-09-19 to 2026-09-25); 1,310 of them the ERC-20 surface, 532 the contracts' own functions.");
+    expect(text).toContain("- FACT 4 active of 4 watched contracts · 1,842 calls in 7 d (2026-09-19 to 2026-09-25); 1,310 of them the ERC-20 surface, 532 the contracts' own functions. ERC-20 transfers and approvals are what trading alone produces; by themselves they are not use of the product.");
     expect(text).toContain('- FACT distinct caller addresses (a count per day; addresses, not people): newest day 212 or more on 2026-09-25; busiest day 312 or more on 2026-09-22. UNKNOWN across the window: counts for different days cannot be added.');
     expect(text).toContain('- UNKNOWN events (events_unreadable_on_some_days)');
     expect(text).toContain('(function names stay on the Terminal)');
@@ -389,7 +409,7 @@ describe('get_project_snapshot', () => {
     expect(summary).toContain('- DERIVED Build: Shipping: 4 meaningful events in 30 days; latest ship yesterday. Evidence: ship:2ac87a66-0000-0000-0000-000000000001.');
     // The summary restates the usage section of the same snapshot: the same calls, never a second reading.
     expect(summary).toContain(
-      "- FACT Product usage: 4 of 4 watched contracts active · 1,842 calls in 7 days (532 calls to the contracts' own functions). Evidence: method:5b2d0000-0000-0000-0000-000000000001.",
+      "- FACT Product usage: 4 of 4 watched contracts active · 1,842 calls in 7 days (532 calls to the contracts' own functions; 1,310 ERC-20 token transfers and approvals, which trading alone produces). Evidence: method:5b2d0000-0000-0000-0000-000000000001.",
     );
     expect(text).toContain('1,842 calls in 7 d');
     expect(summary).not.toMatch(/market cap|\$0\b/);
@@ -411,7 +431,8 @@ describe('get_changes', () => {
     expect(text).toContain('- FACT EXACT 2026-09-24 · build.release · «AgentOS» (agentos): «Released v0.4»');
     expect(text).toContain('evidence: «GitHub release» — https://github.com/agentos/sdk/releases/tag/v0.4');
     expect(text).toContain('- RETRACTED signal:0b0b0000-0000-0000-0000-000000000009 (revision 2');
-    expect(text).toContain('Showing 2; more exist. Call get_changes again with before=YzEuMTIzNDU.');
+    // A page says the ledger did not count the whole, and where a counted window is (persona audit PB-27).
+    expect(text).toContain('Showing 2; more exist — the ledger pages without counting the total (research_answer what_changed gives a window\'s true total). Call get_changes again with before=YzEuMTIzNDU.');
     expect(text).toMatch(TAGGED);
     expect(text.toLowerCase()).not.toMatch(/because|caused|\bbuy\b/);
   });
@@ -444,6 +465,13 @@ describe('get_changes', () => {
     });
     expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · build.status_changed');
     expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · market.status_changed');
+    // A token market's move is said by its labels only (persona audit PB-27): never "(LOW_LIQUIDITY → ACTIVE_MARKET)" beside "Launch pool only".
+    const launch = renderChanges({ ...fx.changes, items: [{ ...move('state:9b1c0000-0000-0000-0000-000000000001:market_status:7', 'market.status_changed'), summary: 'Token market moved from Low liquidity to Launch pool only', before: 'LOW_LIQUIDITY', after: 'ACTIVE_MARKET' }] });
+    expect(launch).toContain('Token market moved from Low liquidity to Launch pool only');
+    expect(launch).not.toContain('ACTIVE_MARKET');
+    // Another move keeps its codes beside its words.
+    const status = renderChanges({ ...fx.changes, items: [{ ...move('state:9b1c0000-0000-0000-0000-000000000001:activity_status:8', 'build.status_changed'), before: 'QUIET', after: 'SHIPPING' }] });
+    expect(status).toContain('(QUIET → SHIPPING)');
     expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · build.accelerating');
     expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · market_integrity.event');
     // Token verification is FACT in the explain engine, and a release is a record with its source.
@@ -670,11 +698,14 @@ describe('get_contract', () => {
 
   it("calls a deployer a launch service only on HEY's own shared flag; below it, a count with no label (audit §45 #19)", () => {
     // Live: Rips' deployer, one other tracked project, stored flag false — /market says deployerShared false.
-    const one = renderContract({ ...fx.contract, deployer: { address: '0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b', sharedAcrossTrackedProjects: false, otherProjectsCount: 1 } });
+    const one = renderContract({ ...fx.contract, deployer: { address: '0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b', sharedAcrossTrackedProjects: false, otherProjectsCount: 1, serialLauncher: { measured: false } } });
     expect(one).toContain('- FACT deployed by 0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b — the same account also deployed the token of 1 other tracked project\n');
     expect(one).not.toMatch(/launch service|shared/);
-    const none = renderContract({ ...fx.contract, deployer: { address: '0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b', sharedAcrossTrackedProjects: false, otherProjectsCount: 0 } });
+    const none = renderContract({ ...fx.contract, deployer: { address: '0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b', sharedAcrossTrackedProjects: false, otherProjectsCount: 0, serialLauncher: { measured: false } } });
     expect(none).toContain('- FACT deployed by 0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b\n');
+    // HEY's serial-launcher flag (2026-10-18): the rule that holds its follow-ups, said as the rule.
+    const serial = renderContract({ ...fx.contract, deployer: { address: '0x5b11c2be263b1c9e5a0878f2aee417a5a5728f2b', sharedAcrossTrackedProjects: false, otherProjectsCount: 0, serialLauncher: { measured: true, value: true, creations: 407, windowDays: 90, observedAt: '2026-10-17T00:00:00.000Z' } } });
+    expect(serial).toContain('HEY marks this deployer a serial launcher: it created 100 or more contracts in 90 days');
   });
 
   it('prints calls per method as counts by bucket, never a function name, and an unread contract as UNKNOWN (F9, 2026-09-27)', () => {
@@ -710,6 +741,16 @@ describe('project_diff', () => {
     expect(text).toContain('FACT valuation: then $104.0K on 2026-09-01, observed → now $208.6K on 2026-09-25, observed');
     expect(text).toContain('never a cause');
     expect(text.toLowerCase()).not.toMatch(/because|led to|caused/);
+  });
+
+  it('counts events, with the revisions beside them, never revisions as changes (persona audit PA-5)', () => {
+    const diff = { ...fx.diff, changes: { state: 'MEASURED' as const, clock: 'recorded' as const, total: 10, revisions: 60, byType: { 'build.code_activity': 5, 'build.release': 5 }, truncated: false, url: 'https://heyresearch.xyz/api/changes?project=chit' } };
+    const text = renderDiff(diff);
+    expect(text).toContain('- FACT 10 events (60 revisions): build.code_activity 5, build.release 5');
+    expect(text).not.toContain('60 changes');
+    // A server from before the field: the total alone, never a guessed revision count.
+    const { revisions: _revisions, ...older } = diff.changes;
+    expect(renderDiff({ ...fx.diff, changes: older })).toContain('- FACT 10 events: build.code_activity 5');
   });
 
   it("names each end of the valuation by its own kind, never one end's kind for both (audit §45 #6)", () => {
@@ -776,6 +817,21 @@ describe('chain_overview', () => {
     expect(text.endsWith(fx.chain.disclaimer)).toBe(true);
   });
 
+  it('chain days lead with building, label the market as context, and mark a partial day without its volume (persona audit PB-21)', () => {
+    const chain = {
+      ...fx.chain,
+      days: [
+        { day: '2026-10-16', dexTrades: 2_750_000, dexVolumeUsd: 1_810_000_000, ships: 41, buildersShipping: 30, buildersVerified: 4, basis: { hey: 'knowledge' as const, chain: 'observed' as const } },
+        { day: '2026-10-17', dexTrades: 1_104_063, dexVolumeUsd: 2_194_253_703, ships: 29, buildersShipping: 27, buildersVerified: 3, partial: true as const, basis: { hey: 'knowledge' as const, chain: 'observed' as const } },
+      ],
+    };
+    const text = renderChain(chain);
+    expect(text).toContain('- FACT 2026-10-17 (partial, still being indexed; volume left out until the day is complete): 29 verified ships from 27 builders, 3 newly verified builders; market context: 1,104,063 DEX trades');
+    expect(text).not.toContain('$2.19B');
+    expect(text).toContain('- FACT 2026-10-16: 41 verified ships from 30 builders, 4 newly verified builders; market context: 2,750,000 DEX trades, $1.81B volume');
+    for (const line of text.split('\n').filter((entry) => entry.startsWith('- FACT 2026'))) expect(line.indexOf('verified ships')).toBeLessThan(line.indexOf('DEX trades'));
+  });
+
   it('this-week: the captured payload without an undefined, a valuation by kind, and Still Building’s meaning', () => {
     const week = JSON.parse(readFileSync(new URL('./fixtures/this-week.json', import.meta.url), 'utf8')) as HeyThisWeek;
     const text = renderThisWeek(week);
@@ -829,5 +885,17 @@ describe('market_integrity (gated)', () => {
     expect(out).toContain('DERIVED no verified replacement pool');
     expect(out).toContain('not whether development has stopped');
     expect(out.toLowerCase()).not.toMatch(/\brug|scam|\bsafe\b/);
+  });
+
+  it('dates the evaluation’s market state, and leads with the current status when it has changed since (persona audit PB-17)', () => {
+    const integrity = { ...fx.marketIntegrity, marketIntegrity: { ...fx.marketIntegrity.marketIntegrity!, state: 'ACTIVE_MARKET', evaluatedAt: '2026-10-17T12:58:00.000Z' } };
+    const changed = renderMarketIntegrity({ ...integrity, tokenMarket: { status: 'TRADING_INACTIVE', label: 'Trading inactive', evaluatedAt: '2026-10-17T16:08:00.000Z' } });
+    expect(changed).toContain('DERIVED token market now: Trading inactive (TRADING_INACTIVE, evaluated 2026-10-17 16:08 UTC)');
+    expect(changed).toContain('DERIVED token market at the integrity evaluation (2026-10-17 12:58 UTC): active market — since changed; the line above is current');
+    expect(changed.indexOf('token market now')).toBeLessThan(changed.indexOf('at the integrity evaluation'));
+    // A server from before the field: the evaluation's own state, dated, never passed off as now.
+    const older = renderMarketIntegrity(integrity);
+    expect(older).not.toContain('token market now');
+    expect(older).toContain('DERIVED token market at the integrity evaluation (2026-10-17 12:58 UTC): active market');
   });
 });

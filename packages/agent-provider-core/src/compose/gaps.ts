@@ -38,7 +38,7 @@ const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   owner_has_not_published_contract: 'The verified owner has not published the token contract on the project’s own site or signed for it.',
   self_reported: 'The token was named in the project’s submission; the project’s own site or an on-chain signature has not confirmed it.',
   launchpad_record: 'HEY knows the token from a launchpad record; the project has not been seen naming it.',
-  launchpad_record_site_silent: 'HEY knows the token from a launchpad record, and the project’s site does not name it.',
+  launchpad_record_site_silent: 'HEY knows the token from a launchpad record, and the site that record named does not name it.',
   market_listing: 'HEY knows the token from a market listing; the project has not been seen naming it.',
   site_silent: 'The project’s site does not name the token contract.',
   not_checked: 'HEY has not yet checked whether the project names the token contract.',

@@ -26,6 +26,7 @@ export function inTheLastDays(days: number): string {
 export const CHANGE_TYPE_NOUNS: Readonly<Record<string, CountNoun>> = {
   'build.release': noun('release'),
   'build.ship': noun('ship'),
+  'build.owner_update': noun('owner update not yet checked', 'owner updates not yet checked'),
   'build.code_activity': noun('week of code activity', 'weeks of code activity'),
   'build.status_changed': noun('activity status change'),
   'build.dormant': noun('move to dormant', 'moves to dormant'),

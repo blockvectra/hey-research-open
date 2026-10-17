@@ -4,7 +4,7 @@ import { familyFreshness } from '../freshness';
 import type { AgentClaim, AgentEvidenceRef, AgentResponseOf, AgentUnknown, AgentVerifyData } from '../schema';
 import { derivedText, externalText, heyText, type AgentText } from '../text';
 import { doNotConclude } from '../unknowns';
-import { envelope, evidenceRef, looksLikeEvidenceId, type AgentComposeContext } from './common';
+import { envelope, evidenceRef, looksLikeEvidenceId, namesakeSentence, type AgentComposeContext } from './common';
 
 /**
  * verify_project (2026-09-30): "does this contract or token appear to belong
@@ -69,7 +69,7 @@ const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   owner_has_not_published_contract: 'The verified owner has not published this contract on the project’s site or signed for it.',
   self_reported: 'The contract was named in the project’s submission; its site or an on-chain signature has not confirmed it.',
   launchpad_record: 'HEY knows the contract from a launchpad record; the project has not been seen naming it.',
-  launchpad_record_site_silent: 'HEY knows the contract from a launchpad record, and the project’s site does not name it.',
+  launchpad_record_site_silent: 'HEY knows the contract from a launchpad record, and the site that record named does not name it.',
   market_listing: 'HEY knows the contract from a market listing; the project has not been seen naming it.',
   site_silent: 'The project’s site does not name this contract.',
   not_checked: 'HEY has not yet checked whether the project names this contract.',
@@ -125,6 +125,9 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
       reasonCode = 'no_record';
       reasons.push(heyText('HEY holds no record of this contract on a published project.'));
     }
+    // A published project carrying the token's name or ticker on another contract (2026-10-18, PB-22): a fact beside UNKNOWN, never a verdict.
+    const namesakes = input.issuerToken ? undefined : namesakeSentence(input.token.publishedNamesakes);
+    if (namesakes) reasons.push(derivedText(namesakes));
   } else if (recorded.role === 'token' && lookupProject) {
     const status = lookupProject.tokenVerification.status;
     const reason = lookupProject.tokenVerification.reason ?? null;

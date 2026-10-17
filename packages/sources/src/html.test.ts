@@ -193,3 +193,26 @@ describe('the site’s own name (2026-10-14, display names)', () => {
     expect(extractHtmlMetadata('<meta property="og:site_name" content="  ">').siteName).toBeUndefined();
   });
 });
+
+describe('a feed linked from an anchor (PA-11, 2026-10-18)', () => {
+  it('keeps a same-site anchor named like a feed, after the advertised feeds and without repeating them', () => {
+    const page = [
+      '<link rel="alternate" type="application/rss+xml" href="/rss.xml">',
+      '<a href="/docs">Docs</a> <a href="/changelog">Changelog</a> <a href="/changelog.xml">RSS</a>',
+      '<a href="/rss.xml">RSS again</a> <a href="https://blog.pfwa.fun/releases.atom">Releases</a>',
+    ].join('');
+    const meta = extractHtmlMetadata(page, 'https://pfwa.fun/');
+    expect(meta.feedUrls).toEqual(['https://pfwa.fun/rss.xml', 'https://pfwa.fun/changelog.xml', 'https://blog.pfwa.fun/releases.atom']);
+    expect(meta.docsUrls).toEqual(['https://pfwa.fun/docs']);
+  });
+
+  it('never another domain’s feed, a sitemap, a comments feed or an arbitrary XML file', () => {
+    const page = [
+      '<a href="https://news.example.org/rss.xml">Press</a>',
+      '<a href="/sitemap.xml">Sitemap</a>',
+      '<a href="/comments/feed.atom">Comments</a>',
+      '<a href="/data/prices.xml">Prices</a>',
+    ].join('');
+    expect(extractHtmlMetadata(page, 'https://pfwa.fun/').feedUrls).toEqual([]);
+  });
+});

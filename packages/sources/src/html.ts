@@ -533,6 +533,12 @@ export function extractHtmlMetadata(html: string, baseUrl?: string): HtmlMetadat
   });
 
   if (title) meta.title = sanitizeText(title);
+  // An anchored feed after the advertised ones, deduped against them and held to the same never-a-release-feed rule.
+  for (const url of links.feeds) {
+    if (seenFeeds.has(url) || isNotAReleaseFeedUrl(url)) continue;
+    seenFeeds.add(url);
+    meta.feedUrls.push(url);
+  }
   meta.githubUrls = [...links.github];
   meta.docsUrls = [...links.docs];
   meta.forgeUrls = [...links.forges.values()];
@@ -585,6 +591,8 @@ class ProjectLinks {
   readonly forges = new Map<string, ForgeRepoLink>();
   readonly security = new Set<string>();
   readonly contracts = new Set<string>();
+  /** Feeds the site links from an anchor on its own domain (2026-10-18). */
+  readonly feeds = new Set<string>();
   private anchors = 0;
   private readonly baseHost: string | undefined;
 
@@ -671,8 +679,22 @@ class ProjectLinks {
       parsed.hash = '';
       this.docs.add(parsed.toString());
     }
+    /*
+     * A feed the site links from a plain anchor (2026-10-18, persona audit PA-11): pfwa.fun links
+     * `/changelog.xml` from its page with no `<link rel=alternate>`, so its changelog feed was never
+     * read. Only on the site's own domain and only by a feed's file name (`SITE_FEED_ANCHOR`); what it
+     * serves is still the feed reader's call, and a sitemap or comments feed is never one.
+     */
+    const last = segments[segments.length - 1] ?? '';
+    if (sameDomain && SITE_FEED_ANCHOR.test(last) && this.feeds.size < MAX_LINKS_PER_KIND) {
+      parsed.hash = '';
+      this.feeds.add(parsed.toString());
+    }
   }
 }
+
+/** A feed's file name: `rss.xml`, `feed.atom`, `changelog.xml`, `releases.rss`, `updates.xml`, or any `*.rss` / `*.atom`. */
+const SITE_FEED_ANCHOR = /^(?:(?:rss|atom|feed|index|changelog|releases|updates|news)\.(?:xml|rss|atom)|[^/]+\.(?:rss|atom))$/i;
 
 function resolveUrl(href: string, baseUrl?: string): string | undefined {
   try {

@@ -6,6 +6,44 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+## 0.3.3 — 2026-10-18
+
+Prepared in the repository; published to npm by hand. The API's own dated record is
+[the public API changelog](https://heyresearch.xyz/developers/changelog).
+
+### Changed (2026-10-17, a truth repair in the API)
+
+- `tab: 'new-builders'` lists projects published on HEY in the last 7 days **with a builder source HEY
+  reads and at least one counted ship**, newest first ship first. Before 2026-10-17 it listed every page
+  published in the window (about 380 rows; 47 under the new rule). The old population is the new value
+  `'new-on-hey'`. The type did not change; what the value returns did, and `HeyProjectSurface` now says
+  what each value lists.
+- The walks — `projects.pages()`/`items()`, `ships.*`, `signals.pages()`, `builders.pages()`,
+  `changes.pages()`/`items()`/`sync()`, `projects.timelinePages()` — wait out a temporary rate limit by
+  its `retry-after` (at most 3 times, never longer than 60 seconds a wait) and pace their pages by the
+  budget the API states (`RateLimit-Limit`, `-Policy`, `-Remaining`; 500 ms at 120 a minute while a
+  tenth of the bucket or less is left, or when none is stated). A monthly `quota` is never waited for,
+  and a single call still throws at once. `rateLimit: { wait: 'walks' | 'always' | 'never',
+  maxRetries, maxWaitSeconds }` changes it; `wait: 'never'` is 0.3.2's behaviour. `sleep` replaces the
+  timer, for tests.
+- The `HeyProjectsQuery` comment said unknown values are dropped; since 2026-10-02 the API answers
+  400 `invalid_parameter`.
+
+### Added
+
+- `HeyApiError.apiCode`: the API's own code (`invalid_parameter`, `invalid_cursor`,
+  `invalid_evidence_id`, `key_required`, `quota` …), and `HeyApiError.requestId`: the id HEY logged
+  the request under (from the body, else `x-request-id`). Both were only inside `body`.
+- `HeyRateLimitOptions`, `HeyClientOptions.rateLimit` and `HeyClientOptions.sleep`.
+- 2026-10-17 types: `HeyProjectSurface` `'new-on-hey'`; `projects.builtOn(slug)` and
+  `HeyProjectBuiltOn` (with the `PROJECT_CODE_NAMES_TOKEN` / `PROJECT_POOLS_ON_HOOK` relationship
+  edges and `v4pool:` / `v4hook:` evidence); `HeyChangesQuery.cursor` and
+  `HeyChangesPage.ignoredParameters`; `HeyPage.ignoredParameters`; the agent contract's
+  `query.ignoredParameters`, `data.resume` (`what_changed`), `error.candidatesTotal` and the
+  candidates' `symbol`, `activityStatus` and `catalogStatus`; `/api/chain/accelerating`'s `judged`,
+  `notMeasured` and `reason`; `HeyUnderTheRadar` on the dossier's `score` and the snapshot's `build`.
+- `HeyTokenProfile.identity.machineInterfaces.changelog` and `.changelogFeed` (2026-10-18).
+
 ## 0.3.2 — 2026-10-16
 
 ### Added (2026-10-16, additive)

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { tokenLockHelp, tokenLockSchedule } from './token-lock';
+import { cardTokenLock, TOKEN_LOCK_CARD_MIN_PCT, tokenLockHelp, tokenLockSchedule } from './token-lock';
 
 /**
  * A lock's sentence names the next unlock, not only the last (audit A10-10,
@@ -29,5 +29,21 @@ describe('tokenLockSchedule and tokenLockHelp', () => {
     expect(tokenLockSchedule({ until: '2027-09-25', nextUnlockAt: '2026-10-01', pairLocked: false })).toBe('the next part unlocks on 1 Oct 2026, and the last on 25 Sep 2027');
     expect(tokenLockSchedule({ pairLocked: true })).toBe('');
     expect(tokenLockHelp({ pairLocked: true })).toContain('A pair holding this token is locked at HoodLock.');
+  });
+});
+
+/*
+ * Persona audit PB-10 (2026-10-18): Sherwood Protocol's homepage card wore "<0.01% HoodLock" — a chip a skimming
+ * reader takes for "locked" — for a lock that held next to nothing. A card names a lock at 1% of supply or more.
+ */
+describe('cardTokenLock', () => {
+  it('keeps a meaningful share and an unknown one, drops a trace, and keeps a pair lock alone', () => {
+    const lock = { supplyPct: 16.49, until: '2027-09-25', pairLocked: false };
+    expect(cardTokenLock(lock)).toBe(lock);
+    expect(cardTokenLock({ ...lock, supplyPct: TOKEN_LOCK_CARD_MIN_PCT })).toMatchObject({ supplyPct: 1 });
+    expect(cardTokenLock({ until: '2027-09-25', pairLocked: false })).toMatchObject({ until: '2027-09-25' });
+    expect(cardTokenLock({ ...lock, supplyPct: 0.004 })).toBeUndefined();
+    expect(cardTokenLock({ ...lock, supplyPct: 0.004, pairLocked: true })).toEqual({ pairLocked: true });
+    expect(cardTokenLock(undefined)).toBeUndefined();
   });
 });

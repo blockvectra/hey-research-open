@@ -8,8 +8,11 @@
  * `limit`, and stepping by what was asked for would skip rows past the cap.
  *
  * Both are async iterables, so a caller can stop at any page without
- * fetching the rest. Neither retries: a rate limit ends the walk with the
- * `HeyApiError` a single call would have thrown.
+ * fetching the rest. These generators never retry; since 2026-10-18 the
+ * client's walks hand them a fetch that paces its pages and waits out a
+ * temporary rate limit within a cap (`HeyClientOptions.rateLimit`), and a
+ * rate limit past that cap ends the walk with the `HeyApiError` a single call
+ * would have thrown.
  */
 
 /** Pages that carry `nextOffset`; the walk ends when it is absent or a page is empty. */

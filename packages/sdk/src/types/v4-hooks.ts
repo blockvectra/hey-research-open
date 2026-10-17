@@ -180,6 +180,8 @@ export type HeyV4HookDetail = {
   answer: string;
   listed: boolean;
   project: (HeyV4HookProject & { latestShip: { id: string; title: string; eventType: string; publishedAt: string } | null; latestShipReason: string | null }) | null;
+  /** 2026-10-18: the one published project whose own official contract listing names a hook HEY does not list; null otherwise. Who lists it, never a tie. */
+  declaredBy: { slug: string; name: string; url: string } | null;
   tie: {
     basis: HeyV4HookBasis;
     basisLabel: string;

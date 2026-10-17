@@ -86,19 +86,33 @@ Every public read route answers an error in one envelope:
 | Status | `error` | Retryable | When |
 |---|---|---|---|
 | 400 | `bad_request`, `invalid_parameter`, `invalid_address`, `batch_too_large`, `unknown_fact` | no | the request is malformed as sent (`unknown_fact`: `/explain` was asked for a fact it does not explain) |
+| 400 | `invalid_evidence_id` | no | `/api/evidence/{id}` was given an id that is not a typed evidence id (`ship:<uuid>`, `source:<uuid>` …) |
+| 400 | `invalid_cursor` | no | `/api/changes` was given a `cursor`, `after` or `before` HEY never issued |
+| 400 | `invalid_json` | no | a POST body (a receipt, a webhook subscription) is empty or not a JSON object |
+| 400 | `source_required` | no | `/explain?fact=source.counted` was asked without `source=` |
 | 401 | `unauthorized` | no | the key is not valid |
 | 401 | `key_required` | no | a keyed-only (bulk) route was called without a key |
 | 403 | `forbidden` | no | the key or account is held, or a partner key is not granted the route's group; `reason` says which |
 | 404 | `not_found` | no | no published record, or no such route |
+| 405 | `method_not_allowed` | no | a read route was sent another method; `allow` names the ones it answers (2026-10-18; before, an empty body) |
 | 413 | `payload_too_large` | no | a bulk answer would exceed 256 KB; ask for fewer |
 | 429 | `rate_limited` | yes | the per-minute bucket is spent; `retryAfterSeconds` and `retry-after` say when |
 | 429 | `quota` | yes | the monthly allowance is spent (or a bulk request would cross it) |
 | 500 | `internal_error` | yes | HEY failed; quote the `requestId` |
 | 503 | `service_unavailable` | yes | the database was busy for a moment (a timeout or a held lock); `retryAfterSeconds` and `retry-after` say when to ask again (2026-09-30) |
 
+The three 400 codes `invalid_evidence_id`, `invalid_cursor` and `invalid_json` were answered long before
+they were in this table; they were added on 2026-10-18, and `api-error-table.test.ts` now fails the build when
+a public route answers a code the table does not name. The SDK carries the code as `HeyApiError.apiCode` and
+the id as `requestId` (0.3.3).
+
 Every answer, success or error, is readable cross-origin and exposes `retry-after`,
 `x-request-id`, `x-hey-tier`, `x-hey-monthly-remaining`, `x-hey-entitlement` and `x-hey-api-version` to a
-browser caller. A `message` is one line of at most 300 characters with no control, bidirectional or
+browser caller — and since 2026-10-18 the per-minute budget: `ratelimit-limit` and `ratelimit-policy`
+(`120;w=60`: 120 requests in a 60-second window) on every answer the bucket counted, and
+`ratelimit-remaining` on a private (keyed) answer only. An anonymous answer is cached at the edge for 60
+seconds and served to the next caller of the URL, so it never carries one caller's remainder; an
+anonymous client paces by the policy. A `message` is one line of at most 300 characters with no control, bidirectional or
 zero-width characters, even where it quotes what the caller asked for (2026-09-30). The 500 and the
 404 for an unknown path carry the same headers (they used to carry none). Before 2026-09-26 a few
 routes put a sentence in `error` (the per-minute 429, `compare`, `ask`); that sentence is now the
@@ -122,6 +136,14 @@ it does not select — a caller sends nothing. A change that would alter an exis
 meaning would ship under a new path with at least 90 days of overlap and a migration note.
 `/api/v1/*` is the partner namespace (snake_case cards built for one integration each), not an API
 version; its field meanings are frozen the same way.
+
+**Every change, dated, in one place (2026-10-18).** The [public API changelog](API_CHANGELOG.md) —
+on the site at `/developers/changelog`, with an RSS feed at `/developers/changelog/feed.xml`, and
+linked from `GET /api` and the OpenAPI document — lists what was added, what changed meaning and what
+is deprecated, newest first. A dated paragraph on this page is recorded there too. When HEY narrows
+what a value returns because the old answer was not true (a truth repair, such as `tab=new-builders`
+on 2026-10-17), the change is dated there and here the day it ships, and the old population keeps a
+name of its own.
 
 ## SDK (`@hey-research-lab/sdk`)
 
@@ -194,7 +216,7 @@ The catalogue, with the same filters and order the browse pages use.
 | `limit` | 1–48 | 24 |
 | `offset` | 0–5000; a larger value is silently clamped to 5000 (`MAX_LISTING_OFFSET`), so a deep walk ends there rather than erroring | 0 |
 | `sort` | `activity`, `shipped` (newest ship first), `shipped7d` / `shipped30d` (most meaningful ships in the last 7 / 30 days, the scorer's count), `marketCap`, `newest`, `liquidity`, `volume24h`; anything else is a 400 | `activity` |
-| `tab` | `building-with-token`, `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `new-on-hey`, `back-from-dormancy`, `utility`, `memes` | — |
+| `tab` | `building-with-token`, `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `new-on-hey`, `back-from-dormancy`, `utility`, `memes` — each defined below the table. **Changed 2026-10-17:** `new-builders` lists only builders; its old population is `new-on-hey` | — |
 | `kind` | `UTILITY`, `MEME`, `HYBRID`, `INFRASTRUCTURE`, `RWA`, `APPLICATION`, `OTHER` | — |
 | `status` | `SHIPPING`, `ACTIVE`, `QUIET`, `DORMANT`, `RESUMED`, `UNKNOWN` | — |
 | `narrative` | a narrative slug | — |
@@ -208,6 +230,30 @@ The catalogue, with the same filters and order the browse pages use.
 | `minVolume` | a positive dollar figure; only tokens whose card reading shows at least this much 24 h volume | — |
 | `age` | `day`, `week`, `month`, `older` — how long ago the token's pool was created | — |
 | `deployed` | `day`, `week`, `month`, `older` — how long ago the contract was deployed. Two dates, one vocabulary: a pool is opened when someone makes a market, a contract is deployed when the project puts it on chain, and they can be months apart | — |
+
+**What each `tab` lists** (the same words as the OpenAPI `tab` parameter and the SDK's
+`HeyProjectSurface`). The builder tabs count Robinhood Chain builders only (`catalogue.listScope`).
+
+| `tab` | Lists |
+|---|---|
+| `building-with-token` | Shipping, active or resumed, with a tracked token whose market is live and was read in the last 7 days |
+| `still-building` | Holds Still Building: verified building through a market drawdown HEY tracked. Robinhood Chain builders only |
+| `under-the-radar` | Holds Under the Radar: building ahead of market attention, on a measured market. Robinhood Chain builders only |
+| `shipping-now` | Activity status `SHIPPING`: a meaningful ship in the last 7 days. Robinhood Chain builders only |
+| `most-active` | Shipping, active or resumed, ordered by Build Momentum. Robinhood Chain builders only |
+| `new-builders` | Published on HEY in the last 7 days **with a builder source HEY reads and at least one counted ship**, newest first ship first |
+| `new-on-hey` | Every project published on HEY in the last 7 days, builder or not, newest first (added 2026-10-17) |
+| `back-from-dormancy` | Activity status `RESUMED`: shipping again after a long gap. Robinhood Chain builders only |
+| `utility` | Kind `UTILITY`, `INFRASTRUCTURE`, `APPLICATION` or `RWA` |
+| `memes` | Kind `MEME` |
+
+**Changed 2026-10-17: `tab=new-builders` lists builders only.** Before 2026-10-17 it listed every
+project published on HEY in the last 7 days; of 192 rows, 171 read "Activity unknown" with no builder
+source, under a name that promised builders. It now needs a builder source HEY reads and at least one
+counted ship, and is ordered by the most recent first ship (on 2026-10-18: 47 rows, where the old
+population held 379). This is a truth repair under the founder's ruling, not a new field: the old
+population is `tab=new-on-hey`, which a partner polling for every new page should read instead.
+Recorded in the [API changelog](API_CHANGELOG.md#2026-10-17).
 
 **`catalogue.listedTokenOnly` (additive, 2026-10-12).** The part of `catalogue.published` that is a
 listed token with no builder evidence and no live market: activity status Unknown, no ship of any
@@ -450,7 +496,7 @@ snapshot as `build.discoveryGapWithheld`, and the reason is never a zero:
 
 | Value | Meaning |
 |---|---|
-| `market_too_thin` | Not measured — market too thin: the market is live but not active, only a launch curve, or active only as a launch pool ("Launch pool only", `hbm-v22`). |
+| `market_too_thin` | Not measured — market too thin: the market is live but not active, only a launch curve, active only as a launch pool ("Launch pool only", `hbm-v22`), or (since `hbm-v31`) active on a reading with less than $1,000 of 24-hour volume. |
 | `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
 | `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token, or (since `hbm-v30`) the token is unverified and another published project's token carries the same ticker. |
 | `active_pool_not_read` | Not measured — the market is active only because another pool of the same token holds the liquidity, and HEY holds no current reading of that pool (`hbm-v21`). |
@@ -466,8 +512,8 @@ snapshot as `build.discoveryGapWithheld`, and the reason is never a zero:
   `UNVERIFIED` and another published project's tracked token — a different contract — carries the
   same ticker (case-insensitive, without a leading `$`), the gap is absent with
   `token_not_the_projects`, and the project is not Under the Radar. The market stays in the
-  population the others are compared against and keeps its `marketContextPercentile`; Still
-  Building is not changed by this rule.
+  population the others are compared against and keeps its `marketContextPercentile`. Still
+  Building was not changed by this rule until `hbm-v31`, which withholds it too (below).
 - **A stale reading.** The gap needs a market reading from the last day, as Under the Radar and
   Still Building already did; with only an older one (the population keeps readings up to seven
   days) it is absent with `no_market_reading`.
@@ -476,6 +522,27 @@ snapshot as `build.discoveryGapWithheld`, and the reason is never a zero:
   percentile in five bands — is `TYPICAL` or lower (below the 60th percentile), never `ELEVATED` or
   `HIGH`. A positive gap beside high attention is still published as a gap; it is no longer "building
   ahead of attention". The population the percentiles rank against is unchanged.
+
+**Three more withholdings (`hbm-v31`, 2026-10-18, founder delegation).** No field changed shape;
+`scoringVersion` reads `hbm-v31` on a score written under them, and one additive value joins
+`stillBuildingWithheld`. Each only withholds, never awards, and none reaches the activity status
+or Build Momentum:
+
+- **A market that barely trades.** When the reading the gap is taken from carries less than
+  $1,000 of 24-hour volume, the market is not measured, whatever its status: the gap is absent with
+  `market_too_thin`, the project is not Under the Radar, and Still Building is not measured
+  (`stillBuildingWithheld: "market_too_thin"`). A reading with no volume figure is unknown and
+  withholds nothing; a reading older than a day is `no_market_reading` first. The market stays in
+  the population the others are compared against and keeps its `marketContextPercentile`.
+  `explain?fact=discovery_gap` and `explain?fact=still_building` name the volume as the
+  `volume24hUsd` input.
+- **Still Building on a token HEY cannot tell from a lookalike.** Where the gap is absent with
+  `token_not_the_projects` because the token is unverified and another published project's token
+  carries its ticker (`hbm-v30`), Still Building is not measured either, with the same value.
+- **Every builder source unavailable.** When every repository, changelog and feed HEY reads the
+  project's building from is unavailable — a repository answering 404 — Still Building is not
+  measured (`builder_sources_unavailable`). The ships already recorded stay on the timeline and
+  still set the activity status.
 
 **A rescued market (`hbm-v21`, 2026-10-01).** A token whose market is active only because
 another pool of the same token holds the liquidity (market status reason
@@ -494,7 +561,8 @@ as `NOT_MEASURED`.
 Since scoring version `hbm-v19` Still Building's drawdown is measured on the same markets as the
 Discovery Gap: an **active market** that is more than a launch curve — and, since `hbm-v22`, more
 than a launch pool. On a `LOW_LIQUIDITY`, `TRADING_INACTIVE` or `INSUFFICIENT_DATA` market, a
-launch curve or a launch pool, a "decline" measures the thin market, not a market that fell while the team kept building, so the badge is not measured.
+launch curve or a launch pool — and, since `hbm-v31`, on a reading with less than $1,000 of 24-hour
+volume — a "decline" measures the thin market, not a market that fell while the team kept building, so the badge is not measured.
 
 `score.stillBuilding` keeps its meaning — `false` whenever the badge is not held — and
 `score.stillBuildingWithheld` beside it says the `false` is "not measured", never "not met". The
@@ -502,9 +570,9 @@ same field is on the snapshot as `build.stillBuildingWithheld`:
 
 | Value | Meaning |
 |---|---|
-| `market_too_thin` | Not measured — market too thin: the market is live but not active, only a launch curve, or active only as a launch pool ("Launch pool only", `hbm-v22`). |
+| `market_too_thin` | Not measured — market too thin: the market is live but not active, only a launch curve, active only as a launch pool ("Launch pool only", `hbm-v22`), or (since `hbm-v31`) active on a reading with less than $1,000 of 24-hour volume. |
 | `market_not_live` | Not measured — no live market (no liquidity, removed, abandoned, an untraded launch pool). |
-| `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token. |
+| `token_not_the_projects` | Not measured — nothing the project publishes ties it to the token, or (since `hbm-v31`) the token is unverified and another published project's token carries the same ticker. |
 | `valuation_not_plausible` | Not measured — the valuation gate withheld the current valuation (`hbm-v20`). |
 | `no_token` | Not measured — the project has no tracked token (`hbm-v21`). |
 | `active_pool_not_read` | Not measured — the market is active only in another pool of the token, and HEY holds no current reading of it (`hbm-v21`). |
@@ -512,6 +580,7 @@ same field is on the snapshot as `build.stillBuildingWithheld`:
 | `activity_unknown` | Not measured — HEY holds no builder source it can read, so whether the project kept building is not known (`hbm-v21`). |
 | `not_scored` | Not measured — HEY has no score for the project under the current scoring version yet (`hbm-v21`; sent by the reader, never stored). |
 | `no_tracked_high` | Not measured — the market is measured, but HEY holds no plausible reading at least 7 days old from the last 90 days to be the drawdown's high: a market HEY began reading this week (2026-10-16; it read "not met" before). |
+| `builder_sources_unavailable` | Not measured — every repository, changelog and feed HEY reads the project's building from is unavailable, such as a repository answering 404, so whether it kept building through a decline is not known (`hbm-v31`, 2026-10-18). |
 
 The list may grow; read an unknown value as "not measured". The field is absent when the badge
 was measured (held or not met). SDK: `HeyStillBuildingWithheld`. OpenAPI: `#/components/schemas/StillBuildingWithheld`.
@@ -936,8 +1005,49 @@ every malformed token keep their `400`, which also spends nothing.
 | `/api/v1/scan` | `activity_applies_to_token` | `false` exactly when `token_verification` is `MISMATCH`; the card then carries no `cta`. Every other field keeps its value |
 | | `reason: "not_a_token"` | on `found: false`, for the zero address |
 | | `indexed`, `research_state`, `launched_via` (2026-10-09) | on `found: false` beside `scan_url`: whether HEY holds the token, `not_researched` / `not_published` / `not_indexed`, and the launchpad when known. `found` keeps its meaning |
+| | `publishedNamesakes` (2026-10-18) | on `found: false` beside `scan_url`: the published projects that carry this token's name or ticker on another contract (see below). `found` keeps its meaning |
 | `/api/token/{chainId}/{address}` | `project.activityAppliesToToken` | as above; `project.url` is still sent |
+| | `publishedNamesakes` (2026-10-18) | with `status: "unknown"` (never beside `issuer`): the same object as on `/api/v1/scan` |
 | `/api/v1/builder` | `activity_applies_to_token` | as above; `hey_project_url` is still sent — do not link from the token to it when `false` |
+
+### `publishedNamesakes` (2026-10-18)
+
+A copy of a published project's token is usually launched under the same name and ticker, often on an
+address that ends in the same four characters. When HEY has not published the token asked about, the
+scan card and the token lookup say which published projects carry its name or ticker on another contract:
+
+```json
+"publishedNamesakes": {
+  "total": 1,
+  "items": [
+    {
+      "slug": "chit",
+      "name": "Chit",
+      "symbol": "CHIT",
+      "contractAddress": "0xd523…50d8 (the whole address)",
+      "shares": "name_and_ticker",
+      "sharesAddressEnding": true,
+      "url": "https://heyresearch.xyz/project/chit"
+    }
+  ],
+  "line": "Chit ($CHIT) is published on HEY on a different contract, 0xd523…. This token, 0xdcfe…, carries the same name and ticker, $CHIT, and its address ends in the same four characters (50d8). On chain a token is its contract, never its name or ticker."
+}
+```
+
+- **Facts, never a verdict.** Each item is a published project's own tracked contract, what it shares with
+  the token asked about (`name`, `ticker` or `name_and_ticker`: the name compared by its letters and digits,
+  the ticker without a `$`, both case-insensitive), and whether its address ends in the same four hexadecimal
+  characters. HEY never says which token is the real one, and neither does the field.
+- **Present only when HEY holds a name or a ticker for the token** (its token row, its launch record or the
+  unreviewed record on it). Absent means HEY had nothing to compare — unknown, never "no namesake".
+  `total: 0` with no `items` is a reading of HEY's published catalogue.
+- `items` holds at most three, closest first (name and ticker, then a shared ending, then a Verified Builder,
+  then the slug — an order, never a score); `total` is every published namesake. `line` is the one sentence
+  `/scan`, `/search`, MCP and the agent answers print, sent only beside a namesake; whole contracts, because the
+  short forms of a copy and its original can read the same.
+- `GET /api/contracts/{chainId}/{address}`'s `404` says the same: when HEY holds no contract record but has the
+  address indexed as an unresearched launch record or an unpublished token, the message says so, followed by
+  `line` when there is one.
 
 ## The Partner Card: additive fields (2026-09-30)
 

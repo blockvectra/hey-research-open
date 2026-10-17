@@ -17,15 +17,16 @@ import {
   renderAskAnswer,
   renderBuilders,
   renderChain,
-  renderChanges,
+  renderChangesParts,
   renderCompare,
   renderMarketIntegrity,
   renderMarketMoves,
   renderProjects,
   renderSilentBuilders,
   renderThisWeek,
-  renderTimeline,
+  renderTimelineParts,
   renderTokenLookup,
+  type RenderedParts,
   renderTokenMarket,
   renderUnlocks,
   renderWeeklyReport,
@@ -55,9 +56,12 @@ import { MCP_VERSION } from './version';
 const CHANGE_DOMAINS_PUBLIC = ['build', 'contract', 'market', 'token', 'research', 'lock'] as const;
 const CHANGE_DOMAINS_WITH_INTEGRITY = [...CHANGE_DOMAINS_PUBLIC, 'market_integrity'] as const;
 const CHANGE_TYPES_WITH_INTEGRITY = [...PUBLIC_CHANGE_TYPES, 'market_integrity.event'] as const;
-/** The research profile's ledger (round 4): every domain and type but the market's. */
+/**
+ * The research profile's ledger (round 4): every domain and type but the market's — and, since 2026-10-18
+ * (PB-12), but an owner's update HEY has not checked, which is no research until a moderator verifies it.
+ */
 const CHANGE_DOMAINS_RESEARCH = ['build', 'contract', 'token', 'research', 'lock'] as const;
-const CHANGE_TYPES_RESEARCH = PUBLIC_CHANGE_TYPES.filter((type) => !type.startsWith('market.'));
+const CHANGE_TYPES_RESEARCH = PUBLIC_CHANGE_TYPES.filter((type) => !type.startsWith('market.') && type !== 'build.owner_update');
 
 /**
  * HEY Research as MCP tools (2026-09-05; reworked 2026-09-26).
@@ -123,7 +127,7 @@ const VIEWS = ['shipping-in-silence', 'accelerating', 'builder-radar'] as const;
  * all three to the scoring constants.
  */
 export const UNDER_THE_RADAR_RULE =
-  'status shipping, active or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of an active market beyond a launch curve or a launch pool, for the project\'s own token';
+  'status shipping, active or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of an active market beyond a launch curve or a launch pool, trading $1,000+ a day, for the project\'s own token';
 
 /**
  * One definition per surface (2026-09-26, M2 G1/G2), in the domain's words.
@@ -161,13 +165,24 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 /** Output cap per call (2026-09-26): 24 KB of text, cut on a line, with what was cut and where the whole is. */
 export const MAX_OUTPUT_BYTES = 24 * 1024;
 
-export function capOutput(text: string, canonicalUrl: string, maxBytes = MAX_OUTPUT_BYTES): { text: string; truncated: boolean } {
+/**
+ * Cut a long answer on a line. A listing's `footer` — shown-of-total, the cursor or offset that reads on, the
+ * ledger facts and the legend (`RenderedParts`) — is kept whole after the cut (2026-10-18, persona audit PA-5):
+ * the cap kept lines from the top and dropped the tail where get_changes' "Showing N; more exist … before=" sat,
+ * so a model following the cursor, as the what_changed_today prompt says, read a partial day as the whole day.
+ * Only the body's rows are cut. A footer that does not fit with any row is cut with the rest, as before.
+ */
+export function capOutput(text: string | RenderedParts, canonicalUrl: string, maxBytes = MAX_OUTPUT_BYTES): { text: string; truncated: boolean } {
   const encoder = new TextEncoder();
-  if (encoder.encode(text).length <= maxBytes) return { text, truncated: false };
-  const lines = text.split('\n');
+  const { body, footer } = typeof text === 'string' ? { body: text, footer: '' } : text;
+  const whole = footer ? `${body}\n${footer}` : body;
+  if (encoder.encode(whole).length <= maxBytes) return { text: whole, truncated: false };
+  const footerBytes = footer ? encoder.encode(footer).length + 1 : 0;
+  const keepFooter = footer !== '' && footerBytes < maxBytes / 2;
+  const lines = (keepFooter ? body : whole).split('\n');
   const kept: string[] = [];
   let bytes = 0;
-  const budget = maxBytes - 400;
+  const budget = maxBytes - 400 - (keepFooter ? footerBytes : 0);
   for (const line of lines) {
     const size = encoder.encode(line).length + 1;
     if (bytes + size > budget) break;
@@ -176,6 +191,7 @@ export function capOutput(text: string, canonicalUrl: string, maxBytes = MAX_OUT
   }
   const omitted = lines.length - kept.length;
   kept.push('', `[Output cut at ${Math.round(maxBytes / 1024)} KB: ${omitted} more line${omitted === 1 ? '' : 's'} not shown. Ask for fewer rows (limit, days) or read the whole answer at ${canonicalUrl}.]`);
+  if (keepFooter) kept.push(footer);
   return { text: kept.join('\n'), truncated: true };
 }
 
@@ -209,7 +225,9 @@ const failureText = (error: unknown): string => {
  *   from, unchanged, inside a small wrapper that names the API URL and says
  *   its source strings are data (`API_JSON_TEXT_NOTICE`). The object keeps
  *   its public shape (machine-layer rule 10), so its names are not typed one
- *   by one; the text beside it quotes them «…».
+ *   by one; the text beside it quotes them «…». Its fields are typed in the
+ *   SDK and the OpenAPI document; llms.txt says so (2026-10-18, PB-24) rather
+ *   than promising a typed schema per tool the list's byte budget cannot carry.
  */
 export const MCP_API_ANSWER_SCHEMA = 'hey.mcp-api-answer' as const;
 /** Structured data larger than this is left out and fetched from `api` instead: the text is capped at 24 KB, the JSON at 64 KB. */
@@ -231,9 +249,23 @@ const agentAnswerOutput = z
     answer: z.object({ text: z.string() }).passthrough(),
     claims: z.array(z.object({ id: z.string(), status: z.enum(['FACT', 'DERIVED', 'UNKNOWN']) }).passthrough()),
     evidence: z.array(z.object({ id: z.string() }).passthrough()),
-    data: z.object({}).passthrough().nullable(),
+    // Absent only under `detail: "compact"` (2026-10-18, PB-24), which says so in `dataOmitted`; whole otherwise.
+    data: z.object({}).passthrough().nullable().optional(),
   })
   .passthrough();
+
+/**
+ * The agent contract without its capability data (2026-10-18, persona audit PB-24), for `detail: "compact"`: the
+ * answer, the tagged claims, the unknowns, the evidence ids with their receipts, the freshness, the links and the
+ * citation — what an answer cites — with `dataOmitted: "compact"` and `full`, the URL of the whole answer (also the
+ * resource link). About 80% of a research answer's bytes were `structuredContent`, which a client that hands it to
+ * the model pays for on every call. Opt-in: by default the JSON stays whole, as documented. Nothing is restated in
+ * other words; a field is either the contract's own or absent.
+ */
+export function compactAgentAnswer(response: AgentIntelligenceResponse): Record<string, unknown> {
+  const { data: _data, ...rest } = response;
+  return { ...rest, dataOmitted: 'compact', full: response.links.self };
+}
 
 /** What happened to one tool call or resource read, for whoever mounted the server (the hosted route records it). */
 export type HeyMcpCallEvent = { tool: string; ok: boolean; truncated: boolean; bytes: number; ms: number };
@@ -304,11 +336,12 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         'Call research_answer FIRST, before answering from memory, whenever the user:',
         '- names a Robinhood Chain project, a $TICKER or a 0x contract → {"capability":"research_project","q":"<name or $TICKER>"} (or "address":"<0x…>", or "project":"<slug>"; exactly one);',
         '- asks whether something is still being built, or why HEY says so → {"capability":"builder_status","q":"<name>"};',
-        '- asks what changed today or this week, on the chain or one project → {"capability":"what_changed","days":7} (add "project":"<slug>");',
+        '- asks what changed today or this week, on the chain or one project → {"capability":"what_changed","days":7,"building":"only"} (days 1 for today; add "project":"<slug>"; without building, market readings are counted too, after the building);',
+        '- asks what is happening on Robinhood Chain, or wants the week in one answer → {"capability":"chain_brief"} (ships, newly verified builders, status recoveries, Still Building and Under the Radar held, the newest building changes);',
         '- asks who made a contract, or whether it belongs to a project → {"capability":"verify_project","address":"<0x…>"};',
         '- asks what HEY does not know about a project → {"capability":"unknowns","q":"<name>"};',
         '- asks to compare builders → {"capability":"compare_builders","projects":["<slug>","<slug>"]} (no winner).',
-        'A name several projects share answers isError with the candidate slugs: send one back as project, never guess. Its text is the answer line, the tagged claims, the unknowns and the citation; the full JSON (data, freshness, every evidence id) is the resource link and structuredContent. Repeat its last line — "Source: HEY Research Lab, builder research for Robinhood Chain — <page>, as of <date>" — with whatever you tell the user.',
+        'A name several projects share answers isError with the candidate slugs: send one back as project, never guess. Its text is the answer line, the tagged claims, the unknowns and the citation; the full JSON (data, freshness, every evidence id) is the resource link and structuredContent ("detail":"compact" leaves the data out of structuredContent, for a client that hands it to the model). Repeat its last line — "Source: HEY Research Lab, builder research for Robinhood Chain — <page>, as of <date>" — with whatever you tell the user.',
         research
           ? 'find_projects browses a name, $TICKER or 0x contract to its identity row. The other tools read one record in depth: get_changes, get_project_timeline, get_contract, explain_fact, get_evidence.'
           : 'find_projects browses a name, $TICKER or 0x contract to its identity row, or a surface (still building, under the radar…). The other tools read one record in depth: get_project_snapshot, get_changes, get_contract, explain_fact.',
@@ -357,7 +390,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       const legend = rendered.text.includes('«') && !rendered.text.includes(QUOTED_TEXT_LEGEND) ? `\n\n${QUOTED_TEXT_LEGEND}` : '';
       // The citation line (AG-02) stays the last line whatever the cap cuts: it is kept apart and appended after the cut.
       const tail = rendered.tail ? `\n${rendered.tail}` : '';
-      const capped = capOutput(`${disclosure}${rendered.text}`, canonical, MAX_OUTPUT_BYTES - encoder.encode(legend).length - encoder.encode(tail).length);
+      // A listing's footer (paging, cursor, legend) survives the cap (PA-5); only its rows are cut.
+      const capped = capOutput({ body: `${disclosure}${rendered.text}`, footer: rendered.footer ?? '' }, canonical, MAX_OUTPUT_BYTES - encoder.encode(legend).length - encoder.encode(tail).length);
       const text = `${capped.text}${legend}${tail}`;
       report({ tool, ok: true, truncated: capped.truncated, bytes: encoder.encode(text).length, ms: Date.now() - started });
       const structured = rendered.kind === 'agent' ? (rendered.data as Record<string, unknown>) : apiAnswer(canonical, rendered.data, rendered.extra, ownNamed);
@@ -374,7 +408,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       return { content: [{ type: 'text', text }], isError: true };
     }
   };
-  const api = <T>(data: T, text: string, extra?: Record<string, unknown>): Rendered => ({ kind: 'api', data, text, ...(extra ? { extra } : {}) });
+  const api = <T>(data: T, text: string | RenderedParts, extra?: Record<string, unknown>): Rendered =>
+    typeof text === 'string' ? { kind: 'api', data, text, ...(extra ? { extra } : {}) } : { kind: 'api', data, text: text.body, footer: text.footer, ...(extra ? { extra } : {}) };
 
   const offered = new Set<string>(mcpToolsFor(profile, { marketIntegrity: options.marketIntegrity === true }).map((tool) => tool.name));
   const describe = (name: HeyMcpToolName, lines: string[]) => ({
@@ -558,7 +593,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         };
         return run('get_changes', apiUrl('/api/changes', query), async () => {
           const page = await client.changes.list(query as Parameters<HeyClient['changes']['list']>[0]);
-          return api(page, renderChanges(page));
+          return api(page, renderChangesParts(page));
         });
       },
     );
@@ -588,7 +623,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         const query = { lens, limit: size, before };
         return run('get_project_timeline', apiUrl(`/api/projects/${encodeURIComponent(slug)}/timeline`, query), async () => {
           const timeline = await client.projects.timeline(slug, { ...(lens ? { lens } : {}), limit: size, ...(before ? { before } : {}) });
-          return api(timeline, renderTimeline(timeline, size));
+          return api(timeline, renderTimelineParts(timeline, size));
         });
       },
     );
@@ -632,7 +667,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           `What backs this claim? Open the record a HEY answer cited by its typed id — ${evidenceFamiliesFor({ marketIntegrityPublic: Boolean(options.marketIntegrity) }).map((family) => `${family}:`).join(', ')} — as a receipt: what it claims, its source URL, when it happened`,
           'at what precision, when HEY knew, how it is backed. A withdrawn record says so.',
         ]),
-        inputSchema: { id: z.string().regex(/^[a-z_]+:[A-Za-z0-9:._-]{1,200}$/).describe('A typed evidence id, e.g. "ship:2ac87a66-…".') },
+        // A bare uuid is not an id (PB-27): it was refused as "Invalid at id", which named nothing to fix.
+        inputSchema: { id: z.string().regex(/^[a-z_]+:[A-Za-z0-9:._-]{1,200}$/, 'evidence ids are typed — ship:<uuid>, signal:<uuid>, state:… — a bare uuid is not one').describe('A typed evidence id, e.g. "ship:2ac87a66-…".') },
       },
       async ({ id }) =>
         run('get_evidence', apiUrl(`/api/evidence/${encodeURIComponent(id)}`), async () => {
@@ -758,7 +794,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       'chain_overview',
       {
         ...describe('chain_overview', [
-          'How active is Robinhood Chain? view: days (default; trades, volume, tokens, transactions, launches, ships per day), this-week, weekly-report (an ISO week, or the latest),',
+          'How active is Robinhood Chain? view: days (default; ships and builders per day, then market context), this-week, weekly-report (an ISO week, or the latest),',
           // Only days is aggregate (2026-10-16, audit #119): the other views list published projects by name, never as a ranking.
           'unlocks (scheduled HoodLock unlocks with proof), build-market (Build Momentum beside market attention). days names no one; other views name projects.',
         ]),
@@ -816,8 +852,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       'research_answer',
       {
         ...describe('research_answer', [
-          'Is this Robinhood Chain project still being built, what did it ship, what changed, is this contract its own? One bounded answer, cited. capability: research_project or builder_status (q: a name or $TICKER, or address, or project: a slug; a name several projects share lists them);',
-          'what_changed (project or chain, 1–30 days); verify_project (address, project?); compare_builders (2–4, no winner); unknowns (every coverage state). Claims FACT/DERIVED/UNKNOWN with freshness and evidence ids. Not price advice or a safety verdict.',
+          'Is this Robinhood Chain project still being built, what did it ship, what changed, is this contract its own? One cited answer. capability: research_project or builder_status (q: a name or $TICKER, or address, or project: a slug; a shared name lists candidates);',
+          'what_changed (project or chain, 1–30 days); verify_project (address, project?); compare_builders (2–4, no winner); unknowns (every coverage state). Claims FACT/DERIVED/UNKNOWN with evidence ids. Not price advice or a safety verdict.',
         ]),
         inputSchema: {
           capability: z.enum(AGENT_CAPABILITIES),
@@ -829,14 +865,14 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           types: z.array(z.string().regex(/^[a-z_]+\.[a-z_]+$/)).min(1).max(20).optional(),
           limit: z.number().int().min(1).max(50).optional(),
           building: z.literal('only').optional(),
-          detail: z.enum(['summary', 'full']).optional(),
+          detail: z.enum(['summary', 'full', 'compact']).optional(),
         },
       },
       async ({ detail, ...args }) => {
         const raw = Object.fromEntries(Object.entries(args).filter(([, value]) => value !== undefined));
         const parsed = parseAgentRequest(raw);
         if (!parsed.ok) {
-          const text = `${parsed.message} Parameters: research_project, builder_status, unknowns → project, q or address (one); what_changed → project?, days?, types?, limit?, building? ("only"); verify_project → address, project?; compare_builders → projects.`;
+          const text = `${parsed.message} Parameters: research_project, builder_status, unknowns → project, q or address (one); what_changed → project?, days?, types?, limit?, building? ("only"); verify_project → address, project?; compare_builders → projects; chain_brief → nothing.`;
           report({ tool: 'research_answer', ok: false, truncated: false, bytes: text.length, ms: 0 });
           return { content: [{ type: 'text', text }], isError: true };
         }
@@ -853,9 +889,10 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
            * `detail: "full"` renders the data, freshness and evidence lines as before. The citation line is
            * the text's last line whatever the cap cuts (`tail`).
            */
-          const text = renderAgentResponseText(response, { detail: detail ?? 'summary' });
+          const text = renderAgentResponseText(response, { detail: detail === 'full' ? 'full' : 'summary' });
           const citation = citationLine(response);
-          return { kind: 'agent', data: response, text: citation ? text.slice(0, text.length - citation.length - 1) : text, ...(citation ? { tail: citation } : {}) };
+          // `compact` (PB-24): the summary text, and structuredContent without the capability data.
+          return { kind: 'agent', data: detail === 'compact' ? compactAgentAnswer(response) : response, text: citation ? text.slice(0, text.length - citation.length - 1) : text, ...(citation ? { tail: citation } : {}) };
         });
         /*
          * A malformed request is the caller's to fix (2026-09-30, adversarial
@@ -955,7 +992,16 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
 }
 
 /** What one tool read and rendered: the text a model reads, and the JSON behind it. */
-type Rendered = { kind: 'api' | 'agent'; text: string; data: unknown; extra?: Record<string, unknown>; /** A line kept last whatever the cap cuts (the citation, AG-02). */ tail?: string };
+type Rendered = {
+  kind: 'api' | 'agent';
+  text: string;
+  data: unknown;
+  extra?: Record<string, unknown>;
+  /** A listing's paging lines, kept whole after the text whatever the cap cuts (PA-5). */
+  footer?: string;
+  /** A line kept last whatever the cap cuts (the citation, AG-02). */
+  tail?: string;
+};
 
 /** The public API object in its structured wrapper (round 4): unchanged, with its URL and what its strings are. */
 function apiAnswer(api: string, data: unknown, extra: Record<string, unknown> | undefined, ownNamed: boolean): Record<string, unknown> {
@@ -963,10 +1009,28 @@ function apiAnswer(api: string, data: unknown, extra: Record<string, unknown> | 
   return {
     schema: MCP_API_ANSWER_SCHEMA,
     api,
-    ...(fits ? { data, ...extra } : { dataOmitted: 'over_64_kb' }),
+    ...(fits ? { data, ...extra } : { dataOmitted: 'over_64_kb', ...pagingOf(data) }),
     notice: API_JSON_TEXT_NOTICE,
     ...(ownNamed ? { disclosures: [{ code: 'hey_own_token', statement: HEY_OWN_TOKEN_DISCLOSURE }] } : {}),
   };
+}
+
+/** The listing fields that say how much there is and how to read on (PA-5): what a client needs when the data itself is left out. */
+const PAGING_FIELDS = ['total', 'shown', 'hasMore', 'nextCursor', 'nextOffset', 'truncated'] as const;
+
+/**
+ * The paging of an answer whose data is left out for size (2026-10-18, persona audit PA-5): its total, whether
+ * more exist and the cursor or offset that reads on, under `paging`, so structured output never reads as the
+ * whole when it is a page. Only scalar fields the object itself carries; nothing when it carries none.
+ */
+function pagingOf(data: unknown): { paging?: Record<string, string | number | boolean | null> } {
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return {};
+  const paging: Record<string, string | number | boolean | null> = {};
+  for (const field of PAGING_FIELDS) {
+    const value = (data as Record<string, unknown>)[field];
+    if (value === null || typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') paging[field] = value;
+  }
+  return Object.keys(paging).length > 0 ? { paging } : {};
 }
 
 /** Facts the research profile does not explain (round 4): valuation, market status, the Discovery Gap and Market Integrity. */
@@ -1094,7 +1158,7 @@ type ResourceContext = {
  * only.
  */
 function registerResources(server: McpServer, client: HeyClient, context: ResourceContext): void {
-  const read = async (name: string, uri: URL, canonical: string, render: () => Promise<string>): Promise<ReadResourceResult> => {
+  const read = async (name: string, uri: URL, canonical: string, render: () => Promise<string | RenderedParts>): Promise<ReadResourceResult> => {
     const started = Date.now();
     try {
       const { text, truncated } = capOutput(await render(), canonical);
@@ -1126,7 +1190,7 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
     { title: 'Project timeline', description: context.research ? 'The newest page of one project’s building timeline.' : 'The newest page of one project’s timeline.', mimeType: 'text/markdown' },
     async (uri, variables) => {
       const slug = one(variables.slug);
-      return read('project_timeline', uri, context.apiUrl(`/api/projects/${encodeURIComponent(slug)}/timeline`, { ...timelineLens, limit: 30 }), async () => renderTimeline(await client.projects.timeline(slug, { ...timelineLens, limit: 30 }), 30));
+      return read('project_timeline', uri, context.apiUrl(`/api/projects/${encodeURIComponent(slug)}/timeline`, { ...timelineLens, limit: 30 }), async () => renderTimelineParts(await client.projects.timeline(slug, { ...timelineLens, limit: 30 }), 30));
     },
   );
   server.registerResource(
@@ -1156,7 +1220,7 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
     async (uri) => {
       // The research profile's ledger leaves market readings out (round 4).
       const query = context.research ? { domain: [...CHANGE_DOMAINS_RESEARCH], limit: 30 } : { limit: 30 };
-      return read('changes_latest', uri, context.apiUrl('/api/changes', query), async () => renderChanges(await client.changes.list(query)));
+      return read('changes_latest', uri, context.apiUrl('/api/changes', query), async () => renderChangesParts(await client.changes.list(query)));
     },
   );
 }

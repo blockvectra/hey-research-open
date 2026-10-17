@@ -227,6 +227,8 @@ export type HeySnapshotChange =
       detectedAt: string;
       recordedAt: string;
       summary: string;
+      /** The summary in the snapshot's moment's words, only when it differs (2026-10-18, additive): a running code week by its days so far. */
+      summaryCurrent?: string;
       evidence: { id: string; url?: string; label: string }[];
       source: string;
       /** Present and true only for an event that counts toward activity status (2026-09-30, additive). */

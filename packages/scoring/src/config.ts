@@ -243,6 +243,30 @@ export const STILL_BUILDING = {
    * `activity_unknown`). The badge stays false; only its state changes.
    */
   withholdUnmeasured: true,
+  /**
+   * A token HEY cannot tell from a lookalike holds no drawdown either
+   * (hbm-v31, 2026-10-18, founder delegation "repair semua sekali", persona
+   * audit PA-17): when the Discovery Gap is withheld as
+   * `token_not_the_projects` because the tracked token is UNVERIFIED and
+   * another published project's token carries its ticker
+   * (`DISCOVERY_GAP.withholdContestedUnverifiedTicker`), Still Building is
+   * not measured for the same reason, never "not held". hbm-v30 withheld only
+   * the gap, so zip-c00899 held Still Building on a market whose gap the same
+   * row said was not the project's.
+   */
+  withholdContestedUnverifiedTicker: true,
+  /**
+   * Building HEY can no longer read holds no badge (hbm-v31, same ruling):
+   * when every builder source of the project — each repository, changelog
+   * and feed of its own that the refresh reads — is unavailable (a
+   * repository answering 404, a feed gone), whether it kept building through
+   * a decline is not something HEY can see, so the badge is not measured
+   * (`builder_sources_unavailable`). zip-c00899 held Still Building while its
+   * one repository answered 404. A source never read yet is not unavailable,
+   * and a project with no builder source at all is decided by its activity
+   * status as before. Activity status and Build Momentum are unchanged.
+   */
+  withholdUnavailableBuilderSources: true,
 } as const;
 
 /** PRD V4 section 12.1. Thresholds are configuration, never hardcoded in UI. */
@@ -307,8 +331,9 @@ export const DISCOVERY_GAP = {
    * without a leading `$`), the gap is withheld as `token_not_the_projects`,
    * and so Under the Radar. TeraWallet was Under the Radar on a $TERA its own
    * page said HEY could not attribute. Only the gap: the market stays in the
-   * population the others are ranked against, keeps its percentile, and Still
-   * Building is unchanged by this rule.
+   * population the others are ranked against and keeps its percentile. Still
+   * Building was unchanged by this rule until hbm-v31, which withholds it too
+   * (`STILL_BUILDING.withholdContestedUnverifiedTicker`).
    */
   withholdContestedUnverifiedTicker: true,
   /**
@@ -320,6 +345,24 @@ export const DISCOVERY_GAP = {
    * in the population the others are ranked against.
    */
   requireFreshReading: true,
+  /**
+   * A market that barely trades is not a measured market (hbm-v31,
+   * 2026-10-18, founder delegation "repair semua sekali", persona audit
+   * PA-17): a fresh reading whose measured 24-hour volume is below this many
+   * US dollars gets no gap, no Under the Radar and no Still Building — withheld
+   * as `market_too_thin`, "Not measured — market too thin", exactly as a
+   * market that is not ACTIVE_MARKET (hbm-v18, hbm-v19). Two of the three
+   * Under the Radar projects on 2026-10-18 sat on graduated Pons pools that
+   * were ACTIVE_MARKET on $27.51 and $162 of volume, their liquidity above
+   * their valuation: the attention percentile and the drawdown there measured
+   * an untraded pool, not attention. The volume is the one on the reading the
+   * gap is taken from (`marketVolumeTooThin`); a reading with no volume figure
+   * is unknown and never a trip wire, and a stale reading is withheld as
+   * `no_market_reading` first. The market stays in the population the others
+   * are ranked against and keeps its percentile. Only withholds, never awards,
+   * and never reaches activity status or Build Momentum.
+   */
+  minVolume24hUsd: 1_000,
 } as const;
 
 /** Discovery Gap component weights (PRD V4 section 13.1). */

@@ -506,3 +506,94 @@ describe('methods for the machine-layer routes (2026-09-26)', () => {
     expect(error.code).toBe('not_found');
   });
 });
+
+/*
+ * Rate limits and the server's own words (2026-10-18, persona audit PB-31, PB-34): 94% of SDK requests were
+ * refused, nearly all 429s from walks; and a 400's documented code and the request id lived only in `body`.
+ */
+describe('rate limits and error codes (0.3.3)', () => {
+  const limited = (retryAfter: string) => ok({ error: 'rate_limited', message: 'Too many requests.', requestId: 'req-429', retryable: true }, 429, { 'retry-after': retryAfter });
+
+  /** A client answering `responses` in order, recording every wait it makes. */
+  function scripted(responses: Response[], options: { wait?: 'walks' | 'always' | 'never'; maxRetries?: number; maxWaitSeconds?: number } = {}) {
+    const waits: number[] = [];
+    let index = 0;
+    const client = new HeyClient({
+      baseUrl: 'https://hey.test',
+      fetchImpl: async () => responses[Math.min(index++, responses.length - 1)]!,
+      rateLimit: options,
+      sleep: async (ms) => {
+        waits.push(ms);
+      },
+    });
+    return { client, waits };
+  }
+
+  const page = (items: unknown[], nextOffset?: number, headers: Record<string, string> = {}) => ok({ items, total: 3, ...(nextOffset === undefined ? {} : { nextOffset }) }, 200, headers);
+
+  /** Every page of a walk, or the error that ended it. */
+  const drain = async (walk: AsyncIterable<unknown>): Promise<unknown[]> => {
+    const seen: unknown[] = [];
+    for await (const entry of walk) seen.push(entry);
+    return seen;
+  };
+
+  it('carries the API’s own code and the request id', async () => {
+    const error = await caught(failing(400, { error: 'invalid_cursor', message: 'That cursor is not one HEY issued.', requestId: 'req-1', retryable: false }).changes.list({ cursor: 'garbage' }));
+    expect(error).toMatchObject({ code: 'bad_request', apiCode: 'invalid_cursor', requestId: 'req-1' });
+    // From the header when the body has none; and a sentence in `error` is never a code.
+    const header = await caught(failing(429, { error: 'Too many requests. Try again in 3 seconds.' }, { 'x-request-id': 'req-2', 'retry-after': '3' }).status());
+    expect(header).toMatchObject({ code: 'rate_limited', apiCode: undefined, requestId: 'req-2' });
+  });
+
+  it('a walk waits out a 429 by its retry-after and carries on', async () => {
+    const { client, waits } = scripted([page([1], 1, { 'ratelimit-limit': '120', 'ratelimit-remaining': '100', 'ratelimit-policy': '120;w=60' }), limited('7'), page([2])]);
+    expect(await drain(client.projects.items())).toEqual([1, 2]);
+    expect(waits).toEqual([7000]);
+  });
+
+  it('gives up after maxRetries, and never waits longer than maxWaitSeconds', async () => {
+    const tired = scripted([page([1], 1, { 'ratelimit-limit': '120', 'ratelimit-remaining': '100' }), limited('2')], { maxRetries: 2 });
+    expect(await caught(drain(tired.client.projects.items()))).toMatchObject({ code: 'rate_limited', retryAfterSeconds: 2, requestId: 'req-429' });
+    expect(tired.waits).toEqual([2000, 2000]);
+
+    const long = scripted([limited('3600')]);
+    expect(await caught(drain(long.client.projects.pages()))).toMatchObject({ code: 'rate_limited' });
+    expect(long.waits).toEqual([]);
+  });
+
+  it('never waits for a monthly quota, and a single call does not wait unless asked', async () => {
+    const quota = scripted([ok({ error: 'quota', message: 'Monthly allowance used.' }, 429, { 'retry-after': '5' })]);
+    expect(await caught(drain(quota.client.projects.pages()))).toMatchObject({ code: 'quota' });
+    expect(quota.waits).toEqual([]);
+
+    const single = scripted([limited('1'), ok({ verdict: 'ok' })]);
+    expect(await caught(single.client.status())).toMatchObject({ code: 'rate_limited' });
+    expect(single.waits).toEqual([]);
+
+    const always = scripted([limited('1'), ok({ verdict: 'ok' })], { wait: 'always' });
+    await expect(always.client.status()).resolves.toEqual({ verdict: 'ok' });
+    expect(always.waits).toEqual([1000]);
+  });
+
+  it('paces a walk by the stated budget: not at all with room to spare, the policy’s interval when it runs low', async () => {
+    const roomy = scripted([page([1], 1, { 'ratelimit-limit': '600', 'ratelimit-remaining': '500', 'ratelimit-policy': '600;w=60' }), page([2])]);
+    await drain(roomy.client.projects.pages());
+    expect(roomy.waits).toEqual([]);
+
+    const low = scripted([page([1], 1, { 'ratelimit-limit': '120', 'ratelimit-remaining': '4', 'ratelimit-policy': '120;w=60' }), page([2])]);
+    await drain(low.client.projects.pages());
+    expect(low.waits).toHaveLength(1);
+    expect(low.waits[0]).toBeGreaterThan(400);
+    expect(low.waits[0]).toBeLessThanOrEqual(500);
+
+    // An anonymous answer states the policy and no remainder (it is cached for every caller): paced by the policy.
+    const anonymous = scripted([page([1], 1, { 'ratelimit-limit': '120', 'ratelimit-policy': '120;w=60' }), page([2])]);
+    await drain(anonymous.client.projects.pages());
+    expect(anonymous.waits).toHaveLength(1);
+
+    const never = scripted([page([1], 1, { 'ratelimit-limit': '120', 'ratelimit-remaining': '0' }), limited('1')], { wait: 'never' });
+    expect(await caught(drain(never.client.projects.pages()))).toMatchObject({ code: 'rate_limited' });
+    expect(never.waits).toEqual([]);
+  });
+});

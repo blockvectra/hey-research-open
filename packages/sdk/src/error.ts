@@ -6,8 +6,16 @@
  * anonymous rate limiter says it in a sentence with a `retry-after` header.
  * A caller should not have to know which is which, so every failure is
  * mapped to one `code` here, and the sentence HEY sent travels as the
- * message. No retries are made on the caller's behalf: a 429 surfaces with
- * `retryAfterSeconds` and the caller decides.
+ * message. The server's own code (`invalid_cursor`, `invalid_evidence_id`,
+ * `key_required` …) travels as `apiCode` and the request id HEY logged as
+ * `requestId` (2026-10-18, persona audit PB-34): the coarse `code` alone hid
+ * which of the documented codes a 400 was, and the id the docs ask a caller
+ * to quote survived only inside `body`.
+ *
+ * A single call is never retried. Since 2026-10-18 the walks — `pages()`,
+ * `items()`, `sync()` — wait out a temporary rate limit by `retry-after`,
+ * within a cap (`HeyClientOptions.rateLimit`); a call that still meets one
+ * surfaces it here with `retryAfterSeconds`, and the caller decides.
  */
 export type HeyApiErrorCode =
   | 'not_found'
@@ -30,6 +38,10 @@ export type HeyApiErrorOptions = {
   retryAfterSeconds?: number | undefined;
   /** The parsed body, when there was one; never logged by the SDK. */
   body?: unknown;
+  /** The API's stable error code (`body.error`) when it sent one: what the error table documents. */
+  apiCode?: string | undefined;
+  /** The request id HEY logged (`body.requestId`, else the `x-request-id` header): quote it when writing to HEY. */
+  requestId?: string | undefined;
   cause?: unknown;
 };
 
@@ -39,6 +51,10 @@ export class HeyApiError extends Error {
   readonly reason: string | undefined;
   readonly retryAfterSeconds: number | undefined;
   readonly body: unknown;
+  /** The API's own code (`invalid_parameter`, `invalid_cursor`, `key_required`, `quota` …); undefined when HEY sent none. */
+  readonly apiCode: string | undefined;
+  /** The id of the request in HEY's logs; undefined when HEY was never reached or sent none. */
+  readonly requestId: string | undefined;
 
   constructor(message: string, options: HeyApiErrorOptions) {
     super(message, options.cause === undefined ? undefined : { cause: options.cause });
@@ -48,8 +64,13 @@ export class HeyApiError extends Error {
     this.reason = options.reason;
     this.retryAfterSeconds = options.retryAfterSeconds;
     this.body = options.body;
+    this.apiCode = options.apiCode;
+    this.requestId = options.requestId;
   }
 }
+
+/** A stable code, as the API's envelope spells one: never a sentence (the old anonymous limiter put one in `error`). */
+const API_CODE = /^[a-z][a-z0-9_]{1,40}$/;
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === 'object' && value !== null;
 
@@ -73,14 +94,16 @@ export function retryAfterSeconds(header: string | null | undefined, now: () => 
  * that says what happened. The body is read here, once, so the mapping and
  * the caller see the same thing.
  */
-export function errorFromResponse(input: { status: number; body: unknown; retryAfter: string | null; baseUrl: string }): HeyApiError {
+export function errorFromResponse(input: { status: number; body: unknown; retryAfter: string | null; baseUrl: string; requestId?: string | null }): HeyApiError {
   const { status, body } = input;
   const record = isRecord(body) ? body : {};
   const errorWord = text(record.error);
   const message = text(record.message);
   const reason = text(record.reason);
   const retry = retryAfterSeconds(input.retryAfter);
-  const common = { status, body, reason, retryAfterSeconds: retry };
+  const apiCode = errorWord && API_CODE.test(errorWord) ? errorWord : undefined;
+  const requestId = text(record.requestId) ?? text(input.requestId);
+  const common = { status, body, reason, retryAfterSeconds: retry, apiCode, requestId };
 
   switch (status) {
     case 400:

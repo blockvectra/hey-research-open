@@ -190,6 +190,14 @@ describe('the HEY MCP server', () => {
     });
   }
 
+  it('get_evidence with a bare uuid says evidence ids are typed, and asks HEY nothing (persona audit PB-27)', async () => {
+    const client = await connect(fixtures);
+    const result = await client.callTool({ name: 'get_evidence', arguments: { id: '2ac87a66-0000-0000-0000-000000000001' } });
+    expect(result.isError).toBe(true);
+    expect(textOf(result)).toContain('evidence ids are typed — ship:<uuid>, signal:<uuid>, state:… — a bare uuid is not one');
+    expect(requested).toHaveLength(0);
+  });
+
   it('market_integrity, where offered, reads its route and puts the builder first', async () => {
     const client = await connect(fixtures, { marketIntegrity: true });
     const result = await client.callTool({ name: 'market_integrity', arguments: { slug: 'drained' } });
@@ -384,6 +392,35 @@ describe('the output cap', () => {
     expect(truncated).toBe(true);
     expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(MAX_OUTPUT_BYTES);
     expect(text).toMatch(/\[Output cut at 24 KB: \d+ more lines not shown\. .*https:\/\/heyresearch\.xyz\/api\/chain\?days=400\.\]$/);
+  });
+
+  it('keeps a listing’s footer — shown of total and the cursor — whole after the cut (persona audit PA-5)', () => {
+    const body = Array.from({ length: 2000 }, (_, i) => `- row ${i} ${'x'.repeat(40)}`).join('\n');
+    const footer = '\nShowing 100; more exist. Call get_changes again with after=c1.9999.\nLegend.';
+    const { text, truncated } = capOutput({ body, footer }, 'https://heyresearch.xyz/api/changes');
+    expect(truncated).toBe(true);
+    expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(MAX_OUTPUT_BYTES);
+    expect(text).toContain('[Output cut at 24 KB');
+    expect(text.endsWith(footer)).toBe(true);
+    // Under the cap, the two parts are the one text the renderer always returned.
+    expect(capOutput({ body: 'rows', footer: 'Showing all 2.' }, 'https://x')).toEqual({ text: 'rows\nShowing all 2.', truncated: false });
+  });
+});
+
+describe('get_changes over the cap (persona audit PA-5)', () => {
+  it('cuts a 100-event page on its rows and still says how to read on, in text and in structuredContent', async () => {
+    const long = 'x'.repeat(600);
+    const items = Array.from({ length: 100 }, (_, i) => ({ ...fx.changes.items[0]!, id: `ship:${String(i).padStart(8, '0')}-0000-4000-8000-000000000000`, summary: `${long} ${i}` }));
+    const page = { ...fx.changes, items, hasMore: true, nextCursor: 'c1.4242', query: { ...fx.changes.query, mode: 'browse' } };
+    const client = await connect(async (input: string) => respond(new URL(input).pathname === '/api/changes' ? page : routeFixture(new URL(input).pathname)));
+    const result = await client.callTool({ name: 'get_changes', arguments: { limit: 100 } });
+    const text = textOf(result);
+    expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(MAX_OUTPUT_BYTES);
+    expect(text).toContain('[Output cut at 24 KB');
+    expect(text).toContain('Showing 100; more exist — the ledger pages without counting the total (research_answer what_changed gives a window\'s true total). Call get_changes again with before=c1.4242.');
+    const structured = (result as { structuredContent?: { dataOmitted?: string; paging?: Record<string, unknown> } }).structuredContent;
+    expect(structured?.dataOmitted).toBe('over_64_kb');
+    expect(structured?.paging).toMatchObject({ hasMore: true, nextCursor: 'c1.4242' });
   });
 });
 

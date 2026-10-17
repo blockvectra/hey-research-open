@@ -1,7 +1,9 @@
 # Putting HEY in your bot
 
-This guide is the one-line `/api/token` lookup for a chat bot. A product card, a terminal panel or an
-app uses the Partner Card, `GET /api/v1/builder`, on the partners page. The two answer an address HEY
+This guide is the one-line `/api/token` lookup for a chat bot. A product card, a terminal panel, an
+app — or any new integration asking "is anyone building this token?" — starts with the Partner Card,
+`GET /api/v1/builder`, HEY's canonical by-contract read ([/developers/partners](/developers/partners)).
+The three by-contract reads print the same status words (since 2026-10-18). The two answer an address HEY
 has not published differently: here it is a `200` with `status: "unknown"`, there a `404` with a
 `scan_url`.
 
@@ -62,7 +64,9 @@ values. A code ship's title names its week, absolute, never "since":
 |---|---|
 | `activityStatus` | One of `SHIPPING`, `ACTIVE`, `QUIET`, `DORMANT`, `RESUMED`, `UNKNOWN`. Derived from what a project ships, never from price. |
 | `activityLabel` | The same status in words. **Use this rather than mapping the enum yourself** — see below. |
-| `shipsLast30Days` | Ships in the window the field names, counted exactly the way the project page counts them. Your number and the page a reader lands on cannot disagree. |
+| `shipsLast30Days` | Ship records in the window the field names, counted the way the project page's timeline counts them. Always sent, **0 included where HEY measured nothing** — a legacy field kept as it was (machine rule 10). Print `meaningfulShipsLast30Days` instead, and only when `activityMeasured` is `true`. |
+| `activityMeasured` | Whether HEY measured this project's building at all (2026-09-26). `false`: HEY has nothing it can read building from, so a zero beside it is not a finding. |
+| `meaningfulShipsLast30Days` | Meaningful ships in 30 days by the rule behind the status. Absent, never 0, when HEY did not measure and holds none. |
 | `lastShip` | The most recent one, with `sourceUrl` — the actual commit, release or post it was read from. Link it. |
 | `deployedAt` | When the contract went on chain, read from the block. Absent where HEY has not read one. |
 | `badgeUrl` | A ready-made SVG: name, status, last ship. Drop it in the card if it fits. |
@@ -102,11 +106,13 @@ async function heyLine(address) {
   }
 
   const p = d.project;
-  const ships = p.shipsLast30Days === 1 ? '1 ship' : `${p.shipsLast30Days} ships`;
+  // A count only where HEY measured building: without a source to read, a zero is not a finding.
+  const n = p.meaningfulShipsLast30Days;
+  const ships = p.activityMeasured && typeof n === 'number' ? ` · ${n === 1 ? '1 ship' : `${n} ships`} in 30d` : '';
   const when = p.lastShipAt ? `, last ${daysAgo(p.lastShipAt)}` : '';
 
-  // p.activityLabel is HEY's own wording. Do not invent your own.
-  return `HEY: ${p.activityLabel} · ${ships} in 30d${when} → ${p.url}`;
+  // p.activityLabel is HEY's own wording ("No builder source linked" where HEY has nothing to read). Do not invent your own.
+  return `HEY: ${p.activityLabel}${ships}${when} → ${p.url}`;
 }
 
 function daysAgo(iso) {
@@ -119,8 +125,15 @@ Which renders as:
 
 ```
 HEY: Shipping · 4 ships in 30d, last today → heyresearch.xyz/project/darkroute
+HEY: No builder source linked → heyresearch.xyz/project/bitdeer-ai
 HEY: not indexed yet · read the chain → heyresearch.xyz/scan?address=0x7655…d78a
 ```
+
+**Never print `shipsLast30Days` on its own (corrected 2026-10-18).** This guide's bot once printed
+`${p.shipsLast30Days} ships in 30d` for every project, so a bot copied from it told readers a project
+"shipped 0" where HEY had no repository, changelog or feed to read at all — most token projects. A
+count is a finding only when `activityMeasured` is `true`; print `meaningfulShipsLast30Days` then
+(the figure behind the status), and print nothing where it is `false`.
 
 ## Four things not to do
 
@@ -152,7 +165,12 @@ that is a page, and it costs you nothing.
 - Dates are ISO 8601, UTC, always.
 - **Absent means unknown.** A field HEY has no answer for is left out — never sent as `null` or
   `0`. Do not fill a gap with a zero: a missing `deployedAt` means HEY has not read one, not
-  that the contract was deployed at the epoch.
+  that the contract was deployed at the epoch. **Three legacy counts are the exception**
+  (corrected 2026-10-18): this call's `shipsLast30Days` and the card call's `activity.ships_30d`
+  and `activity.releases_30d` are always sent and read `0` where HEY measured nothing. They keep
+  that meaning for the partners who read them (machine rule 10); read them only beside
+  `activityMeasured: true` (`activity_measured` on the card call), or print the measured
+  `meaningfulShipsLast30Days` / `meaningful_ships_30d`, which are absent when not measured.
 - If HEY is down, say nothing rather than guessing. A bot that omits a line is fine; one that
   invents one is not.
 

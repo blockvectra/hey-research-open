@@ -1,4 +1,4 @@
-import type { HeyChangeUpsert } from '@hey-research-lab/sdk';
+import type { HeyChangeUpsert, HeyPublishedNamesakes } from '@hey-research-lab/sdk';
 
 import type { AgentCapability } from '../capabilities';
 import { MACHINE_TEXT_VERSION, derivedText, externalText, heyText, isSafeUrl, type AgentText } from '../text';
@@ -159,8 +159,27 @@ export type ChangeLike = Pick<HeyChangeUpsert, 'id' | 'revision' | 'occurredAt' 
   facts?: Record<string, string | number | boolean>;
 };
 
+/**
+ * A code week's detail as a composer takes it (2026-10-18, PB-25): the domain's `CodeWeekDetail`, read by the caller
+ * for the `build.code_activity` events it lists, keyed by the event id. Commit subjects are a source's words.
+ */
+export type AgentCodeWeekInput = { commits: number | null; commitsAtLeast: boolean; highlights: readonly { subject: string; url?: string }[] };
+export type AgentCodeWeeks = ReadonlyMap<string, AgentCodeWeekInput>;
+
+/** A code week in the contract's words: the count as HEY holds it, and at most two subjects quoted as data. */
+export function agentCodeWeek(week: AgentCodeWeekInput): NonNullable<AgentChange['code']> {
+  return {
+    commits: week.commits,
+    commitsAtLeast: week.commitsAtLeast,
+    highlights: week.highlights.slice(0, AGENT_LIMITS.codeHighlights).map((highlight) => ({
+      subject: externalText(highlight.subject, 'commit_subject', highlight.url, 200),
+      ...(isSafeUrl(highlight.url, 600) ? { url: highlight.url } : {}),
+    })),
+  };
+}
+
 /** One ledger event as the agent contract carries it: its summary typed by whose words it holds, its tag by the record rule. */
-export function agentChange(event: ChangeLike, project: { slug: string; url: string }, baseUrl: string, isEvidenceId: (id: string) => boolean = looksLikeEvidenceId): AgentChange {
+export function agentChange(event: ChangeLike, project: { slug: string; url: string }, baseUrl: string, isEvidenceId: (id: string) => boolean = looksLikeEvidenceId, codeWeek?: AgentCodeWeekInput): AgentChange {
   const firstUrl = event.evidence.find((entry) => entry.url)?.url;
   // The summary in today's words when the API restates it (`summaryCurrent`, 2026-10-16): a frozen "this week" dated, a running week by its days.
   const words = event.summaryCurrent ?? event.summary;
@@ -183,6 +202,8 @@ export function agentChange(event: ChangeLike, project: { slug: string; url: str
     project: { slug: project.slug, url: project.url },
     evidence: changeEvidence(baseUrl, event.evidence, isEvidenceId),
     source: event.source.slice(0, 120),
+    // What the week changed (PB-25): only on a code week HEY holds the detail of.
+    ...(codeWeek && event.type === 'build.code_activity' ? { code: agentCodeWeek(codeWeek) } : {}),
   };
 }
 
@@ -425,12 +446,40 @@ export function ambiguousRefusal<C extends AgentCapability>(ctx: AgentComposeCon
 }
 
 /** No published project for the name, ticker or contract asked about (AG-01): a statement about HEY's index, never about the project. */
-export function notPublishedRefusal<C extends AgentCapability>(ctx: AgentComposeContext, capability: C, by: 'q' | 'address'): AgentResponseOf<C> {
+/**
+ * The published projects carrying a contract's name or ticker on another contract (2026-10-18, persona audit
+ * PB-22), as an agent reads them: each named by its slug — HEY's own id, never a name a record carries — with its
+ * own contract, what it shares and whether its address ends in the same four characters. Facts, never which
+ * token is real. Undefined when there are none (or HEY had nothing to compare).
+ */
+export function namesakeSentence(namesakes: Pick<HeyPublishedNamesakes, 'total' | 'items'> | undefined): string | undefined {
+  if (!namesakes || namesakes.items.length === 0) return undefined;
+  const shared = (shares: HeyPublishedNamesakes['items'][number]['shares']) => (shares === 'name_and_ticker' ? 'name and ticker' : shares);
+  const each = namesakes.items
+    .map((item) => `"${item.slug}" on ${item.contractAddress} (the same ${shared(item.shares)}${item.sharesAddressEnding ? '; an address ending in the same four characters' : ''})`)
+    .join('; ');
+  const more = namesakes.total > namesakes.items.length ? `; and ${namesakes.total - namesakes.items.length} more` : '';
+  const lead = namesakes.total === 1 ? 'A published project carries' : `${namesakes.total} published projects carry`;
+  return `${lead} this token’s name or ticker on a different contract: ${each}${more}. On chain a token is its contract, never its name or ticker.`;
+}
+
+/**
+ * `namesakes` (2026-10-18, persona audit PB-22): for a contract, the published projects carrying its name or
+ * ticker on another contract (`namesakeSentence`), appended as a fact — an agent asked "is this the Chit token?"
+ * otherwise learned nothing about the published Chit.
+ */
+export function notPublishedRefusal<C extends AgentCapability>(
+  ctx: AgentComposeContext,
+  capability: C,
+  by: 'q' | 'address',
+  namesakes?: Pick<HeyPublishedNamesakes, 'total' | 'items'>,
+): AgentResponseOf<C> {
   const message =
     by === 'address'
       ? 'HEY holds no published project for that contract. That is a statement about HEY’s index, not about the token; verify_project says what HEY recorded about the contract itself.'
       : 'HEY holds no published project matching that name or ticker. That is a statement about HEY’s index, not about the project.';
-  return refusal(ctx, capability, 'not_found', NOT_PUBLISHED_CODE, message);
+  const facts = by === 'address' ? namesakeSentence(namesakes) : undefined;
+  return refusal(ctx, capability, 'not_found', NOT_PUBLISHED_CODE, facts ? `${message} ${facts}` : message);
 }
 
 /** The slug-only URL of a project's API resource. */

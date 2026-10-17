@@ -2,7 +2,7 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { PublicCodeCard } from './code';
+import { PublicCodeCard, releasesValue } from './code';
 import { showsNoBuilderSignal } from './status';
 
 /** Copy that contradicted the line beside it (audit A10-14, 2026-09-25). */
@@ -34,5 +34,24 @@ describe('showsNoBuilderSignal', () => {
     expect(showsNoBuilderSignal({ activityStatus: 'SHIPPING', hasBuilderSource: false })).toBe(false);
     expect(showsNoBuilderSignal({ activityStatus: 'UNKNOWN', hasBuilderSource: true })).toBe(false);
     expect(showsNoBuilderSignal({ activityStatus: 'UNKNOWN' })).toBe(false);
+  });
+});
+
+/** Release days, said as such (persona audit PB-16, 2026-10-18). */
+describe('the code panel’s GitHub releases', () => {
+  it('names the release days behind several releases, and stays a plain count otherwise', () => {
+    expect(releasesValue(1, 3)).toBe('3 on 1 release day');
+    expect(releasesValue(2, 5)).toBe('5 on 2 release days');
+    expect(releasesValue(2, 2)).toBe('2');
+    expect(releasesValue(4, undefined)).toBe('4');
+  });
+
+  it('prints it on the card', () => {
+    const html = renderToStaticMarkup(
+      createElement(PublicCodeCard, {
+        data: { measurable: true, score: 40, activeDevDays: 3, windowDays: 60, contributors: 1, releases: 1, releasesPublished: 3, dimensions: [], heatmap: [] },
+      }),
+    );
+    expect(html).toContain('3 on 1 release day');
   });
 });

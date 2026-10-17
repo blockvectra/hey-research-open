@@ -734,6 +734,21 @@ export function discoveryGapMarketMeasurable(
 }
 
 /**
+ * Whether a measured 24-hour volume is too thin for a market to be measured
+ * (hbm-v31, 2026-10-18, founder delegation "repair semua sekali", PA-17):
+ * below `DISCOVERY_GAP.minVolume24hUsd`. The status test above says whether
+ * the classifier calls the market active; this one reads the volume on the
+ * reading the Discovery Gap and the drawdown are taken from. A volume HEY does
+ * not hold (null, undefined, not a number) is unknown and never trips it. Like
+ * `discoveryGapMarketMeasurable`, only the cohort rebuild reads it, only to
+ * withhold, never to award.
+ */
+export function marketVolumeTooThin(volume24hUsd: number | null | undefined): boolean {
+  if (volume24hUsd === null || volume24hUsd === undefined || !Number.isFinite(volume24hUsd)) return false;
+  return volume24hUsd < DISCOVERY_GAP.minVolume24hUsd;
+}
+
+/**
  * The statuses and reasons `marketIsLive` refuses, and the only list of them
  * (2026-09-25). The SQL twin is `deadMarketSql` in `@hey/domain`, generated
  * from these two arrays; a parity test runs both over every status and

@@ -26,6 +26,7 @@ const detail = (listed: boolean): HeyV4HookDetail => ({
   project: listed
     ? { slug: 'hook-lister', name: 'Hook Lister', url: 'https://heyresearch.xyz/project/hook-lister', activityStatus: 'SHIPPING', activityLabel: 'Shipping', latestShip: null, latestShipReason: 'no_counted_ship' }
     : null,
+  declaredBy: null,
   tie: listed ? { basis: 'project', basisLabel: 'Listed by the project', tie: 'Listed by the project as its own contract', tieDetail: 'the project’s own contract listing names it', deploymentEvidenceId: null, reviewedAt: null, factory: null } : null,
   creation: listed
     ? { state: 'TIED', words: 'read; tied to a published project', checked: true, checkedAt: '2026-10-02T06:00:00.000Z', deployedAt: '2026-09-30T10:00:00.000Z', deployedBlock: 76640000 }

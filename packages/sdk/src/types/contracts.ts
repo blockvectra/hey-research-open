@@ -75,7 +75,13 @@ export type HeyContract = {
   watched: boolean;
   creation?: { tx?: string; at?: string; block?: number; precision: 'EXACT'; evidenceId?: string };
   /** `sharedAcrossTrackedProjects` is HEY's one shared-deployer rule (the same flag `/market` publishes); `otherProjectsCount` counts other published projects' tokens from this account. */
-  deployer?: { address: string; sharedAcrossTrackedProjects: boolean; otherProjectsCount: number };
+  deployer?: {
+    address: string;
+    sharedAcrossTrackedProjects: boolean;
+    otherProjectsCount: number;
+    /** 2026-10-18 (additive): whether the account created 100+ contracts in 90 days, with its evidence; `measured: false` is unknown, never "no". */
+    serialLauncher: { measured: false } | { measured: true; value: boolean; creations: number | null; windowDays: number | null; observedAt: string | null };
+  };
   factory?: string;
   verifiedSource: {
     state: HeyMeasureState;
@@ -255,7 +261,19 @@ export type HeyDiff = {
   market: { state: 'MEASURED'; valuation: HeyDiffPair<number>; liquidity: HeyDiffPair<number> } | { state: 'NOT_APPLICABLE'; reason: string };
   /** A window that ends before the ledger began recording is UNAVAILABLE; one that starts before it is `partial`, counted from `collectedFrom`. */
   changes:
-    | { state: 'MEASURED'; clock: 'recorded'; total: number; byType: Record<string, number>; truncated: boolean; collectedFrom?: string; partial?: boolean; url: string }
+    | {
+        state: 'MEASURED';
+        clock: 'recorded';
+        /** Distinct events, each once at its newest revision; a retracted one is not counted (2026-10-18: it counted revisions before). */
+        total: number;
+        /** The ledger revisions recorded in the window for those events (2026-10-18, additive). */
+        revisions?: number;
+        byType: Record<string, number>;
+        truncated: boolean;
+        collectedFrom?: string;
+        partial?: boolean;
+        url: string;
+      }
     | { state: 'UNAVAILABLE'; reason: string };
   method: string;
   disclaimer: string;

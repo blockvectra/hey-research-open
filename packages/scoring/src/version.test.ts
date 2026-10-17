@@ -64,6 +64,7 @@ const RULES_DIGEST = createHash('sha256')
       // DISCOVERY_GAP above carries withholdUnknownActivity: building HEY cannot read gets no gap (hbm-v27).
       // COMMIT_SUBSTANCE_VERSION above: a manifest of version moves only is maintenance (commit-substance-v4, hbm-v29).
       // DISCOVERY_GAP and UNDER_THE_RADAR above: a contested unverified ticker and a stale reading withhold the gap; UTR needs TYPICAL attention or lower (hbm-v30).
+      // DISCOVERY_GAP and STILL_BUILDING above: a volume under $1,000 is a thin market; a contested ticker and unavailable builder sources withhold Still Building (hbm-v31).
     }),
   )
   .digest('hex')
@@ -88,8 +89,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v30',
-      rules: 'b4c5776bc151bbf1',
+      version: 'hbm-v31',
+      rules: '1a233130f6833b31',
     });
   });
 });

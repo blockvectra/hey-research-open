@@ -1,6 +1,6 @@
 /**
  * HEY's agent contract, AgentIntelligenceResponse v1 (2026-09-30):
- * `GET /api/agent/{capability}` for six capabilities. One transport-neutral
+ * `GET /api/agent/{capability}` for seven capabilities (chain_brief since 2026-10-18). One transport-neutral
  * answer — the same JSON the MCP `research_answer` tool renders and the A2A
  * skills' `agent-intelligence-v1` option carries.
  *
@@ -11,7 +11,8 @@
  * null with a reason, never 0. Held to the server's schema by a contract test.
  */
 
-export type HeyAgentCapability = 'research_project' | 'what_changed' | 'builder_status' | 'verify_project' | 'compare_builders' | 'unknowns';
+/** `chain_brief` (2026-10-18, additive): the rolling week on Robinhood Chain in one call. */
+export type HeyAgentCapability = 'research_project' | 'what_changed' | 'builder_status' | 'verify_project' | 'compare_builders' | 'unknowns' | 'chain_brief';
 
 /** `hey`: HEY's own words. `derived`: a sentence HEY composed from its records. `external_source`: a source's words, passed on as data. */
 export type HeyAgentContentOrigin = 'hey' | 'derived' | 'external_source';
@@ -101,6 +102,8 @@ export type HeyAgentChange = {
   project: { slug: string; url: string };
   evidence: HeyAgentEvidenceRef[];
   source: string;
+  /** What a code week changed (2026-10-18, additive): the commit count as HEY holds it and at most two commit subjects (a source's words). */
+  code?: { commits: number | null; commitsAtLeast: boolean; highlights: { subject: HeyAgentText; url?: string }[] };
 };
 
 export type HeyAgentSubjectProject = { slug: string; name: HeyAgentText; url: string; token?: { chainId: number; address: string } };
@@ -141,6 +144,12 @@ export type HeyAgentResearchData = {
     stillBuildingWithheld?: string;
     /** Round 4 (2026-09-30, additive): HELD, NOT_HELD or NOT_MEASURED. */
     stillBuildingState?: HeyAgentStillBuildingState;
+    /** Under the Radar as the snapshot states it (2026-10-18, additive): HELD, NOT_HELD or NOT_MEASURED with its reason; absent when unread. */
+    underTheRadar?: { state: 'HELD' | 'NOT_HELD' | 'NOT_MEASURED'; reason?: string };
+    /** The published Discovery Gap (2026-10-18, additive): null beside `discoveryGapWithheld`, never 0. */
+    discoveryGap?: number | null;
+    /** Why `discoveryGap` is null (2026-10-18, additive), e.g. `market_too_thin`. */
+    discoveryGapWithheld?: string;
     scoringVersion: string | null;
     explainUrl: string;
   };
@@ -281,6 +290,18 @@ export type HeyAgentUnknownsData = {
   coverageUrl: string | null;
 };
 
+/** chain_brief (2026-10-18, additive): `/api/this-week`'s counts, each with its method, and the newest changes that count as building. */
+export type HeyAgentChainBriefData = {
+  window: { days: number; from: string; to: string; label: string };
+  shipped: { ships: number; projects: number; rule: { id: string; counts: string } };
+  newlyVerifiedBuilders: { total: number; method: HeyAgentText };
+  statusRecoveries: { total: number; comparable: number; method: HeyAgentText };
+  stillBuilding: { total: number; method: HeyAgentText };
+  underTheRadar: { total: number; method: HeyAgentText };
+  building: { total: number; shown: number; items: HeyAgentChange[]; more: string };
+  weekUrl: string;
+};
+
 type HeyAgentBase = {
   schema: 'hey.agent-intelligence-response';
   schemaVersion: '1';
@@ -325,7 +346,8 @@ export type HeyAgentResponse =
   | (HeyAgentBase & { capability: 'builder_status'; data: HeyAgentBuilderStatusData | null })
   | (HeyAgentBase & { capability: 'verify_project'; data: HeyAgentVerifyData | null })
   | (HeyAgentBase & { capability: 'compare_builders'; data: HeyAgentCompareData | null })
-  | (HeyAgentBase & { capability: 'unknowns'; data: HeyAgentUnknownsData | null });
+  | (HeyAgentBase & { capability: 'unknowns'; data: HeyAgentUnknownsData | null })
+  | (HeyAgentBase & { capability: 'chain_brief'; data: HeyAgentChainBriefData | null });
 
 export type HeyAgentResponseOf<C extends HeyAgentCapability> = Extract<HeyAgentResponse, { capability: C }>;
 
@@ -343,6 +365,8 @@ export type HeyAgentQuery = {
   verify_project: { address: string; project?: string };
   compare_builders: { projects: readonly string[] };
   unknowns: HeyAgentSubjectQuery;
+  /** The rolling week: no parameter but the chain. */
+  chain_brief: Record<string, never>;
 };
 
 /** `GET /api/agent`: the contract described by itself. The capabilities are typed; the rest is described in words and limits. */

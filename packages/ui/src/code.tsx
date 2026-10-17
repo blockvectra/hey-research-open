@@ -21,7 +21,10 @@ export type CodeActivityData =
       windowDays: number;
       /** Null where no day of the window recorded one — never zero. */
       contributors: number | null;
+      /** GitHub release days: a repository's full releases of one UTC day count once. */
       releases: number;
+      /** Every GitHub release behind those days; absent from callers that do not read it. */
+      releasesPublished?: number;
       lastCodeUpdate?: Date;
       dimensions: { label: string; value: number; weight: number; measured: boolean }[];
       heatmap: { day: string; commits: number }[];
@@ -97,7 +100,11 @@ export function PublicCodeCard({
           label="Contributors"
           value={data.contributors === null || data.contributors === 0 ? '—' : String(data.contributors)}
         />
-        <Row label="GitHub releases" value={String(data.releases)} />
+        {/*
+          * Release days, said as such (2026-10-18, persona audit PB-16): three tags published seconds apart
+          * read "GitHub releases 1" under three releases on the timeline, and the builder thought HEY lost two.
+          */}
+        <Row label="GitHub releases" value={releasesValue(data.releases, data.releasesPublished)} />
         <Row
           label="Last code update"
           value={data.lastCodeUpdate ? formatRelativeTime(data.lastCodeUpdate) : '—'}
@@ -117,6 +124,12 @@ export function PublicCodeCard({
       ) : null}
     </section>
   );
+}
+
+/** "3 on 1 release day" when a day carried several releases, else the count; releases of one repository on one UTC day count once. */
+export function releasesValue(releaseDays: number, published: number | undefined): string {
+  if (published === undefined || published <= releaseDays) return String(releaseDays);
+  return `${published} on ${releaseDays} release ${releaseDays === 1 ? 'day' : 'days'}`;
 }
 
 function Row({ label, value }: { label: string; value: string }) {

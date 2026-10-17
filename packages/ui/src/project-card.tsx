@@ -19,7 +19,7 @@ import { ProjectLogo } from './project-logo';
 import { cardShipPhrase, displayShipTitle } from './ship-phrase';
 import { ActivityChip, activityPresentation, type ActivityStatusValue, isLaunchPoolOnlyMarket, LAUNCH_POOL_ONLY_PRESENTATION, unknownActivityReason, StillBuildingBadge, TokenVerificationChip, tokenVerificationHelp, tokenVerificationLabel } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
-import { TokenLockChip, type TokenLockFacts } from './token-lock';
+import { cardTokenLock, TokenLockChip, type TokenLockFacts } from './token-lock';
 import { BrandNotice, type BrandNoticeData } from './brand-notice';
 
 /**
@@ -247,6 +247,8 @@ export function ProjectCard({
   const hasToken = Boolean(project.token);
   // What HEY does know about a token it cannot read building from (2026-09-13): trades and on-chain events, as context under the cap.
   const contextLine = hasToken && project.activityStatus === 'UNKNOWN' ? tradeContextLine(project) : undefined;
+  // A lock below a meaningful share is no chip on a card (persona audit PB-10); the project page keeps the exact figure.
+  const lockChip = cardTokenLock(project.tokenLock);
   const shipVerified = ship ? VERIFIED_STATES.has(ship.verificationStatus) : false;
   // Source text as words: launchpad descriptions arrive with Markdown in them (QA sweep 2026-09-04).
   // A line, not a pasted README (2026-10-01): the two-line clamp hid the rest on screen, never from a screen reader.
@@ -577,7 +579,7 @@ export function ProjectCard({
             {/* Reference: the contract — identity, never a ticker — with its lock and any contradiction beside it. */}
             <div className="-ml-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
               <ContractAddress address={project.token!.contractAddress} chainId={project.token!.chainId} />
-              {project.tokenLock ? <TokenLockChip lock={project.tokenLock} /> : null}
+              {lockChip ? <TokenLockChip lock={lockChip} /> : null}
               {/*
                 Token is not project (data-correctness pass, 2026-09-28): where
                 the project's own site names a different contract, the page and

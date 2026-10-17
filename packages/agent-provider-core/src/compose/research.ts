@@ -6,7 +6,7 @@ import { derivedText, externalText, heyText, looksLikeInstruction } from '../tex
 import { buildAnswerLead, buildLineFigures, countOf, leadName, valuationWithheldSentence, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
 import { stillBuildingStateOf } from '../disclosures';
 import type { AgentEvidenceKind } from '../evidence-kinds';
-import { agentChange, envelope, evidenceRef, isContextChange, looksLikeEvidenceId, projectApi, type AgentComposeContext } from './common';
+import { agentChange, envelope, evidenceRef, isContextChange, looksLikeEvidenceId, projectApi, type AgentCodeWeeks, type AgentComposeContext } from './common';
 import { projectUnknowns, type CanonicalGap } from './gaps';
 import { unknownCategorySummary } from '../unknowns';
 
@@ -33,6 +33,8 @@ export type ResearchInput = {
    */
   explained?: { activity: readonly string[]; momentum: readonly string[]; stillBuilding: readonly string[] };
   isEvidenceId?: (id: string) => boolean;
+  /** The code weeks among the latest changes (PB-25), by event id: what each week changed. */
+  codeWeeks?: AgentCodeWeeks;
 };
 
 /** Why Still Building was not measured, in the contract's words (the API's `stillBuildingWithheld`). */
@@ -49,7 +51,29 @@ const STILL_BUILDING_WITHHELD_TEXT: Readonly<Record<string, string>> = {
   not_scored: 'HEY has not scored it under the current rules yet',
   // 2026-10-16 (audit #143): a measured market whose high is not yet a week old.
   no_tracked_high: 'HEY has not yet tracked a high old enough to measure a drawdown from',
+  // hbm-v31 (2026-10-18, PA-17): every builder source answers 404 or is gone.
+  builder_sources_unavailable: 'every repository, changelog and feed HEY reads its building from is unavailable, so whether it kept building through a decline is not known',
 };
+
+/**
+ * Why the Discovery Gap, and so Under the Radar, is not measured (2026-10-18, persona audit PA-6), in the
+ * contract's words: the API's `discoveryGapWithheld`, and `not_in_cohort` from its `underTheRadar.reason`.
+ * The scoring package's short labels ("Not measured — market too thin") as sentences; a code this build does
+ * not know still reads "not measured", never a guess.
+ */
+const DISCOVERY_GAP_WITHHELD_TEXT: Readonly<Record<string, string>> = {
+  no_token: 'the project has no tracked token, so there is no market attention to measure',
+  market_not_live: 'the token has no live market HEY tracks',
+  token_not_the_projects: "the tracked token is not tied to the project, so its market is not the project's attention",
+  market_too_thin: 'the market is too thin: a gap there would measure the thin market, not the building',
+  active_pool_not_read: 'the market is active only in another pool of the token, and HEY holds no current reading of that pool',
+  no_market_reading: 'HEY holds no current market reading',
+  no_build_momentum: 'HEY records no building to set against attention',
+  activity_unknown: 'HEY holds no builder source it can read, so whether it is building ahead of attention is not known',
+  not_in_cohort: 'the project sits in no cohort the gap is measured within',
+};
+
+const UNDER_THE_RADAR_MEANING = "Under the Radar: building ahead of market attention under HEY's rule; a record of building beside attention, not a valuation, not a prediction and not a buy signal.";
 
 const STILL_BUILDING_MEANING = 'Still Building: verified activity continuing through a market drawdown HEY tracked; a record of what happened, not a prediction and not a buy signal.';
 
@@ -157,7 +181,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
   const project = { slug, url: snapshot.identity.url };
 
   const changes: AgentChange[] = snapshot.latestChanges.available
-    ? snapshot.latestChanges.items.flatMap((item) => (item.op === 'upsert' ? [agentChange(item, project, ctx.baseUrl, isEvidenceId)] : []))
+    ? snapshot.latestChanges.items.flatMap((item) => (item.op === 'upsert' ? [agentChange(item, project, ctx.baseUrl, isEvidenceId, input.codeWeeks?.get(item.id))] : []))
     : [];
   const latestMeaningful = changes.find((change) => change.countsAsBuilding) ?? null;
   const events30d = snapshot.evidenceSummary.meaningfulEvents30d;
@@ -277,6 +301,51 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         },
   ];
 
+  /*
+   * Under the Radar (2026-10-18, persona audit PA-6): HEY's "building ahead of attention" answer, which the
+   * project page, the snapshot and get_project_snapshot state and this contract did not. Restated from the
+   * snapshot's own reading (`build.underTheRadar`, the explain engine's Discovery Gap classification) and its
+   * published gap, never re-derived; not measured is UNKNOWN with the reason, never "not held".
+   */
+  const radar = b.underTheRadar;
+  const gapWords = b.discoveryGap === undefined ? '' : ` (Discovery Gap ${b.discoveryGap})`;
+  if (radar) {
+    const withheld = radar.reason ?? b.discoveryGapWithheld;
+    claims.push(
+      radar.state === 'NOT_MEASURED'
+        ? {
+            id: 'build.under_the_radar',
+            dimension: 'build',
+            statement: heyText(`Under the Radar is not measured for this project: ${(withheld && DISCOVERY_GAP_WITHHELD_TEXT[withheld]) ?? 'its Discovery Gap is withheld'}.`),
+            status: 'UNKNOWN',
+            value: null,
+            source: null,
+            observedAt: scoreAt,
+            occurredAt: null,
+            precision: null,
+            freshness: scoreFresh?.freshnessStatus ?? 'unknown',
+            evidence: [],
+            reason: withheld ?? 'not_measured',
+            explainUrl: explain('discovery_gap'),
+          }
+        : {
+            id: 'build.under_the_radar',
+            dimension: 'build',
+            statement: derivedText(radar.state === 'HELD' ? `${UNDER_THE_RADAR_MEANING}${gapWords ? ` It holds today${gapWords}.` : ' It holds today.'}` : `Under the Radar does not hold for this project now: measured, and not met${gapWords}.`),
+            status: 'DERIVED',
+            value: radar.state,
+            source: { name: 'hey', type: 'hey_rule' },
+            observedAt: scoreAt,
+            occurredAt: null,
+            precision: null,
+            freshness: scoreFresh?.freshnessStatus ?? 'unknown',
+            evidence: [],
+            explainUrl: explain('discovery_gap'),
+            evidenceKind: 'rule_output',
+          },
+    );
+  }
+
   if (token) {
     const state = verification?.status;
     claims.push({
@@ -383,7 +452,9 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
   const figures = buildLine ? buildLineFigures(buildLine.text) : '';
   const plainLead = buildLine?.answer && figures ? `${buildAnswerLead(name, buildLine.answer)}: ${figures.endsWith('.') ? figures : `${figures}.`}` : undefined;
   const machineLead = `${slug}: activity status ${status}${shipWords}; ${eventWords}.`;
-  const answer = derivedText(`${plainLead ? `${plainLead} ` : ''}${machineLead}${tokenWords} ${unknownWords}`);
+  // HEY's flagship answer in the answer itself when it holds (PA-6): building ahead of market attention, by HEY's rule.
+  const radarWords = radar?.state === 'HELD' ? ` HEY holds it Under the Radar: building ahead of market attention${gapWords}.` : '';
+  const answer = derivedText(`${plainLead ? `${plainLead} ` : ''}${machineLead}${radarWords}${tokenWords} ${unknownWords}`);
 
   const u = snapshot.usage;
   return envelope(ctx, {
@@ -420,6 +491,9 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         ...(b.stillBuildingWithheld ? { stillBuildingWithheld: b.stillBuildingWithheld } : {}),
         // Round 4 (2026-09-30): the API's own state when it sends one, else read from stillBuilding and stillBuildingWithheld.
         stillBuildingState,
+        // Under the Radar and the Discovery Gap (PA-6, additive): the snapshot's own values; a withheld gap is null with its reason.
+        ...(radar ? { underTheRadar: { state: radar.state, ...(radar.reason ? { reason: radar.reason } : {}) } } : {}),
+        ...(b.discoveryGap !== undefined ? { discoveryGap: b.discoveryGap } : b.discoveryGapWithheld ? { discoveryGap: null, discoveryGapWithheld: b.discoveryGapWithheld } : {}),
         scoringVersion: snapshot.scoringVersion ?? null,
         explainUrl: explain('activity.status'),
       },

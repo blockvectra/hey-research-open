@@ -147,6 +147,10 @@ export type HeyTokenProfile = {
       webhooksDocs: string;
       heyProfile: string;
       receiptValidator: string;
+      /** The public API changelog page (2026-10-18, additive). */
+      changelog: string;
+      /** Its Atom feed (2026-10-18, additive). */
+      changelogFeed: string;
       mcp: string;
       a2aAgentCard: string;
       llmsTxt: string;

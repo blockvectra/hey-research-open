@@ -58,6 +58,8 @@ export type HeyChain = {
   volumeNote: string;
   /** How launches are counted and what a backfill day is (2026-10-02, additive). */
   launchesNote: string;
+  /** What `ships` counts beside HEY’s other ship counts (2026-10-18, additive). */
+  shipsNote: string;
   disclaimer: string;
 };
 
@@ -238,10 +240,17 @@ export type HeyMarketIntegrity = {
   slug: string;
   url: string;
   builderActivity: { status: string | null; lastMeaningfulShipAt: string | null };
+  /**
+   * The tracked token's current market status (2026-10-18, additive), as `/api/projects/{slug}` `tokenMarket` states
+   * it, with when HEY evaluated it; null when the project tracks no token. `marketIntegrity.state` is the status at
+   * the integrity evaluation (`marketIntegrity.evaluatedAt`), which may be older.
+   */
+  tokenMarket?: { status: string; reason?: string; label: string; evaluatedAt?: string } | null;
   note: string;
   marketIntegrity: {
     rulesVersion: string;
     evaluatedAt: string;
+    /** The token market status the integrity engine read at `evaluatedAt`; the current one is `tokenMarket`. */
     state: string;
     marketActive: boolean;
     established: boolean;
@@ -343,6 +352,9 @@ export type HeyTimelineEntry = {
   eventType?: string;
   verification?: string;
   countsAsBuilding: boolean;
+  /** `lens=held` only (2026-10-18): why HEY keeps the record as context — the stored reason, and in words. */
+  contextReason?: string;
+  contextWords?: string;
   /** A code-activity week's substance (2026-09-27); see `HeyCodeSubstance`. */
   codeSubstance?: HeyCodeSubstance;
   source?: string;

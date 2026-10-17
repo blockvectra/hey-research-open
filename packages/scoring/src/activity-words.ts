@@ -56,32 +56,48 @@ export const ACTIVITY_NOT_MEASURABLE = {
 } as const;
 
 /**
- * Why an UNKNOWN status is unknown, from three facts every surface already
+ * UNKNOWN beside a builder source HEY holds only as context (2026-10-18, persona audit PB-11): the page listed
+ * a GitHub repository under "No builder source linked … HEY has no repository linked", and the builder fixed the
+ * wrong thing. HEY holds it; nothing yet ties it to the project, so it is not read as this project's building.
+ * What would make it count is written under the source itself (`sources/context-words.ts`).
+ */
+export const BUILDER_SOURCE_HELD = {
+  label: 'Builder source held, not counted',
+  help: 'HEY holds a repository, changelog or feed for this project only as context: nothing yet ties it to the project, so whether it is building is not measured. Each source says what would make it count. It does not mean nothing is being built.',
+} as const;
+
+/**
+ * Why an UNKNOWN status is unknown, from facts every surface already
  * holds: the status, whether HEY reads a builder source (the scorer's
- * `observableBuilderSource`, selected as `hasBuilderSource`) and the last
- * meaningful ship.
+ * `observableBuilderSource`, selected as `hasBuilderSource`), whether it holds
+ * one only as context (`heldBuilderSource`) and the last meaningful ship.
  *
  *   - `no_builder_signal` — nothing to read and nothing ever shipped;
+ *   - `held_as_context` — nothing to read as the project's own, a builder source held as context, nothing shipped;
  *   - `no_readable_source` — a ship on record, and nothing HEY can keep reading;
  *   - `null` — not UNKNOWN, or UNKNOWN beside a source HEY reads ("Activity unknown").
  *
  * `hasBuilderSource` undefined means the caller does not know, and the words
- * stay the plain status word rather than guess.
+ * stay the plain status word rather than guess; `heldBuilderSource` undefined
+ * reads as no source held, the words before 2026-10-18.
  */
-export type UnknownActivityReason = 'no_builder_signal' | 'no_readable_source';
+export type UnknownActivityReason = 'no_builder_signal' | 'held_as_context' | 'no_readable_source';
 
 export function unknownActivityReason(project: {
   activityStatus: string;
   hasBuilderSource?: boolean | null | undefined;
+  heldBuilderSource?: boolean | null | undefined;
   lastMeaningfulShipAt?: Date | string | null | undefined;
 }): UnknownActivityReason | null {
   if (project.activityStatus !== 'UNKNOWN' || project.hasBuilderSource !== false) return null;
-  return project.lastMeaningfulShipAt ? 'no_readable_source' : 'no_builder_signal';
+  if (project.lastMeaningfulShipAt) return 'no_readable_source';
+  return project.heldBuilderSource === true ? 'held_as_context' : 'no_builder_signal';
 }
 
 /** The words for a status, with the reason an UNKNOWN is unknown: the one label map every surface reads. */
 export function activityPresentation(status: string, unknownReason?: UnknownActivityReason | null): { label: string; help: string } {
   if (status === 'UNKNOWN' && unknownReason === 'no_builder_signal') return { label: NO_BUILDER_SIGNAL.label, help: NO_BUILDER_SIGNAL.help };
+  if (status === 'UNKNOWN' && unknownReason === 'held_as_context') return { label: BUILDER_SOURCE_HELD.label, help: BUILDER_SOURCE_HELD.help };
   if (status === 'UNKNOWN' && unknownReason === 'no_readable_source') return { label: ACTIVITY_NOT_MEASURABLE.label, help: ACTIVITY_NOT_MEASURABLE.help };
   const words = ACTIVITY_STATUS_WORDS[status as ActivityStatusWordsKey] ?? ACTIVITY_STATUS_WORDS.UNKNOWN;
   return { label: words.label, help: words.help };
@@ -94,6 +110,7 @@ export const activityStatusLabel = (status: string): string => (ACTIVITY_STATUS_
 export function projectActivityWords(project: {
   activityStatus: string;
   hasBuilderSource?: boolean | null | undefined;
+  heldBuilderSource?: boolean | null | undefined;
   lastMeaningfulShipAt?: Date | string | null | undefined;
 }): { label: string; help: string } {
   return activityPresentation(project.activityStatus, unknownActivityReason(project));

@@ -28,7 +28,7 @@ import {
   TOKEN_MARKET_LABELS,
   type UnconfirmedMarketReason,
 } from '@hey/scoring/market-status-words';
-import { RESEARCH_LEVEL_WORDS } from '@hey/scoring/research-level-words';
+import { RESEARCH_LEVEL_WORDS, researchLevelWordsFor } from '@hey/scoring/research-level-words';
 
 import { cn } from './cn';
 
@@ -180,12 +180,23 @@ const RESEARCH_PRESENTATION: Record<ResearchLevelValue, { label: string; classNa
 
 export function ResearchLevelBadge({
   level,
+  hasBuilderSource,
   className,
 }: {
   level: ResearchLevelValue;
+  /** False on a page HEY reads no builder source for: RESEARCHED is then quiet text in its own words, never a pill (PB-4). */
+  hasBuilderSource?: boolean | undefined;
   className?: string;
 }) {
   const presentation = RESEARCH_PRESENTATION[level] ?? RESEARCH_PRESENTATION.INDEXED;
+  const words = researchLevelWordsFor(level, hasBuilderSource);
+  if (words.quiet) {
+    return (
+      <span className={cn('text-[13px] text-hey-secondary', className)} title={words.help} data-testid="research-level-quiet">
+        {words.label}
+      </span>
+    );
+  }
 
   return (
     <span

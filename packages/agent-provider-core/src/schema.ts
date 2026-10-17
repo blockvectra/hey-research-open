@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { AGENT_CAPABILITIES } from './capabilities';
-import { HEY_OWN_TOKEN_DISCLOSURE_CODE, STILL_BUILDING_STATES } from './disclosures';
+import { HEY_OWN_TOKEN_DISCLOSURE_CODE, STILL_BUILDING_STATES, UNDER_THE_RADAR_STATES } from './disclosures';
 import { AGENT_EVIDENCE_KINDS } from './evidence-kinds';
 import { AGENT_DATA_FAMILIES, AGENT_FRESHNESS_STATUSES } from './freshness';
 import { AGENT_UNKNOWN_CATEGORIES } from './unknowns';
@@ -55,6 +55,8 @@ export const AGENT_LIMITS = {
   inputs: 24,
   excludedContext: 12,
   reasons: 8,
+  /** Commit subjects shown per code week (PB-25): enough to say what was shipped, the rest one evidence call away. */
+  codeHighlights: 2,
   maxResponseBytes: 64 * 1024,
 } as const;
 
@@ -190,6 +192,21 @@ const change = z
     project: z.object({ slug, url }).strict(),
     evidence: z.array(agentEvidenceRefSchema).max(AGENT_LIMITS.evidencePerClaim),
     source: z.string().max(120),
+    /**
+     * What a week of code changed (2026-10-18, persona audit PB-25 / AG-4, additive), on a `build.code_activity`
+     * event only: the week's human commits as HEY counted them (null when HEY holds no count; `commitsAtLeast` when
+     * the read stopped inside the week, so the count is a floor) and at most two commit subjects — a source's words,
+     * typed `external_source` — with their links. The same detail `/api/evidence/{id}` carries as `codeWeek`; absent
+     * when HEY holds none, never an empty week.
+     */
+    code: z
+      .object({
+        commits: z.number().int().min(0).nullable(),
+        commitsAtLeast: z.boolean(),
+        highlights: z.array(z.object({ subject: agentTextSchema, url: url.optional() }).strict()).max(AGENT_LIMITS.codeHighlights),
+      })
+      .strict()
+      .optional(),
   })
   .strict();
 export const agentChangeSchema = change;
@@ -225,6 +242,17 @@ const researchData = z
         stillBuildingWithheld: code.optional(),
         /** Round 4 (2026-09-30, additive): HELD, NOT_HELD (measured, not met) or NOT_MEASURED — what `stillBuilding: false` cannot say. */
         stillBuildingState: z.enum(STILL_BUILDING_STATES).optional(),
+        /**
+         * Under the Radar as the project page and the snapshot state it (2026-10-18, persona audit PA-6, additive):
+         * `HELD` — HEY's rule holds it today, building ahead of market attention; `NOT_HELD` — measured, not held;
+         * `NOT_MEASURED` with the reason the Discovery Gap is withheld (`market_too_thin`, `no_token`, … or
+         * `not_in_cohort`). Absent when the snapshot could not read it, never a guess.
+         */
+        underTheRadar: z.object({ state: z.enum(UNDER_THE_RADAR_STATES), reason: code.optional() }).strict().optional(),
+        /** The published Discovery Gap (PA-6, additive): null beside `discoveryGapWithheld`, never 0; absent on a score from before the field. */
+        discoveryGap: z.number().nullable().optional(),
+        /** Why `discoveryGap` is null (PA-6, additive): the scorer's reason, as the API sends it ("not measured — market too thin"). */
+        discoveryGapWithheld: code.optional(),
         scoringVersion: code.nullable(),
         explainUrl: url,
       })
@@ -424,6 +452,22 @@ const unknownsData = z
   })
   .strict();
 
+/** chain_brief (2026-10-18, PB-26): the rolling week's counts, each with its method, and the newest building changes. */
+const methodCount = z.object({ total: z.number().int().min(0), method: agentTextSchema }).strict();
+const chainBriefData = z
+  .object({
+    window: z.object({ days: z.number().int().min(1).max(31), from: iso, to: iso, label: z.string().max(80) }).strict(),
+    shipped: z.object({ ships: z.number().int().min(0), projects: z.number().int().min(0), rule: z.object({ id: code, counts: z.string().max(400) }).strict() }).strict(),
+    newlyVerifiedBuilders: methodCount,
+    /** Status moves from Quiet or Dormant to Shipping, Active or Resumed; `comparable` is how many projects HEY read more than once in the window. */
+    statusRecoveries: z.object({ total: z.number().int().min(0), comparable: z.number().int().min(0), method: agentTextSchema }).strict(),
+    stillBuilding: methodCount,
+    underTheRadar: methodCount,
+    building: z.object({ total: z.number().int().min(0), shown: z.number().int().min(0), items: z.array(change).max(AGENT_LIMITS.changes), more: url }).strict(),
+    weekUrl: url,
+  })
+  .strict();
+
 const methodology = z
   .object({
     rules: z.array(z.object({ id: code, version: code }).strict()).max(12),
@@ -593,6 +637,7 @@ export const agentIntelligenceResponseSchema = z.discriminatedUnion('capability'
   variant('verify_project', verifyData),
   variant('compare_builders', compareData),
   variant('unknowns', unknownsData),
+  variant('chain_brief', chainBriefData),
 ]);
 
 export type AgentEvidenceRef = z.infer<typeof agentEvidenceRefSchema>;
@@ -612,6 +657,7 @@ export type AgentCompareData = z.infer<typeof compareData>;
 export type AgentCompareProject = z.infer<typeof compareProject>;
 export type AgentCompareCompleteness = NonNullable<AgentCompareData['completeness']>;
 export type AgentUnknownsData = z.infer<typeof unknownsData>;
+export type AgentChainBriefData = z.infer<typeof chainBriefData>;
 export type AgentCitation = z.infer<typeof citation>;
 export type AgentCandidate = z.infer<typeof candidate>;
 export type AgentResolvedFrom = NonNullable<NonNullable<z.infer<typeof base.subject>>['resolvedFrom']>;

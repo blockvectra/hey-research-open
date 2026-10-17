@@ -18,6 +18,10 @@
 export const STILL_BUILDING_STATES = ['HELD', 'NOT_HELD', 'NOT_MEASURED'] as const;
 export type StillBuildingState = (typeof STILL_BUILDING_STATES)[number];
 
+/** Under the Radar's three states (2026-10-18, PA-6): the API's `underTheRadar.state`, restated, never derived here. */
+export const UNDER_THE_RADAR_STATES = ['HELD', 'NOT_HELD', 'NOT_MEASURED'] as const;
+export type UnderTheRadarState = (typeof UNDER_THE_RADAR_STATES)[number];
+
 const isState = (value: unknown): value is StillBuildingState => typeof value === 'string' && (STILL_BUILDING_STATES as readonly string[]).includes(value);
 
 /**
