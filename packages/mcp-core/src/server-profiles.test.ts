@@ -109,10 +109,11 @@ describe('one registry, two profiles', () => {
     expect(textOf(found)).not.toMatch(/market cap|FDV|valuation|liquidity/i);
     await client.callTool({ name: 'find_projects', arguments: { query: AOS } });
     expect(requested[1]!.pathname).toBe(`/api/token/4663/${AOS}`);
-    // No market filter reaches the read there: the argument is not part of the tool.
-    await client.callTool({ name: 'find_projects', arguments: { query: 'agent', maxMarketCap: 5 } });
-    expect(requested.at(-1)!.pathname).toBe('/api/search/suggest');
-    expect(requested.at(-1)!.searchParams.has('maxMarketCap')).toBe(false);
+    // No market filter reaches the read there: the argument is not part of the tool, and is refused rather than dropped (AG-1).
+    const filtered = await client.callTool({ name: 'find_projects', arguments: { query: 'agent', maxMarketCap: 5 } });
+    expect(filtered.isError).toBe(true);
+    expect(textOf(filtered)).toContain('find_projects does not take maxMarketCap');
+    expect(requested).toHaveLength(2);
   });
 
   it('the research profile has no snapshot resource, and every prompt names only its own tools', async () => {

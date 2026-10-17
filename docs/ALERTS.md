@@ -38,9 +38,9 @@ types; nothing is computed for the alert.
 | `deploy` | When *project* deploys a contract | `contract.deployed` — never `contract.followup_deployed`, a serial launcher's deploy that is context, not a ship (added 2026-10-03) |
 | `implementation` | When *project* changes implementation | `contract.implementation_changed` |
 | `resumed` | When *project* resumes building after a long quiet period | `build.resumed` — HEY's own Resumed status: shipping again after 60 or more days without observed activity (`ACTIVITY.dormancyGapDays`) |
-| `status` | When the activity status of *project* changes | `build.status_changed`, `build.dormant`, `build.resumed` — every activity status move the ledger announces, measured from building (added 2026-10-03) |
+| `status` | When the activity status of *project* changes | `build.status_changed`, `build.dormant`, `build.resumed` — every activity status move the ledger announces, measured from building (added 2026-10-03). Since 2026-10-17 a move between Shipping and Active (or from Resumed into either) is shown in HEY only; a move to or from Quiet, Dormant or unknown is also emailed, sent to a webhook or to Telegram |
 | `unlock` | When an unlock for *project* is due within 7 days | `lock.unlock_due`, with `unlockWithinDays` (1–7) |
-| `docs` | When official docs or site for *project* materially change | `research.source_changed` |
+| `docs` | When official docs or site for *project* materially change | `research.source_changed` — offered after a follow but no longer ticked by default (2026-10-17); rules made before keep it. The event names up to three links added and three removed ("Added docs link: example.com/pricing") |
 | `integrity` | When Market Integrity for *project* changes | `market_integrity.event` — offered only where HEY publishes Market Integrity |
 | `usage` | When on-chain usage of *project* starts after a quiet period | `contract.method_first_observed`, `contract.method_resumed` — in the inbox only |
 
@@ -153,6 +153,12 @@ only, never mailed, sent to a webhook or to Telegram.
 
 ## Channels
 
+- **Settle window** (2026-10-17): a ship, a contract, an activity status move, a market status
+  move or a Market Integrity event is due 75 minutes after it matched,
+  in every channel, the inbox included. HEY's quality gate re-reads what the ledger published and
+  withdrew about half of the week's follow-up deploys and Market Integrity events, most within the
+  hour; one withdrawn inside the window is never sent and never shown. An unlock notice, a lock, a
+  token's verification and a research change are told at once.
 - **In HEY**, always: the inbox at `/account/alerts`, one row per event however
   many of your rules matched it, with the rules named. The unread count is on
   the account page and on `/updates`.

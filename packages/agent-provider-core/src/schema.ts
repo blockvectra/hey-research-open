@@ -301,6 +301,12 @@ const whatChangedData = z
     ledger: z.object({ projectorRanAt: iso.nullable(), newestRecordedAt: iso.nullable(), collectionStart: iso.nullable(), transitionsFrom: iso.nullable().optional() }).strict(),
     /** How to read further: the canonical ledger, which pages with a cursor. */
     more: url,
+    /**
+     * Where to pick up next time (2026-10-17, AG-7, additive): the ledger's position when the answer was made, and
+     * `/api/changes?after=<cursor>` for the same project and types — every change HEY records after this answer, in
+     * ledger order, with a `nextCursor` to keep. Absent when the ledger's position could not be read.
+     */
+    resume: z.object({ cursor: z.string().regex(/^[A-Za-z0-9_.-]{1,64}$/), url }).strict().optional(),
   })
   .strict();
 
@@ -460,7 +466,20 @@ const citation = z
  * (2026-10-14, AG-01): the slug to send back, the name as a source's words,
  * and the token when one is tracked. Identity only, never a figure.
  */
-const candidate = z.object({ slug, name: agentTextSchema, url, token: z.object({ chainId: z.number().int(), address }).strict().optional() }).strict();
+const candidate = z
+  .object({
+    slug,
+    name: agentTextSchema,
+    url,
+    token: z.object({ chainId: z.number().int(), address }).strict().optional(),
+    /** The tracked token's ticker as its source writes it (2026-10-17, AG-3, additive); absent when no ticker is recorded. */
+    symbol: agentTextSchema.optional(),
+    /** The project's activity status as every surface prints it (2026-10-17, AG-3, additive): building state, never a market figure. */
+    activityStatus: code.optional(),
+    /** How far HEY has researched it (2026-10-17, AG-3, additive): VERIFIED_BUILDER, QUALIFIED, or another catalog status. */
+    catalogStatus: code.optional(),
+  })
+  .strict();
 
 const errorSchema = z
   .object({
@@ -469,6 +488,11 @@ const errorSchema = z
     movedTo: slug.optional(),
     /** `ambiguous` (AG-01, additive): the published projects a `q` could mean, in the matcher's order; HEY picks none. */
     candidates: z.array(candidate).max(8).optional(),
+    /**
+     * How many published projects the name or ticker matched (2026-10-17, AG-3, additive), of which `candidates`
+     * lists the first: `atLeast` when the matcher's read was full, so there may be more.
+     */
+    candidatesTotal: z.object({ count: z.number().int().min(0), atLeast: z.boolean() }).strict().optional(),
   })
   .strict();
 
@@ -502,6 +526,12 @@ const base = {
       types: z.array(code).max(40).optional(),
       limit: z.number().int().optional(),
       building: z.literal('only').optional(),
+      /**
+       * Cache-busting and campaign parameters the REST route set aside unread (2026-10-17, AG-1, additive):
+       * `cb`, `_`, `nocache`, `utm_*` and the like. Named back so the caller sees they changed nothing; any
+       * other parameter the capability does not take is still refused.
+       */
+      ignoredParameters: z.array(z.string().max(40)).max(20).optional(),
     })
     .strict(),
   chain: z.object({ chainId: z.number().int(), name: z.string().max(60) }).strict(),

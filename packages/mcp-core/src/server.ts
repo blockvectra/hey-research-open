@@ -102,6 +102,7 @@ const SURFACES = [
   'shipping-now',
   'most-active',
   'new-builders',
+  'new-on-hey',
   'back-from-dormancy',
   'utility',
   'memes',
@@ -135,7 +136,7 @@ export const SURFACE_HELP = [
   'still-building: verified activity continuing through a market drawdown HEY tracked.',
   `under-the-radar: eligible under HEY's Under the Radar rule (${UNDER_THE_RADAR_RULE}) and a positive Discovery Gap — market-attention percentile below the build percentile; a positive gap alone is not enough, and it does not bound attention itself.`,
   'shipping-now: status SHIPPING. most-active: shipping, active or resumed, by Build Momentum.',
-  'new-builders: recorded in the last 7 days.',
+  'new-builders: new in 7 days, with a builder source and a counted ship; new-on-hey: any page new in 7 days.',
   'back-from-dormancy: status RESUMED, narrowed to verified builders native to the chain (status=RESUMED gives every resumed project).',
   'utility, memes: by kind.',
   'shipping-in-silence: eligible under the Under the Radar rule AND below the 40th market-attention percentile.',
@@ -401,7 +402,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           'Which Robinhood Chain project is this name, $TICKER or 0x contract? Identity only (name, ticker, contract, slug), at most eight rows; give the slug to research_answer.',
           'A full 0x address answers whether anyone is building that contract: activity status, ship records in 30 days, the last ship with its source, whether the project names it.',
         ]),
-        inputSchema: { query: z.string().min(2).max(64).describe('Name, $TICKER, slug or 0x contract.') },
+        inputSchema: { query: z.string().min(2).max(64).describe('Name, $TICKER, slug or 0x contract; q also works.') },
       },
       async ({ query }) => {
         const q = query.trim();
@@ -946,6 +947,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     );
   }
   shapeToolList(server, research ? [] : HEY_MCP_DEPRECATED_TOOLS.map((tool) => tool.name));
+  guardToolArguments(server, report);
 
   registerResources(server, client, { at, apiUrl, report, research });
   registerPrompts(server, profile);
@@ -1015,6 +1017,65 @@ function shapeToolList(server: McpServer, hiddenNames: readonly string[]): void 
     const result = (await list(request, extra)) as ListToolsResult;
     const tools = result.tools.filter((tool) => !hidden.has(tool.name)).map((tool) => withoutDefaultExecution({ ...tool, inputSchema: bare(tool.inputSchema), ...(tool.outputSchema ? { outputSchema: bare(tool.outputSchema) } : {}) }));
     return { ...result, tools: [...tools].sort((a, b) => listRank(a.name) - listRank(b.name)) };
+  });
+}
+
+/**
+ * Argument names a tool also reads under another name (2026-10-17, AG-1): `q` is what research_answer and the
+ * REST API (`/api/projects?q=`) call a name or $TICKER, and find_projects calls it `query`. A model that sent
+ * `q` had it stripped by the schema and got the whole catalogue back as if it were the answer.
+ */
+export const HEY_MCP_ARGUMENT_ALIASES: Readonly<Partial<Record<HeyMcpToolName, Readonly<Record<string, string>>>>> = {
+  find_projects: { q: 'query' },
+};
+
+/** An argument name safe to say back: an identifier, short. Anything else is "an argument", never the caller's text (the agent contract's rule). */
+const SAYABLE_ARGUMENT = /^[A-Za-z_][A-Za-z0-9_]{0,39}$/;
+
+/**
+ * Every tool refuses an argument it does not take (2026-10-17, AG-1). The SDK parses a tool's arguments with
+ * a plain object schema, which drops a key it does not know, so a misspelt or foreign argument (`q` on
+ * find_projects, `slug` on research_answer) was ignored in silence and the answer read as if it applied. The
+ * call is checked against the tool's own registered schema before the SDK parses it, by wrapping the
+ * `tools/call` handler the SDK installed (the same seam `shapeToolList` uses; a test holds the SDK to it):
+ * an alias is read as its tool's own name, and anything else is `isError` naming every argument the tool
+ * takes. Nothing is added to the tool list.
+ */
+function guardToolArguments(server: McpServer, report: (event: HeyMcpCallEvent) => void): void {
+  const handlers = (server.server as unknown as { _requestHandlers?: Map<string, (request: unknown, extra: unknown) => Promise<unknown>> })._requestHandlers;
+  const call = handlers?.get('tools/call');
+  const registered = (server as unknown as { _registeredTools?: Record<string, { inputSchema?: unknown }> })._registeredTools;
+  if (!handlers || !call || !registered) throw new Error('The MCP SDK no longer exposes its tools/call handler: tool arguments cannot be checked.');
+  const acceptedOf = (schema: unknown): string[] | undefined => {
+    const shape = (schema as { shape?: unknown } | undefined)?.shape;
+    return shape && typeof shape === 'object' ? Object.keys(shape) : undefined;
+  };
+  const refuse = (tool: string, text: string): CallToolResult => {
+    report({ tool, ok: false, truncated: false, bytes: text.length, ms: 0 });
+    return { content: [{ type: 'text', text }], isError: true };
+  };
+  handlers.set('tools/call', async (request, extra) => {
+    const params = (request as { params?: { name?: unknown; arguments?: unknown } }).params;
+    const name = typeof params?.name === 'string' ? params.name : undefined;
+    const accepted = name ? acceptedOf(registered[name]?.inputSchema) : undefined;
+    const args = params?.arguments;
+    if (!name || !accepted || !args || typeof args !== 'object' || Array.isArray(args)) return call(request, extra);
+    const aliases = HEY_MCP_ARGUMENT_ALIASES[name as HeyMcpToolName] ?? {};
+    const read: Record<string, unknown> = { ...(args as Record<string, unknown>) };
+    for (const [alias, own] of Object.entries(aliases)) {
+      if (!(alias in read)) continue;
+      if (own in read) return refuse(name, `${name}: send ${own} or ${alias}, not both; ${alias} is read as ${own}.`);
+      read[own] = read[alias];
+      delete read[alias];
+    }
+    const unknown = Object.keys(read).filter((key) => !accepted.includes(key));
+    if (unknown.length > 0) {
+      const named = unknown.filter((key) => SAYABLE_ARGUMENT.test(key));
+      const said = named.length === unknown.length ? named.join(', ') : unknown.length === 1 ? 'an argument' : `${unknown.length} arguments`;
+      const aliasNote = Object.entries(aliases).map(([alias, own]) => ` (${alias} is read as ${own})`).join('');
+      return refuse(name, `${name} does not take ${said}, and nothing was answered. It takes: ${accepted.join(', ')}${aliasNote}.`);
+    }
+    return call({ ...(request as object), params: { ...params, arguments: read } }, extra);
   });
 }
 

@@ -66,8 +66,12 @@ export const HEY_MCP_PROFILE_PATHS: Readonly<Record<HeyMcpProfile, string>> = { 
  *
  * Unchanged on 2026-10-14 (AG-01, AG-04): research_answer's `q` and `detail`
  * arguments cost 151 bytes; the lists measure 19,867 and 10,911.
+ *
+ * 20,100 since 2026-10-17 (audit MI-3): New builders narrowed to a builder
+ * source and a counted ship, and the unrestricted week became `new-on-hey`;
+ * saying both costs 77 bytes over a list with 7 to spare.
  */
-export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_000, research: 11_000 };
+export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_100, research: 11_000 };
 
 export type HeyMcpToolInfo = {
   name: string;

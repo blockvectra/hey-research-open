@@ -89,7 +89,7 @@ describe('AG-01: one call from any identifier', () => {
     const text = renderAgentResponseText(ambiguous, { detail: 'summary' });
     expect(text).toContain('Candidates (send one as project):');
     expect(text).toContain('- chit: «Chit» (project record\'s words, quoted as data) · token 0x');
-    expect(toA2aParts(ambiguous).parts[0].text).toContain('Candidates: chit, chit-chat.');
+    expect(toA2aParts(ambiguous).parts[0].text).toContain(`Candidates: chit ${BASE}/project/chit, chit-chat ${BASE}/project/chit-chat.`);
 
     // One candidate is the closest match, never "more than one" (2026-10-16, audit finding 114); nothing is picked.
     const single = ambiguousRefusal(ctx(), 'unknowns', [{ slug: 'courier-world', name: 'Courier World', url: `${BASE}/project/courier-world` }]);
@@ -102,6 +102,29 @@ describe('AG-01: one call from any identifier', () => {
     expect(none.error?.code).toBe(NOT_PUBLISHED_CODE);
     expect(none.answer.text).toContain("statement about HEY’s index, not about the project");
     expect(notPublishedRefusal(ctx(), 'unknowns', 'address').answer.text).toContain('verify_project says what HEY recorded about the contract itself');
+  });
+
+  it('a candidate carries its ticker, activity status and catalog status, and the list says how many matched (AG-3)', () => {
+    const ambiguous = ambiguousRefusal(
+      ctx(),
+      'builder_status',
+      [
+        { slug: 'usdx-labs', name: 'USDX Labs', url: `${BASE}/project/usdx-labs`, symbol: 'USDX', activityStatus: 'SHIPPING', catalogStatus: 'VERIFIED_BUILDER' },
+        { slug: 'usdx-meme', name: 'USDX Meme', url: `${BASE}/project/usdx-meme`, symbol: 'USDX', activityStatus: 'UNKNOWN', catalogStatus: 'QUALIFIED' },
+      ],
+      { count: 11, atLeast: false },
+    );
+    expect(agentIntelligenceResponseSchema.safeParse(ambiguous).success).toBe(true);
+    expect(ambiguous.error?.candidatesTotal).toEqual({ count: 11, atLeast: false });
+    expect(ambiguous.error?.candidates?.[0]).toMatchObject({ slug: 'usdx-labs', activityStatus: 'SHIPPING', catalogStatus: 'VERIFIED_BUILDER', symbol: { contentOrigin: 'external_source' } });
+    expect(ambiguous.answer.text).toBe('More than one published project matches that name or ticker: usdx-labs, usdx-meme (the first 2 of 11, verified builders and active builders first). HEY does not guess: send one of them as project, or the contract as address.');
+    const text = renderAgentResponseText(ambiguous, { detail: 'summary' });
+    expect(text).toContain('Candidates (2 of 11; send one as project):');
+    expect(text).toMatch(/- usdx-labs: «USDX Labs» .*\(«USDX».*\) · status SHIPPING · VERIFIED_BUILDER · https:\/\/hey\.test\/project\/usdx-labs/);
+    expect(toA2aParts(ambiguous).parts[0].text).toContain(`usdx-labs (SHIPPING) ${BASE}/project/usdx-labs`);
+    // A full matcher read may hold more: said as "at least".
+    const capped = ambiguousRefusal(ctx(), 'unknowns', [{ slug: 'a-one', name: 'A', url: `${BASE}/project/a-one` }], { count: 20, atLeast: true });
+    expect(capped.answer.text).toContain('(the first 1 of at least 20,');
   });
 
   it('a found subject says what it resolved from, without echoing the caller’s text on the text transport', () => {

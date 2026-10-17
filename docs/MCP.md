@@ -198,7 +198,8 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
   attention itself; an eligible project at the 90th attention percentile can be Under the Radar
   if it builds at the 99th.
 - `shipping-now` (status SHIPPING), `most-active` (shipping, active or resumed, by Build Momentum),
-  `new-builders` (recorded in the last 7 days), `utility`, `memes`.
+  `new-builders` (recorded in the last 7 days, with a builder source HEY reads and at least one counted ship),
+  `new-on-hey` (every page recorded in the last 7 days), `utility`, `memes`.
 - `back-from-dormancy` — status RESUMED, **narrowed to verified builders native to the chain**;
   `status: "RESUMED"` gives every resumed project.
 - `shipping-in-silence` — eligible under the Under the Radar rule **and** below the 40th

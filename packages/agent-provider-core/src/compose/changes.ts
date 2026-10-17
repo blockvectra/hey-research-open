@@ -34,6 +34,8 @@ export type WhatChangedInput = {
   buildingOnly?: boolean;
   ledger: { projectorRanAt: string | null; newestRecordedAt: string | null; collectionStart: string | null; transitionsFrom?: string | null };
   moreUrl: string;
+  /** The ledger's position when the answer was made and the sync URL from it (AG-7); absent when it could not be read. */
+  resume?: { cursor: string; url: string };
   /** Gaps that limit which changes HEY can see for this project (no builder source, contracts not watched …). */
   unknowns?: AgentUnknown[];
   isEvidenceId?: (id: string) => boolean;
@@ -193,6 +195,7 @@ function composeWindow(ctx: AgentComposeContext, input: WhatChangedInput, items:
       items,
       ledger: input.ledger,
       more: input.moreUrl,
+      ...(input.resume ? { resume: input.resume } : {}),
     },
     ...(input.project ? { page: input.project.url, citationProject: input.project.slug } : {}),
     canonical: [input.moreUrl],

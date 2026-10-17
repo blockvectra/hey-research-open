@@ -217,6 +217,11 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
         ? `- UNKNOWN Discovery Gap: ${withheldWords(GAP_WITHHELD_WORDS, b.discoveryGapWithheld)} (${b.discoveryGapWithheld})`
         : '- UNKNOWN Discovery Gap: not measured',
   );
+  // Under the Radar as the page states it (2026-10-17, DT-4): the API's own reading, said once; absent when unread.
+  const radar = b.underTheRadar;
+  if (radar?.state === 'HELD') lines.push(`- DERIVED UNDER THE RADAR: held by HEY's Under the Radar rule today — building ahead of market attention; not a valuation or a prediction (${radar.explainUrl})`);
+  else if (radar?.state === 'NOT_HELD') lines.push('- DERIVED Under the Radar: does not hold — measured, and not met');
+  else if (radar?.state === 'NOT_MEASURED') lines.push(`- UNKNOWN Under the Radar: not measured${radar.reason ? ` (${radar.reason})` : ''}`);
   if (b.velocity) {
     lines.push(
       b.velocity.current === null

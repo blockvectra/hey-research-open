@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { agentIntelligenceResponseSchema } from '../schema';
 import { changeTypeNoun, countOf } from '../words';
+import { renderAgentResponseText } from '../adapters/text';
 import { composeWhatChanged } from './changes';
 import type { AgentComposeContext } from './common';
 import { composeBuilderStatus } from './status';
@@ -55,6 +56,26 @@ describe('contract repairs the benchmark found (2026-09-30)', () => {
     expect(countOf(1, changeTypeNoun('research.source_added'))).toBe('1 source added');
     // A type with no words yet reads "<type> event(s)", never the code pluralised.
     expect(countOf(2, changeTypeNoun('future.kind'))).toBe('2 future.kind events');
+  });
+
+  it('what_changed hands out where to resume, and says so in its text (2026-10-17, AG-7)', () => {
+    const input = {
+      scope: 'chain' as const,
+      window: { days: 7, from: '2026-09-23T12:00:00.000Z', to: NOW.toISOString() },
+      types: null,
+      items: [],
+      total: 0,
+      byType: [],
+      ledger: { projectorRanAt: NOW.toISOString(), newestRecordedAt: NOW.toISOString(), collectionStart: '2026-09-26T00:00:00.000Z' },
+      moreUrl: 'https://hey.test/api/changes',
+    };
+    const resume = { cursor: 'YzEuNDI', url: 'https://hey.test/api/changes?after=YzEuNDI' };
+    const answer = composeWhatChanged(ctx, { ...input, resume });
+    expect(answer.data?.resume).toEqual(resume);
+    expect(agentIntelligenceResponseSchema.safeParse(answer).success).toBe(true);
+    expect(renderAgentResponseText(answer)).toContain('Resume later from cursor YzEuNDI: https://hey.test/api/changes?after=YzEuNDI (then keep each page\'s nextCursor).');
+    // An unread position is no resume, never a cursor at the start of the ledger.
+    expect(composeWhatChanged(ctx, input).data).not.toHaveProperty('resume');
   });
 
   it('builder_status states when HEY last read the builder sources, beside the score', () => {

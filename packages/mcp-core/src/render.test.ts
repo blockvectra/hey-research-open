@@ -175,6 +175,15 @@ describe('find_projects', () => {
     expect(text).toContain('at most 100');
   });
 
+  it('accelerating: an empty list says what was judged, and too new is not measured (AG-5)', () => {
+    const judged = { projects: 3, byState: { ACCELERATING: 0, STABLE: 0, SLOWING: 0, NEW: 3, NO_RECENT_ACTIVITY: 0 } };
+    const text = renderAccelerating({ ...fx.accelerating, items: [], judged, notMeasured: { projects: 3, reason: 'watched_under_two_windows' }, reason: 'too_new_to_measure' });
+    expect(text).toMatch(/^No builder can be called faster yet: every project shipping enough to judge is too new to compare\./);
+    expect(text).toContain('Judged 3 projects with enough recent building: 3 NEW.');
+    expect(text).toContain('UNKNOWN 3 of them HEY has watched for under two windows');
+    expect(renderAccelerating({ ...fx.accelerating, items: [] })).toMatch(/^No builder is shipping measurably faster right now\./);
+  });
+
   it('builder-radar: ranks are DERIVED, price takes no part, and the offset reads on', () => {
     const text = renderBuilders(fx.builders, NOW);
     expect(text).toContain('DERIVED #3 «AgentOS» («AOS»)');
@@ -264,6 +273,16 @@ describe('get_project_snapshot', () => {
     const thin = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, discoveryGapWithheld: 'market_too_thin' } }, NOW);
     expect(thin).toContain('- UNKNOWN Discovery Gap: not measured — market too thin (market_too_thin)');
     expect(thin).not.toMatch(/Discovery Gap:? 0\b/);
+  });
+
+  it('says Under the Radar as the API reads it: held, not held, or not measured with why (2026-10-17, DT-4)', () => {
+    const explainUrl = 'https://hey.test/api/projects/agentos/explain?fact=discovery_gap';
+    const held = renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, underTheRadar: { state: 'HELD', explainUrl } } }, NOW);
+    expect(held).toContain(`- DERIVED UNDER THE RADAR: held by HEY's Under the Radar rule today — building ahead of market attention; not a valuation or a prediction (${explainUrl})`);
+    expect(renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, underTheRadar: { state: 'NOT_HELD', explainUrl } } }, NOW)).toContain('- DERIVED Under the Radar: does not hold — measured, and not met');
+    expect(renderSnapshot({ ...fx.snapshot, build: { ...fx.snapshot.build, underTheRadar: { state: 'NOT_MEASURED', reason: 'market_too_thin', explainUrl } } }, NOW)).toContain('- UNKNOWN Under the Radar: not measured (market_too_thin)');
+    // Unread is said nowhere rather than guessed.
+    expect(renderSnapshot(fx.snapshot, NOW)).not.toMatch(/Under the Radar/i);
   });
 
   it('says Still Building was not measured on a thin market, never that it was not met (hbm-v19)', () => {

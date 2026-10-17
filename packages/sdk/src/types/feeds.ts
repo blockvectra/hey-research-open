@@ -214,6 +214,12 @@ export type HeySilentBuilders = {
 
 export type HeyAccelerating = {
   items: (HeyCentreProject & { velocity: { windowDays: number; current: number; previous: number | null; changePct: number | null } })[];
+  /** What the rule judged (2026-10-17, additive): projects with enough recent building to be judged, by velocity state. `NEW` is not measured. */
+  judged?: { projects: number; byState: { ACCELERATING: number; STABLE: number; SLOWING: number; NEW: number; NO_RECENT_ACTIVITY: number } };
+  /** Judged projects the rule could not measure (watched under two windows); absent when none. */
+  notMeasured?: { projects: number; reason: 'watched_under_two_windows' };
+  /** Why `items` is empty (additive): `no_candidates`, `too_new_to_measure` or `none_accelerating`; absent when it is not. */
+  reason?: 'no_candidates' | 'too_new_to_measure' | 'none_accelerating';
   method: string;
   disclaimer: string;
 };

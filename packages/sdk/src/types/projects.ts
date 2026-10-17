@@ -300,8 +300,17 @@ export type HeyPage<T> = {
   nextOffset?: number;
   items: T[];
   catalogue?: HeyCatalogueCounts;
+  /** Parameters the request carried that the listing does not read (additive, 2026-10-17); absent when every one was read. */
+  ignoredParameters?: string[];
   disclaimer: string;
 };
+
+/**
+ * Under the Radar for one project (2026-10-17, additive), as the project page states it: `HELD` (the rule holds
+ * it today), `NOT_HELD` (measured, not held) or `NOT_MEASURED` with the reason the gap is withheld
+ * (`market_too_thin`, `no_token`, … or `not_in_cohort`). `explainUrl` explains it.
+ */
+export type HeyUnderTheRadar = { state: 'HELD' | 'NOT_HELD' | 'NOT_MEASURED'; reason?: string; explainUrl: string };
 
 export type HeyProjectDetail = HeyProject & {
   longDescription?: string;
@@ -354,6 +363,8 @@ export type HeyProjectDetail = HeyProject & {
     stillBuildingState: HeyStillBuildingState;
     /** Why Still Building was not measured (2026-09-30, additive), beside `stillBuilding: false`: `market_too_thin` and the other market reasons. Absent when it was measured, or on a score from before the rule. */
     stillBuildingWithheld?: HeyStillBuildingWithheld;
+    /** Under the Radar as the page states it (2026-10-17, additive); absent when it could not be read. */
+    underTheRadar?: HeyUnderTheRadar;
     calculatedAt: string;
     /** When the cohort rebuild last wrote `discoveryGap`, Under the Radar and `stillBuilding` (2026-10-16, additive); `calculatedAt` dates the status and momentum only. */
     cohortEvaluatedAt?: string;
@@ -815,6 +826,7 @@ export type HeyProjectSurface =
   | 'shipping-now'
   | 'most-active'
   | 'new-builders'
+  | 'new-on-hey'
   | 'back-from-dormancy'
   | 'utility'
   | 'memes';

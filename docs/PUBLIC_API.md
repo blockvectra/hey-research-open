@@ -194,7 +194,7 @@ The catalogue, with the same filters and order the browse pages use.
 | `limit` | 1–48 | 24 |
 | `offset` | 0–5000; a larger value is silently clamped to 5000 (`MAX_LISTING_OFFSET`), so a deep walk ends there rather than erroring | 0 |
 | `sort` | `activity`, `shipped` (newest ship first), `shipped7d` / `shipped30d` (most meaningful ships in the last 7 / 30 days, the scorer's count), `marketCap`, `newest`, `liquidity`, `volume24h`; anything else is a 400 | `activity` |
-| `tab` | `building-with-token`, `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `back-from-dormancy`, `utility`, `memes` | — |
+| `tab` | `building-with-token`, `still-building`, `under-the-radar`, `shipping-now`, `most-active`, `new-builders`, `new-on-hey`, `back-from-dormancy`, `utility`, `memes` | — |
 | `kind` | `UTILITY`, `MEME`, `HYBRID`, `INFRASTRUCTURE`, `RWA`, `APPLICATION`, `OTHER` | — |
 | `status` | `SHIPPING`, `ACTIVE`, `QUIET`, `DORMANT`, `RESUMED`, `UNKNOWN` | — |
 | `narrative` | a narrative slug | — |

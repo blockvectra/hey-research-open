@@ -379,30 +379,49 @@ export const AMBIGUOUS_CODE = 'ambiguous';
 /** The error code when a name, ticker or contract matched no published project (AG-01). */
 export const NOT_PUBLISHED_CODE = 'not_published';
 
+/** One candidate an ambiguous name or ticker could mean: HEY's identity row and its building state, never a market figure. */
+export type AmbiguousCandidate = {
+  slug: string;
+  name: string;
+  url: string;
+  token?: { chainId: number; address: string };
+  symbol?: string;
+  activityStatus?: string;
+  catalogStatus?: string;
+};
+
 /**
  * A name or ticker that several published projects could be (AG-01): an
  * `invalid_request` that lists the candidates — slug, name as a source's
- * words, the tracked token — in the matcher's order, and picks none. The
- * message names HEY's own slugs, never the caller's text.
+ * words, the tracked token, its ticker, activity status and catalog status
+ * (2026-10-17, AG-3) — in the order the caller gave (research readiness,
+ * then activity), and picks none. `total` is how many matched, so a list of
+ * eight says it is eight of how many. The message names HEY's own slugs,
+ * never the caller's text.
  */
-export function ambiguousRefusal<C extends AgentCapability>(ctx: AgentComposeContext, capability: C, candidates: readonly { slug: string; name: string; url: string; token?: { chainId: number; address: string } }[]): AgentResponseOf<C> {
+export function ambiguousRefusal<C extends AgentCapability>(ctx: AgentComposeContext, capability: C, candidates: readonly AmbiguousCandidate[], total?: { count: number; atLeast: boolean }): AgentResponseOf<C> {
   const listed: AgentCandidate[] = candidates.slice(0, 8).map((candidate) => ({
     slug: candidate.slug,
     name: externalText(candidate.name, 'project_record', undefined, 120),
     url: candidate.url,
     ...(candidate.token ? { token: { chainId: candidate.token.chainId, address: candidate.token.address.toLowerCase() } } : {}),
+    ...(candidate.symbol ? { symbol: externalText(candidate.symbol, 'project_record', undefined, 40) } : {}),
+    ...(candidate.activityStatus ? { activityStatus: candidate.activityStatus } : {}),
+    ...(candidate.catalogStatus ? { catalogStatus: candidate.catalogStatus } : {}),
   }));
+  const count = Math.max(total?.count ?? listed.length, listed.length);
+  const of = count > listed.length ? ` (the first ${listed.length} of ${total?.atLeast ? 'at least ' : ''}${count}, verified builders and active builders first)` : '';
   /*
    * Worded by count (2026-10-16, audit finding 114): a single prefix match read "More than one published project
    * matches … courier-world". One candidate is the closest match, not a crowd; the code stays `ambiguous`, since HEY
    * still picks nothing for the caller.
    */
   const message =
-    listed.length === 1
+    listed.length === 1 && count === 1
       ? `No published project has exactly that name or ticker; the closest is ${listed[0]!.slug}. HEY does not guess: send it as project, or the contract as address.`
-      : `More than one published project matches that name or ticker: ${listed.map((candidate) => candidate.slug).join(', ')}. HEY does not guess: send one of them as project, or the contract as address.`;
+      : `More than one published project matches that name or ticker: ${listed.map((candidate) => candidate.slug).join(', ')}${of}. HEY does not guess: send one of them as project, or the contract as address.`;
   const base = refusal(ctx, capability, 'invalid_request', AMBIGUOUS_CODE, message);
-  return { ...base, error: { ...base.error!, candidates: listed } } as AgentResponseOf<C>;
+  return { ...base, error: { ...base.error!, candidates: listed, ...(total ? { candidatesTotal: { count, atLeast: total.atLeast } } : {}) } } as AgentResponseOf<C>;
 }
 
 /** No published project for the name, ticker or contract asked about (AG-01): a statement about HEY's index, never about the project. */

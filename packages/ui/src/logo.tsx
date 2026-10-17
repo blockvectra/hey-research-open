@@ -1,10 +1,12 @@
+import { BRAND_MARKS } from './brand';
 import { cn } from './cn';
 
 /**
  * The HEY lockup.
  *
  * The mark is the project's own artwork — the Hebrew letter ה, which is what
- * the name says — served from `/hey-mark.png` rather than redrawn as paths.
+ * the name says — served from `/hey-mark.png` (at its hashed `BRAND_MARKS` path
+ * since 2026-10-17) rather than redrawn as paths.
  * A trace would drift from the real thing every time the artwork changed.
  *
  * The name is spelled out from `sm` up and hidden below it, so a phone gets the
@@ -31,7 +33,7 @@ export function HeyLogo({
   return (
     <span className={cn('inline-flex items-center gap-2.5', className)}>
       <img
-        src="/hey-mark.png"
+        src={BRAND_MARKS.hey}
         alt=""
         width={Math.round(markSize * 1.067)}
         height={markSize}
@@ -39,7 +41,7 @@ export function HeyLogo({
         style={{ height: markSize, width: 'auto' }}
       />
       <img
-        src="/hey-mark-dark.png"
+        src={BRAND_MARKS.heyDark}
         alt=""
         width={Math.round(markSize * 1.067)}
         height={markSize}

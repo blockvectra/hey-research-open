@@ -36,3 +36,19 @@ export const pageTitle = (page?: string): string =>
 /** The explorer's own page for a token contract. */
 export const explorerTokenUrl = (address: string): string =>
   `${BRAND.explorerUrl}/token/${address.toLowerCase()}`;
+
+/**
+ * The brand marks every page draws, at content-hashed paths (2026-10-17, performance audit SPD-5).
+ *
+ * `/hey-mark.png` and its dark twin sit in the header of every page, and Next serves `public/` at `max-age=0`: each
+ * page view sent two or three conditional requests through the edge to the origin for the same few KB. Under
+ * `/brand/` the name carries the first eight hex characters of the file's SHA-256, so `next.config.ts` serves them
+ * `immutable` for a year — new artwork is a new name, never an edit in place (`apps/web/src/lib/brand-marks.test.ts`
+ * fails the build when a name and its bytes disagree). The unversioned files stay where they were, the same bytes,
+ * for the share cards, the agent cards and any third party that already links them.
+ */
+export const BRAND_MARKS = {
+  hey: '/brand/hey-mark.0716d350.png',
+  heyDark: '/brand/hey-mark-dark.6cbbf794.png',
+  hoodlock: '/brand/hoodlock-mark.6c12f33e.png',
+} as const;

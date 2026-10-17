@@ -29,6 +29,16 @@ describe('shortenAddress', () => {
   });
 });
 
+describe('an implausible valuation on a card (2026-10-17, audit FR-12)', () => {
+  it('says it is withheld, in the gate’s own phrase, with the reason in its title, never a bare "Not plausible"', () => {
+    const html = render({ ...tokenBacked, tokenMarketStatus: 'ACTIVE_MARKET', tokenMarketReason: 'liquidity_and_volume', valuationImplausible: 'valuation_over_liquidity' });
+    expect(html).toContain('data-valuation-state="not_plausible"');
+    expect(html).toContain('Withheld: not plausible from the readings HEY has');
+    expect(html).not.toMatch(/>Not plausible</);
+    expect(html).toContain('at least 10,000× the liquidity');
+  });
+});
+
 describe('market cap provenance', () => {
   it('names the source as a title only, never as layout', () => {
     const html = render({ ...tokenBacked, marketCapSource: 'coingecko' });
@@ -408,9 +418,10 @@ describe('token lock', () => {
 
   it("carries HoodLock's own mark, so the locker is recognisable without reading", () => {
     const html = render({ ...tokenBacked, tokenLock: { supplyPct: 2.53, until: '2027-09-09', pairLocked: false } });
-    expect(html).toContain('/hoodlock-mark.png');
+    // At its content-hashed path (2026-10-17, SPD-5): served immutable, so no page view revalidates it.
+    expect(html).toMatch(/\/brand\/hoodlock-mark\.[0-9a-f]{8}\.png/);
     /* Decorative: the words beside it already say HoodLock, so a reader is not told twice. */
-    expect(html).toMatch(/<img[^>]+hoodlock-mark\.png[^>]+alt=""/);
+    expect(html).toMatch(/<img[^>]+hoodlock-mark\.[0-9a-f]{8}\.png[^>]+alt=""/);
     /* And the generic padlock it replaced is gone. */
     expect(html).not.toContain('lucide-lock');
   });

@@ -1,3 +1,4 @@
+import { BRAND_MARKS } from './brand';
 import { cn } from './cn';
 import { formatSharePct } from './format';
 
@@ -34,8 +35,8 @@ export type TokenLockFacts = {
   pairLocked: boolean;
 };
 
-/** The locker's own mark, in `apps/web/public`. */
-const HOODLOCK_MARK = '/hoodlock-mark.png';
+/** The locker's own mark, in `apps/web/public` at its hashed path (2026-10-17). */
+const HOODLOCK_MARK = BRAND_MARKS.hoodlock;
 
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 

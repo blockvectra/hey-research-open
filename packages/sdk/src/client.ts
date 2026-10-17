@@ -45,7 +45,7 @@ import type { HeyTokenProfile } from './types/hey';
 import type { HeyAgentCapability, HeyAgentCatalogue, HeyAgentQuery, HeyAgentResponseOf } from './types/agent';
 import type { HeyEvidenceReceipt, HeyExplainedFact, HeyExplainFact, HeyExplainIndex, HeyProjectCoverage, HeyProjectSnapshot } from './types/snapshot';
 import type { HeyProjectUsage } from './types/usage';
-import type { HeyProjectRelationships } from './types/graph';
+import type { HeyProjectBuiltOn, HeyProjectRelationships } from './types/graph';
 import type {
   HeyPage,
   HeyProject,
@@ -128,6 +128,7 @@ function changeParams(query: HeyChangesQuery): QueryParams {
     detectedSince: query.detectedSince,
     after: query.after,
     before: query.before,
+    cursor: query.cursor,
     limit: query.limit,
   };
 }
@@ -322,6 +323,13 @@ export class HeyClient {
      * there is no partnership edge; what HEY does not hold is in `notHeld`.
      */
     relationships: (slug: string): Promise<HeyProjectRelationships> => this.get(`/api/projects/${encodeURIComponent(slug)}/relationships`),
+    /**
+     * `GET /api/projects/{slug}/built-on` (2026-10-17): which builders the
+     * project builds on and which build on it — named in code or runs on a
+     * hook, each link with its evidence. Never a partnership, never an
+     * on-chain interaction.
+     */
+    builtOn: (slug: string): Promise<HeyProjectBuiltOn> => this.get(`/api/projects/${encodeURIComponent(slug)}/built-on`),
     /** `GET /api/projects/{slug}/coverage`: what HEY knows and does not, per dimension, as states — never a score. */
     coverage: (slug: string): Promise<HeyProjectCoverage> => this.get(`/api/projects/${encodeURIComponent(slug)}/coverage`),
     /**

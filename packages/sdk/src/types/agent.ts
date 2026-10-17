@@ -105,7 +105,16 @@ export type HeyAgentChange = {
 
 export type HeyAgentSubjectProject = { slug: string; name: HeyAgentText; url: string; token?: { chainId: number; address: string } };
 /** A published project a name or ticker could mean (2026-10-14, AG-01): identity only, never a figure. */
-export type HeyAgentCandidate = { slug: string; name: HeyAgentText; url: string; token?: { chainId: number; address: string } };
+export type HeyAgentCandidate = {
+  slug: string;
+  name: HeyAgentText;
+  url: string;
+  token?: { chainId: number; address: string };
+  /** The tracked token's ticker, its activity status and its catalog status (2026-10-17, additive): building state, never a market figure. */
+  symbol?: HeyAgentText;
+  activityStatus?: string;
+  catalogStatus?: string;
+};
 
 export type HeyAgentResearchData = {
   identity: {
@@ -189,6 +198,11 @@ export type HeyAgentWhatChangedData = {
   /** `transitionsFrom` (2026-09-30, additive): when the ledger began recording status moves and reclassifications. */
   ledger: { projectorRanAt: string | null; newestRecordedAt: string | null; collectionStart: string | null; transitionsFrom?: string | null };
   more: string;
+  /**
+   * Where to pick up next time (2026-10-17, additive): the ledger's position when this answer was made, and the
+   * `/api/changes?after=<cursor>` URL that returns every change HEY records after it, in ledger order.
+   */
+  resume?: { cursor: string; url: string };
 };
 
 export type HeyAgentExcluded = { item: string; statement: HeyAgentText };
@@ -271,7 +285,7 @@ type HeyAgentBase = {
   schema: 'hey.agent-intelligence-response';
   schemaVersion: '1';
   status: 'ok' | 'not_found' | 'moved' | 'invalid_request' | 'unavailable';
-  query: { chainId: number; project?: string; projects?: string[]; address?: string; q?: string; days?: number; types?: string[]; limit?: number; building?: 'only' };
+  query: { chainId: number; project?: string; projects?: string[]; address?: string; q?: string; days?: number; types?: string[]; limit?: number; building?: 'only'; ignoredParameters?: string[] };
   chain: { chainId: number; name: string };
   subject: {
     kind: 'project' | 'contract' | 'projects' | 'chain';
@@ -299,7 +313,7 @@ type HeyAgentBase = {
   citation: { kind: 'hey_agent_answer'; capability: HeyAgentCapability; schemaVersion: '1'; url: string; asOf: string; project?: string; scoringVersion?: string; text: string } | null;
   boundaries: { notAdvice: true; notProvided: string[]; marketIsContextOnly: true; disclaimer: HeyAgentText };
   /** `candidates` (2026-10-14, additive, code `ambiguous`): the published projects a `q` could mean, in the matcher's order; HEY picks none. */
-  error?: { code: string; message: HeyAgentText; movedTo?: string; candidates?: HeyAgentCandidate[] };
+  error?: { code: string; message: HeyAgentText; movedTo?: string; candidates?: HeyAgentCandidate[]; candidatesTotal?: { count: number; atLeast: boolean } };
   /** Round 4 (2026-09-30, additive): `hey_own_token` when `$HEY`'s project is in the answer; it changes no figure, order or tag. */
   disclosures?: { code: 'hey_own_token'; statement: HeyAgentText; projects: string[] }[];
   asOf: string;

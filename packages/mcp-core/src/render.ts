@@ -766,13 +766,25 @@ export function renderSilentBuilders(page: HeySilentBuilders): string {
 }
 
 export function renderAccelerating(page: HeyAccelerating): string {
-  if (page.items.length === 0) return `No builder is shipping measurably faster right now.\nMethod: ${page.method}\n\n${page.disclaimer}`;
+  // What was judged (2026-10-17, AG-5): an empty list is not "nobody accelerates" when the projects judged were too new to measure.
+  const judged = page.judged ? `Judged ${page.judged.projects} project${page.judged.projects === 1 ? '' : 's'} with enough recent building: ${Object.entries(page.judged.byState).filter(([, count]) => count > 0).map(([state, count]) => `${count} ${state}`).join(', ') || 'none'}.` : '';
+  const unmeasured = page.notMeasured ? `UNKNOWN ${page.notMeasured.projects} of them HEY has watched for under two windows: their velocity is not measured, never "not accelerating".` : '';
+  const context = [judged, unmeasured].filter(Boolean).join('\n');
+  if (page.items.length === 0) {
+    const lead =
+      page.reason === 'too_new_to_measure'
+        ? 'No builder can be called faster yet: every project shipping enough to judge is too new to compare.'
+        : page.reason === 'no_candidates'
+          ? 'No published project has enough recent meaningful building to be judged.'
+          : 'No builder is shipping measurably faster right now.';
+    return `${lead}${context ? `\n${context}` : ''}\nMethod: ${page.method}\n\n${page.disclaimer}`;
+  }
   // `previous: null` is "not watched long enough to compare", never "none" (2026-09-26, M2 G9).
   const lines = page.items.map(
     (item) =>
       `- DERIVED ${quotedName(item.name, item.symbol)} — ${item.velocity.current} meaningful events in ${item.velocity.windowDays} days vs ${item.velocity.previous === null ? 'an earlier window HEY did not watch (unknown)' : `${item.velocity.previous} before`}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`,
   );
-  return `Shipping faster (showing ${page.items.length}; the API lists at most 100):\n${lines.join('\n')}\nMethod: ${page.method}\n${TAG_LEGEND}\n\n${page.disclaimer}`;
+  return `Shipping faster (showing ${page.items.length}; the API lists at most 100):\n${lines.join('\n')}${context ? `\n${context}` : ''}\nMethod: ${page.method}\n${TAG_LEGEND}\n\n${page.disclaimer}`;
 }
 
 /**

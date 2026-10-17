@@ -20,14 +20,14 @@ export type HeyRelationshipNode = {
 };
 
 export type HeyRelationshipEdge = {
-  /** `PROJECT_OWNS_TOKEN`, `PROJECT_USES_CONTRACT`, `CONTRACT_PROXY_TO`, `PROJECT_HAS_REPO`, `REPO_PUBLISHES_PACKAGE`, `PROJECT_PUBLISHES_PACKAGE`, `PACKAGE_LINKS_REPOSITORY`, `PROJECT_HAS_DOMAIN`, `PROJECT_HAS_DOCS`, `PROJECT_LISTED_BY`, `SOURCE_CORROBORATES_IDENTITY`, `PROJECT_RELATED_PROJECT`, `PROJECT_AUDIT_REPORT_LINKED`, `PROJECT_HAS_BUG_BOUNTY`. There is no partnership edge. An audit edge is evidence that an audit took place, labelled by where the report is published (the auditor's site `observed`, the project's link `claimed`, a DefiLlama listing `context_only`) — never a verdict. */
+  /** `PROJECT_OWNS_TOKEN`, `PROJECT_USES_CONTRACT`, `CONTRACT_PROXY_TO`, `PROJECT_HAS_REPO`, `REPO_PUBLISHES_PACKAGE`, `PROJECT_PUBLISHES_PACKAGE`, `PACKAGE_LINKS_REPOSITORY`, `PROJECT_HAS_DOMAIN`, `PROJECT_HAS_DOCS`, `PROJECT_LISTED_BY`, `SOURCE_CORROBORATES_IDENTITY`, `PROJECT_RELATED_PROJECT`, `PROJECT_AUDIT_REPORT_LINKED`, `PROJECT_HAS_BUG_BOUNTY`, and since 2026-10-17 `PROJECT_CODE_NAMES_TOKEN` (the `from` project's official repository names the `to` project's token in code) and `PROJECT_POOLS_ON_HOOK` (a v4 pool of the `from` project's token runs on a hook HEY lists under the `to` project). There is no partnership edge, and neither built-on edge is an on-chain interaction. An audit edge is evidence that an audit took place, labelled by where the report is published (the auditor's site `observed`, the project's link `claimed`, a DefiLlama listing `context_only`) — never a verdict. */
   type: string;
   filter: HeyRelationshipFilter;
   from: string;
   to: string;
   label: string;
   state: HeyRelationshipState;
-  /** Typed evidence ids (`source:`, `impl:`, `ship:`, `security:`) with their `/api/evidence/{id}` URLs. */
+  /** Typed evidence ids (`source:`, `impl:`, `ship:`, `security:`, `v4pool:`, `v4hook:`) with their `/api/evidence/{id}` URLs. */
   evidence: { id: string; url: string }[];
   links: { label: string; url: string }[];
   observedAt: string | null;
@@ -37,11 +37,73 @@ export type HeyProjectRelationships = {
   project: { slug: string; name: string; url: string };
   nodes: HeyRelationshipNode[];
   edges: HeyRelationshipEdge[];
-  /** Records each family was built from: `shown` of `total`. */
-  counts: { family: 'contracts' | 'sources' | 'packages' | 'corroborations' | 'related'; shown: number; total: number }[];
+  /** Records each family was built from: `shown` of `total`. `buildsOn` / `builtOnBy` (2026-10-17) count built-on links, one per other project and kind. */
+  counts: { family: 'contracts' | 'sources' | 'packages' | 'corroborations' | 'related' | 'buildsOn' | 'builtOnBy'; shown: number; total: number }[];
   truncated: boolean;
   /** Families HEY names but does not hold, with why: contract-to-contract interaction always; `PROJECT_AUDIT_REPORT_LINKED` / `PROJECT_HAS_BUG_BOUNTY` when none was found on the indexes HEY read, or they were not read — never "no audit". Never implied. */
   notHeld: { type: string; filter: HeyRelationshipFilter; reason: string }[];
+  computedAt: string;
+  methodology: string;
+};
+
+/* -------------------------------------------------------------- built on */
+
+export type HeyBuiltOnProject = { slug: string; name: string; url: string };
+
+/** One piece of evidence behind a link: a file of the builder's official repository, or a v4 pool. */
+export type HeyBuiltOnEvidence =
+  | {
+      kind: 'code';
+      /** One word: `Source`, `Config` or `Deployment`. */
+      word: string;
+      pathKind: 'SOURCE' | 'CONFIG' | 'DEPLOYMENT_RECORD';
+      repository: string;
+      path: string;
+      /** The file on GitHub. */
+      url: string;
+      /** The builder's official repository (`source:`), resolvable on `/api/evidence/{id}`. */
+      evidence: { id: string; url: string };
+      observedAt: string | null;
+    }
+  | {
+      kind: 'hook';
+      word: string;
+      poolId: string;
+      hookAddress: string;
+      /** The receipt page. */
+      url: string;
+      /** `v4pool:` (or `v4hook:` for a hook a linked address created), resolvable on `/api/evidence/{id}`. */
+      evidence: { id: string; url: string };
+      observedAt: string | null;
+    };
+
+/** One link: named in code, or runs on a hook. Never a partnership, never an on-chain interaction. */
+export type HeyBuiltOnEdge = {
+  direction: 'builds_on' | 'built_on_by';
+  kind: 'code' | 'hook';
+  /** The builder side: its code names the token, or its pools run on the hook. */
+  from: HeyBuiltOnProject;
+  /** The token's or the hook's project. */
+  to: HeyBuiltOnProject;
+  /** The project that is not the one asked about. */
+  project: HeyBuiltOnProject;
+  /** `Its code names X’s token` or `Its pools run on Y’s hook`; its subject is `from`. */
+  sentence: string;
+  /** Files or pools behind the link, all of them; `evidence` shows a few. */
+  evidenceTotal: number;
+  evidence: HeyBuiltOnEvidence[];
+  observedAt: string | null;
+};
+
+/** Totals are true; `edges` is ordered by name, never by a count, and bounded. */
+export type HeyBuiltOnSide = { total: number; projects: number; byKind: { code: number; hook: number }; edges: HeyBuiltOnEdge[]; truncated: boolean };
+
+/** `GET /api/projects/{slug}/built-on` (2026-10-17): which builders a project builds on, and which build on it. */
+export type HeyProjectBuiltOn = {
+  project: HeyBuiltOnProject;
+  buildsOn: HeyBuiltOnSide;
+  builtOnBy: HeyBuiltOnSide;
+  definition: string;
   computedAt: string;
   methodology: string;
 };

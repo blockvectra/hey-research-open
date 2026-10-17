@@ -120,6 +120,19 @@ export const VALUATION_HIDDEN_WORDS: Readonly<Record<ValuationHidden, string>> =
   no_reading: 'Unavailable',
 };
 
+/**
+ * A card's words where an implausible valuation would be (2026-10-17, audit FR-12): "Valuation · Not plausible" on a
+ * homepage card read as a verdict on the token, with its reason only in a tooltip no phone reaches. It is said as what
+ * HEY did — withheld — in the gate's own phrase, the words the explain engine publishes ("Withheld: not plausible
+ * from the readings HEY has"). Every other state keeps its word.
+ */
+export const VALUATION_NOT_PLAUSIBLE_WITHHELD = `Withheld: ${VALUATION_NOT_PLAUSIBLE_WORDS.replace(/^Valuation /, '')}`;
+
+/** The word a card prints where no figure is. */
+export function valuationHiddenCardWords(state: ValuationHidden): string {
+  return state === 'not_plausible' ? VALUATION_NOT_PLAUSIBLE_WITHHELD : VALUATION_HIDDEN_WORDS[state];
+}
+
 /** Why no figure is printed, for a tooltip. */
 export const VALUATION_HIDDEN_HELP: Readonly<Record<ValuationHidden, string>> = {
   no_active_market: 'The tracked token has no active market. Context only; it never affects activity status.',

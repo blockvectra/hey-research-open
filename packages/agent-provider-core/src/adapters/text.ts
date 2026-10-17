@@ -81,6 +81,8 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
         ...(d.byType.length > 0 ? [`By type: ${d.byType.map((row) => `${row.type} ${row.count}`).join(', ')}.`] : []),
         ...d.items.map(changeLine),
         `Ledger: last projector run ${d.ledger.projectorRanAt ?? 'never'}; collecting since ${d.ledger.collectionStart ?? 'not started'}${d.ledger.transitionsFrom ? `; status moves and reclassifications since ${d.ledger.transitionsFrom}` : ''}.`,
+        // Where to pick up next time (2026-10-17, AG-7): what HEY records after this answer, never this window again.
+        ...(d.resume ? [`Resume later from cursor ${d.resume.cursor}: ${d.resume.url} (then keep each page's nextCursor).`] : []),
       ];
     }
     case 'builder_status': {
@@ -139,7 +141,15 @@ function resolvedLine(response: AgentIntelligenceResponse): string | undefined {
 function candidateLines(response: AgentIntelligenceResponse): string[] {
   const candidates = response.error?.candidates;
   if (!candidates || candidates.length === 0) return [];
-  return ['Candidates (send one as project):', ...candidates.map((candidate) => `- ${candidate.slug}: ${q(candidate.name)}${candidate.token ? ` · token ${candidate.token.address}` : ''} · ${candidate.url}`)];
+  const total = response.error?.candidatesTotal;
+  const heading = total && total.count > candidates.length ? `Candidates (${candidates.length} of ${total.atLeast ? 'at least ' : ''}${total.count}; send one as project):` : 'Candidates (send one as project):';
+  return [
+    heading,
+    ...candidates.map(
+      (candidate) =>
+        `- ${candidate.slug}: ${q(candidate.name)}${candidate.symbol ? ` (${q(candidate.symbol)})` : ''}${candidate.activityStatus ? ` · status ${candidate.activityStatus}` : ''}${candidate.catalogStatus ? ` · ${candidate.catalogStatus}` : ''}${candidate.token ? ` · token ${candidate.token.address}` : ''} · ${candidate.url}`,
+    ),
+  ];
 }
 
 /**

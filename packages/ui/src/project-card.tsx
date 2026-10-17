@@ -13,7 +13,7 @@ import {
   staleReadingAge,
   tickerLabel,
 } from './format';
-import { valuationDisplay, valuationDisplayLabel, valuationHiddenSentence, VALUATION_HIDDEN_WORDS } from '@hey/scoring/valuation-display';
+import { valuationDisplay, valuationDisplayLabel, valuationHiddenCardWords, valuationHiddenSentence } from '@hey/scoring/valuation-display';
 import { projectCategory } from './project-category';
 import { ProjectLogo } from './project-logo';
 import { cardShipPhrase, displayShipTitle } from './ship-phrase';
@@ -68,7 +68,7 @@ export type ProjectCardData = {
   /** The tracked token's market state (2026-09-11); a dead pool shows "No active market" instead of a cap. */
   tokenMarketStatus?: string;
   tokenMarketReason?: string;
-  /** The valuation gate's reason when the reading's valuation is not plausible (round 4, 2026-09-30); the card then prints "Not plausible". */
+  /** The valuation gate's reason when the reading's valuation is not plausible (round 4, 2026-09-30); the card then says it is withheld, in the gate's own phrase (2026-10-17). */
   valuationImplausible?: string;
   /** Which provider the reading came from; shown as a title, never as layout. */
   marketCapSource?: string;
@@ -558,8 +558,8 @@ export function ProjectCard({
                   ) : null}
                 </span>
               ) : (
-                <span className="text-hey-muted" data-valuation-state={valuation.state} title={valuationHiddenSentence(valuation)}>
-                  {VALUATION_HIDDEN_WORDS[valuation.state]}
+                <span className="text-right text-hey-muted" data-valuation-state={valuation.state} title={valuationHiddenSentence(valuation)}>
+                  {valuationHiddenCardWords(valuation.state)}
                 </span>
               )}
             </p>

@@ -105,10 +105,12 @@ export type HeyChangeEvent = HeyChangeUpsertRead | HeyChangeRetract;
 export type HeyChangesPage = {
   query: Record<string, string | number>;
   items: HeyChangeEvent[];
-  /** Send as `after` (sync) or `before` (browse). In sync mode it is always set, so a poller keeps its place. */
+  /** Send as `cursor` (2026-10-17), or as `after` (sync) or `before` (browse). In sync mode it is always set, so a poller keeps its place. */
   nextCursor: string | null;
   hasMore: boolean;
   ledger: { collectionStart: string | null; transitionsFrom: string | null; newestRecordedAt: string | null; projectorRanAt: string | null };
+  /** Parameters the request carried that the ledger does not read (2026-10-17, additive); absent when every one was read. */
+  ignoredParameters?: string[];
   disclaimer: string;
 };
 
@@ -128,6 +130,8 @@ export type HeyChangesQuery = {
   after?: string;
   /** Browse older than this cursor. */
   before?: string;
+  /** A page's `nextCursor`, continuing in the mode that issued it (2026-10-17): sync for a sync cursor, browse for a browse one. Never with `after` or `before`. */
+  cursor?: string;
   /** 1–100, default 50. */
   limit?: number;
 };
