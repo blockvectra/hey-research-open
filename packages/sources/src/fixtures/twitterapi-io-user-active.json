@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "msg": "success",
+  "data": {
+    "type": "user",
+    "userName": "agentos_hq",
+    "url": "https://t.co/abc123",
+    "id": "1567890123456789012",
+    "name": "AgentOS",
+    "isBlueVerified": true,
+    "verifiedType": "Business",
+    "profilePicture": "https://pbs.twimg.com/profile_images/1/a.jpg",
+    "coverPicture": "https://pbs.twimg.com/profile_banners/1/a",
+    "description": "Agents for Robinhood Chain. Docs: https://t.co/docs1",
+    "location": "Onchain",
+    "followers": 12873,
+    "following": 211,
+    "canDm": false,
+    "createdAt": "2022-09-08T11:20:31.000Z",
+    "favouritesCount": 5021,
+    "hasCustomTimelines": true,
+    "isTranslator": false,
+    "mediaCount": 312,
+    "statusesCount": 1874,
+    "withheldInCountries": [],
+    "affiliatesHighlightedLabel": {},
+    "possiblySensitive": false,
+    "pinnedTweetIds": ["1845000000000000001"],
+    "isAutomated": false,
+    "automatedBy": null,
+    "unavailable": false,
+    "message": null,
+    "unavailableReason": null,
+    "profile_bio": {
+      "description": "Agents for Robinhood Chain. Docs: https://t.co/docs1",
+      "entities": {
+        "description": {
+          "urls": [
+            { "display_url": "docs.agentos.example", "expanded_url": "https://docs.agentos.example/", "url": "https://t.co/docs1", "indices": [40, 63] }
+          ]
+        },
+        "url": {
+          "urls": [
+            { "display_url": "agentos.example", "expanded_url": "https://www.agentos.example", "url": "https://t.co/abc123", "indices": [0, 23] }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -225,6 +225,24 @@ export const serverEnvSchema = z
       apiKey: optionalString,
     }),
 
+    /*
+     * twitterapi.io (2026-10-18, founder: "ok buat"; CLAUDE.md cost rule 7, amended): a metered,
+     * pay-per-use read of projects' OFFICIAL X accounts — their state and their newest own posts, as
+     * identity context and discovery leads. Off unless both are set:
+     *
+     *  - TWITTERAPI_IO_ENABLED: exactly "true" (a kill switch that leaves the key in place);
+     *  - TWITTERAPI_IO_KEY: the provider's API key. Worker only; never logged, never sent to a browser.
+     *  - TWITTERAPI_IO_DAILY_CREDITS: optional, lowers the day's credit ceiling (40,000 credits, about
+     *    $0.40); empty means the ceiling, 0 turns the reads off, a higher figure is clamped to it.
+     */
+    twitterapiIo: z.object({
+      enabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+      apiKey: optionalString,
+      dailyCredits: optionalString
+        .transform((value) => (value === undefined ? undefined : Number(value)))
+        .pipe(z.number().finite().nonnegative().optional()),
+    }),
+
     /** Signs builder session cookies. Required only for write flows. */
     sessionSecret: optionalString,
 
@@ -817,6 +835,11 @@ function shapeEnv(raw: RawEnv) {
       swapEnabled: raw.UNISWAP_SWAP_ENABLED,
       apiKey: raw.UNISWAP_API_KEY,
     },
+    twitterapiIo: {
+      enabled: raw.TWITTERAPI_IO_ENABLED,
+      apiKey: raw.TWITTERAPI_IO_KEY,
+      dailyCredits: raw.TWITTERAPI_IO_DAILY_CREDITS,
+    },
     github: {
       clientId: raw.GITHUB_CLIENT_ID,
       clientSecret: raw.GITHUB_CLIENT_SECRET,
@@ -944,6 +967,9 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'uniswap.enabled': 'UNISWAP_ENABLED',
   'uniswap.swapEnabled': 'UNISWAP_SWAP_ENABLED',
   'uniswap.apiKey': 'UNISWAP_API_KEY',
+  'twitterapiIo.enabled': 'TWITTERAPI_IO_ENABLED',
+  'twitterapiIo.apiKey': 'TWITTERAPI_IO_KEY',
+  'twitterapiIo.dailyCredits': 'TWITTERAPI_IO_DAILY_CREDITS',
   'github.clientId': 'GITHUB_CLIENT_ID',
   'github.clientSecret': 'GITHUB_CLIENT_SECRET',
   'github.publicApiToken': 'GITHUB_PUBLIC_API_TOKEN',
@@ -1125,6 +1151,14 @@ export function marketIntegrityExitLabelsVisible(env: ServerEnv, surface: 'admin
 }
 
 /** AI must be opt-in; every caller checks this before doing enrichment work. */
+/**
+ * The twitterapi.io reads of official X accounts (2026-10-18): on only with the flag set to exactly "true"
+ * AND a key. Either missing, no request is made and nothing is written.
+ */
+export function isTwitterApiIoEnabled(env: ServerEnv): boolean {
+  return env.twitterapiIo.enabled && typeof env.twitterapiIo.apiKey === 'string' && env.twitterapiIo.apiKey.length > 0;
+}
+
 export function isAiEnabled(env: ServerEnv): boolean {
   return env.ai.provider !== 'disabled' && env.ai.dailyBudgetUsd > 0 && Boolean(env.ai.apiKey);
 }

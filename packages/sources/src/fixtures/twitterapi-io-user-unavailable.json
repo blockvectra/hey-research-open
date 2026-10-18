@@ -1,0 +1,9 @@
+{
+  "status": "success",
+  "msg": "success",
+  "data": {
+    "unavailable": true,
+    "unavailableReason": "Protected",
+    "message": "This account's posts are protected"
+  }
+}

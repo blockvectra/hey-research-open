@@ -1,0 +1,97 @@
+{
+  "status": "success",
+  "code": 0,
+  "msg": "success",
+  "data": {
+    "pin_tweet": null,
+    "tweets": [
+      {
+        "type": "tweet",
+        "id": "1846000000000000005",
+        "url": "https://x.com/agentos_hq/status/1846000000000000005",
+        "text": "v2.4 is out: agent memory and a new router. Release notes https://t.co/rel1 and the code https://t.co/repo1 — token 0xA000000000000000000000000000000000000001",
+        "createdAt": "2026-10-17T14:02:11.000Z",
+        "retweetCount": 51,
+        "replyCount": 9,
+        "likeCount": 340,
+        "quoteCount": 2,
+        "viewCount": 18233,
+        "lang": "en",
+        "isReply": false,
+        "author": { "type": "user", "userName": "agentos_hq", "id": "1567890123456789012", "followers": 12873 },
+        "entities": {
+          "urls": [
+            { "display_url": "github.com/agentos/agentos…", "expanded_url": "https://github.com/agentos/agentos/releases/tag/v2.4.0", "url": "https://t.co/rel1" },
+            { "display_url": "github.com/agentos/router", "expanded_url": "https://github.com/agentos/router", "url": "https://t.co/repo1" }
+          ]
+        },
+        "quoted_tweet": null,
+        "retweeted_tweet": null
+      },
+      {
+        "type": "tweet",
+        "id": "1845900000000000004",
+        "url": "https://x.com/agentos_hq/status/1845900000000000004",
+        "text": "Our changelog moved. Everything since launch lives here now.",
+        "createdAt": "2026-10-15T09:00:00.000Z",
+        "isReply": false,
+        "author": { "id": "1567890123456789012", "userName": "agentos_hq" },
+        "entities": {
+          "urls": [
+            { "expanded_url": "https://docs.agentos.example/changelog" },
+            { "expanded_url": "https://basescan.org/token/0xb000000000000000000000000000000000000002" }
+          ]
+        },
+        "retweeted_tweet": null
+      },
+      {
+        "type": "tweet",
+        "id": "1845800000000000003",
+        "url": "https://x.com/agentos_hq/status/1845800000000000003",
+        "text": "RT @someone_else: look at this thing we built https://t.co/x",
+        "createdAt": "2026-10-14T09:00:00.000Z",
+        "isReply": false,
+        "author": { "id": "1567890123456789012", "userName": "agentos_hq" },
+        "entities": { "urls": [{ "expanded_url": "https://github.com/someone-else/thing" }] },
+        "retweeted_tweet": { "id": "1845700000000000099", "text": "look at this thing we built", "author": { "id": "999", "userName": "someone_else" } }
+      },
+      {
+        "type": "tweet",
+        "id": "1845600000000000002",
+        "url": "https://x.com/agentos_hq/status/1845600000000000002",
+        "text": "@a_reader thanks, fixed in main",
+        "createdAt": "2026-10-13T09:00:00.000Z",
+        "isReply": true,
+        "inReplyToUsername": "a_reader",
+        "author": { "id": "1567890123456789012", "userName": "agentos_hq" },
+        "entities": { "urls": [] },
+        "retweeted_tweet": null
+      },
+      {
+        "type": "tweet",
+        "id": "1845500000000000001",
+        "url": "https://x.com/not_agentos/status/1845500000000000001",
+        "text": "a post by another account in the page",
+        "createdAt": "2026-10-12T09:00:00.000Z",
+        "isReply": false,
+        "author": { "id": "424242", "userName": "not_agentos" },
+        "entities": { "urls": [] },
+        "retweeted_tweet": null
+      },
+      {
+        "type": "tweet",
+        "id": "1845400000000000000",
+        "url": "https://x.com/agentos_hq/status/1845400000000000000",
+        "text": "Quoting a partner's announcement: we shipped the integration.",
+        "createdAt": "2026-10-11T09:00:00.000Z",
+        "isReply": false,
+        "author": { "id": "1567890123456789012", "userName": "agentos_hq" },
+        "entities": { "urls": [{ "expanded_url": "https://gitlab.com/agentos/integrations/-/releases/v1.0" }] },
+        "quoted_tweet": { "id": "1845300000000000098", "text": "partner news", "author": { "id": "777", "userName": "partner" } },
+        "retweeted_tweet": null
+      }
+    ]
+  },
+  "has_next_page": true,
+  "next_cursor": "DAABCgABGg"
+}

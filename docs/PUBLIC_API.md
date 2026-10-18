@@ -313,7 +313,7 @@ response echoes the request *as it was understood*.
       "primaryNarrative": { "slug": "ai-agents", "name": "AI Agents" },
       "token": { "chainId": 4663, "contractAddress": "0xa000…" },
       "launchedVia": { "name": "Pons", "url": "https://ponsfamily.com/launchpad/0xa000…" },
-      "officialX": { "handle": "agentos", "url": "https://x.com/agentos" },
+      "officialX": { "handle": "agentos", "url": "https://x.com/agentos", "status": "ACTIVE", "checkedAt": "2026-10-18T02:21:04.000Z" },
       "marketCap": { "usd": 24000, "source": "coingecko" },
       "url": "https://heyresearch.xyz/project/agentos"
     }
@@ -748,6 +748,37 @@ changed meaning.
   contract deployment is a launch, not a ship, and appears on none of the ship surfaces; the project
   page's own timeline still shows it.
 - `stillBuildingEvidence` — present whenever `stillBuilding` is true, on the dossier as on the listing.
+
+### The official X account's state (2026-10-18)
+
+`officialX` on a card (`/api/projects`) and on the dossier (`/api/projects/{slug}`) keeps `handle` and `url`
+with their meaning — the X account the project's own sources vouch for — and adds what HEY's last read of that
+account found:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `status` | `ACTIVE` \| `SUSPENDED` \| `UNAVAILABLE` \| `NOT_FOUND` \| `null` | The last read's state. `null` when HEY holds no read of this handle — never a default. |
+| `statusReason` | `not_read` \| `read_failed` | Sent only beside `status: null`. |
+| `checkedAt` | ISO 8601 \| `null` | When that read was made; `null` when none answered. |
+| `linkHeld` | `handle_reassigned` \| `null` | Additive (founder ruling, 2026-10-18). The handle now answers for a different X account than the one HEY first read (by X's stable user id). HEY holds the link — its pages print "The handle @x now belongs to a different X account than the one HEY first read — checked 2026-10-18; a moderator confirms before it is linked again." — until a moderator confirms the new account. `null` otherwise. |
+| `corroboration` | `mutual_site_link` \| `null` | Additive (founder ruling, 2026-10-18). The account's own profile links the project's own site (`websiteUrl`), the site that links the account: a mutual link, which corroborates the X account itself as the project's own. `null` when it does not hold or HEY cannot say (no site, profile not read, the site changed since the read). |
+| `corroborationCheckedAt` | ISO 8601 \| `null` | The read that found the mutual link; `null` with `corroboration: null`. |
+
+Do not link an account whose `status` is `SUSPENDED` or `NOT_FOUND`, or whose `linkHeld` is set: HEY's own
+pages print the dated fact instead ("X account @handle suspended, checked 2026-10-18."). The state is read about
+weekly through twitterapi.io, an independent provider that is not affiliated with X, and only for the official
+account. It is identity context: it never changes the activity status or a score. `corroboration` is trust in
+the account and nothing else — it changes no source's confidence or authority, no indexing, status, score,
+order, publication or change event.
+
+Since the founder's rulings of 2026-10-18, an account HEY last read as `SUSPENDED` or `NOT_FOUND` no longer
+counts as "has X": it leaves `has=x` and a card's completeness (the default order's head start), and the
+official-X counts. `UNAVAILABLE` (any other reason the provider gives) and an account HEY never read keep
+counting — unknown is not dead — and a held reassigned handle keeps counting. The card still names the account
+(`handle`, `url`, `status`) so a reader sees why. Until the reads are switched on every account reads
+`status: null, statusReason: "not_read"`, `linkHeld: null`, `corroboration: null`. A contract address the
+official account posts is recorded and never used for token verification. The dataset snapshots (`/data`) carry
+`handle` and `url` only.
 
 ### Everything the listing sends (2026-09-25)
 

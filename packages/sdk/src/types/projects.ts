@@ -42,6 +42,32 @@ export type HeyToken = { chainId: number; contractAddress: string };
  */
 export type HeyLiquidityKind = 'market' | 'launch_inventory';
 
+/** What HEY's last read of a project's official X account found (2026-10-18, additive). */
+export type HeyOfficialXStatus = 'ACTIVE' | 'SUSPENDED' | 'UNAVAILABLE' | 'NOT_FOUND';
+
+/** A project's official X account, with HEY's last read of it beside the unchanged `handle` and `url`. */
+export type HeyOfficialX = {
+  handle: string;
+  url: string;
+  /** Null when HEY holds no read of this handle; `statusReason` says why. */
+  status: HeyOfficialXStatus | null;
+  statusReason?: 'not_read' | 'read_failed';
+  /** ISO 8601; null when no read answered. */
+  checkedAt: string | null;
+  /**
+   * Additive (2026-10-18): `handle_reassigned` when the handle now answers for a different X account than the one
+   * HEY first read; HEY holds the link until a moderator confirms. Do not link it. Null otherwise.
+   */
+  linkHeld: 'handle_reassigned' | null;
+  /**
+   * Additive (2026-10-18): `mutual_site_link` when the account's profile links the project's own site, as of
+   * `corroborationCheckedAt` — trust in the X account itself, never a score or an order. Null otherwise.
+   */
+  corroboration: 'mutual_site_link' | null;
+  /** ISO 8601; null when `corroboration` is null. */
+  corroborationCheckedAt: string | null;
+};
+
 /** Which measure a valuation is, by HEY's one rule (2026-09-26): `fdv` for a fully diluted valuation, never called a market cap. */
 export type HeyValuationKind = 'marketCap' | 'fdv';
 
@@ -102,7 +128,12 @@ export type HeyProject = {
   /** Whether HEY holds a repository, org, changelog or feed to read building from; false explains an UNKNOWN status. */
   hasBuilderSource?: boolean;
   websiteUrl?: string;
-  officialX?: { handle: string; url: string };
+  /**
+   * The project's official X account: `handle` and `url` as before. Additive (2026-10-18): `status` is what
+   * HEY's last read found (`ACTIVE`, `SUSPENDED`, `UNAVAILABLE`, `NOT_FOUND`), or null with `statusReason`
+   * when HEY holds no read of this handle; `checkedAt` is when that read was made. Identity context only.
+   */
+  officialX?: HeyOfficialX;
   /** The artwork the project chose. Absent where HEY does not know it; draw a monogram. */
   logoUrl?: string;
   /** The drawdown behind a `stillBuilding: true`: the decline HEY tracked and the verified ships since it began. Absent when the claim is not being made. */

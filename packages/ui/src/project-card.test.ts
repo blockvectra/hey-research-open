@@ -97,6 +97,16 @@ describe('ProjectCard — fallbacks', () => {
     expect(html).not.toContain('$1.2M');
   });
 
+  it('prints a suspended or missing X account as a muted, dated fact, never a live link (2026-10-18)', () => {
+    const html = render({ ...tokenBacked, officialX: { handle: 'agentos', url: 'https://x.com/agentos', withheldLine: 'X account @agentos suspended, checked 2026-10-18.' } });
+    expect(html).toContain('data-testid="official-x-withheld"');
+    expect(html).toContain('X account @agentos suspended, checked 2026-10-18.');
+    expect(html).not.toContain('href="https://x.com/agentos"');
+    expect(html).not.toContain('data-testid="official-x"');
+    // An active or unread account keeps its link.
+    expect(render(tokenBacked)).toContain('href="https://x.com/agentos"');
+  });
+
   it('omits the X account when no official one is mapped', () => {
     const html = render({ ...tokenBacked, officialX: undefined });
     expect(html).not.toContain('@agentos');

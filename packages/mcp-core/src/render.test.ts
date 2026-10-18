@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 
 import { describe, expect, it } from 'vitest';
 
-import type { HeyDiff, HeyPage, HeyProject, HeyThisWeek, HeyTokenMarket } from '@hey-research-lab/sdk';
+import type { HeyDiff, HeyOfficialX, HeyPage, HeyProject, HeyThisWeek, HeyTokenMarket } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
 import {
@@ -69,6 +69,9 @@ const page = <T>(items: T[], over: Partial<HeyPage<T>> = {}): HeyPage<T> => ({
   ...over,
 });
 
+/** An official X account with the 2026-10-18 additive fields at their empty values. */
+const officialX = (over: Partial<HeyOfficialX> & Pick<HeyOfficialX, 'handle' | 'url' | 'status' | 'checkedAt'>): HeyOfficialX => ({ linkHeld: null, corroboration: null, corroborationCheckedAt: null, ...over });
+
 describe('shared wording', () => {
   it('names a valuation by the kind the API sent, and an unknown kind never a market cap (M2 G9)', () => {
     expect(valuationWord('fdv')).toBe('FDV');
@@ -121,6 +124,22 @@ describe('find_projects', () => {
     // No kind sent: a valuation, never "mcap" (2026-09-26).
     expect(projectLine(project({ marketCap: { usd: 24_000, source: 'coingecko' } }), NOW)).toContain('$24.0K valuation (coingecko)');
     expect(projectLine(project({ marketCap: { usd: 24_000, source: 'coingecko', kind: 'fdv' } }), NOW)).toContain('$24.0K FDV (coingecko)');
+  });
+
+  it('states an official X account HEY last read as suspended or gone, and says nothing of an active or unread one (2026-10-18)', () => {
+    const gone = projectLine(project({ officialX: officialX({ handle: 'goneproject', url: 'https://x.com/goneproject', status: 'SUSPENDED', checkedAt: '2026-10-18T02:21:00.000Z' }) }), NOW);
+    expect(gone).toContain('X account @goneproject suspended (checked 2026-10-18)');
+    expect(projectLine(project({ officialX: officialX({ handle: 'missing', url: 'https://x.com/missing', status: 'NOT_FOUND', checkedAt: null }) }), NOW)).toContain('X account @missing not found');
+    expect(projectLine(project({ officialX: officialX({ handle: 'live', url: 'https://x.com/live', status: 'ACTIVE', checkedAt: '2026-10-18T02:21:00.000Z' }) }), NOW)).not.toContain('X account');
+    expect(projectLine(project({ officialX: officialX({ handle: 'unread', url: 'https://x.com/unread', status: null, statusReason: 'not_read', checkedAt: null }) }), NOW)).not.toContain('X account');
+  });
+
+  it('states a held reassigned handle and a mutual link, each dated (founder rulings 4 and 1, 2026-10-18)', () => {
+    const held = projectLine(project({ officialX: officialX({ handle: 'shared', url: 'https://x.com/shared', status: 'ACTIVE', checkedAt: '2026-10-25T02:20:00.000Z', linkHeld: 'handle_reassigned' }) }), NOW);
+    expect(held).toContain('X handle @shared now belongs to a different account; link held (checked 2026-10-25)');
+    const mutual = projectLine(project({ officialX: officialX({ handle: 'agentos', url: 'https://x.com/agentos', status: 'ACTIVE', checkedAt: '2026-10-18T02:21:00.000Z', corroboration: 'mutual_site_link', corroborationCheckedAt: '2026-10-18T02:21:00.000Z' }) }), NOW);
+    expect(mutual).toContain("X account @agentos links back to the project's site (checked 2026-10-18)");
+    expect(projectLine(project({ officialX: officialX({ handle: 'agentos', url: 'https://x.com/agentos', status: 'ACTIVE', checkedAt: null, corroboration: null }) }), NOW)).not.toContain('links back');
   });
 
   it('says a record is unresearched, or has no builder source, instead of reporting a status', () => {

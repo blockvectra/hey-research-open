@@ -1,0 +1,9 @@
+{
+  "status": "success",
+  "msg": "success",
+  "data": {
+    "unavailable": true,
+    "unavailableReason": "Suspended",
+    "message": "User is suspended"
+  }
+}

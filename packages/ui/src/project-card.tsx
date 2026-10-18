@@ -105,7 +105,11 @@ export type ProjectCardData = {
    */
   tokenLock?: TokenLockFacts;
   launchedVia?: { name: string; url?: string };
-  officialX?: { handle: string; url: string };
+  /**
+   * The project's official X account. `withheldLine` (2026-10-18) is set when HEY's last read found the
+   * account suspended, unavailable or gone: the card prints that muted, dated fact instead of a live link.
+   */
+  officialX?: { handle: string; url: string; withheldLine?: string | undefined };
   websiteUrl?: string;
   /** Kept for callers that still pass the fuller domain shape. */
   primaryNarrative?: { slug: string; name: string };
@@ -329,7 +333,12 @@ export function ProjectCard({
           <span className="truncate text-hey-secondary">{project.launchedVia?.name}</span>
         )}
       </span>
-      {project.officialX ? (
+      {project.officialX?.withheldLine ? (
+        // A suspended or missing account is a fact, never a live link (2026-10-18).
+        <span className="min-w-0 truncate text-hey-muted" data-testid="official-x-withheld" title={project.officialX.withheldLine}>
+          {project.officialX.withheldLine}
+        </span>
+      ) : project.officialX ? (
         <ExternalRef
           href={project.officialX.url}
           label={`Open ${project.name} on X`}

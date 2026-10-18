@@ -318,6 +318,16 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.trades24h) parts.push(`${project.trades24h.buys} buys / ${project.trades24h.sells} sells in 24h${project.trades24h.source ? ` (${project.trades24h.source})` : ''}`);
   if (project.priceChange24hPct !== undefined) parts.push(`${project.priceChange24hPct >= 0 ? '+' : ''}${project.priceChange24hPct.toFixed(1)}% 24h`);
   if (project.venue) parts.push(`trades on ${quoteExternal(project.venue, 'market_provider')}`);
+  // The official X account HEY last read as suspended, unavailable or gone (2026-10-18): stated, so a caller does not link it.
+  const xStatus = project.officialX?.status;
+  if (project.officialX && /^[A-Za-z0-9_]{1,15}$/.test(project.officialX.handle)) {
+    const checked = typeof project.officialX.checkedAt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(project.officialX.checkedAt) ? ` (checked ${project.officialX.checkedAt.slice(0, 10)})` : '';
+    // A handle now answering for another account is held until a moderator confirms (founder ruling 4, 2026-10-18).
+    if (project.officialX.linkHeld === 'handle_reassigned') parts.push(`X handle @${project.officialX.handle} now belongs to a different account; link held${checked}`);
+    else if (xStatus === 'SUSPENDED' || xStatus === 'UNAVAILABLE' || xStatus === 'NOT_FOUND') parts.push(`X account @${project.officialX.handle} ${xStatus === 'NOT_FOUND' ? 'not found' : xStatus.toLowerCase()}${checked}`);
+    // The account's profile links the project's own site (founder ruling 1, 2026-10-18): trust in the account, nothing more.
+    else if (project.officialX.corroboration === 'mutual_site_link') parts.push(`X account @${project.officialX.handle} links back to the project's site${checked}`);
+  }
 
   return `- ${parts.join(' · ')}\n  ${project.url}`;
 }
