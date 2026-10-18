@@ -914,10 +914,10 @@ GET /api/v1/builder?chain=4663&token=0xa0000000000000000000000000000000000000a1
   "repo_url": "https://github.com/…",       // only a repository HEY counts as this project's own
   "last_commit": null,                      // always: see below
   "last_code_activity": {
-    "summary": "Active development: 20 commits in the last 90 days across 1 contributor",
-    "commits": 20,
+    "summary": "Code changes, week of 2026-09-14 – 2026-09-20",
+    "commits": 3,                           // the week's own count, as its receipt counts it
     "commits_partial": false,
-    "active_days": 6,
+    "active_days": 2,
     "contributors": 1,
     "repo_url": "https://github.com/…",
     "observed_at": "2026-09-19T10:00:00.000Z"
@@ -931,8 +931,11 @@ GET /api/v1/builder?chain=4663&token=0xa0000000000000000000000000000000000000a1
 **`last_commit` is always `null`, and that is the honest answer.** HEY reads a repository's commits,
 drops the bots, and writes one summary per repository per ISO week. It never stores a SHA or a commit
 message, so there is no commit to return. `last_code_activity` carries what HEY actually holds
-instead, and `commits_partial: true` means a full page was read inside the window and `commits` is a
-floor.
+instead: `commits` and `active_days` are the newest code week's own counts — the week `summary`
+names, as its receipt (`/api/evidence/ship:<uuid>`, `codeWeek.commits`) counts them, never the whole
+read window behind it (corrected 2026-10-18) — and `commits_partial: true` means the page HEY read
+stopped inside the week, so both are floors. A week HEY holds no count for is `null`. `contributors`
+is the read window's, as recorded: HEY stores no commit author, so it has no week's own count.
 
 **`last_activity_at` is the project's freshest meaningful ship**, the same value the project page
 uses — across commit summaries, releases and post-launch deploys. Meaningful means approved, not
@@ -990,7 +993,7 @@ measurements.
 | | `activity.last_ship_url` | the last ship's public source |
 | `/api/token/{chainId}/{address}` | `project.activityMeasured`, `project.meaningfulShipsLast30Days`, `project.asOf` | as above |
 | `/api/v1/builder` | `research_level`, `activity_measured`, `as_of` | as above |
-| | `last_code_activity.commits_30d`, `commits_30d_partial`, `window_start` | commits in the thirty days before `as_of`, by the same count as the card's `commits_30d`; absent when unknown. `commits` stays the newest weekly summary's own figure |
+| | `last_code_activity.commits_30d`, `commits_30d_partial`, `window_start` | commits in the thirty days before `as_of`, by the same count as the card's `commits_30d`; absent when unknown. `commits` stays the newest code week's own count (since 2026-10-18 the week's, as its receipt counts it, not its read window's) |
 
 **The zero address on `/api/v1/scan`** answers `200 {"found": false, "reason": "not_a_token"}`
 since 2026-09-27 (it was a `400`; Chit sends it for the native coin), and spends nothing: no monthly
@@ -1452,6 +1455,17 @@ A receipt carries `project`, `domain`, `claimType`, `summary`, `sourceType`, `so
 `verification`, `countsAsBuilding` (present and true only when it counts toward activity),
 `recordedAt` and `metadata`; a ship also lists every evidence row behind it (`sources[]`, each
 with its `evidenceRowId`).
+
+A ship says how the score counted it (additive, 2026-10-18): `countedAs` is `counted` (it counts
+itself; `countsAsBuilding: true`), `counted_once_with` (one of a group the score counts once — a
+follow-up deploy run, a repository's full releases of one UTC day, a code week, a prerelease week —
+with `countedWith: { id, group }` naming the ship that stands for the group, `group` one of
+`deploy_run`, `release_day`, `code_week`, `prerelease_week`), or `context` (it does not count, with
+`countedAsReason`: `not_building_type`, `low_information` or `not_corroborated`).
+`countedAsSentence` is the receipt page's one sentence for it ("Counted once with its deploy run:
+ship:… stands for it in activity status and Build Momentum."). A withdrawn ship of a published
+project carries `countedAs: "context"` (held as context) or `"withdrawn"`. `countsAsBuilding` keeps
+its meaning; no other receipt kind carries these fields.
 
 A `lock:` receipt's `detectedAt` is HEY's first sighting of the lock (2026-10-16), never the latest
 sweep of the locker; a lock that was already there when HEY began keeping first sightings answers

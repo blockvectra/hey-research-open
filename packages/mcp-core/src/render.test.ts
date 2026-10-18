@@ -581,6 +581,13 @@ describe('get_evidence', () => {
     expect(text).toContain('https://github.com/agentos/sdk/releases/tag/v0.4; backing: publicly verified; counts toward activity status');
   });
 
+  it('says how a ship counted, in the receipt\'s own sentence, and says nothing when the receipt carries none (product-depth PD-7)', () => {
+    const live = fx.evidence as Extract<typeof fx.evidence, { withdrawn: false }>;
+    const folded = { ...live, countedAs: 'counted_once_with' as const, countedWith: { id: 'ship:2ac87a66-0000-0000-0000-000000000002', group: 'release_day' as const }, countedAsSentence: 'Counted once with the other releases of agentos/sdk that day.' };
+    expect(renderEvidence(folded)).toContain('Counted once with the other releases of agentos/sdk that day.');
+    expect(renderEvidence(live)).not.toMatch(/Counted once/);
+  });
+
   it('tags a HEY state transition or signal DERIVED, as explain_fact does, and token verification FACT (audit §45 #8)', () => {
     const live = fx.evidence as Extract<typeof fx.evidence, { withdrawn: false }>;
     const state = (key: string) => ({ ...live, id: `state:514b4680-a7c1-4497-9e6a-1fa9ac342a8e:${key}:1`, claimType: `${key}_changed`, sourceType: 'hey', sourceUrl: null, verification: null, countsAsBuilding: undefined });

@@ -270,7 +270,14 @@ the site.
   says "over the N days HEY could read", and the rest are unknown, never zero.
 - **Carries the source**, and ends with a `resource_link` to the JSON it was rendered from.
 - **Is capped at 24 KB**, cut on a line, with how many lines were cut and where the whole
-  answer is.
+  answer is. A cursor listing (`get_changes`, `get_project_timeline`) over the cap is asked for
+  again with a smaller `limit` until it fits, and says so, so the cursor it prints reads on from
+  the last row shown (2026-10-18): a page cut on its rows never prints a cursor, which would skip
+  the rows not shown.
+- **Says when a slug moved** (2026-10-18): a slug HEY retired when its page was renamed or
+  merged answers for the page it moved to, with "Resolved from the slug …" first in the text and
+  `resolvedFrom: { slug, to }` in `structuredContent` (`research_answer`:
+  `subject.resolvedFrom.slug`).
 - **Quotes a source's words as data** (2026-09-30): a release title, a ship summary or a
   project's name is folded onto one line with control, invisible and template characters and
   tags removed, and text that reads like an instruction to a model ("ignore previous

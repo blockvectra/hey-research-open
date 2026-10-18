@@ -190,6 +190,17 @@ export type HeyEvidenceReceipt =
       verification: string | null;
       /** Present and true only when the record counts toward activity status. */
       countsAsBuilding?: true;
+      /**
+       * A ship only (additive, 2026-10-18): `counted` — it counts itself; `counted_once_with` — one of a deploy run, a
+       * repository's release day, a code week or a prerelease week, which the score counts once, and `countedWith.id`
+       * is the ship that stands for it; `context` — it does not count, `countedAsReason` says why
+       * (`not_building_type`, `low_information`, `not_corroborated`). `countsAsBuilding` keeps its meaning.
+       */
+      countedAs?: 'counted' | 'counted_once_with' | 'context';
+      countedWith?: { id: string; group: 'deploy_run' | 'release_day' | 'code_week' | 'prerelease_week' };
+      countedAsReason?: 'not_building_type' | 'low_information' | 'not_corroborated';
+      /** With `countedAs` (additive, 2026-10-18): the receipt's one sentence for it, as HEY's evidence page prints it. */
+      countedAsSentence?: string;
       recordedAt: string;
       metadata: Record<string, HeyEvidenceMetadataValue>;
       /** Every evidence row behind a ship. */
@@ -201,6 +212,8 @@ export type HeyEvidenceReceipt =
       withdrawn: true;
       /** `retracted`, `disputed`, `context_only`, `review_false_positive`, `announced_ship_withdrawn`, `superseded`, `not_attributed` (a `v4hook:` id HEY read and ties to no project), `not_read` (a `v4hook:` id whose creation HEY has not read yet — unknown, never "not tied"; 2026-10-11), or `not_public`. */
       withdrawalReason: string;
+      /** A ship of a published project (additive, 2026-10-18): `context` when held as context, else `withdrawn`. Neither counts. */
+      countedAs?: 'context' | 'withdrawn';
       /**
        * With `context_only`: which rule holds a follow-up deployment as context (2026-09-27) —
        * `held_by_another_project`, `shared_deployer`, `serial_launcher_deployer` (the account

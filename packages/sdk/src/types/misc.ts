@@ -468,7 +468,7 @@ export type HeyBuilderCard = {
   last_commit: null;
   last_code_activity: {
     summary: string;
-    /** Human commits the newest weekly summary recorded; a floor when `commits_partial`. */
+    /** Human commits of the newest code week, as its receipt counts them (`codeWeek.commits`; the week's, not its read window's, since 2026-10-18); a floor when `commits_partial`. */
     commits: number | null;
     commits_partial: boolean;
     /** Commits in the thirty days before `as_of`, counted like the partner card's `commits_30d`; absent when unknown. */

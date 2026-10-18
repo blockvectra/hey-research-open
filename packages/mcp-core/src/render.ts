@@ -344,7 +344,18 @@ export const QUERY_ECHO_RULE = 'An argument the tool does not take is refused, n
  * of how many were shown and how to read on. Joined, they are the text a renderer always returned; the MCP
  * output cap cuts the rows and keeps the footer whole.
  */
-export type RenderedParts = { body: string; footer: string };
+export type RenderedParts = {
+  body: string;
+  footer: string;
+  /**
+   * The footer to print when the cap cuts rows (2026-10-18, product-depth audit PD-4). A page's cursor or offset
+   * reads on after the page's last row, so printed under a cut page it skips every row the cap left out — the ones
+   * a mirror needs most, retractions included. The MCP first re-asks for a smaller page that fits (`fitPage`);
+   * this is what is left when even that does not: the same footer with no cursor, telling the model to ask for
+   * fewer rows. A listing whose footer carries no cursor needs none.
+   */
+  footerIfCut?: string;
+};
 export const joinParts = (parts: RenderedParts): string => (parts.footer ? `${parts.body}\n${parts.footer}` : parts.body);
 
 export function queryEcho(query: Record<string, unknown> | undefined): string {
@@ -929,9 +940,12 @@ export function renderTimelineParts(timeline: HeyTimeline, limit = 30): Rendered
       : timeline.nextCursor
         ? `For older entries, call get_project_timeline again with before=${timeline.nextCursor}.`
         : undefined;
+  // Under a cut page the cursor would skip the entries not shown (PD-4): no cursor, a smaller limit instead.
+  const cut = `Entries were cut to fit the answer, so this page's before= cursor is not given: it would skip the entries not shown. Call get_project_timeline again with a smaller limit (fewer than ${shown.length}) and follow the before= cursor it gives.`;
   return {
     body: `# ${quotedName(timeline.project.name)} — timeline (lens: ${timeline.lens})\n${timeline.project.url}\nEach entry is tagged FACT (a record with its source) or DERIVED (a rule HEY applied: a return to building HEY detected, a market-integrity reading), dated at the precision shown (EXACT, DATE, WEEK, WINDOW, OBSERVED = HEY's own observation, SCHEDULED = not yet happened).\n${lines.length ? lines.join('\n') : 'Nothing HEY holds falls under this lens.'}`,
     footer: `\n${shownOf(shown.length, total, more)}\n\n${timeline.disclaimer}`,
+    footerIfCut: `\n${shownOf(shown.length, total, cut)}\n\n${timeline.disclaimer}`,
   };
 }
 
@@ -972,12 +986,18 @@ export function renderChangesParts(page: HeyChangesPage): RenderedParts {
     for (const evidence of item.evidence) if (evidence.url) lines.push(`  evidence: ${quoteExternal(evidence.label, 'evidence_label')} — ${evidence.url}`);
   }
   const body = lines.join('\n');
-  lines.length = 0;
-  lines.push('');
   const sync = page.query.mode === 'sync';
   // The ledger pages without counting the whole (PB-27): said, with where a counted window is, never left as "more exist".
-  if (page.hasMore && page.nextCursor) lines.push(`Showing ${page.items.length}; more exist — the ledger pages without counting the total (research_answer what_changed gives a window's true total). Call get_changes again with ${sync ? 'after' : 'before'}=${page.nextCursor}.`);
-  else lines.push(`Showing ${page.items.length}; that is the end of this ${sync ? 'sync (keep the cursor to read what comes next)' : 'listing'}.${sync && page.nextCursor ? ` Cursor: ${page.nextCursor}.` : ''}`);
+  const showing =
+    page.hasMore && page.nextCursor
+      ? `Showing ${page.items.length}; more exist — the ledger pages without counting the total (research_answer what_changed gives a window's true total). Call get_changes again with ${sync ? 'after' : 'before'}=${page.nextCursor}.`
+      : `Showing ${page.items.length}; that is the end of this ${sync ? 'sync (keep the cursor to read what comes next)' : 'listing'}.${sync && page.nextCursor ? ` Cursor: ${page.nextCursor}.` : ''}`;
+  /*
+   * Under a cut page (PD-4) the page's cursor sits after its last event, so following it skips every event the cap
+   * left out, retractions included: no cursor then, a smaller limit instead.
+   */
+  const cut = `Events were cut to fit the answer, so this page's cursor is not given: it reads on after the page's last event and would skip the events not shown. Call get_changes again with the same arguments and a smaller limit (fewer than ${page.items.length}).`;
+  lines.length = 0;
   const facts = [
     page.ledger.collectionStart ? `ledger from ${page.ledger.collectionStart.slice(0, 10)}` : undefined,
     page.ledger.transitionsFrom ? `status and market moves recorded from ${page.ledger.transitionsFrom.slice(0, 10)} (none earlier exist)` : undefined,
@@ -985,7 +1005,8 @@ export function renderChangesParts(page: HeyChangesPage): RenderedParts {
   ].filter((fact): fact is string => Boolean(fact));
   if (facts.length > 0) lines.push(`Ledger: ${facts.join('; ')}.`);
   lines.push(queryEcho(page.query), 'A change is a record HEY kept, never a cause and never a recommendation.', TAG_LEGEND, '', page.disclaimer);
-  return { body, footer: lines.join('\n') };
+  const rest = lines.join('\n');
+  return { body, footer: `\n${showing}\n${rest}`, footerIfCut: `\n${cut}\n${rest}` };
 }
 
 export function renderCompare(page: HeyCompare): string {

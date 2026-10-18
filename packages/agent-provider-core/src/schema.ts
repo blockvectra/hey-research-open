@@ -589,9 +589,12 @@ const base = {
        * How the subject was found when the caller sent no slug (2026-10-14,
        * AG-01, additive): the `q` (a name or $TICKER) or the `address` that
        * resolved to it through HEY's one search matcher. Absent when the
-       * caller named the slug.
+       * caller named the slug — except `slug` (2026-10-18, product-depth audit
+       * PD-5, additive): a retired slug (a renamed or merged page) the caller
+       * sent, which the API redirected to the subject. The REST route answers
+       * such a slug `308`; the MCP, which follows it, says so here.
        */
-      resolvedFrom: z.object({ q: z.string().max(64).optional(), address: address.optional() }).strict().optional(),
+      resolvedFrom: z.object({ q: z.string().max(64).optional(), address: address.optional(), slug: z.string().max(120).optional() }).strict().optional(),
     })
     .strict()
     .nullable(),

@@ -36,7 +36,8 @@ const agentos = await hey.projects.get('agentos');
 console.log(agentos.ships[0]?.title, agentos.ships[0]?.sourceUrl);
 
 const card = await hey.scanCard(4663, '0x…');
-if (card.found) console.log(card.status_label, card.activity.ships_30d);
+// A count only where HEY measured building: `ships_30d` is a legacy field sent as 0 when nothing was measured.
+if (card.found) console.log(card.status_label, card.activity_measured ? card.activity.meaningful_ships_30d ?? 0 : 'not measured');
 ```
 
 Browsing needs no key. An API key from [heyresearch.xyz/account](https://heyresearch.xyz/account)

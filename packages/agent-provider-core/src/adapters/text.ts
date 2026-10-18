@@ -161,6 +161,10 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
 function resolvedLine(response: AgentIntelligenceResponse): string | undefined {
   const subject = response.subject;
   if (!subject?.resolvedFrom || !subject.project) return undefined;
+  // A retired slug (PD-5): the page was renamed or merged, and the answer is the page it leads to.
+  if (subject.resolvedFrom.slug && !subject.resolvedFrom.address && !subject.resolvedFrom.q) {
+    return `Resolved from the slug sent as project, which HEY retired when that page was renamed or merged, to project ${subject.project.slug}; use ${subject.project.slug} from now on.`;
+  }
   const by = subject.resolvedFrom.address ? `address ${subject.resolvedFrom.address}` : 'the name or ticker sent as q';
   return `Resolved from ${by} to project ${subject.project.slug} through HEY’s project search.`;
 }

@@ -523,6 +523,8 @@ export function renderEvidence(r: HeyEvidenceReceipt): string {
   const firstKnew = r.detectedAt ? `HEY first knew ${r.detectedAt.slice(0, 16).replace('T', ' ')} UTC` : 'UNKNOWN when HEY first knew: it predates HEY\'s first sightings';
   lines.push(`When: ${atPrecision(r.publishedAt, r.precision, r.detectedAt ?? undefined)} (${r.precision}); ${firstKnew}; recorded ${r.recordedAt.slice(0, 10)}.`);
   lines.push(`Source: ${r.sourceType}${r.sourceUrl ? ` — ${r.sourceUrl}` : ' (no public URL; HEY\'s own observation)'}${r.verification ? `; backing: ${pretty(r.verification)}` : ''}${r.countsAsBuilding ? '; counts toward activity status' : ''}.`);
+  // How the ship counted (2026-10-18, product-depth PD-7): alone, or once with its deploy run, release day or code week; the receipt's own words.
+  if (r.countedAsSentence) lines.push(r.countedAsSentence);
   if (r.sources && r.sources.length > 0) lines.push('', 'Evidence rows:', ...r.sources.map((row) => `- ${row.sourceType}: ${row.sourceUrl} (observed ${row.observedAt.slice(0, 10)})`));
   lines.push('', r.disclaimer);
   return lines.join('\n');

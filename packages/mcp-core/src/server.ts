@@ -26,6 +26,7 @@ import {
   renderThisWeek,
   renderTimelineParts,
   renderTokenLookup,
+  joinParts,
   type RenderedParts,
   renderTokenMarket,
   renderUnlocks,
@@ -48,6 +49,7 @@ import {
   citationLine,
   evidenceFamiliesFor,
   parseAgentRequest,
+  quoteExternal,
   renderAgentResponseText,
   type AgentIntelligenceResponse,
 } from '@hey/agent-provider-core';
@@ -171,14 +173,20 @@ export const MAX_OUTPUT_BYTES = 24 * 1024;
  * the cap kept lines from the top and dropped the tail where get_changes' "Showing N; more exist … before=" sat,
  * so a model following the cursor, as the what_changed_today prompt says, read a partial day as the whole day.
  * Only the body's rows are cut. A footer that does not fit with any row is cut with the rest, as before.
+ *
+ * A cut page never prints its cursor (2026-10-18, product-depth audit PD-4): the cursor reads on after the page's
+ * last row, so under a cut page it skipped every row the cap left out — 16 of 100 events, 5 of them retractions,
+ * on one live call. A listing that pages by cursor gives `footerIfCut`, its footer without the cursor, and that is
+ * the footer kept; the tools ask for a page that fits first (`fitPage`), so this is the fallback, not the path.
  */
 export function capOutput(text: string | RenderedParts, canonicalUrl: string, maxBytes = MAX_OUTPUT_BYTES): { text: string; truncated: boolean } {
   const encoder = new TextEncoder();
-  const { body, footer } = typeof text === 'string' ? { body: text, footer: '' } : text;
+  const { body, footer, footerIfCut } = typeof text === 'string' ? { body: text, footer: '', footerIfCut: undefined } : text;
   const whole = footer ? `${body}\n${footer}` : body;
   if (encoder.encode(whole).length <= maxBytes) return { text: whole, truncated: false };
-  const footerBytes = footer ? encoder.encode(footer).length + 1 : 0;
-  const keepFooter = footer !== '' && footerBytes < maxBytes / 2;
+  const cutFooter = footerIfCut ?? footer;
+  const footerBytes = cutFooter ? encoder.encode(cutFooter).length + 1 : 0;
+  const keepFooter = cutFooter !== '' && footerBytes < maxBytes / 2;
   const lines = (keepFooter ? body : whole).split('\n');
   const kept: string[] = [];
   let bytes = 0;
@@ -191,8 +199,45 @@ export function capOutput(text: string | RenderedParts, canonicalUrl: string, ma
   }
   const omitted = lines.length - kept.length;
   kept.push('', `[Output cut at ${Math.round(maxBytes / 1024)} KB: ${omitted} more line${omitted === 1 ? '' : 's'} not shown. Ask for fewer rows (limit, days) or read the whole answer at ${canonicalUrl}.]`);
-  if (keepFooter) kept.push(footer);
+  if (keepFooter) kept.push(cutFooter);
   return { text: kept.join('\n'), truncated: true };
+}
+
+/** Bytes a listing's page leaves for what `run` adds around it: the $HEY disclosure and the quoted-text legend. */
+export const PAGE_RESERVE_BYTES = 1024;
+const FIT_ATTEMPTS = 4;
+
+/**
+ * Ask for a page that fits (2026-10-18, product-depth audit PD-4). A cursor listing over the 24 KB cap is asked
+ * for again with a smaller limit — scaled by how far over it was — until its whole text fits, so every row it
+ * prints is the page the API cut and the API's own cursor reads on from the last row shown: none skipped, none
+ * repeated. The footer says the page was shortened. At most four reads; a page that still does not fit (one row
+ * over 24 KB) goes to `capOutput`, which prints it with no cursor (`footerIfCut`).
+ */
+export async function fitPage<T>(
+  asked: number,
+  read: (limit: number) => Promise<T>,
+  render: (data: T, limit: number) => RenderedParts,
+  rows: (data: T) => number,
+  noun: string,
+  maxBytes = MAX_OUTPUT_BYTES - PAGE_RESERVE_BYTES,
+): Promise<{ data: T; parts: RenderedParts }> {
+  const encoder = new TextEncoder();
+  let limit = asked;
+  for (let attempt = 1; ; attempt += 1) {
+    const data = await read(limit);
+    const parts = render(data, limit);
+    const size = encoder.encode(joinParts(parts)).length;
+    if (size <= maxBytes) {
+      if (limit === asked) return { data, parts };
+      const note = `\nAsked for ${asked} ${noun}; this page holds at most ${limit} so the whole page fits the ${Math.round(MAX_OUTPUT_BYTES / 1024)} KB answer, and its cursor reads on from the last one shown — none skipped.`;
+      return { data, parts: { ...parts, footer: `${note}${parts.footer}`, ...(parts.footerIfCut !== undefined ? { footerIfCut: `${note}${parts.footerIfCut}` } : {}) } };
+    }
+    // Scaled on the rows the page held, which may be fewer than asked for (the ledger's tail).
+    const held = Math.min(limit, rows(data));
+    if (held <= 1 || attempt >= FIT_ATTEMPTS) return { data, parts };
+    limit = Math.max(1, Math.min(held - 1, Math.floor(((held * maxBytes) / size) * 0.9)));
+  }
 }
 
 /**
@@ -201,14 +246,58 @@ export function capOutput(text: string | RenderedParts, canonicalUrl: string, ma
  * things only this server knows are added: that the key came from
  * `HEY_API_KEY`, and how long a rate limit asked it to wait.
  */
-const failureText = (error: unknown): string => {
+const failureText = (error: unknown, hidden?: { baseUrl: string; publicBase: string }): string => {
+  const text = failureWords(error, hidden !== undefined);
+  // The address the server reads HEY at is its own (PD-5): a caller is told the public one, never the loopback.
+  return hidden ? text.split(hidden.baseUrl).join(hidden.publicBase) : text;
+};
+
+const failureWords = (error: unknown, hosted: boolean): string => {
   if (!(error instanceof HeyApiError)) return `Could not read HEY: ${error instanceof Error ? error.message : String(error)}`;
   if (error.code === 'unauthorized') return `${error.message} Check HEY_API_KEY against your HEY account page.`;
+  /*
+   * A redirect the hosted server could not follow (PD-5) is HEY's to fix, not a base URL the caller set: the SDK's
+   * sentence ("point baseUrl at the origin that answers directly") blamed a configuration no agent can change.
+   */
+  if (hosted && error.code === 'http' && /answered with a redirect/.test(error.message)) {
+    return 'HEY answered this read with a redirect away from its own API, which its MCP endpoint does not follow. Nothing was answered; find the project\'s current slug with find_projects and ask again.';
+  }
   if (error.retryAfterSeconds !== undefined && !/try again in/i.test(error.message)) {
     return `${error.message} Try again in ${error.retryAfterSeconds} seconds.`;
   }
   return error.message;
 };
+
+/**
+ * The slug an answer is about, where its object names one: a project's own reads (`project.slug`), the snapshot
+ * (`identity.slug`), the market pages (`slug`) and the agent contract (`subject.project.slug`).
+ */
+function servedSlugOf(data: unknown): string | undefined {
+  if (!data || typeof data !== 'object') return undefined;
+  const record = data as Record<string, unknown>;
+  const slugOf = (value: unknown): string | undefined => {
+    const slug = value && typeof value === 'object' ? (value as Record<string, unknown>).slug : undefined;
+    return typeof slug === 'string' ? slug : undefined;
+  };
+  const subject = record.subject && typeof record.subject === 'object' ? (record.subject as Record<string, unknown>) : undefined;
+  return slugOf(record.project) ?? slugOf(record.identity) ?? slugOf(subject?.project) ?? (typeof record.slug === 'string' ? record.slug : undefined);
+}
+
+/**
+ * Whether a slug read answered for another project (2026-10-18, product-depth audit PD-5): a renamed or merged
+ * page's retired slug answers `308` to the page it moved to, the SDK follows it once, and the answer is the
+ * keeper's. The caller is told, in the text and the structured answer, so it never files the keeper's facts under
+ * the slug it sent. Case alone is not a move.
+ */
+export function resolvedSlug(asked: string | undefined, data: unknown): { slug: string; to: string } | undefined {
+  if (asked === undefined) return undefined;
+  const served = servedSlugOf(data);
+  return served !== undefined && served.toLowerCase() !== asked.trim().toLowerCase() ? { slug: asked, to: served } : undefined;
+}
+
+/** The line that says so, first in the text. */
+export const resolvedSlugLine = (moved: { slug: string; to: string }): string =>
+  `Resolved from the slug ${quoteExternal(moved.slug, 'caller')}: HEY retired it when that page was renamed or merged, and it now leads to ${moved.to}. This answer is ${moved.to}'s; use ${moved.to} from now on.`;
 
 /**
  * Typed output (round 4, 2026-09-30). Every tool returns `structuredContent`
@@ -279,6 +368,12 @@ export type HeyMcpOptions = {
   marketIntegrity?: boolean;
   /** Where the canonical API answers for a reader: the `resource_link` on every result. Defaults to the public site. */
   publicBaseUrl?: string;
+  /**
+   * The address the client reads HEY at when it is not the public one (the hosted endpoint's loopback, PD-5). A
+   * failure never prints it: the caller is told `publicBaseUrl`, and a redirect the server could not follow is not
+   * blamed on a base URL the caller never set.
+   */
+  internalBaseUrl?: string;
   /** Told after every tool call and resource read. Never throws into the call. */
   onCall?: (event: HeyMcpCallEvent) => void;
   /**
@@ -380,21 +475,26 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
    * `resource_link` so a client can fetch the JSON behind the prose, and the
    * same JSON as `structuredContent` (round 4).
    */
-  const run = async (tool: HeyMcpToolName, canonical: string, read: () => Promise<Rendered>): Promise<CallToolResult> => {
+  const hidden = options.internalBaseUrl ? { baseUrl: options.internalBaseUrl.replace(/\/+$/, ''), publicBase } : undefined;
+  /** `asked`: the slug the caller sent, for a read by slug — said back when the answer is another project's (PD-5). */
+  const run = async (tool: HeyMcpToolName, canonical: string, read: () => Promise<Rendered>, asked?: string): Promise<CallToolResult> => {
     const started = Date.now();
     try {
       const rendered = await read();
       // HEY's own token (round 4): an answer naming $HEY's contract says so, first.
       const ownNamed = ownAddress !== null && rendered.data !== undefined && JSON.stringify(rendered.data).toLowerCase().includes(ownAddress);
-      const disclosure = ownNamed ? `Disclosure: ${HEY_OWN_TOKEN_DISCLOSURE} ($HEY's contract ${ownAddress} is in this answer).\n` : '';
+      // The agent contract says it under its answer line, as its own `resolvedFrom` (research_answer); an API answer, first.
+      const moved = rendered.kind === 'api' ? resolvedSlug(asked, rendered.data) : undefined;
+      const disclosure = `${ownNamed ? `Disclosure: ${HEY_OWN_TOKEN_DISCLOSURE} ($HEY's contract ${ownAddress} is in this answer).\n` : ''}${moved ? `${resolvedSlugLine(moved)}\n` : ''}`;
       const legend = rendered.text.includes('«') && !rendered.text.includes(QUOTED_TEXT_LEGEND) ? `\n\n${QUOTED_TEXT_LEGEND}` : '';
       // The citation line (AG-02) stays the last line whatever the cap cuts: it is kept apart and appended after the cut.
       const tail = rendered.tail ? `\n${rendered.tail}` : '';
       // A listing's footer (paging, cursor, legend) survives the cap (PA-5); only its rows are cut.
-      const capped = capOutput({ body: `${disclosure}${rendered.text}`, footer: rendered.footer ?? '' }, canonical, MAX_OUTPUT_BYTES - encoder.encode(legend).length - encoder.encode(tail).length);
+      const capped = capOutput({ body: `${disclosure}${rendered.text}`, footer: rendered.footer ?? '', ...(rendered.footerIfCut !== undefined ? { footerIfCut: rendered.footerIfCut } : {}) }, canonical, MAX_OUTPUT_BYTES - encoder.encode(legend).length - encoder.encode(tail).length);
       const text = `${capped.text}${legend}${tail}`;
       report({ tool, ok: true, truncated: capped.truncated, bytes: encoder.encode(text).length, ms: Date.now() - started });
-      const structured = rendered.kind === 'agent' ? (rendered.data as Record<string, unknown>) : apiAnswer(canonical, rendered.data, rendered.extra, ownNamed);
+      // The structured answer says it too (PD-5, additive): the agent contract's `subject.resolvedFrom.slug`, the API wrapper's `resolvedFrom`.
+      const structured = rendered.kind === 'agent' ? (rendered.data as Record<string, unknown>) : { ...apiAnswer(canonical, rendered.data, rendered.extra, ownNamed), ...(moved ? { resolvedFrom: moved } : {}) };
       return {
         content: [
           { type: 'text', text },
@@ -403,13 +503,15 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         structuredContent: structured,
       };
     } catch (error) {
-      const text = failureText(error);
+      const text = failureText(error, hidden);
       report({ tool, ok: false, truncated: false, bytes: text.length, ms: Date.now() - started });
       return { content: [{ type: 'text', text }], isError: true };
     }
   };
   const api = <T>(data: T, text: string | RenderedParts, extra?: Record<string, unknown>): Rendered =>
-    typeof text === 'string' ? { kind: 'api', data, text, ...(extra ? { extra } : {}) } : { kind: 'api', data, text: text.body, footer: text.footer, ...(extra ? { extra } : {}) };
+    typeof text === 'string'
+      ? { kind: 'api', data, text, ...(extra ? { extra } : {}) }
+      : { kind: 'api', data, text: text.body, footer: text.footer, ...(text.footerIfCut !== undefined ? { footerIfCut: text.footerIfCut } : {}), ...(extra ? { extra } : {}) };
 
   const offered = new Set<string>(mcpToolsFor(profile, { marketIntegrity: options.marketIntegrity === true }).map((tool) => tool.name));
   const describe = (name: HeyMcpToolName, lines: string[]) => ({
@@ -548,7 +650,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         run('get_project_snapshot', apiUrl(`/api/projects/${encodeURIComponent(slug)}/snapshot`), async () => {
           const snapshot = await client.projects.snapshot(slug);
           return api(snapshot, renderSnapshot(snapshot, at()));
-        }),
+        }, slug),
     );
   }
 
@@ -592,8 +694,9 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           limit: args.limit ?? 30,
         };
         return run('get_changes', apiUrl('/api/changes', query), async () => {
-          const page = await client.changes.list(query as Parameters<HeyClient['changes']['list']>[0]);
-          return api(page, renderChangesParts(page));
+          // A page over the cap is asked for again, smaller, so its cursor never skips a row the cap cut (PD-4).
+          const { data: page, parts } = await fitPage(query.limit, (limit) => client.changes.list({ ...query, limit } as Parameters<HeyClient['changes']['list']>[0]), (page) => renderChangesParts(page), (page) => page.items.length, 'events');
+          return api(page, parts);
         });
       },
     );
@@ -622,9 +725,10 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         const lens = asked ?? (research ? 'build' : undefined);
         const query = { lens, limit: size, before };
         return run('get_project_timeline', apiUrl(`/api/projects/${encodeURIComponent(slug)}/timeline`, query), async () => {
-          const timeline = await client.projects.timeline(slug, { ...(lens ? { lens } : {}), limit: size, ...(before ? { before } : {}) });
-          return api(timeline, renderTimelineParts(timeline, size));
-        });
+          // As get_changes (PD-4): a page that fits, so the before= cursor reads on from the last entry shown.
+          const { data: timeline, parts } = await fitPage(size, (limit) => client.projects.timeline(slug, { ...(lens ? { lens } : {}), limit, ...(before ? { before } : {}) }), (timeline, limit) => renderTimelineParts(timeline, limit), (timeline) => timeline.items.length, 'entries');
+          return api(timeline, parts);
+        }, slug);
       },
     );
   }
@@ -650,11 +754,11 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           return run('explain_fact', canonical, async () => {
             const index = await client.projects.explain(slug);
             return api(index, renderExplainIndex(index));
-          });
+          }, slug);
         return run('explain_fact', canonical, async () => {
           const explained = await client.projects.explain(slug, fact, source ? { source } : {});
           return api(explained, renderExplained(explained));
-        });
+        }, slug);
       },
     );
   }
@@ -701,7 +805,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           if (!include?.includes('moves')) return api(market, text);
           const moves = await client.projects.marketMoves(slug, { ...(days === undefined ? {} : { days: Math.max(7, Math.min(365, days)) }), ...(min_change_pct === undefined ? {} : { min: min_change_pct }) });
           return api(market, `${text}\n\n${renderMarketMoves(moves)}`, { moves });
-        }),
+        }, slug),
     );
   }
 
@@ -730,7 +834,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           return run('get_contract', apiUrl(`/api/projects/${encodeURIComponent(slug)}/contracts`), async () => {
             const contracts = await client.projects.contracts(slug);
             return api(contracts, renderProjectContracts(contracts));
-          });
+          }, slug);
         return { content: [{ type: 'text', text: 'Give an address (and chainId, default 4663), or a project slug.' }], isError: true };
       },
     );
@@ -767,7 +871,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         run('project_diff', apiUrl(`/api/projects/${encodeURIComponent(slug)}/diff`, { from, to }), async () => {
           const diff = await client.projects.diff(slug, { from, to });
           return api(diff, renderDiff(diff));
-        }),
+        }, slug),
     );
   }
 
@@ -785,7 +889,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         run('ask_hey', apiUrl(`/api/projects/${encodeURIComponent(slug)}/ask`, { q: question }), async () => {
           const answer = await client.projects.ask(slug, question);
           return api(answer, renderAskAnswer(answer));
-        }),
+        }, slug),
     );
   }
 
@@ -881,7 +985,9 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         // The chain is HEY's one chain and the capability is the path: the rest is the query string.
         const { capability: _capability, chainId: _chainId, ...query } = request;
         const result = await run('research_answer', agentRequestUrl(publicBase, request), async () => {
-          const response = (await client.agent.answer(request.capability, query as never)) as AgentIntelligenceResponse;
+          const answered = (await client.agent.answer(request.capability, query as never)) as AgentIntelligenceResponse;
+          // A retired slug the API redirected (PD-5) is said as the contract's own `subject.resolvedFrom.slug`, under the answer line.
+          const response = withResolvedSubject(answered, resolvedSlug('project' in request ? request.project : undefined, answered));
           refused = response.status === 'invalid_request';
           /*
            * The lean text by default (2026-10-14, AG-04): the answer line, the claims, the unknowns, the links
@@ -919,7 +1025,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         run('market_integrity', apiUrl(`/api/projects/${encodeURIComponent(slug)}/market-integrity`), async () => {
           const integrity = await client.projects.marketIntegrity(slug);
           return api(integrity, renderMarketIntegrity(integrity));
-        }),
+        }, slug),
     );
   }
 
@@ -964,7 +1070,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
           await run('get_project_coverage', apiUrl(`/api/projects/${encodeURIComponent(slug)}/coverage`), async () => {
             const coverage = await client.projects.coverage(slug);
             return api(coverage, renderCoverage(coverage));
-          }),
+          }, slug),
         ),
     );
     server.registerTool(
@@ -986,7 +1092,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
   shapeToolList(server, research ? [] : HEY_MCP_DEPRECATED_TOOLS.map((tool) => tool.name));
   guardToolArguments(server, report);
 
-  registerResources(server, client, { at, apiUrl, report, research });
+  registerResources(server, client, { at, apiUrl, report, research, ...(hidden ? { hidden } : {}) });
   registerPrompts(server, profile);
   return server;
 }
@@ -999,6 +1105,8 @@ type Rendered = {
   extra?: Record<string, unknown>;
   /** A listing's paging lines, kept whole after the text whatever the cap cuts (PA-5). */
   footer?: string;
+  /** The paging lines printed instead when the cap cuts rows: no cursor, which would skip them (PD-4). */
+  footerIfCut?: string;
   /** A line kept last whatever the cap cuts (the citation, AG-02). */
   tail?: string;
 };
@@ -1013,6 +1121,12 @@ function apiAnswer(api: string, data: unknown, extra: Record<string, unknown> | 
     notice: API_JSON_TEXT_NOTICE,
     ...(ownNamed ? { disclosures: [{ code: 'hey_own_token', statement: HEY_OWN_TOKEN_DISCLOSURE }] } : {}),
   };
+}
+
+/** The agent contract with how its subject was found (PD-5): `subject.resolvedFrom.slug`, beside any `q` or `address`. */
+function withResolvedSubject(response: AgentIntelligenceResponse, moved: { slug: string } | undefined): AgentIntelligenceResponse {
+  if (!moved || !response.subject) return response;
+  return { ...response, subject: { ...response.subject, resolvedFrom: { ...response.subject.resolvedFrom, slug: moved.slug } } };
 }
 
 /** The listing fields that say how much there is and how to read on (PA-5): what a client needs when the data itself is left out. */
@@ -1149,6 +1263,8 @@ type ResourceContext = {
   report: (event: HeyMcpCallEvent) => void;
   /** The research profile (round 4): no snapshot resource, and the timeline and latest changes without market events. */
   research: boolean;
+  /** The client's own address and the public one it is said as (PD-5). */
+  hidden?: { baseUrl: string; publicBase: string };
 };
 
 /**
@@ -1165,7 +1281,7 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
       context.report({ tool: `resource:${name}`, ok: true, truncated, bytes: new TextEncoder().encode(text).length, ms: Date.now() - started });
       return { contents: [{ uri: uri.href, mimeType: 'text/markdown', text }] };
     } catch (error) {
-      const text = failureText(error);
+      const text = failureText(error, context.hidden);
       context.report({ tool: `resource:${name}`, ok: false, truncated: false, bytes: text.length, ms: Date.now() - started });
       return { contents: [{ uri: uri.href, mimeType: 'text/plain', text }] };
     }
@@ -1190,7 +1306,9 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
     { title: 'Project timeline', description: context.research ? 'The newest page of one project’s building timeline.' : 'The newest page of one project’s timeline.', mimeType: 'text/markdown' },
     async (uri, variables) => {
       const slug = one(variables.slug);
-      return read('project_timeline', uri, context.apiUrl(`/api/projects/${encodeURIComponent(slug)}/timeline`, { ...timelineLens, limit: 30 }), async () => renderTimelineParts(await client.projects.timeline(slug, { ...timelineLens, limit: 30 }), 30));
+      return read('project_timeline', uri, context.apiUrl(`/api/projects/${encodeURIComponent(slug)}/timeline`, { ...timelineLens, limit: 30 }), async () =>
+        (await fitPage(30, (limit) => client.projects.timeline(slug, { ...timelineLens, limit }), (timeline, limit) => renderTimelineParts(timeline, limit), (timeline) => timeline.items.length, 'entries')).parts,
+      );
     },
   );
   server.registerResource(
@@ -1220,7 +1338,7 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
     async (uri) => {
       // The research profile's ledger leaves market readings out (round 4).
       const query = context.research ? { domain: [...CHANGE_DOMAINS_RESEARCH], limit: 30 } : { limit: 30 };
-      return read('changes_latest', uri, context.apiUrl('/api/changes', query), async () => renderChangesParts(await client.changes.list(query)));
+      return read('changes_latest', uri, context.apiUrl('/api/changes', query), async () => (await fitPage(30, (limit) => client.changes.list({ ...query, limit }), (page) => renderChangesParts(page), (page) => page.items.length, 'events')).parts);
     },
   );
 }

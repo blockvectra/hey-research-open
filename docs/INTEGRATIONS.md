@@ -333,12 +333,19 @@ import { HeyClient } from '@hey-research-lab/sdk';
 const hey = new HeyClient();
 const card = await hey.scanCard(4663, address);
 if (!card.found) return null;                       // unpublished token or another chain: print nothing
-return `HEY: ${card.status_label} · ${card.activity.commits_30d ?? '–'} commits · ${card.activity.releases_30d} releases${card.verified_builder ? ' · Verified builder' : ''} · see on HEY ↗ ${card.project_url}`;
+// releases_30d is always sent and reads 0 where HEY measured nothing: a count only when activity_measured.
+const releases = card.activity_measured ? ` · ${card.activity.releases_30d} releases` : '';
+return `HEY: ${card.status_label} · ${card.activity.commits_30d ?? '–'} commits${releases}${card.verified_builder ? ' · Verified builder' : ''} · see on HEY ↗ ${card.project_url}`;
 ```
 
-The client adds nothing to the API — no retry, no cache, no field the route does not send — so
-everything on this page about the three answers, the limits and the four things not to do
-applies to it unchanged.
+The client adds no field the route does not send and caches nothing, so everything on this page
+about the three answers, the limits and the four things not to do applies to it unchanged. How it
+meets a `429` depends on the version npm serves (corrected 2026-10-18): **0.3.2**, the version
+`npm i` installs today, does not retry — a `429` is a `HeyApiError` with `code: 'rate_limited'` and
+`retryAfterSeconds`, for your code to wait out. **0.3.3**, prepared in the repository and not yet
+on npm, waits out a temporary `429` in its walks (`pages()`, `items()`, `sync()`) by its
+`retry-after`, at most three times and never longer than 60 seconds; a single call such as
+`scanCard` still throws, unless the client is built with `rateLimit: { wait: 'always' }`.
 
 ## What HEY will never send you
 

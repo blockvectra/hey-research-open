@@ -7,6 +7,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { HeyClient } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
+import { renderChangesParts } from './render';
 import { MAX_OUTPUT_BYTES, UNDER_THE_RADAR_RULE, capOutput, createHeyMcpServer, marketIntegrityFromEnv, type HeyMcpCallEvent, type HeyMcpOptions } from './server';
 import { AGENT_CAPABILITIES } from '@hey/agent-provider-core';
 
@@ -407,20 +408,126 @@ describe('the output cap', () => {
   });
 });
 
-describe('get_changes over the cap (persona audit PA-5)', () => {
-  it('cuts a 100-event page on its rows and still says how to read on, in text and in structuredContent', async () => {
-    const long = 'x'.repeat(600);
-    const items = Array.from({ length: 100 }, (_, i) => ({ ...fx.changes.items[0]!, id: `ship:${String(i).padStart(8, '0')}-0000-4000-8000-000000000000`, summary: `${long} ${i}` }));
-    const page = { ...fx.changes, items, hasMore: true, nextCursor: 'c1.4242', query: { ...fx.changes.query, mode: 'browse' } };
-    const client = await connect(async (input: string) => respond(new URL(input).pathname === '/api/changes' ? page : routeFixture(new URL(input).pathname)));
-    const result = await client.callTool({ name: 'get_changes', arguments: { limit: 100 } });
-    const text = textOf(result);
-    expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(MAX_OUTPUT_BYTES);
-    expect(text).toContain('[Output cut at 24 KB');
-    expect(text).toContain('Showing 100; more exist — the ledger pages without counting the total (research_answer what_changed gives a window\'s true total). Call get_changes again with before=c1.4242.');
-    const structured = (result as { structuredContent?: { dataOmitted?: string; paging?: Record<string, unknown> } }).structuredContent;
-    expect(structured?.dataOmitted).toBe('over_64_kb');
-    expect(structured?.paging).toMatchObject({ hasMore: true, nextCursor: 'c1.4242' });
+describe('get_changes over the cap never skips an event (persona audit PA-5; product-depth audit PD-4)', () => {
+  /*
+   * An in-memory ledger of 100 events, every fifth a retraction, each upsert ~800 bytes: one page of 100 is far over
+   * 24 KB. The fake API pages it as /api/changes does — `after` syncs forward in ledger order, `before` (or no
+   * cursor) browses newest first, `limit` caps the page, and `nextCursor` sits after the page's last item. The test
+   * then follows the cursor the MCP text prints, as an agent would, and checks every id against the ledger itself,
+   * not against what the renderer printed.
+   */
+  const ledger = Array.from({ length: 100 }, (_, i) => {
+    const seq = 1001 + i;
+    const id = `ship:${String(seq).padStart(8, '0')}-0000-4000-8000-000000000000`;
+    return i % 5 === 4
+      ? { seq, item: { id, revision: 2, op: 'retract' as const, recordedAt: '2026-10-18T10:00:00.000Z' } }
+      : { seq, item: { ...fx.changes.items[0]!, id, summary: `${seq} ${'x'.repeat(600)}` } };
+  });
+  const cursorOf = (seq: number) => `c1.${seq}`;
+  const seqOf = (cursor: string) => Number(cursor.slice(3));
+  const limits: number[] = [];
+  const ledgerApi = async (input: string) => {
+    const url = new URL(input);
+    if (url.pathname !== '/api/changes') return respond(routeFixture(url.pathname));
+    const limit = Number(url.searchParams.get('limit') ?? 30);
+    limits.push(limit);
+    const after = url.searchParams.get('after');
+    const before = url.searchParams.get('before');
+    const ordered = after !== null ? ledger.filter((row) => row.seq > seqOf(after)) : [...ledger].reverse().filter((row) => before === null || row.seq < seqOf(before));
+    const page = ordered.slice(0, limit);
+    const last = page.at(-1);
+    return respond({
+      ...fx.changes,
+      query: { mode: after !== null ? 'sync' : 'browse', limit },
+      items: page.map((row) => row.item),
+      hasMore: ordered.length > page.length,
+      nextCursor: last ? cursorOf(last.seq) : (after ?? null),
+    });
+  };
+  const idsIn = (text: string) => [...text.matchAll(/(?:^- RETRACTED |^ {2}id )(ship:[0-9a-f-]+)/gm)].map((match) => match[1]!);
+
+  beforeEach(() => {
+    limits.length = 0;
+  });
+
+  it('syncs the whole ledger by the printed after= cursor, retractions included, none skipped and none repeated', async () => {
+    const client = await connect(ledgerApi);
+    const seen: string[] = [];
+    let after = 'c1.1000';
+    for (let call = 0; call < 20; call += 1) {
+      const text = textOf(await client.callTool({ name: 'get_changes', arguments: { after, limit: 100 } }));
+      expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(MAX_OUTPUT_BYTES);
+      // A page that fits is printed whole: nothing is cut, so the cursor below it is exact.
+      expect(text).not.toContain('[Output cut at');
+      seen.push(...idsIn(text));
+      const next = /Call get_changes again with after=(c1\.\d+)\./.exec(text);
+      if (!next) {
+        expect(text).toContain('that is the end of this sync');
+        break;
+      }
+      expect(text).toMatch(/Asked for 100 events; this page holds at most \d+ so the whole page fits the 24 KB answer/);
+      after = next[1]!;
+    }
+    expect(seen).toEqual(ledger.map((row) => row.item.id));
+    expect(new Set(seen).size).toBe(100);
+    expect(seen.filter((id) => ledger.find((row) => row.item.id === id)!.item.op === 'retract')).toHaveLength(20);
+    // The first page was asked for again, smaller, rather than cut.
+    expect(limits[0]).toBe(100);
+    expect(limits[1]).toBeLessThan(100);
+  });
+
+  it('browses newest first by the printed before= cursor over the whole ledger', async () => {
+    const client = await connect(ledgerApi);
+    const seen: string[] = [];
+    let before: string | undefined;
+    for (let call = 0; call < 20; call += 1) {
+      const text = textOf(await client.callTool({ name: 'get_changes', arguments: { limit: 100, ...(before ? { before } : {}) } }));
+      seen.push(...idsIn(text));
+      const next = /Call get_changes again with before=(c1\.\d+)\./.exec(text);
+      if (!next) break;
+      before = next[1]!;
+    }
+    expect(seen).toEqual([...ledger].reverse().map((row) => row.item.id));
+  });
+
+  it('prints no cursor under a page the cap still had to cut', () => {
+    // One page a limit cannot shrink below the cap: a single event with sixty evidence links.
+    const evidence = Array.from({ length: 60 }, (_, i) => ({ id: `ship:${i}`, label: `GitHub release ${i}`, url: `https://github.com/agentos/sdk/releases/tag/v0.${i}/${'p'.repeat(400)}` }));
+    const page = { ...fx.changes, items: [{ ...fx.changes.items[0]!, evidence }], hasMore: true, nextCursor: 'c1.4242' };
+    const { text, truncated } = capOutput(renderChangesParts(page), 'https://heyresearch.xyz/api/changes');
+    expect(truncated).toBe(true);
+    expect(text).not.toContain('c1.4242');
+    expect(text).toContain('Call get_changes again with the same arguments and a smaller limit');
+    // The rest of the footer — the ledger facts and the legend — is kept.
+    expect(text).toContain('Ledger: ledger from 2026-09-26');
+  });
+});
+
+describe('get_project_timeline over the cap never skips an entry (PD-4)', () => {
+  it('re-asks for a smaller page, so its before= cursor reads on from the last entry shown', async () => {
+    const entries = Array.from({ length: 100 }, (_, i) => ({ id: `ship:${i}`, kind: 'release', at: `2026-09-${String(1 + (i % 28)).padStart(2, '0')}T10:00:00.000Z`, precision: 'EXACT', title: `n${i} ${'z'.repeat(600)}`, countsAsBuilding: true }));
+    const timelineApi = async (input: string) => {
+      const url = new URL(input);
+      if (!url.pathname.endsWith('/timeline')) return respond(routeFixture(url.pathname));
+      const limit = Number(url.searchParams.get('limit') ?? 30);
+      const before = url.searchParams.get('before');
+      const from = before === null ? 0 : Number(before.slice(1));
+      const page = entries.slice(from, from + limit);
+      const end = from + page.length;
+      return respond({ ...fx.timeline, items: page, total: entries.length, truncated: end < entries.length, ...(end < entries.length ? { nextCursor: `T${end}` } : { nextCursor: undefined }) });
+    };
+    const client = await connect(timelineApi);
+    const seen: string[] = [];
+    let before: string | undefined;
+    for (let call = 0; call < 20; call += 1) {
+      const text = textOf(await client.callTool({ name: 'get_project_timeline', arguments: { slug: 'equifold', limit: 100, ...(before ? { before } : {}) } }));
+      expect(text).not.toContain('[Output cut at');
+      seen.push(...[...text.matchAll(/«n(\d+) z/g)].map((match) => `ship:${match[1]}`));
+      const next = /before=(T\d+)\./.exec(text);
+      if (!next) break;
+      before = next[1]!;
+    }
+    expect(seen).toEqual(entries.map((entry) => entry.id));
   });
 });
 

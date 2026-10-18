@@ -6,6 +6,11 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **Truer "Built on" (2026-10-18).** A project's code naming another project's token now reads "Names in its code", not "builds on"; only a pool on another project's hook says "builds on". Data files and lists in a repository no longer count as code.
+- **Product catalogues are not releases (2026-10-18).** A feed that lists other companies' products is no longer counted as the project's own releases.
+- **Receipts say how a ship counted (2026-10-18).** A ship that counted once together with its release day, deploy run or code week now says so, instead of "does not count".
+- **Late history stays out of the news everywhere (2026-10-18).** Old entries HEY read for the first time are counted apart on the Terminal, in Telegram and in email digests too, not only on What changed.
+- **Lookalike tokens (2026-10-18).** Scanning a lookalike contract now leads with the published project that carries the same name, on its own contract.
 - **Builder links tell only true links (2026-10-18).** "Builds on" and "Built on by" no longer count a token named in a project's tests, fixtures, mock data or generated files, and a pool on someone's hook counts only when the token's own launch opened it.
 - **Blog posts are not ships (2026-10-18).** A blog article in a project's feed is an announcement, not a release, unless its title names a version or a release, and an entry about another chain only is kept as context.
 - **Copycat tokens are named (2026-10-18).** When you scan or search a token HEY has not researched, HEY now says which published project uses the same name or ticker, with both contracts, and a project page shows its own contract near its name and how many other tokens use its ticker. Facts only, never a verdict.

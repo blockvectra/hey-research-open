@@ -313,8 +313,11 @@ type HeyAgentBase = {
     project?: HeyAgentSubjectProject;
     projects?: HeyAgentSubjectProject[];
     contract?: { chainId: number; address: string };
-    /** How the subject was found when the caller sent `q` or `address` instead of a slug (2026-10-14, additive); absent when it named the slug. */
-    resolvedFrom?: { q?: string; address?: string };
+    /**
+     * How the subject was found when the caller sent `q` or `address` instead of a slug (2026-10-14, additive); absent when it named the slug.
+     * `slug` (2026-10-18, additive): set by HEY's MCP only, for a retired slug (a renamed or merged page) the API redirected to the subject.
+     */
+    resolvedFrom?: { q?: string; address?: string; slug?: string };
   } | null;
   /** The one-sentence answer, first. */
   answer: HeyAgentText;
