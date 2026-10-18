@@ -88,6 +88,7 @@ const idSchema = z.union([z.string().regex(USER_ID), z.number().int().nonnegativ
 const idOf = (value: string | number): string => String(value);
 const urlEntity = z.object({ expanded_url: z.string().max(4_096).nullish() }).passthrough();
 const urlEntities = z.object({ urls: z.array(urlEntity).max(100).nullish() }).passthrough();
+const profileEntities = z.object({ description: urlEntities.nullish(), url: urlEntities.nullish() }).passthrough();
 
 const userData = z
   .object({
@@ -95,10 +96,10 @@ const userData = z
     userName: z.string().max(64).nullish(),
     name: z.string().max(500).nullish(),
     url: z.string().max(4_096).nullish(),
-    profile_bio: z
-      .object({ entities: z.object({ description: urlEntities.nullish(), url: urlEntities.nullish() }).passthrough().nullish() })
-      .passthrough()
-      .nullish(),
+    // The live answer carries the profile's links in `entities` (2026-10-18); the documented `profile_bio.entities`
+    // is read too, so either shape gives the same links.
+    entities: profileEntities.nullish(),
+    profile_bio: z.object({ entities: profileEntities.nullish() }).passthrough().nullish(),
     createdAt: z.string().max(64).nullish(),
     isBlueVerified: z.boolean().nullish(),
     verifiedType: z.string().max(40).nullish(),
@@ -248,8 +249,9 @@ function normalizeUserInfo(raw: RawUserInfo, asked: string): XAccountReading | {
   if (data.id === null || data.id === undefined || !data.userName) return { error: 'an account without an id or a handle' };
   if (data.userName.toLowerCase() !== asked.toLowerCase()) return { error: `answered for @${boundedText(data.userName, 20)} when @${asked} was asked` };
   if (!HANDLE.test(data.userName)) return { error: 'a handle X would not allow' };
-  const entities = data.profile_bio?.entities;
-  const expanded = [...(entities?.url?.urls ?? []), ...(entities?.description?.urls ?? [])].map((entry) => entry.expanded_url);
+  const expanded = [data.entities, data.profile_bio?.entities].flatMap((entities) =>
+    [...(entities?.url?.urls ?? []), ...(entities?.description?.urls ?? [])].map((entry) => entry.expanded_url),
+  );
   const displayName = boundedText(data.name, 100);
   const createdAt = parseDate(data.createdAt);
   const verifiedType = boundedText(data.verifiedType, 40);

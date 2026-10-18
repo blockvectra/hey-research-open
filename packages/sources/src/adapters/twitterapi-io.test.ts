@@ -46,6 +46,21 @@ describe('twitterapi.io profile read', () => {
     expect(result.meteredUnits).toBe(TWITTERAPI_IO_PROFILE_CREDITS);
   });
 
+  it('reads the profile links where the live answer carries them: `entities`, with no `profile_bio`', async () => {
+    // Shape read from the live API on 2026-10-18: the docs' `profile_bio.entities` is absent, the links sit in
+    // `data.entities`, and `createdAt` is X's own date format. Reading only `profile_bio` left every profile linkless.
+    const stub = stubFetch(json(readFixture('twitterapi-io-user-active-live.json')));
+    const result = await adapter.fetch({ apiKey: KEY, userName: 'agentos_hq' }, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('fresh');
+    expect(result.data).toMatchObject({
+      kind: 'ACTIVE',
+      userId: '1567890123456789012',
+      createdAt: new Date('2022-09-08T11:20:31.000Z'),
+      profileUrls: ['https://www.agentos.example/', 'https://docs.agentos.example/'],
+    });
+  });
+
   it('reads a suspended account as SUSPENDED with the provider’s reason', async () => {
     const stub = stubFetch(json(readFixture('twitterapi-io-user-suspended.json')));
     const result = await adapter.fetch({ apiKey: KEY, userName: 'gone_project' }, testContext({ fetchImpl: stub.fetchImpl }));

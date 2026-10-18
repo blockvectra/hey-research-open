@@ -1,0 +1,43 @@
+{
+  "status": "success",
+  "msg": "success",
+  "data": {
+    "id": "1567890123456789012",
+    "name": "AgentOS",
+    "userName": "agentos_hq",
+    "location": "Onchain",
+    "url": "https://t.co/abc123",
+    "description": "Agents for Robinhood Chain. Docs: https://t.co/docs1",
+    "entities": {
+      "description": {
+        "symbols": [],
+        "urls": [
+          { "display_url": "docs.agentos.example", "expanded_url": "https://docs.agentos.example/", "indices": [40, 63], "url": "https://t.co/docs1" }
+        ]
+      },
+      "url": {
+        "urls": [
+          { "display_url": "agentos.example", "expanded_url": "https://www.agentos.example/", "indices": [0, 23], "url": "https://t.co/abc123" }
+        ]
+      }
+    },
+    "protected": false,
+    "isVerified": false,
+    "isBlueVerified": true,
+    "verifiedType": "Business",
+    "followers": 12873,
+    "following": 211,
+    "favouritesCount": 5021,
+    "statusesCount": 1874,
+    "mediaCount": 312,
+    "createdAt": "Thu Sep 08 11:20:31 +0000 2022",
+    "coverPicture": "https://pbs.twimg.com/profile_banners/1/a",
+    "profilePicture": "https://pbs.twimg.com/profile_images/1/a.jpg",
+    "canDm": false,
+    "affiliatesHighlightedLabel": {},
+    "isAutomated": false,
+    "automatedBy": null,
+    "pinnedTweetIds": ["1845000000000000001"],
+    "profile_interstitial_type": ""
+  }
+}

@@ -6,7 +6,7 @@ record.
 
 ## Unreleased (2026-10-03)
 
-- **Official X accounts are checked (2026-10-18).** HEY now checks each project's official X account every week. A suspended or missing account is shown as such, never as a working link, and is never tagged. A project's own recent posts on X appear on its page as context; they never count as shipping.
+- **Official X accounts are checked (2026-10-18).** HEY now checks each project's official X account every week. A suspended or missing account is shown as such, never as a working link, and is never tagged. A project's own recent posts on X appear on its page as context; they never count as shipping. An account whose profile links the project's own website is shown as linked both ways.
 - **Truer "Built on" (2026-10-18).** A project's code naming another project's token now reads "Names in its code", not "builds on"; only a pool on another project's hook says "builds on". Data files and lists in a repository no longer count as code.
 - **Product catalogues are not releases (2026-10-18).** A feed that lists other companies' products is no longer counted as the project's own releases.
 - **Receipts say how a ship counted (2026-10-18).** A ship that counted once together with its release day, deploy run or code week now says so, instead of "does not count".
