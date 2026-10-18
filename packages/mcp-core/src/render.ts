@@ -326,6 +326,8 @@ export function projectLine(project: HeyProject, now?: Date): string {
     if (project.officialX.linkHeld === 'handle_reassigned') parts.push(`X handle @${project.officialX.handle} now belongs to a different account; link held${checked}`);
     // Another project's account (2026-10-18): its profile links that project's site, not this one's.
     else if (project.officialX.linkHeld === 'links_other_project') parts.push(`X account @${project.officialX.handle} links another project's site, not this one's; link held${checked}`);
+    // A moderator held the account as not the project's (2026-10-19).
+    else if (project.officialX.linkHeld === 'not_the_project') parts.push(`X account @${project.officialX.handle} is not this project's account; link held by a moderator`);
     else if (xStatus === 'SUSPENDED' || xStatus === 'UNAVAILABLE' || xStatus === 'NOT_FOUND') parts.push(`X account @${project.officialX.handle} ${xStatus === 'NOT_FOUND' ? 'not found' : xStatus.toLowerCase()}${checked}`);
     // The account's profile links the project's own site (founder ruling 1, 2026-10-18): trust in the account, nothing more.
     else if (project.officialX.corroboration === 'mutual_site_link') parts.push(`X account @${project.officialX.handle} links back to the project's site${checked}`);

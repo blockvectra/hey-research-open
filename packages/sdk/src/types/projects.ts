@@ -57,9 +57,10 @@ export type HeyOfficialX = {
   /**
    * Additive (2026-10-18): `handle_reassigned` when the handle now answers for a different X account than the one
    * HEY first read; HEY holds the link until a moderator confirms. `links_other_project` (additive, 2026-10-18) when
-   * the account's profile links another published project's site and not this one's. Do not link either. Null otherwise.
+   * the account's profile links another published project's site and not this one's. `not_the_project` (additive,
+   * 2026-10-19) when a moderator held the account as not the project's. Do not link any of them. Null otherwise.
    */
-  linkHeld: 'handle_reassigned' | 'links_other_project' | null;
+  linkHeld: 'handle_reassigned' | 'links_other_project' | 'not_the_project' | null;
   /**
    * Additive (2026-10-18): `mutual_site_link` when the account's profile links the project's own site, as of
    * `corroborationCheckedAt` — trust in the X account itself, never a score or an order. Null otherwise.
