@@ -1,0 +1,14 @@
+{
+  "login": "acme",
+  "id": 42,
+  "type": "Organization",
+  "name": "Acme Labs",
+  "company": null,
+  "blog": "https://acme.example",
+  "location": "Earth",
+  "email": "team@acme.example",
+  "twitter_username": "acme_labs",
+  "public_repos": 12,
+  "followers": 300,
+  "following": 0
+}

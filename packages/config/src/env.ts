@@ -232,8 +232,8 @@ export const serverEnvSchema = z
      *
      *  - TWITTERAPI_IO_ENABLED: exactly "true" (a kill switch that leaves the key in place);
      *  - TWITTERAPI_IO_KEY: the provider's API key. Worker only; never logged, never sent to a browser.
-     *  - TWITTERAPI_IO_DAILY_CREDITS: optional, lowers the day's credit ceiling (40,000 credits, about
-     *    $0.40); empty means the ceiling, 0 turns the reads off, a higher figure is clamped to it.
+     *  - TWITTERAPI_IO_DAILY_CREDITS: optional, lowers the day's credit ceiling (60,000 credits, about
+     *    $0.60, since 2026-10-18); empty means the ceiling, 0 turns the reads off, a higher figure is clamped to it.
      */
     twitterapiIo: z.object({
       enabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),

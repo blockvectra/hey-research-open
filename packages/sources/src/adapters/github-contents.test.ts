@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { hasData } from '../adapter';
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createGithubFileAdapter, createGithubOwnerReposAdapter, GITHUB_FILE_MAX_BYTES } from './github-contents';
+import { createGithubFileAdapter, createGithubOwnerProfileAdapter, createGithubOwnerReposAdapter, GITHUB_FILE_MAX_BYTES } from './github-contents';
 
 describe('GitHub repository files', () => {
   const adapter = createGithubFileAdapter();
@@ -86,5 +86,15 @@ describe('GitHub owner repositories', () => {
     const stub = stubFetch({ status: 404, body: '{"message":"Not Found"}' });
     const result = await adapter.fetch({ owner: 'pair-fund' }, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.status).toBe('missing');
+  });
+});
+
+describe('GitHub owner profile', () => {
+  it('keeps the X handle and website the account declares, and nothing about a person', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('github-owner-profile.json'), headers: { 'content-type': 'application/json' } });
+    const result = await createGithubOwnerProfileAdapter().fetch({ owner: 'acme' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(stub.requests[0]!.url).toBe('https://api.github.com/users/acme');
+    expect(result.data).toEqual({ login: 'acme', kind: 'Organization', twitterUsername: 'acme_labs', blog: 'https://acme.example' });
+    expect(JSON.stringify(result.data)).not.toMatch(/team@|Earth|followers/);
   });
 });

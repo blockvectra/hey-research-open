@@ -6,6 +6,7 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **More from X (2026-10-18).** Official X accounts are now checked every day. An account that links another project's website is no longer shown as this project's. A GitHub repository a project's own X account posts becomes its official repository when GitHub points back to the project, so projects whose only source was X can now show what they build. HEY also finds new builders from public posts about Robinhood Chain that link GitHub, and finds the X account of projects that had none when exactly one account links the project's own website; such an account is marked "Found by HEY".
 - **Official X accounts are checked (2026-10-18).** HEY now checks each project's official X account every week. A suspended or missing account is shown as such, never as a working link, and is never tagged. A project's own recent posts on X appear on its page as context; they never count as shipping. An account whose profile links the project's own website is shown as linked both ways.
 - **Truer "Built on" (2026-10-18).** A project's code naming another project's token now reads "Names in its code", not "builds on"; only a pool on another project's hook says "builds on". Data files and lists in a repository no longer count as code.
 - **Product catalogues are not releases (2026-10-18).** A feed that lists other companies' products is no longer counted as the project's own releases.

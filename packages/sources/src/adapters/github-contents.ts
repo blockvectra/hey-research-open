@@ -257,3 +257,60 @@ export function createGithubTreeAdapter(): SourceAdapter<GithubTreeInput, Github
     },
   };
 }
+
+/**
+ * An account's own public profile (2026-10-18, X-posted repositories): only the two links it declares —
+ * the X handle (`twitter_username`) and its website (`blog`) — and whether it is a user or an organisation.
+ * Read only for the owner of a repository a project's official X account posted, to ask whether the
+ * repository's side names that account or the project's site back. No name, e-mail, location, follower
+ * or repository count leaves the adapter.
+ */
+export type GithubOwnerProfileInput = { owner: string; baseUrl?: string; token?: string };
+export type GithubOwnerProfile = { login: string; kind: 'User' | 'Organization' | 'Other'; twitterUsername?: string; blog?: string };
+
+const ownerProfileSchema = z
+  .object({
+    login: z.string().max(100),
+    type: z.string().max(40).nullish(),
+    twitter_username: z.string().max(64).nullish(),
+    blog: z.string().max(2_048).nullish(),
+  })
+  .passthrough();
+
+const X_HANDLE = /^[A-Za-z0-9_]{1,15}$/;
+
+export function createGithubOwnerProfileAdapter(): SourceAdapter<GithubOwnerProfileInput, GithubOwnerProfile> {
+  return {
+    name: 'github-owner-profile',
+    canHandle: (input) => REPO_PATTERN.test(input.owner) && input.owner.length <= 100,
+    fetch(input, ctx: SourceContext): Promise<SourceResult<GithubOwnerProfile>> {
+      const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
+      return performSourceFetch(
+        ctx,
+        {
+          url: `${base}/users/${input.owner}`,
+          headers: {
+            accept: 'application/vnd.github+json',
+            'x-github-api-version': '2022-11-28',
+            ...(input.token ? { authorization: `Bearer ${input.token}` } : {}),
+          },
+        },
+        {
+          schema: ownerProfileSchema,
+          parse: (body) => JSON.parse(body) as unknown,
+          cacheTtlSeconds: CACHE_TTL_SECONDS,
+          normalize: (raw): GithubOwnerProfile => {
+            const handle = raw.twitter_username?.trim().replace(/^@/, '');
+            const blog = raw.blog?.trim();
+            return {
+              login: raw.login,
+              kind: raw.type === 'User' || raw.type === 'Organization' ? raw.type : 'Other',
+              ...opt('twitterUsername', handle && X_HANDLE.test(handle) ? handle : undefined),
+              ...opt('blog', blog && blog.length > 0 ? blog : undefined),
+            };
+          },
+        },
+      );
+    },
+  };
+}

@@ -235,19 +235,13 @@ const metered = <T>(result: SourceResult<T>, perAttempt: number): SourceResult<T
   meteredUnits: Math.max(TWITTERAPI_IO_MIN_CREDITS, perAttempt) * Math.max(1, result.attempts ?? 1),
 });
 
-function normalizeUserInfo(raw: RawUserInfo, asked: string): XAccountReading | { error: string } {
-  if (raw.status === 'error') {
-    const message = boundedText(raw.msg, 200) ?? '';
-    return NOT_FOUND_MESSAGE.test(message) ? { kind: 'NOT_FOUND' } : { error: `provider error: ${message || 'no message'}` };
-  }
-  const data = raw.data;
-  if (!data) return { error: 'success without data' };
+/** One user object as a reading, whoever asked for it; a handle check is the caller's. */
+function readingOfUser(data: z.infer<typeof userData>): XAccountReading | { error: string } {
   if (data.unavailable === true) {
     const reason = boundedText(data.unavailableReason ?? data.message, 120);
     return /suspend/i.test(`${data.unavailableReason ?? ''} ${data.message ?? ''}`) ? { kind: 'SUSPENDED', ...(reason ? { reason } : {}) } : { kind: 'UNAVAILABLE', ...(reason ? { reason } : {}) };
   }
   if (data.id === null || data.id === undefined || !data.userName) return { error: 'an account without an id or a handle' };
-  if (data.userName.toLowerCase() !== asked.toLowerCase()) return { error: `answered for @${boundedText(data.userName, 20)} when @${asked} was asked` };
   if (!HANDLE.test(data.userName)) return { error: 'a handle X would not allow' };
   const expanded = [data.entities, data.profile_bio?.entities].flatMap((entities) =>
     [...(entities?.url?.urls ?? []), ...(entities?.description?.urls ?? [])].map((entry) => entry.expanded_url),
@@ -265,6 +259,19 @@ function normalizeUserInfo(raw: RawUserInfo, asked: string): XAccountReading | {
     ...(verifiedType ? { verifiedType } : {}),
     profileUrls: uniqueUrls([...expanded, data.url], MAX_PROFILE_URLS),
   };
+}
+
+function normalizeUserInfo(raw: RawUserInfo, asked: string): XAccountReading | { error: string } {
+  if (raw.status === 'error') {
+    const message = boundedText(raw.msg, 200) ?? '';
+    return NOT_FOUND_MESSAGE.test(message) ? { kind: 'NOT_FOUND' } : { error: `provider error: ${message || 'no message'}` };
+  }
+  const data = raw.data;
+  if (!data) return { error: 'success without data' };
+  if (data.unavailable !== true && data.userName && data.userName.toLowerCase() !== asked.toLowerCase()) {
+    return { error: `answered for @${boundedText(data.userName, 20)} when @${asked} was asked` };
+  }
+  return readingOfUser(data);
 }
 
 const isPostUrl = (url: string): boolean => {
@@ -361,6 +368,219 @@ export function createTwitterApiIoLastPostsAdapter(): SourceAdapter<XLastPostsIn
         return metered({ ...rest, status: 'error', errorCode: 'INVALID_RESPONSE', errorMessage: data.error }, cost);
       }
       return metered(result as SourceResult<XPostsPage>, cost);
+    },
+  };
+}
+
+/*
+ * The 2026-10-18 extension (founder: "ya" to the six X-data proposals). Three more reads, each keeping less
+ * than the provider returns:
+ *
+ *  - `GET /twitter/user/batch_info_by_ids?userIds=<ids>`: the same profile facts as `user/info` for up to
+ *    100 accounts HEY already holds by stable id — 1 credit an account at 100 or more, 18 below (provider
+ *    pricing, read 2026-10-18). An account the answer leaves out is reported as missing, never as gone;
+ *  - `GET /twitter/tweet/advanced_search?query=…&queryType=Latest`: one page (at most 20) of public posts
+ *    matching one of HEY's fixed discovery queries. Only each post's id, date, expanded links and the
+ *    addresses in its text leave this adapter — never its text, its author or any count: a post is where a
+ *    link was found, not a person (18 credits a post returned, measured 2026-10-18);
+ *  - `GET /twitter/user/search?query=<name>`: the stable ids of the accounts X returns for a project's name,
+ *    nothing else — the caller reads their profiles by id and keeps only one whose profile links the
+ *    project's own site. Metered at a profile's price per account returned, which errs high.
+ */
+export const TWITTERAPI_IO_BATCH_MAX = 100;
+/** Per account returned: 1 credit at 100 or more in one answer, 18 below. */
+export const TWITTERAPI_IO_BATCH_CHEAP_FROM = 100;
+export const TWITTERAPI_IO_SEARCH_POST_CREDITS = 18;
+export const TWITTERAPI_IO_SEARCH_PAGE_CREDITS = TWITTERAPI_IO_POSTS_PER_PAGE * TWITTERAPI_IO_SEARCH_POST_CREDITS;
+export const TWITTERAPI_IO_USER_SEARCH_MAX = 20;
+export const TWITTERAPI_IO_USER_SEARCH_CREDITS = TWITTERAPI_IO_USER_SEARCH_MAX * TWITTERAPI_IO_PROFILE_CREDITS;
+
+/** What a batch answer of `returned` accounts costs. */
+export const batchCredits = (returned: number): number =>
+  Math.max(TWITTERAPI_IO_MIN_CREDITS, returned >= TWITTERAPI_IO_BATCH_CHEAP_FROM ? returned : returned * TWITTERAPI_IO_PROFILE_CREDITS);
+
+export type XBatchUsersInput = { apiKey: string; userIds: readonly string[]; baseUrl?: string };
+export type XBatchUsers = {
+  /** One reading per account the answer carried, keyed by the id asked. */
+  accounts: { userId: string; reading: XAccountReading }[];
+  /** Ids asked that the answer left out: unknown, never read as gone. */
+  missing: string[];
+};
+
+const batchSchema = z
+  .object({
+    status: z.enum(['success', 'error']).nullish(),
+    msg: z.string().max(2_000).nullish(),
+    users: z.array(userData).max(TWITTERAPI_IO_BATCH_MAX).nullish(),
+  })
+  .passthrough();
+
+const BATCH_MAX_BYTES = 2 * 1024 * 1024;
+
+export function createTwitterApiIoBatchUsersAdapter(): SourceAdapter<XBatchUsersInput, XBatchUsers> {
+  return {
+    name: 'twitterapi-io:profiles-by-id',
+    canHandle: (input) =>
+      input.apiKey.length > 0 && input.userIds.length > 0 && input.userIds.length <= TWITTERAPI_IO_BATCH_MAX && input.userIds.every((id) => USER_ID.test(id)),
+    async fetch(input, ctx: SourceContext): Promise<SourceResult<XBatchUsers>> {
+      if (!this.canHandle(input)) return errorResult(ctx, 'INVALID_RESPONSE', 'not 1–100 X user ids, or no key; nothing was asked');
+      const base = (input.baseUrl ?? TWITTERAPI_IO_BASE_URL).replace(/\/+$/, '');
+      const asked = [...new Set(input.userIds)];
+      const url = `${base}/twitter/user/batch_info_by_ids?userIds=${asked.join(',')}`;
+      let returned = 0;
+      const result: SourceResult<XBatchUsers | { error: string }> = await performSourceFetch(
+        ctx,
+        { url, headers: { 'x-api-key': input.apiKey, accept: 'application/json' }, conditional: false, allowedContentTypes: ['application/json'], maxBytes: BATCH_MAX_BYTES },
+        {
+          schema: batchSchema,
+          parse: (body) => JSON.parse(body) as unknown,
+          cacheTtlSeconds: 3_600,
+          normalize: (raw, response) => {
+            if (!answeredByApi(response, base)) throw wrongHost();
+            if (raw.status === 'error') return { error: `provider error: ${boundedText(raw.msg, 200) || 'no message'}` };
+            const users = raw.users ?? [];
+            returned = users.length;
+            const wanted = new Set(asked);
+            const accounts: XBatchUsers['accounts'] = [];
+            for (const user of users) {
+              if (user.id === null || user.id === undefined) continue;
+              const userId = idOf(user.id);
+              // An account nobody asked for is not this answer's to give.
+              if (!wanted.has(userId) || accounts.some((entry) => entry.userId === userId)) continue;
+              const reading = readingOfUser(user);
+              if ('error' in reading) continue;
+              accounts.push({ userId, reading });
+            }
+            return { accounts, missing: asked.filter((id) => !accounts.some((entry) => entry.userId === id)) };
+          },
+        },
+      );
+      const cost = batchCredits(returned);
+      if (result.data && 'error' in result.data) {
+        const { data, ...rest } = result;
+        return metered({ ...rest, status: 'error', errorCode: 'INVALID_RESPONSE', errorMessage: data.error }, cost);
+      }
+      return metered(result as SourceResult<XBatchUsers>, cost);
+    },
+  };
+}
+
+export type XSearchPostsInput = { apiKey: string; query: string; cursor?: string; baseUrl?: string };
+/** A public post as HEY keeps it from a search: where a link was found, never who wrote it or what it said. */
+export type XFoundPost = { id: string; url: string; createdAt: Date; expandedUrls: string[]; contractAddresses: string[] };
+export type XSearchPostsPage = { posts: XFoundPost[]; returned: number; hasNextPage: boolean; nextCursor?: string };
+
+const searchSchema = z
+  .object({
+    status: z.enum(['success', 'error']).nullish(),
+    msg: z.string().max(2_000).nullish(),
+    tweets: z.array(postSchema).max(100).nullish(),
+    has_next_page: z.boolean().nullish(),
+    next_cursor: z.string().max(4_000).nullish(),
+  })
+  .passthrough();
+
+const SEARCH_QUERY_MAX = 300;
+
+export function createTwitterApiIoSearchPostsAdapter(): SourceAdapter<XSearchPostsInput, XSearchPostsPage> {
+  return {
+    name: 'twitterapi-io:search-posts',
+    canHandle: (input) => input.apiKey.length > 0 && input.query.trim().length > 0 && input.query.length <= SEARCH_QUERY_MAX,
+    async fetch(input, ctx: SourceContext): Promise<SourceResult<XSearchPostsPage>> {
+      if (!this.canHandle(input)) return errorResult(ctx, 'INVALID_RESPONSE', 'no query, or no key; nothing was asked');
+      const base = (input.baseUrl ?? TWITTERAPI_IO_BASE_URL).replace(/\/+$/, '');
+      const url = `${base}/twitter/tweet/advanced_search?query=${encodeURIComponent(input.query)}&queryType=Latest&cursor=${encodeURIComponent(input.cursor ?? '')}`;
+      let returned = 0;
+      const result: SourceResult<XSearchPostsPage | { error: string }> = await performSourceFetch(
+        ctx,
+        { url, headers: { 'x-api-key': input.apiKey, accept: 'application/json' }, conditional: false, allowedContentTypes: ['application/json'], maxBytes: POSTS_MAX_BYTES },
+        {
+          schema: searchSchema,
+          parse: (body) => JSON.parse(body) as unknown,
+          cacheTtlSeconds: 600,
+          normalize: (raw, response) => {
+            if (!answeredByApi(response, base)) throw wrongHost();
+            if (raw.status === 'error') return { error: `provider error: ${boundedText(raw.msg, 200) || 'no message'}` };
+            const page = raw.tweets ?? [];
+            returned = page.length;
+            const posts: XFoundPost[] = [];
+            for (const entry of page) {
+              if (entry.retweeted_tweet !== null && entry.retweeted_tweet !== undefined) continue;
+              const createdAt = parseDate(entry.createdAt);
+              if (!createdAt) continue;
+              const id = idOf(entry.id);
+              if (posts.some((kept) => kept.id === id)) continue;
+              const expandedUrls = uniqueUrls((entry.entities?.urls ?? []).map((link) => link.expanded_url), MAX_POST_URLS);
+              // The author's handle is never kept: the post is addressed by id alone.
+              posts.push({ id, url: `https://x.com/i/status/${id}`, createdAt, expandedUrls, contractAddresses: contractAddressesIn(entry.text, expandedUrls) });
+            }
+            const nextCursor = raw.has_next_page === true && raw.next_cursor ? raw.next_cursor : undefined;
+            return { posts, returned: page.length, hasNextPage: raw.has_next_page === true, ...(nextCursor ? { nextCursor } : {}) };
+          },
+        },
+      );
+      const cost = Math.max(TWITTERAPI_IO_MIN_CREDITS, returned * TWITTERAPI_IO_SEARCH_POST_CREDITS);
+      if (result.data && 'error' in result.data) {
+        const { data, ...rest } = result;
+        return metered({ ...rest, status: 'error', errorCode: 'INVALID_RESPONSE', errorMessage: data.error }, cost);
+      }
+      return metered(result as SourceResult<XSearchPostsPage>, cost);
+    },
+  };
+}
+
+export type XSearchUsersInput = { apiKey: string; query: string; baseUrl?: string };
+/** The stable ids X returned for a name, in its order: nothing else about the accounts leaves the adapter. */
+export type XSearchUsers = { userIds: string[] };
+
+const userSearchSchema = z
+  .object({
+    status: z.enum(['success', 'error']).nullish(),
+    msg: z.string().max(2_000).nullish(),
+    users: z.array(z.object({ id: idSchema.nullish() }).passthrough()).max(100).nullish(),
+  })
+  .passthrough();
+
+const USER_SEARCH_MAX_BYTES = 512 * 1024;
+
+export function createTwitterApiIoSearchUsersAdapter(): SourceAdapter<XSearchUsersInput, XSearchUsers> {
+  return {
+    name: 'twitterapi-io:search-accounts',
+    canHandle: (input) => input.apiKey.length > 0 && input.query.trim().length >= 2 && input.query.length <= 80,
+    async fetch(input, ctx: SourceContext): Promise<SourceResult<XSearchUsers>> {
+      if (!this.canHandle(input)) return errorResult(ctx, 'INVALID_RESPONSE', 'no name, or no key; nothing was asked');
+      const base = (input.baseUrl ?? TWITTERAPI_IO_BASE_URL).replace(/\/+$/, '');
+      const url = `${base}/twitter/user/search?query=${encodeURIComponent(input.query.trim())}`;
+      let returned = 0;
+      const result: SourceResult<XSearchUsers | { error: string }> = await performSourceFetch(
+        ctx,
+        { url, headers: { 'x-api-key': input.apiKey, accept: 'application/json' }, conditional: false, allowedContentTypes: ['application/json'], maxBytes: USER_SEARCH_MAX_BYTES },
+        {
+          schema: userSearchSchema,
+          parse: (body) => JSON.parse(body) as unknown,
+          cacheTtlSeconds: 3_600,
+          normalize: (raw, response) => {
+            if (!answeredByApi(response, base)) throw wrongHost();
+            if (raw.status === 'error') return { error: `provider error: ${boundedText(raw.msg, 200) || 'no message'}` };
+            const users = raw.users ?? [];
+            returned = users.length;
+            const userIds: string[] = [];
+            for (const user of users) {
+              if (user.id === null || user.id === undefined) continue;
+              const id = idOf(user.id);
+              if (USER_ID.test(id) && !userIds.includes(id)) userIds.push(id);
+              if (userIds.length >= TWITTERAPI_IO_USER_SEARCH_MAX) break;
+            }
+            return { userIds };
+          },
+        },
+      );
+      const cost = Math.max(TWITTERAPI_IO_MIN_CREDITS, returned * TWITTERAPI_IO_PROFILE_CREDITS);
+      if (result.data && 'error' in result.data) {
+        const { data, ...rest } = result;
+        return metered({ ...rest, status: 'error', errorCode: 'INVALID_RESPONSE', errorMessage: data.error }, cost);
+      }
+      return metered(result as SourceResult<XSearchUsers>, cost);
     },
   };
 }

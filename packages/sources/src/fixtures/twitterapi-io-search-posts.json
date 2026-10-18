@@ -1,0 +1,37 @@
+{
+  "tweets": [
+    {
+      "type": "tweet",
+      "id": "1979000000000000001",
+      "url": "https://x.com/someone/status/1979000000000000001",
+      "text": "We just open-sourced our Robinhood Chain indexer, token 0xAbCdEf0123456789aBcDeF0123456789AbCdEf01 https://t.co/aaa",
+      "createdAt": "Sun Oct 18 16:17:52 +0000 2026",
+      "retweetCount": 3,
+      "likeCount": 40,
+      "viewCount": 900,
+      "isReply": false,
+      "author": { "id": "123", "userName": "someone", "followers": 5000 },
+      "entities": { "urls": [ { "expanded_url": "https://github.com/acme/rh-indexer", "url": "https://t.co/aaa" } ] }
+    },
+    {
+      "type": "tweet",
+      "id": "1979000000000000002",
+      "text": "RT @someone: We just open-sourced",
+      "createdAt": "Sun Oct 18 16:20:00 +0000 2026",
+      "author": { "id": "456", "userName": "other" },
+      "retweeted_tweet": { "id": "1979000000000000001" },
+      "entities": { "urls": [ { "expanded_url": "https://github.com/acme/rh-indexer" } ] }
+    },
+    {
+      "type": "tweet",
+      "id": "1979000000000000003",
+      "text": "Live on Robinhood Chain https://t.co/bbb",
+      "createdAt": "Sat Oct 17 09:00:00 +0000 2026",
+      "isReply": true,
+      "author": { "id": "789", "userName": "third" },
+      "entities": { "urls": [ { "expanded_url": "https://github.com/third/app", "url": "https://t.co/bbb" } ] }
+    }
+  ],
+  "has_next_page": true,
+  "next_cursor": "DAABCgABGQ"
+}

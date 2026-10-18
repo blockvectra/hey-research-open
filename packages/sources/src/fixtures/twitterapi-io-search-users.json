@@ -1,0 +1,10 @@
+{
+  "users": [
+    { "id": "1567890123456789012", "name": "AgentOS", "screen_name": "agentos_hq", "url": "https://t.co/abc123", "followers_count": 12873, "email": null },
+    { "id": "1700000000000000002", "name": "AgentOS fan", "screen_name": "agentos_fan", "followers_count": 3 },
+    { "id": "1567890123456789012", "name": "AgentOS", "screen_name": "agentos_hq" },
+    { "name": "no id" }
+  ],
+  "has_next_page": false,
+  "next_cursor": ""
+}

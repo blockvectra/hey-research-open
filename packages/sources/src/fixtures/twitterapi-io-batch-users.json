@@ -1,0 +1,50 @@
+{
+  "users": [
+    {
+      "id": "1567890123456789012",
+      "name": "AgentOS",
+      "userName": "agentos_hq",
+      "location": "Onchain",
+      "url": "https://t.co/abc123",
+      "description": "Agents for Robinhood Chain.",
+      "entities": { "description": {}, "url": { "urls": [ { "display_url": "agentos.example", "expanded_url": "https://www.agentos.example/", "indices": [0, 23], "url": "https://t.co/abc123" } ] } },
+      "protected": false,
+      "isVerified": false,
+      "isBlueVerified": true,
+      "verifiedType": null,
+      "followers": 12873,
+      "following": 211,
+      "favouritesCount": 5021,
+      "statusesCount": 1874,
+      "mediaCount": 312,
+      "createdAt": "Thu Sep 08 11:20:31 +0000 2022",
+      "coverPicture": "https://pbs.twimg.com/profile_banners/1/a",
+      "profilePicture": "https://pbs.twimg.com/profile_images/1/a.jpg",
+      "canDm": false,
+      "affiliatesHighlightedLabel": {},
+      "isAutomated": false,
+      "automatedBy": null,
+      "pinnedTweetIds": [],
+      "profile_interstitial_type": ""
+    },
+    {
+      "id": "1700000000000000002",
+      "name": "Renamed Labs",
+      "userName": "renamed_labs",
+      "url": "",
+      "description": "",
+      "entities": { "description": {} },
+      "isBlueVerified": false,
+      "createdAt": "Mon Jan 01 00:00:00 +0000 2024",
+      "followers": 4
+    },
+    {
+      "id": "9999999999999999999",
+      "name": "Nobody Asked",
+      "userName": "not_asked",
+      "entities": {}
+    }
+  ],
+  "status": "success",
+  "msg": "success"
+}
