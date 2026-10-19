@@ -112,3 +112,27 @@ describe('an unknown 24h volume is never an active market (2026-10-12, audit DI-
     );
   });
 });
+
+describe('a market rescued by another pool is held to the volume rules (2026-10-19 audit)', () => {
+  it('is volume_unknown, not Active market, when no reading measured a volume', () => {
+    expect(
+      classifyTokenMarket({
+        now,
+        latest: { observedAt: hoursAgo(1), liquidityUsd: 50 },
+        peakLiquidityUsd: 7_000,
+        otherPools: { observedAt: hoursAgo(1), liquidityUsd: 10_000 },
+      }),
+    ).toEqual({ status: 'INSUFFICIENT_DATA', reason: VOLUME_UNKNOWN_REASON });
+  });
+
+  it('is still Active market when the other pool measured a volume', () => {
+    expect(
+      classifyTokenMarket({
+        now,
+        latest: { observedAt: hoursAgo(1), liquidityUsd: 50 },
+        peakLiquidityUsd: 7_000,
+        otherPools: { observedAt: hoursAgo(1), liquidityUsd: 10_000, volume24hUsd: 2_500 },
+      }).status,
+    ).toBe('ACTIVE_MARKET');
+  });
+});

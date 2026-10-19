@@ -502,7 +502,14 @@ export type HeyBuilderCard = {
   /** The newest standing HEY Signal about building, contracts, launch or research; null when none stands. */
   latest_signal: HeyPartnerSignal | null;
   /** This token's market state: context only, never a builder input. `INSUFFICIENT_DATA` is "not measured". */
-  market_status: { status: string; observed_at: string | null };
+  market_status: {
+    status: string;
+    observed_at: string | null;
+    /** The classifier's reason for the status (2026-10-19, additive); null when HEY holds none. */
+    reason: string | null;
+    /** The status in HEY's canonical words, reason included ("Launch pool only", "Readings not confirmed"; 2026-10-19, additive). Print this one. */
+    label: string;
+  };
   badge_url: string;
   /** `hey_project_url` with HEY's attribution labels (`utm_medium=partner_api`); link this one. */
   project_link: string;

@@ -6,6 +6,7 @@ import {
   createTwitterApiIoLastPostsAdapter,
   createTwitterApiIoUserInfoAdapter,
   TWITTERAPI_IO_BASE_URL,
+  TWITTERAPI_IO_MAX_PAGE_CREDITS,
   TWITTERAPI_IO_POST_CREDITS,
   TWITTERAPI_IO_PROFILE_CREDITS,
   X_POST_TEXT_MAX,
@@ -181,6 +182,17 @@ describe('twitterapi.io newest posts read', () => {
     const big = JSON.stringify({ status: 'success', data: { tweets: [] }, padding: 'a'.repeat(3 * 1024 * 1024) });
     const oversized = await adapter.fetch({ apiKey: KEY, userId: '5' }, testContext({ fetchImpl: stubFetch(json(big)).fetchImpl }));
     expect(oversized.errorCode).toBe('TOO_LARGE');
+  });
+
+  // 2026-10-19: a page HEY could not read was booked at the 15-credit floor, though the provider may bill a full page.
+  it('books a full page for an answer that is not fresh', async () => {
+    const refused = await adapter.fetch({ apiKey: KEY, userId: '5' }, testContext({ fetchImpl: stubFetch(json('{"status":"error","msg":"try later"}')).fetchImpl }));
+    expect(refused.status).toBe('error');
+    expect(refused.meteredUnits).toBe(TWITTERAPI_IO_MAX_PAGE_CREDITS);
+
+    const malformed = await adapter.fetch({ apiKey: KEY, userId: '5' }, testContext({ fetchImpl: stubFetch(json('{"status":"success","data":{"tweets":[{"id":{"bad":1}}]}}')).fetchImpl }));
+    expect(malformed.status).toBe('error');
+    expect(malformed.meteredUnits).toBe(TWITTERAPI_IO_MAX_PAGE_CREDITS * (malformed.attempts ?? 1));
   });
 
   it('asks nothing for an id that is not numeric', async () => {

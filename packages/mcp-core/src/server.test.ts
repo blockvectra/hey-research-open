@@ -93,8 +93,9 @@ describe('the HEY MCP server', () => {
       expect(tool.annotations?.openWorldHint, tool.name).toBe(true);
     }
     // The whole list, output schemas included, costs a model less than the old 22-tool list's 19,179 bytes (round 4: per profile, `HEY_MCP_TOOL_LIST_BUDGET`),
-    // plus get_v4_hook's 748 since 2026-10-11, plus 100 for the week's two lists, new-builders and new-on-hey (2026-10-17).
-    expect(HEY_MCP_TOOL_LIST_BUDGET.full).toBe(20_100);
+    // plus get_v4_hook's 748 since 2026-10-11, plus 100 for the week's two lists, new-builders and new-on-hey (2026-10-17),
+    // plus 100 for Under the Radar's attention cap and withholds (2026-10-19).
+    expect(HEY_MCP_TOOL_LIST_BUDGET.full).toBe(20_200);
     expect(JSON.stringify(tools).length).toBeLessThan(HEY_MCP_TOOL_LIST_BUDGET.full);
     // No tool promises a valuation, a recommendation or a price ranking.
     const descriptions = tools.map((tool) => tool.description ?? '').join(' ').toLowerCase();
@@ -109,8 +110,12 @@ describe('the HEY MCP server', () => {
     expect(find.description).toContain(`under-the-radar: eligible under HEY's Under the Radar rule (${UNDER_THE_RADAR_RULE}) and a positive Discovery Gap`);
     expect(find.description).toContain('a positive gap alone is not enough');
     expect(find.description).not.toMatch(/under-the-radar: a positive Discovery Gap/);
-    expect(find.description).toContain('it does not bound attention itself');
-    expect(find.description).toContain('shipping-in-silence: eligible under the Under the Radar rule AND below the 40th market-attention percentile');
+    // Since hbm-v30 the rule bounds attention (TYPICAL or lower) and names the gap's two withholds (2026-10-19).
+    expect(UNDER_THE_RADAR_RULE).toContain('market attention TYPICAL or lower (percentile below 60)');
+    expect(UNDER_THE_RADAR_RULE).toContain('never on activity HEY cannot read or a contested unverified ticker');
+    expect(find.description).toContain('market attention TYPICAL or lower');
+    expect(find.description).not.toContain('does not bound attention');
+    expect(find.description).toContain('shipping-in-silence: held Under the Radar AND below the 40th market-attention percentile');
     expect(find.description).toContain('back-from-dormancy: status RESUMED, narrowed to verified builders');
     expect(find.description?.toLowerCase()).not.toContain('little market attention');
   });

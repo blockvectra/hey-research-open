@@ -68,6 +68,11 @@ export type HeyOfficialX = {
   corroboration: 'mutual_site_link' | null;
   /** ISO 8601; null when `corroboration` is null. */
   corroborationCheckedAt: string | null;
+  /**
+   * Additive (2026-10-19): true when HEY found the account by the project's name and no person has verified it yet —
+   * never a mutual link, no posts shown, never tagged. False otherwise.
+   */
+  foundByHey: boolean;
 };
 
 /** Which measure a valuation is, by HEY's one rule (2026-09-26): `fdv` for a fully diluted valuation, never called a market cap. */

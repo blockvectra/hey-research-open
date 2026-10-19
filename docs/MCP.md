@@ -194,22 +194,25 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
 - `under-the-radar` — **eligible under HEY's Under the Radar rule** (status shipping, active
   or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one
   of them a ship rather than a commit summary; a fresh reading of an active market beyond
-  a launch curve or a launch pool, trading $1,000+ a day, for the project's own token) **and a positive Discovery Gap**: the
+  a launch curve or a launch pool, trading $1,000+ a day, for the project's own token; market attention TYPICAL or lower
+  (percentile below 60); never on activity HEY cannot read or a contested unverified ticker) **and a positive Discovery Gap**: the
   market-attention percentile is below the build percentile. A token whose market is not
   active has no Discovery Gap at all (`discoveryGapWithheld: "market_too_thin"`, hbm-v18). A
   market active only because another pool of the token holds the liquidity is measured on that
   pool's reading, and not at all when HEY holds none (`active_pool_not_read`, hbm-v21). Since
   hbm-v21 the stored flag itself requires the positive gap; the listing keeps the test too. A
-  positive gap alone is not enough (`explain_fact` calls that one `POSITIVE`). It does not bound
-  attention itself; an eligible project at the 90th attention percentile can be Under the Radar
-  if it builds at the 99th.
+  positive gap alone is not enough (`explain_fact` calls that one `POSITIVE`). Since hbm-v30 it
+  bounds attention too: a project whose market attention is ELEVATED or HIGH (the 60th
+  percentile or above) is never Under the Radar, whatever its gap, and a gap withheld because
+  HEY cannot read the building (`activity_unknown`) or cannot tell the token from another
+  published project's token with the same ticker (`token_not_the_projects`) holds nothing.
 - `shipping-now` (status SHIPPING), `most-active` (shipping, active or resumed, by Build Momentum),
   `new-builders` (recorded in the last 7 days, with a builder source HEY reads and at least one counted ship),
   `new-on-hey` (every page recorded in the last 7 days), `utility`, `memes`.
 - `back-from-dormancy` — status RESUMED, **narrowed to verified builders native to the chain**;
   `status: "RESUMED"` gives every resumed project.
-- `shipping-in-silence` — eligible under the Under the Radar rule **and** below the 40th
-  market-attention percentile (the gap itself is not required).
+- `shipping-in-silence` — held Under the Radar (the rule above, its positive gap and every
+  hold the `/radar` listing applies) **and** below the 40th market-attention percentile.
 - `accelerating` — more meaningful events in the last 30 days than in the 30 before.
 - `builder-radar` — the Builder Radar, with `radar` for its views, never ranked by price.
 

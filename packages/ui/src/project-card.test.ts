@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { explorerTokenUrl } from './brand';
 import { isAddressShaped, shortenAddress } from './format';
-import { ProjectCard, type ProjectCardData, formatPercentChange, marketLensLine, tradeContextLine } from './project-card';
+import { ProjectCard, type ProjectCardData, formatPercentChange, marketLensLine, officialXCardState, tradeContextLine } from './project-card';
 
 const ADDRESS = '0x82aE0000000000000000000000000000000091bF';
 
@@ -105,6 +105,18 @@ describe('ProjectCard — fallbacks', () => {
     expect(html).not.toContain('data-testid="official-x"');
     // An active or unread account keeps its link.
     expect(render(tokenBacked)).toContain('href="https://x.com/agentos"');
+  });
+
+  it('says a withheld X account in a few words on the card, the dated sentence kept for the page (2026-10-19)', () => {
+    const line = 'X account @agentos suspended, checked 2026-10-18.';
+    const html = render({ ...tokenBacked, officialX: { handle: 'agentos', url: 'https://x.com/agentos', status: 'SUSPENDED', withheldLine: line } });
+    expect(html).toContain('<span aria-hidden="true">X suspended</span>');
+    expect(html).toContain(`title="${line}"`);
+    expect(officialXCardState({ status: 'NOT_FOUND' })).toBe('X not found');
+    expect(officialXCardState({ status: 'UNAVAILABLE' })).toBe('X unavailable');
+    expect(officialXCardState({ status: 'ACTIVE', linkHeld: 'links_other_project' })).toBe('X held');
+    expect(officialXCardState({ status: 'ACTIVE', linkHeld: 'not_the_project' })).toBe('X held');
+    expect(officialXCardState({})).toBe('X held');
   });
 
   it('omits the X account when no official one is mapped', () => {
@@ -317,7 +329,7 @@ describe('ProjectCard — with a ship (ships feed)', () => {
     const html = renderWithShip();
     expect(html).toContain('data-testid="ship-source"');
     expect(html).toContain('href="https://agentos.example/ship/0"');
-    expect(html).toContain('aria-label="Open source for Agent SDK v0.4"');
+    expect(html).toContain('aria-label="Source: Agent SDK v0.4 (opens in a new tab)"');
     expect(html).toMatch(/data-testid="ship-source"[^>]*target="_blank"/);
     expect(html).toMatch(/data-testid="ship-source"[^>]*rel="noopener noreferrer"/);
     expect(renderWithShip({ sourceUrl: undefined })).not.toContain('data-testid="ship-source"');

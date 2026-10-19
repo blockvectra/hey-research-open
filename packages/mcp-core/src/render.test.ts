@@ -70,7 +70,7 @@ const page = <T>(items: T[], over: Partial<HeyPage<T>> = {}): HeyPage<T> => ({
 });
 
 /** An official X account with the 2026-10-18 additive fields at their empty values. */
-const officialX = (over: Partial<HeyOfficialX> & Pick<HeyOfficialX, 'handle' | 'url' | 'status' | 'checkedAt'>): HeyOfficialX => ({ linkHeld: null, corroboration: null, corroborationCheckedAt: null, ...over });
+const officialX = (over: Partial<HeyOfficialX> & Pick<HeyOfficialX, 'handle' | 'url' | 'status' | 'checkedAt'>): HeyOfficialX => ({ linkHeld: null, corroboration: null, corroborationCheckedAt: null, foundByHey: false, ...over });
 
 describe('shared wording', () => {
   it('names a valuation by the kind the API sent, and an unknown kind never a market cap (M2 G9)', () => {

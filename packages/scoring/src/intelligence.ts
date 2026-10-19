@@ -301,6 +301,13 @@ export function discoveryLag(events: readonly LagEvent[], now: Date, observedSin
 export type MarketAttention = 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIGH';
 
 /**
+ * The market-context percentile each band stays below (HIGH has no ceiling): the one place the
+ * bands' edges are written, so a sentence that names a band's edge — Under the Radar's attention
+ * cap in llms.txt and the MCP guidance (2026-10-19) — reads it from here.
+ */
+export const MARKET_ATTENTION_CEILING = { VERY_LOW: 20, LOW: 40, TYPICAL: 60, ELEVATED: 80 } as const satisfies Record<Exclude<MarketAttention, 'HIGH'>, number>;
+
+/**
  * The market-context percentile the Discovery Gap already computes (market
  * cap, liquidity and volume against the published cohort), named in five
  * bands. Context, never an input to anything a builder is judged by; null
@@ -308,9 +315,9 @@ export type MarketAttention = 'VERY_LOW' | 'LOW' | 'TYPICAL' | 'ELEVATED' | 'HIG
  */
 export function marketAttention(marketContextPercentile: number | null | undefined): MarketAttention | null {
   if (marketContextPercentile === null || marketContextPercentile === undefined || !Number.isFinite(marketContextPercentile)) return null;
-  if (marketContextPercentile < 20) return 'VERY_LOW';
-  if (marketContextPercentile < 40) return 'LOW';
-  if (marketContextPercentile < 60) return 'TYPICAL';
-  if (marketContextPercentile < 80) return 'ELEVATED';
+  if (marketContextPercentile < MARKET_ATTENTION_CEILING.VERY_LOW) return 'VERY_LOW';
+  if (marketContextPercentile < MARKET_ATTENTION_CEILING.LOW) return 'LOW';
+  if (marketContextPercentile < MARKET_ATTENTION_CEILING.TYPICAL) return 'TYPICAL';
+  if (marketContextPercentile < MARKET_ATTENTION_CEILING.ELEVATED) return 'ELEVATED';
   return 'HIGH';
 }

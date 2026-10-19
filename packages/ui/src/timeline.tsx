@@ -132,6 +132,8 @@ export function BuildTimeline({
                   className="inline-flex min-h-6 items-center text-sm text-hey-ink underline decoration-hey-border-strong underline-offset-4 transition-colors hover:decoration-hey-ink"
                 >
                   View evidence
+                  {/* Every row has this link: its accessible name says which ship, and that it leaves HEY (2026-10-19). */}
+                  <span className="sr-only">: {emailSafe(shortenHexInText(plainText(item.title)))} (opens in a new tab)</span>
                 </a>
               ) : null}
               {action?.(item)}

@@ -70,8 +70,12 @@ export const HEY_MCP_PROFILE_PATHS: Readonly<Record<HeyMcpProfile, string>> = { 
  * 20,100 since 2026-10-17 (audit MI-3): New builders narrowed to a builder
  * source and a counted ship, and the unrestricted week became `new-on-hey`;
  * saying both costs 77 bytes over a list with 7 to spare.
+ *
+ * 20,200 since 2026-10-19 (platform re-audit): Under the Radar's rule names its
+ * hbm-v30 attention cap and the gap's two withholds, and drops "it does not
+ * bound attention itself"; the full list measures 20,164.
  */
-export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_100, research: 11_000 };
+export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_200, research: 11_000 };
 
 export type HeyMcpToolInfo = {
   name: string;

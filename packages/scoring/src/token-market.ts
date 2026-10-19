@@ -539,6 +539,12 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
     const otherVolume = evidence.otherPools?.volume24hUsd;
     const pooled = otherVolume === undefined ? volume : volume === undefined ? otherVolume : Math.max(volume, otherVolume);
     if (pooled !== undefined && pooled <= TOKEN_MARKET.inactiveVolumeUsd) return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
+    /*
+     * A rescue is held to the volume rules too (2026-10-19 audit): with no volume from this reading, a fresh trade record,
+     * the 36-hour fallback or the other pool — a frozen figure arrives here as none — the market is not measured
+     * (token-market-2026-10-12's `volume_unknown`), never ACTIVE_MARKET on depth alone.
+     */
+    if (pooled === undefined) return { status: 'INSUFFICIENT_DATA', reason: VOLUME_UNKNOWN_REASON };
     const series = evidence.otherPools?.series;
     return { status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool', ...(series ? { activeSeries: series } : {}) };
   }

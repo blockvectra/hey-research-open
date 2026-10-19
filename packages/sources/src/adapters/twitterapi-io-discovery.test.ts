@@ -38,6 +38,14 @@ describe('twitterapi.io profiles by id', () => {
     expect(result.meteredUnits).toBe(3 * 18);
   });
 
+  // 2026-10-19: an answer HEY could not read was booked by what it returned — nothing — though the provider may bill every id asked.
+  it('books every id asked for an answer that is not fresh', async () => {
+    const asked = ['1567890123456789012', '1700000000000000002', '1800000000000000003'];
+    const result = await adapter.fetch({ apiKey: KEY, userIds: asked }, testContext({ fetchImpl: stubFetch(json('{"status":"error","msg":"try later"}')).fetchImpl }));
+    expect(result.status).toBe('error');
+    expect(result.meteredUnits).toBe(batchCredits(asked.length));
+  });
+
   it('prices a hundred or more at one credit each', () => {
     expect(batchCredits(100)).toBe(100);
     expect(batchCredits(99)).toBe(99 * 18);

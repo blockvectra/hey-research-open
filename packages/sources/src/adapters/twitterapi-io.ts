@@ -23,6 +23,7 @@ import { performSourceFetch } from '../http/perform';
  *
  * Cost is metered in the provider's credits (`meteredUnits`): about 18 a profile lookup, 15 a post
  * returned, 15 at least a call; 100,000 credits are one US dollar (provider's pricing, read 2026-10-18).
+ * A call billed by its answer books the most it could cost when the answer is not fresh (2026-10-19).
  */
 export const TWITTERAPI_IO_BASE_URL = 'https://api.twitterapi.io';
 
@@ -235,6 +236,14 @@ const metered = <T>(result: SourceResult<T>, perAttempt: number): SourceResult<T
   meteredUnits: Math.max(TWITTERAPI_IO_MIN_CREDITS, perAttempt) * Math.max(1, result.attempts ?? 1),
 });
 
+/**
+ * What a call that counts its answer cost (2026-10-19). A fresh answer is billed by what it returned; any
+ * other — a timeout, a refusal, a page the provider answered with an error or HEY could not read — books
+ * the most the call could have cost (a full page, every id asked), because HEY cannot see what the provider
+ * billed and the meter errs high, never low.
+ */
+const answerCredits = (fresh: boolean, returnedCost: number, maxCost: number): number => (fresh ? returnedCost : Math.max(returnedCost, maxCost));
+
 /** One user object as a reading, whoever asked for it; a handle check is the caller's. */
 function readingOfUser(data: z.infer<typeof userData>): XAccountReading | { error: string } {
   if (data.unavailable === true) {
@@ -362,7 +371,8 @@ export function createTwitterApiIoLastPostsAdapter(): SourceAdapter<XLastPostsIn
           },
         },
       );
-      const cost = Math.max(TWITTERAPI_IO_MIN_CREDITS, returned * TWITTERAPI_IO_POST_CREDITS);
+      const fresh = result.status === 'fresh' && result.data !== undefined && !('error' in result.data);
+      const cost = answerCredits(fresh, Math.max(TWITTERAPI_IO_MIN_CREDITS, returned * TWITTERAPI_IO_POST_CREDITS), TWITTERAPI_IO_MAX_PAGE_CREDITS);
       if (result.data && 'error' in result.data) {
         const { data, ...rest } = result;
         return metered({ ...rest, status: 'error', errorCode: 'INVALID_RESPONSE', errorMessage: data.error }, cost);
@@ -455,7 +465,8 @@ export function createTwitterApiIoBatchUsersAdapter(): SourceAdapter<XBatchUsers
           },
         },
       );
-      const cost = batchCredits(returned);
+      const fresh = result.status === 'fresh' && result.data !== undefined && !('error' in result.data);
+      const cost = answerCredits(fresh, batchCredits(returned), batchCredits(asked.length));
       if (result.data && 'error' in result.data) {
         const { data, ...rest } = result;
         return metered({ ...rest, status: 'error', errorCode: 'INVALID_RESPONSE', errorMessage: data.error }, cost);
@@ -519,7 +530,8 @@ export function createTwitterApiIoSearchPostsAdapter(): SourceAdapter<XSearchPos
           },
         },
       );
-      const cost = Math.max(TWITTERAPI_IO_MIN_CREDITS, returned * TWITTERAPI_IO_SEARCH_POST_CREDITS);
+      const fresh = result.status === 'fresh' && result.data !== undefined && !('error' in result.data);
+      const cost = answerCredits(fresh, Math.max(TWITTERAPI_IO_MIN_CREDITS, returned * TWITTERAPI_IO_SEARCH_POST_CREDITS), TWITTERAPI_IO_SEARCH_PAGE_CREDITS);
       if (result.data && 'error' in result.data) {
         const { data, ...rest } = result;
         return metered({ ...rest, status: 'error', errorCode: 'INVALID_RESPONSE', errorMessage: data.error }, cost);
@@ -575,7 +587,8 @@ export function createTwitterApiIoSearchUsersAdapter(): SourceAdapter<XSearchUse
           },
         },
       );
-      const cost = Math.max(TWITTERAPI_IO_MIN_CREDITS, returned * TWITTERAPI_IO_PROFILE_CREDITS);
+      const fresh = result.status === 'fresh' && result.data !== undefined && !('error' in result.data);
+      const cost = answerCredits(fresh, Math.max(TWITTERAPI_IO_MIN_CREDITS, returned * TWITTERAPI_IO_PROFILE_CREDITS), TWITTERAPI_IO_USER_SEARCH_CREDITS);
       if (result.data && 'error' in result.data) {
         const { data, ...rest } = result;
         return metered({ ...rest, status: 'error', errorCode: 'INVALID_RESPONSE', errorMessage: data.error }, cost);

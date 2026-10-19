@@ -50,3 +50,25 @@ describe('the build timeline keeps stored text out of reach of e-mail obfuscatio
     }
   });
 });
+
+describe('the build timeline names each evidence link (2026-10-19)', () => {
+  it('says which ship and that the link opens a new tab', () => {
+    const markup = renderToStaticMarkup(
+      createElement(BuildTimeline, {
+        now: NOW,
+        items: [
+          {
+            id: 'b',
+            title: 'Agent SDK v0.4',
+            summary: 'Release.',
+            eventType: 'RELEASE',
+            publishedAt: new Date('2026-10-11T10:00:00Z'),
+            verificationStatus: 'PUBLICLY_VERIFIED',
+            sourceUrl: 'https://github.com/acme/sdk/releases/tag/v0.4',
+          },
+        ],
+      }),
+    );
+    expect(markup).toContain('View evidence<span class="sr-only">: Agent SDK v0.4 (opens in a new tab)</span>');
+  });
+});

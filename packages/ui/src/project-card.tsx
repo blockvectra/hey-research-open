@@ -108,8 +108,16 @@ export type ProjectCardData = {
   /**
    * The project's official X account. `withheldLine` (2026-10-18) is set when HEY's last read found the
    * account suspended, unavailable or gone: the card prints that muted, dated fact instead of a live link.
+   * On the card it is a short state (`officialXCardState`, 2026-10-19) — "X held", "X suspended" — and the
+   * full dated sentence stays on the project page and in the card's title.
    */
-  officialX?: { handle: string; url: string; withheldLine?: string | undefined };
+  officialX?: {
+    handle: string;
+    url: string;
+    withheldLine?: string | undefined;
+    status?: 'ACTIVE' | 'SUSPENDED' | 'UNAVAILABLE' | 'NOT_FOUND' | null | undefined;
+    linkHeld?: 'handle_reassigned' | 'links_other_project' | 'not_the_project' | undefined;
+  };
   websiteUrl?: string;
   /** Kept for callers that still pass the fuller domain shape. */
   primaryNarrative?: { slug: string; name: string };
@@ -167,6 +175,18 @@ const hostOf = (url: string): string => {
     return url;
   }
 };
+
+/**
+ * A withheld official X account on a card, in a few words (2026-10-19): a held link says "X held", a dead
+ * account its state. The full dated sentence (`withheldLine`) is the project page's.
+ */
+export function officialXCardState(officialX: Pick<NonNullable<ProjectCardData['officialX']>, 'status' | 'linkHeld'>): string {
+  if (officialX.linkHeld) return 'X held';
+  if (officialX.status === 'SUSPENDED') return 'X suspended';
+  if (officialX.status === 'NOT_FOUND') return 'X not found';
+  if (officialX.status === 'UNAVAILABLE') return 'X unavailable';
+  return 'X held';
+}
 
 export function ProjectCard({
   project,
@@ -312,7 +332,7 @@ export function ProjectCard({
   const launchUnobserved = launchNotObserved(project.launchedVia?.name) && !project.marketVenue;
   const origin = (
     <div className="flex items-center justify-between gap-3 text-[13px]">
-      <span className="flex min-w-0 items-center gap-1.5" data-testid="launched-via">
+      <span className="flex min-w-0 shrink-0 items-center gap-1.5" data-testid="launched-via">
         {/* No launch record and no pool: say so, never "via Unknown" (2026-10-12, audit RD-10). */}
         {launchUnobserved ? null : <span className="text-hey-muted">via</span>}
         {launchUnobserved ? (
@@ -334,9 +354,11 @@ export function ProjectCard({
         )}
       </span>
       {project.officialX?.withheldLine ? (
-        // A suspended or missing account is a fact, never a live link (2026-10-18).
+        // A suspended or missing account is a fact, never a live link (2026-10-18); on the card a short state, the
+        // dated sentence in the title and for screen readers (2026-10-19).
         <span className="min-w-0 truncate text-hey-muted" data-testid="official-x-withheld" title={project.officialX.withheldLine}>
-          {project.officialX.withheldLine}
+          <span aria-hidden="true">{officialXCardState(project.officialX)}</span>
+          <span className="sr-only">{project.officialX.withheldLine}</span>
         </span>
       ) : project.officialX ? (
         <ExternalRef
@@ -500,7 +522,7 @@ export function ProjectCard({
             {ship.sourceUrl ? (
               <ExternalRef
                 href={ship.sourceUrl}
-                label={`Open source for ${shipTitle}`}
+                label={`Source: ${shipTitle} (opens in a new tab)`}
                 className="ml-auto text-[12.5px]"
                 data-testid="ship-source"
               >
