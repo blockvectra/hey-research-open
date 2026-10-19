@@ -80,6 +80,14 @@ answer the builder question for (a measured activity status or a source-backed s
 90 days), with every indexed project one press away; the homepage shows real project cards right
 under the search; and a search that matches nothing says why and where to go next.
 
+Since 19 October 2026 the homepage opens with one box, "Check a token or project". Type a token's
+name, ticker or contract and press Check, and the answer appears right there: a published project's
+Research Summary line, its latest ship with its evidence, its contract and how many other tokens
+use its ticker, and its official X account as its page shows it — or the projects that share the
+ticker, never one picked for you — or, for a contract HEY has not researched, what HEY Scan reads
+(the scan runs only on that press, on the scan's own budget). "Post to X" shares
+the answer with a link back to the page.
+
 ## In this repository
 
 This is the published half of HEY: the parts that stand on their own and are safe to read.
