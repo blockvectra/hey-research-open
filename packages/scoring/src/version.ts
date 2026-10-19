@@ -433,7 +433,22 @@
  *   held Still Building on 2026-10-18 with its one repository answering 404
  *   and its gap withheld as not the project's token.
  */
-export const SCORING_VERSION = 'hbm-v31' as const;
+/*
+ * hbm-v32 (2026-10-19, founder delegation "ok buat semua yang belum repair
+ * tu", backend audit P3-2): no weight, threshold or Build Momentum formula
+ * changes. One rule only withholds, never awards: a 24h volume one source
+ * repeated beside the same price for more than
+ * `TOKEN_MARKET.repeatedVolumeMaxHours` (36 h) — the volume the market
+ * classifier has refused since token-market-2026-10-16 (#134) — is unknown on
+ * the scorer's market reading too (`DISCOVERY_GAP.frozenVolumeIsUnknown`; one
+ * SQL fragment, `frozenVolumeCtes`, decides it for both). It never trips the
+ * hbm-v31 thin-market test, never counts as a measured volume in the
+ * market-context percentile (renormalised as any missing figure) and is no
+ * input to the valuation gate. Under hbm-v31 the scorer read the raw figure:
+ * a frozen $213.66 made a market "too thin" that the classifier judged on
+ * another reading, and a frozen $5,000 passed as a measured, traded market.
+ */
+export const SCORING_VERSION = 'hbm-v32' as const;
 /** Every version a stored snapshot may carry; each has a note above. */
-export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28', 'hbm-v29', 'hbm-v30', 'hbm-v31'] as const;
+export const SCORING_VERSIONS = ['hbm-v1', 'hbm-v2', 'hbm-v3', 'hbm-v4', 'hbm-v5', 'hbm-v6', 'hbm-v7', 'hbm-v8', 'hbm-v9', 'hbm-v10', 'hbm-v11', 'hbm-v12', 'hbm-v13', 'hbm-v14', 'hbm-v15', 'hbm-v16', 'hbm-v17', 'hbm-v18', 'hbm-v19', 'hbm-v20', 'hbm-v21', 'hbm-v22', 'hbm-v23', 'hbm-v24', 'hbm-v25', 'hbm-v26', 'hbm-v27', 'hbm-v28', 'hbm-v29', 'hbm-v30', 'hbm-v31', 'hbm-v32'] as const;
 export type ScoringVersion = (typeof SCORING_VERSIONS)[number];

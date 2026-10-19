@@ -40,13 +40,29 @@ export type TimelineItem = {
   repo?: string;
 };
 
+/**
+ * A run the page folded to one line (2026-10-19 audit): a deploy script's
+ * contracts or a repository's releases of one day, which the score counts
+ * once. `line` is the domain's own sentence (`foldTimelineRuns`); every ship
+ * of the run stays listed, newest first, one tap away under it.
+ */
+export type TimelineRun = {
+  kind: 'deploy_run' | 'release_burst';
+  /** A stable key: the newest ship's id. */
+  id: string;
+  line: string;
+  items: readonly TimelineItem[];
+};
+
+const isRun = (entry: TimelineItem | TimelineRun): entry is TimelineRun => 'line' in entry && 'items' in entry;
+
 export function BuildTimeline({
   items,
   now,
   className,
   action,
 }: {
-  items: readonly TimelineItem[];
+  items: readonly (TimelineItem | TimelineRun)[];
   now?: Date;
   className?: string;
   /**
@@ -58,90 +74,132 @@ export function BuildTimeline({
 }) {
   return (
     <ol className={cn('relative space-y-6', className)}>
-      {items.map((item) => (
-        <li
-          key={item.id}
-          id={`ship-${item.id}`}
-          className="relative pl-6 last:[&>span:nth-child(2)]:hidden"
-        >
-          <span
-            aria-hidden="true"
-            className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-hey-accent"
-          />
-          {/*
-            `last:hidden` never matched (layout audit, 2026-09-22): `last:` is
-            `&:last-child`, and this span is the second of five children of the
-            <li>, so the final entry drew a connector hanging a full item's
-            height below itself with nothing to connect to. The rule belongs on
-            the <li>.
-          */}
-          <span
-            aria-hidden="true"
-            className="absolute left-[3px] top-5 h-full w-px bg-hey-border"
-          />
-
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            {/* Release notes arrive as Markdown; the timeline shows the words (QA sweep 2026-09-04). */}
-            <h3 className="text-sm font-medium break-words">
-              {emailSafe(shortenHexInText(plainText(item.title)))}
-              {item.repo ? (
-                <span className="ml-1.5 font-mono text-[12px] font-normal text-hey-secondary [overflow-wrap:anywhere]" data-testid="timeline-repo">
-                  {item.repo}
-                </span>
-              ) : null}
-            </h3>
-            <time dateTime={item.publishedAt.toISOString()} className="text-xs text-hey-secondary">
-              {formatRelativeTime(item.publishedAt, now)}
-            </time>
-          </div>
-
-          <p className="mt-1 text-xs text-hey-secondary">
-            {shipKindLabel(item)}
-            <span aria-hidden="true"> · </span>
-            {/* Evidence quality is always visible, never implied. */}
-            <span>{formatVerification(item.verificationStatus)}</span>
-          </p>
-
-          {/*
-            A code week leads with what changed (2026-10-16, audit U1): the commit subjects first, the
-            stored count and its caveat after them, quieter. Any other ship keeps its summary first.
-          */}
-          {item.highlights && item.highlights.length > 0 ? (
-            <>
-              <CodeWeekHighlights highlights={item.highlights} className="mt-2" />
-              <ShipSummary summary={readableSummary(item.summary)} className="mt-1.5" tone="secondary" />
-            </>
-          ) : (
-            <ShipSummary summary={readableSummary(item.summary)} className="mt-2 text-sm" />
-          )}
-
-          {item.substanceNote ? (
-            <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{emailSafe(item.substanceNote)}</p>
-          ) : null}
-
-          {item.sourceUrl || action ? (
-            <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
-              {item.sourceUrl ? (
-                <a
-                  href={item.sourceUrl}
-                  rel="nofollow noopener noreferrer"
-                  target="_blank"
-                  // Counted as an evidence open by the page's one listener (`ValueClicks`, 2026-10-05).
-                  data-evidence="ship"
-                  // At least 24px to press (WCAG 2.5.8; 2026-10-16, audit U13).
-                  className="inline-flex min-h-6 items-center text-sm text-hey-ink underline decoration-hey-border-strong underline-offset-4 transition-colors hover:decoration-hey-ink"
-                >
-                  View evidence
-                  {/* Every row has this link: its accessible name says which ship, and that it leaves HEY (2026-10-19). */}
-                  <span className="sr-only">: {emailSafe(shortenHexInText(plainText(item.title)))} (opens in a new tab)</span>
-                </a>
-              ) : null}
-              {action?.(item)}
-            </div>
-          ) : null}
-        </li>
-      ))}
+      {items.map((entry) => (isRun(entry) ? <TimelineRunEntry key={`run-${entry.id}`} run={entry} now={now} action={action} /> : <TimelineEntry key={entry.id} item={entry} now={now} action={action} />))}
     </ol>
+  );
+}
+
+/** The dot and the connector every entry draws. */
+function TimelineMarks() {
+  return (
+    <>
+      <span aria-hidden="true" className="absolute left-0 top-1.5 h-2 w-2 rounded-full bg-hey-accent" />
+      {/*
+        `last:hidden` never matched (layout audit, 2026-09-22): `last:` is
+        `&:last-child`, and this span is the second of five children of the
+        <li>, so the final entry drew a connector hanging a full item's
+        height below itself with nothing to connect to. The rule belongs on
+        the <li>.
+      */}
+      <span aria-hidden="true" className="absolute left-[3px] top-5 h-full w-px bg-hey-border" />
+    </>
+  );
+}
+
+/**
+ * A folded run: the domain's line, the newest ship's time and kind, then
+ * every ship of the run inside a disclosure (UI rule 6) — never 22 rows of
+ * "Deployed a new contract".
+ */
+function TimelineRunEntry({ run, now, action }: { run: TimelineRun; now?: Date | undefined; action?: ((item: TimelineItem) => ReactNode) | undefined }) {
+  const newest = run.items[0];
+  if (!newest) return null;
+  const noun = run.kind === 'deploy_run' ? 'contracts' : 'releases';
+  return (
+    <li className="relative pl-6 last:[&>span:nth-child(2)]:hidden" data-testid="timeline-run" data-run-kind={run.kind}>
+      <TimelineMarks />
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <h3 className="text-sm font-medium break-words">{emailSafe(run.line)}</h3>
+        <time dateTime={newest.publishedAt.toISOString()} className="text-xs text-hey-secondary">
+          {formatRelativeTime(newest.publishedAt, now)}
+        </time>
+      </div>
+      <p className="mt-1 text-xs text-hey-secondary">{shipKindLabel(newest)}</p>
+      <details className="group mt-2" data-testid="timeline-run-details">
+        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center text-sm text-hey-secondary underline decoration-hey-border-strong underline-offset-4 marker:hidden hover:text-hey-ink [&::-webkit-details-marker]:hidden">
+          <span className="group-open:hidden">
+            Show all {run.items.length} {noun}
+          </span>
+          <span className="hidden group-open:inline">Hide the {noun}</span>
+        </summary>
+        <ol className="relative mt-4 space-y-5">
+          {run.items.map((item) => (
+            <TimelineEntry key={item.id} item={item} now={now} action={action} />
+          ))}
+        </ol>
+      </details>
+    </li>
+  );
+}
+
+function TimelineEntry({ item, now, action }: { item: TimelineItem; now?: Date | undefined; action?: ((item: TimelineItem) => ReactNode) | undefined }) {
+  return (
+    <li
+      id={`ship-${item.id}`}
+      className="relative pl-6 last:[&>span:nth-child(2)]:hidden"
+    >
+      <TimelineMarks />
+
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        {/* Release notes arrive as Markdown; the timeline shows the words (QA sweep 2026-09-04). */}
+        <h3 className="text-sm font-medium break-words">
+          {emailSafe(shortenHexInText(plainText(item.title)))}
+          {item.repo ? (
+            <span className="ml-1.5 font-mono text-[12px] font-normal text-hey-secondary [overflow-wrap:anywhere]" data-testid="timeline-repo">
+              {item.repo}
+            </span>
+          ) : null}
+        </h3>
+        <time dateTime={item.publishedAt.toISOString()} className="text-xs text-hey-secondary">
+          {formatRelativeTime(item.publishedAt, now)}
+        </time>
+      </div>
+
+      <p className="mt-1 text-xs text-hey-secondary">
+        {shipKindLabel(item)}
+        <span aria-hidden="true"> · </span>
+        {/* Evidence quality is always visible, never implied. */}
+        <span>{formatVerification(item.verificationStatus)}</span>
+      </p>
+
+      {/*
+        A code week leads with what changed (2026-10-16, audit U1): the commit subjects first, the
+        stored count and its caveat after them, quieter. Any other ship keeps its summary first.
+      */}
+      {item.highlights && item.highlights.length > 0 ? (
+        <>
+          <CodeWeekHighlights highlights={item.highlights} className="mt-2" />
+          <ShipSummary summary={readableSummary(item.summary)} className="mt-1.5" tone="secondary" />
+        </>
+      ) : (
+        <ShipSummary summary={readableSummary(item.summary)} className="mt-2 text-sm" />
+      )}
+
+      {item.substanceNote ? (
+        <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{emailSafe(item.substanceNote)}</p>
+      ) : null}
+
+      {item.sourceUrl || action ? (
+        <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-2">
+          {item.sourceUrl ? (
+            <a
+              href={item.sourceUrl}
+              rel="nofollow noopener noreferrer"
+              target="_blank"
+              // Counted as an evidence open by the page's one listener (`ValueClicks`, 2026-10-05).
+              data-evidence="ship"
+              // At least 24px to press (WCAG 2.5.8; 2026-10-16, audit U13).
+              className="inline-flex min-h-6 items-center text-sm text-hey-ink underline decoration-hey-border-strong underline-offset-4 transition-colors hover:decoration-hey-ink"
+            >
+              View evidence
+              {/* Every row has this link: its accessible name says which ship, and that it leaves HEY (2026-10-19). */}
+              <span className="sr-only">: {emailSafe(shortenHexInText(plainText(item.title)))} (opens in a new tab)</span>
+            </a>
+          ) : null}
+          {action?.(item)}
+        </div>
+      ) : null}
+    </li>
   );
 }
 

@@ -544,6 +544,14 @@ or Build Momentum:
   measured (`builder_sources_unavailable`). The ships already recorded stay on the timeline and
   still set the activity status.
 
+**A frozen volume is unknown (`hbm-v32`, 2026-10-19, founder delegation).** No field changed
+shape; `scoringVersion` reads `hbm-v32` on a score written under it. A 24-hour volume one source
+repeated beside the same price for more than 36 hours — the figure the market status already
+refuses (`volume_unknown`, "Readings not confirmed", since `token-market-2026-10-16`) — is no
+volume for the scorer either: it never makes a market too thin (`market_too_thin`), never counts
+as a measured volume in `marketContextPercentile`, and `explain?fact=discovery_gap` shows no
+`volume24hUsd` for it. It only withholds, never awards.
+
 **A rescued market (`hbm-v21`, 2026-10-01).** A token whose market is active only because
 another pool of the same token holds the liquidity (market status reason
 `liquidity_in_another_pool`) is measured on the reading of that pool — its valuation, liquidity
@@ -1147,6 +1155,11 @@ detailUrl, observedAt?, freshness, reason? }`:
   a usage rollup the `usage` section calls `STALE`, a registry day over 3 days), `unknown` or
   `not_applicable`.
 - `detailUrl` — where the figures behind the line are on this API.
+- `latestChange` (2026-10-19) — the builder's newest change only: a ship, release, week of code, deploy, upgrade,
+  contract-verification or interface change, a change to an official source, the build pace or status HEY read, or a
+  verification. A market, market-integrity, usage, lock, token or holder-distribution event is never this line's answer
+  (it stays in `latestChanges` and `/api/changes`); with none of the builder's, the line says so. Reason
+  `builder_changes_read_failed` when HEY could not read them.
 
 A dimension that does not apply has no line (no `fundamentals` without a matched protocol, no
 `contract` for a tokenless project with no watched contract; `security` only when an OSV reading or a

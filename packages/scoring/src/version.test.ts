@@ -65,6 +65,7 @@ const RULES_DIGEST = createHash('sha256')
       // COMMIT_SUBSTANCE_VERSION above: a manifest of version moves only is maintenance (commit-substance-v4, hbm-v29).
       // DISCOVERY_GAP and UNDER_THE_RADAR above: a contested unverified ticker and a stale reading withhold the gap; UTR needs TYPICAL attention or lower (hbm-v30).
       // DISCOVERY_GAP and STILL_BUILDING above: a volume under $1,000 is a thin market; a contested ticker and unavailable builder sources withhold Still Building (hbm-v31).
+      // DISCOVERY_GAP above carries frozenVolumeIsUnknown: a frozen 24h volume is no volume for the scorer either (hbm-v32).
     }),
   )
   .digest('hex')
@@ -89,8 +90,8 @@ describe('scoring version', () => {
      * digest is the bug this test exists to catch.
      */
     expect({ version: SCORING_VERSION, rules: RULES_DIGEST }).toEqual({
-      version: 'hbm-v31',
-      rules: '1a233130f6833b31',
+      version: 'hbm-v32',
+      rules: '7629d23766104ade',
     });
   });
 });

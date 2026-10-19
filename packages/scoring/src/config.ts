@@ -363,6 +363,18 @@ export const DISCOVERY_GAP = {
    * and never reaches activity status or Build Momentum.
    */
   minVolume24hUsd: 1_000,
+  /**
+   * A frozen volume is no volume for the scorer either (hbm-v32, 2026-10-19,
+   * founder delegation "ok buat semua yang belum repair tu", backend audit
+   * P3-2): a 24h volume one source repeated beside the same price for more
+   * than `TOKEN_MARKET.repeatedVolumeMaxHours` — the reading the market
+   * classifier already refuses (token-market-2026-10-16, #134) — is unknown on
+   * the reading the gap is taken from: it never trips `minVolume24hUsd`, never
+   * counts as a measured volume in the market-context percentile and is no
+   * input to the valuation gate. One SQL fragment decides it for both
+   * (`frozenVolumeCtes` in `@hey/domain`). Only withholds, never awards.
+   */
+  frozenVolumeIsUnknown: true,
 } as const;
 
 /** Discovery Gap component weights (PRD V4 section 13.1). */

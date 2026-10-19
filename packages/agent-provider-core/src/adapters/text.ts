@@ -218,6 +218,12 @@ export function renderAgentResponseText(response: AgentIntelligenceResponse, opt
     );
   }
   if (detail === 'full' && response.evidence.length > 0) lines.push('', 'Evidence (typed ids; open with get_evidence or the receipt URL):', ...response.evidence.slice(0, 40).map((ref) => `- ${ref.id} — ${ref.receiptUrl}`));
+  if (detail === 'summary') {
+    // A summary still names every evidence id (2026-10-19): the ones no claim line above carries, by id only.
+    const shown = lines.join('\n');
+    const rest = response.evidence.slice(0, 40).map((ref) => ref.id).filter((id) => !shown.includes(id));
+    if (rest.length > 0) lines.push('', `Other evidence (open with get_evidence): ${rest.join(', ')}`);
+  }
   lines.push('');
   if (detail === 'full') lines.push(`Methodology: ${response.methodology.rules.map((rule) => `${rule.id} ${rule.version}`).join(', ')}.`);
   if (response.links.page) lines.push(`Page: ${response.links.page}${response.links.pageAttributed ? ` (attributed link ${response.links.pageAttributed})` : ''}`);
