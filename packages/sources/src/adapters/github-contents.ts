@@ -262,11 +262,15 @@ export function createGithubTreeAdapter(): SourceAdapter<GithubTreeInput, Github
  * An account's own public profile (2026-10-18, X-posted repositories): only the two links it declares —
  * the X handle (`twitter_username`) and its website (`blog`) — and whether it is a user or an organisation.
  * Read only for the owner of a repository a project's official X account posted, to ask whether the
- * repository's side names that account or the project's site back. No name, e-mail, location, follower
- * or repository count leaves the adapter.
+ * repository's side names that account or the project's site back. No name, e-mail, location or follower
+ * count leaves the adapter.
+ *
+ * And how many public repositories the account holds (`public_repos`, 2026-10-19, the site-link pointback
+ * ruling): a name shared by a small account's repository is a tie, the same name inside an organisation of
+ * hundreds is not (`builders/site-link-pointback.ts`). A count of the account's code, never of people.
  */
 export type GithubOwnerProfileInput = { owner: string; baseUrl?: string; token?: string };
-export type GithubOwnerProfile = { login: string; kind: 'User' | 'Organization' | 'Other'; twitterUsername?: string; blog?: string };
+export type GithubOwnerProfile = { login: string; kind: 'User' | 'Organization' | 'Other'; twitterUsername?: string; blog?: string; publicRepos?: number };
 
 const ownerProfileSchema = z
   .object({
@@ -274,6 +278,7 @@ const ownerProfileSchema = z
     type: z.string().max(40).nullish(),
     twitter_username: z.string().max(64).nullish(),
     blog: z.string().max(2_048).nullish(),
+    public_repos: z.number().int().nonnegative().nullish(),
   })
   .passthrough();
 
@@ -307,6 +312,7 @@ export function createGithubOwnerProfileAdapter(): SourceAdapter<GithubOwnerProf
               kind: raw.type === 'User' || raw.type === 'Organization' ? raw.type : 'Other',
               ...opt('twitterUsername', handle && X_HANDLE.test(handle) ? handle : undefined),
               ...opt('blog', blog && blog.length > 0 ? blog : undefined),
+              ...opt('publicRepos', typeof raw.public_repos === 'number' ? raw.public_repos : undefined),
             };
           },
         },

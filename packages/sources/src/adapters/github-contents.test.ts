@@ -94,7 +94,13 @@ describe('GitHub owner profile', () => {
     const stub = stubFetch({ status: 200, body: readFixture('github-owner-profile.json'), headers: { 'content-type': 'application/json' } });
     const result = await createGithubOwnerProfileAdapter().fetch({ owner: 'acme' }, testContext({ fetchImpl: stub.fetchImpl }));
     expect(stub.requests[0]!.url).toBe('https://api.github.com/users/acme');
-    expect(result.data).toEqual({ login: 'acme', kind: 'Organization', twitterUsername: 'acme_labs', blog: 'https://acme.example' });
+    expect(result.data).toEqual({ login: 'acme', kind: 'Organization', twitterUsername: 'acme_labs', blog: 'https://acme.example', publicRepos: 12 });
     expect(JSON.stringify(result.data)).not.toMatch(/team@|Earth|followers/);
+  });
+
+  it('leaves the repository count out when GitHub does not give it (unknown is not 0)', async () => {
+    const stub = stubFetch({ status: 200, body: JSON.stringify({ login: 'solo', type: 'User' }), headers: { 'content-type': 'application/json' } });
+    const result = await createGithubOwnerProfileAdapter().fetch({ owner: 'solo' }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.data).toEqual({ login: 'solo', kind: 'User' });
   });
 });
