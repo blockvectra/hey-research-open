@@ -94,8 +94,9 @@ describe('the HEY MCP server', () => {
     }
     // The whole list, output schemas included, costs a model less than the old 22-tool list's 19,179 bytes (round 4: per profile, `HEY_MCP_TOOL_LIST_BUDGET`),
     // plus get_v4_hook's 748 since 2026-10-11, plus 100 for the week's two lists, new-builders and new-on-hey (2026-10-17),
-    // plus 100 for Under the Radar's attention cap and withholds (2026-10-19).
-    expect(HEY_MCP_TOOL_LIST_BUDGET.full).toBe(20_200);
+    // plus 100 for Under the Radar's attention cap and withholds (2026-10-19), plus 300 for explain_fact's build.change and its
+    // event parameter (2026-10-20).
+    expect(HEY_MCP_TOOL_LIST_BUDGET.full).toBe(20_500);
     expect(JSON.stringify(tools).length).toBeLessThan(HEY_MCP_TOOL_LIST_BUDGET.full);
     // No tool promises a valuation, a recommendation or a price ranking.
     const descriptions = tools.map((tool) => tool.description ?? '').join(' ').toLowerCase();

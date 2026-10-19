@@ -7,6 +7,7 @@
  */
 
 import type { HeyChangePrecision, HeyChangeType } from './changes';
+import type { HeyChangeActivityState, HeyChangeReporter, HeyChangeStage } from './snapshot';
 import type { HeyActivityStatus, HeyLiquidityKind } from './projects';
 
 /* ---------------------------------------------------------------- builders */
@@ -556,6 +557,30 @@ export type HeyPartnerChange = {
   detected_at: string;
   evidence_id: string | null;
   url: string;
+  /**
+   * The change explained, compactly (2026-10-20, additive): the same object `explain?fact=build.change` answers with,
+   * in this card's words. Null when HEY could not read it.
+   */
+  explanation: HeyPartnerChangeExplanation | null;
+};
+
+/** The partner card's change explanation (2026-10-20): stage, attribution, link and limits; `explain_url` holds the rest. */
+export type HeyPartnerChangeExplanation = {
+  version: string;
+  headline: string;
+  stage: HeyChangeStage;
+  reported_by: HeyChangeReporter;
+  corroboration: 'corroborated' | 'not_corroborated' | 'not_applicable';
+  /** `established` only when the release text names the exact contract or implementation address; never by timing. */
+  release_deployment: 'established' | 'not_established' | 'not_applicable' | 'not_read';
+  activity: HeyChangeActivityState;
+  /** Whether calls succeeded is never measured. */
+  call_success: 'not_measured';
+  time_basis: 'source_dated' | 'observed_by_hey';
+  standing: 'standing' | 'withdrawn' | 'not_checked';
+  /** What HEY does not know, as codes (`deployment_not_observed`, `success_not_measured`, …). */
+  unknowns: string[];
+  explain_url: string;
 };
 
 /** One HEY Signal on the partner card (2026-09-30). */

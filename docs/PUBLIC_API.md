@@ -90,6 +90,7 @@ Every public read route answers an error in one envelope:
 | 400 | `invalid_cursor` | no | `/api/changes` was given a `cursor`, `after` or `before` HEY never issued |
 | 400 | `invalid_json` | no | a POST body (a receipt, a webhook subscription) is empty or not a JSON object |
 | 400 | `source_required` | no | `/explain?fact=source.counted` was asked without `source=` |
+| 400 | `invalid_event` | no | `/explain?fact=build.change` was given an `event` that is not a change-ledger id (2026-10-20) |
 | 401 | `unauthorized` | no | the key is not valid |
 | 401 | `key_required` | no | a keyed-only (bulk) route was called without a key |
 | 403 | `forbidden` | no | the key or account is held, or a partner key is not granted the route's group; `reason` says which |
@@ -1466,9 +1467,28 @@ or withheld), `market.status` (the classifier's inputs, including HEY's chain-in
 toward activity and why not), `market_integrity.state` (withheld while unpublished; once
 published, the stored evaluation read back — the collapse level, the level the market held and
 now, each with its day and source, and the ids of the events it stands behind; an exit-pattern
-classification is never named here). Without
+classification is never named here), `build.change` (2026-10-20: one change explained — the latest
+builder change, or `&event=<ledger id>` of this project; the answer adds `change`, below). Without
 `fact` the route lists them. An unknown fact is `400 unknown_fact`; `source.counted` without a
-source is `400 source_required`.
+source is `400 source_required`; an `event` that is not a ledger id is `400 invalid_event`, and one
+that is not a public change of this project is `404`.
+
+`change` (`HeyChangeExplanation`, `change-explain-v1`; the snapshot's `latestChange` summary line carries
+the same object) answers, from HEY's own tables and with no provider or model call: what changed (`what`,
+the ledger's words; `capability.named`, the team's own words quoted, null when no source names it — never
+inferred from a function name); the stage HEY observed (`stage.observed`, with `stage.notObserved`: an
+announcement is not code, code is not a deployment; `source_verification` is the explorer showing verified
+source and never a deployment); who reported it (`reportedBy.kind`) and what independently corroborates it
+(`corroboration`: a record HEY read itself — the chain, the explorer, a package version published from the
+same repository with the release's exact version, or HEY's review — never the team's own say-so); whether a
+release and a deployment are linked (`releaseDeployment.state`: `established` only when the stored release
+text names the exact contract or implementation address the project holds — never because they happened
+close together); activity on a contract tied to the change (`activity`: own-function calls apart from ERC-20
+calls over seven days, a shared contract as `SHARED_INFRASTRUCTURE`, unwatched or unread never zero,
+`success` always `not_measured`, and `aroundUrl` for the before/after read, which is observed context and
+never a cause); when (`time`: `occurredAt` null when no source dates it, apart from `detectedAt` and
+`recordedAt`); whether its evidence still stands (`standing`: evidence withdrawn since is never cited); and
+`unknowns[]`. The partner builder card carries a compact `latest_change.explanation` with an `explain_url`.
 
 ### `GET /api/evidence/{id}`
 

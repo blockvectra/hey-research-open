@@ -6,6 +6,12 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (2026-10-20)
+
+- `explain_fact` explains `build.change` — one change, the latest builder change or `event=<ledger id>` — and the
+  snapshot's Research Summary prints the latest change's explanation under its line, tagged DERIVED: stage, who
+  reported it, whether a release and a deployment are linked by an exact reference, activity, and what HEY does not know.
+
 ## 0.3.2 — 2026-10-16
 
 ### Changed (2026-10-16)

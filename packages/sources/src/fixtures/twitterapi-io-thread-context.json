@@ -1,0 +1,23 @@
+{
+  "_fixture": "FIXTURE, not a live answer: GET /twitter/tweet/thread_context in the shape docs.twitterapi.io documents (read 2026-10-20); page size is not fixed and the price is undocumented.",
+  "status": "success",
+  "msg": "success",
+  "tweets": [
+    {
+      "id": "1970000000000000001",
+      "text": "Does the chain SDK support batched calls?",
+      "createdAt": "2026-10-19T20:00:00.000Z",
+      "author": { "id": "7000000000000000007", "userName": "asker" }
+    },
+    {
+      "id": "1980000000000000015",
+      "text": "@asker yes, the SDK supports it",
+      "createdAt": "2026-10-20T03:00:00.000Z",
+      "isReply": true,
+      "inReplyToId": "1970000000000000001",
+      "author": { "id": "2000000000000000001", "userName": "chain_dev" }
+    }
+  ],
+  "has_next_page": true,
+  "next_cursor": "THREAD-CURSOR-1"
+}

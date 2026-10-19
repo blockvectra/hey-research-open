@@ -337,7 +337,7 @@ export function BubbleList({
                   href={`${explorerBase.replace(/\/$/, '')}/address/${node.address}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="truncate font-mono text-t-meta underline decoration-hey-border-strong underline-offset-4 hover:decoration-hey-ink"
+                  className="-my-1.5 truncate py-1.5 font-mono text-t-meta underline decoration-hey-border-strong underline-offset-4 hover:decoration-hey-ink"
                 >
                   {node.label ?? short(node.address)}
                 </a>

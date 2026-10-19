@@ -366,6 +366,11 @@ export function EcosystemMapChart({
       {placed.map((node) => (
         <a key={node.slug} href={`/project/${node.slug}`} aria-label={node.name}>
           <title>{mapNodeTooltip(node, now)}</title>
+          {/*
+            The target, drawn by nothing (2026-10-20, every-page pass): a small project is a 14px circle, and the map is
+            also the tablet's view, so each node takes at least a 24-unit circle to tap. Transparent, under the marks.
+          */}
+          <circle cx={node.x} cy={node.y} r={Math.max(node.r + 5, 12)} fill="transparent" data-map-hit="" />
           {node.hue === UNCLASSIFIED_HUE ? (
             // No narrative: an outline, never a narrative's colour. The transparent fill keeps the whole circle a link.
             <circle

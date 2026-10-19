@@ -1,0 +1,40 @@
+{
+  "_fixture": "FIXTURE, not a live answer: GET /twitter/tweets in the shape docs.twitterapi.io documents (read 2026-10-20). Three ids asked; one is left out (deleted, private or suspended: the provider does not say), one entry has an empty id, one is a post nobody asked for.",
+  "status": "success",
+  "code": 0,
+  "msg": "success",
+  "tweets": [
+    {
+      "type": "tweet",
+      "id": "1846000000000000005",
+      "url": "https://x.com/agentos_hq/status/1846000000000000005",
+      "text": "v2.4 is out: agent memory and a new router. Release notes https://t.co/rel1",
+      "createdAt": "2026-10-17T14:02:11.000Z",
+      "retweetCount": 51,
+      "replyCount": 9,
+      "likeCount": 340,
+      "quoteCount": 2,
+      "viewCount": 18233,
+      "bookmarkCount": 4,
+      "isReply": false,
+      "author": { "type": "user", "userName": "agentos_hq", "id": "1567890123456789012", "followers": 12873, "following": 12 },
+      "entities": { "urls": [{ "expanded_url": "https://github.com/agentos/agentos/releases/tag/v2.4.0", "url": "https://t.co/rel1" }] }
+    },
+    {
+      "type": "tweet",
+      "id": "1846000000000000004",
+      "text": "Edited: the testnet faucet moved to https://t.co/f",
+      "createdAt": "2026-10-16T09:00:00.000Z",
+      "author": { "id": "1567890123456789012", "userName": "agentos_hq" },
+      "entities": { "urls": [{ "expanded_url": "https://docs.agentos.example/faucet", "url": "https://t.co/f" }] }
+    },
+    { "type": "tweet", "id": "", "text": "" },
+    {
+      "type": "tweet",
+      "id": "1999999999999999999",
+      "text": "Not asked for",
+      "createdAt": "2026-10-16T09:00:00.000Z",
+      "author": { "id": "42" }
+    }
+  ]
+}

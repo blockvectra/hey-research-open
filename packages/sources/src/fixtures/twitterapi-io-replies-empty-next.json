@@ -1,0 +1,8 @@
+{
+  "_fixture": "FIXTURE, not a live answer: the documented 'known platform limitation' (docs.twitterapi.io, read 2026-10-20): has_next_page is true but the page is empty.",
+  "status": "success",
+  "msg": "success",
+  "tweets": [],
+  "has_next_page": true,
+  "next_cursor": "REPLIES-CURSOR-1"
+}

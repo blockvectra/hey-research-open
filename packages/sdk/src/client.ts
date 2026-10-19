@@ -450,14 +450,15 @@ export class HeyClient {
     /** `GET /api/projects/{slug}/coverage`: what HEY knows and does not, per dimension, as states — never a score. */
     coverage: (slug: string): Promise<HeyProjectCoverage> => this.get(`/api/projects/${encodeURIComponent(slug)}/coverage`),
     /**
-     * `GET /api/projects/{slug}/explain?fact=&source=`: why HEY publishes a
+     * `GET /api/projects/{slug}/explain?fact=&source=&event=`: why HEY publishes a
      * fact, from the persisted evaluation. Without `fact`, the facts HEY can
-     * explain for this project.
+     * explain for this project. `event` (with `build.change`, 2026-10-20): a
+     * ledger event id of this project; without it, the latest builder change.
      */
-    explain: ((slug: string, fact?: HeyExplainFact, options: { source?: string } = {}): Promise<HeyExplainedFact | HeyExplainIndex> =>
-      this.get(`/api/projects/${encodeURIComponent(slug)}/explain`, { fact, source: options.source })) as {
+    explain: ((slug: string, fact?: HeyExplainFact, options: { source?: string; event?: string } = {}): Promise<HeyExplainedFact | HeyExplainIndex> =>
+      this.get(`/api/projects/${encodeURIComponent(slug)}/explain`, { fact, source: options.source, event: options.event })) as {
       (slug: string): Promise<HeyExplainIndex>;
-      (slug: string, fact: HeyExplainFact, options?: { source?: string }): Promise<HeyExplainedFact>;
+      (slug: string, fact: HeyExplainFact, options?: { source?: string; event?: string }): Promise<HeyExplainedFact>;
     },
     /**
      * `GET /api/projects/{slug}/history?series=&from=&to=`: the points HEY

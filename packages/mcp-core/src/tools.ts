@@ -75,7 +75,8 @@ export const HEY_MCP_PROFILE_PATHS: Readonly<Record<HeyMcpProfile, string>> = { 
  * hbm-v30 attention cap and the gap's two withholds, and drops "it does not
  * bound attention itself"; the full list measures 20,164.
  */
-export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_200, research: 11_000 };
+// +300 each for explain_fact's build.change and its `event` parameter (2026-10-20, one change explained).
+export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_500, research: 11_300 };
 
 export type HeyMcpToolInfo = {
   name: string;

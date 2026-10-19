@@ -1,0 +1,16 @@
+{
+  "_fixture": "FIXTURE, not a live answer: GET /twitter/tweet/quotes (includeReplies=false) in the shape docs.twitterapi.io documents (read 2026-10-20).",
+  "status": "success",
+  "msg": "success",
+  "tweets": [
+    {
+      "id": "1980000000000000201",
+      "text": "Good thread. Builders: check your log ranges before Nov 1.",
+      "createdAt": "2026-10-20T10:00:00.000Z",
+      "author": { "id": "2000000000000000002", "userName": "grants_prog" },
+      "quoted_tweet": { "id": "1980000000000000010" }
+    }
+  ],
+  "has_next_page": false,
+  "next_cursor": ""
+}

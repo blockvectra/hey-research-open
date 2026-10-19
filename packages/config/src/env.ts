@@ -243,6 +243,25 @@ export const serverEnvSchema = z
         .pipe(z.number().finite().nonnegative().optional()),
     }),
 
+    /*
+     * Bounded X research (2026-10-20, founder; CLAUDE.md cost rule 7, the "bounded X research" amendment;
+     * docs/X_RESEARCH.md). Four switches, each exactly "true" to turn on, all off by default; production enables
+     * none until the founder's rollout. Switching one off leaves every earlier X path as it was.
+     *
+     *  - X_ANNOUNCEMENTS_ENABLED: derive announcements from confirmed official posts already stored (no provider
+     *    call) and label them on the project page's "Posted on X";
+     *  - X_ECOSYSTEM_WATCH_ENABLED: read the operator-verified ecosystem accounts (needs twitterapi.io on and keyed);
+     *  - X_OPPORTUNITIES_ENABLED: build the admin review queue (no provider call) and, with twitterapi.io on and
+     *    keyed, read the replies, quotes and thread of a shortlisted item;
+     *  - X_POST_RECHECK_ENABLED: re-read kept posts by id and withdraw the ones not returned (needs twitterapi.io).
+     */
+    xResearch: z.object({
+      announcements: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+      ecosystemWatch: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+      opportunities: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+      postRecheck: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+    }),
+
     /** Signs builder session cookies. Required only for write flows. */
     sessionSecret: optionalString,
 
@@ -840,6 +859,12 @@ function shapeEnv(raw: RawEnv) {
       apiKey: raw.TWITTERAPI_IO_KEY,
       dailyCredits: raw.TWITTERAPI_IO_DAILY_CREDITS,
     },
+    xResearch: {
+      announcements: raw.X_ANNOUNCEMENTS_ENABLED,
+      ecosystemWatch: raw.X_ECOSYSTEM_WATCH_ENABLED,
+      opportunities: raw.X_OPPORTUNITIES_ENABLED,
+      postRecheck: raw.X_POST_RECHECK_ENABLED,
+    },
     github: {
       clientId: raw.GITHUB_CLIENT_ID,
       clientSecret: raw.GITHUB_CLIENT_SECRET,
@@ -970,6 +995,10 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'twitterapiIo.enabled': 'TWITTERAPI_IO_ENABLED',
   'twitterapiIo.apiKey': 'TWITTERAPI_IO_KEY',
   'twitterapiIo.dailyCredits': 'TWITTERAPI_IO_DAILY_CREDITS',
+  'xResearch.announcements': 'X_ANNOUNCEMENTS_ENABLED',
+  'xResearch.ecosystemWatch': 'X_ECOSYSTEM_WATCH_ENABLED',
+  'xResearch.opportunities': 'X_OPPORTUNITIES_ENABLED',
+  'xResearch.postRecheck': 'X_POST_RECHECK_ENABLED',
   'github.clientId': 'GITHUB_CLIENT_ID',
   'github.clientSecret': 'GITHUB_CLIENT_SECRET',
   'github.publicApiToken': 'GITHUB_PUBLIC_API_TOKEN',
@@ -1157,6 +1186,29 @@ export function marketIntegrityExitLabelsVisible(env: ServerEnv, surface: 'admin
  */
 export function isTwitterApiIoEnabled(env: ServerEnv): boolean {
   return env.twitterapiIo.enabled && typeof env.twitterapiIo.apiKey === 'string' && env.twitterapiIo.apiKey.length > 0;
+}
+
+/**
+ * Bounded X research (2026-10-20). Announcements and the opportunity queue make no provider call and need only
+ * their own switch (and are read in the web process, which never holds the key); everything that asks twitterapi.io
+ * also needs `isTwitterApiIoEnabled` — the master switch turns every X read off at once. These three are the
+ * worker's checks: the web never holds the key, so its checks read `workerXResearchSwitches` (apps/web
+ * `lib/admin-config.ts`), which takes the key's presence from `HEY_WORKER_HAS_TWITTERAPI_IO_KEY`.
+ */
+export function isXAnnouncementsEnabled(env: ServerEnv): boolean {
+  return env.xResearch.announcements;
+}
+export function isXOpportunitiesEnabled(env: ServerEnv): boolean {
+  return env.xResearch.opportunities;
+}
+export function isXOpportunityContextEnabled(env: ServerEnv): boolean {
+  return env.xResearch.opportunities && isTwitterApiIoEnabled(env);
+}
+export function isXEcosystemWatchEnabled(env: ServerEnv): boolean {
+  return env.xResearch.ecosystemWatch && isTwitterApiIoEnabled(env);
+}
+export function isXPostRecheckEnabled(env: ServerEnv): boolean {
+  return env.xResearch.postRecheck && isTwitterApiIoEnabled(env);
 }
 
 export function isAiEnabled(env: ServerEnv): boolean {

@@ -6,6 +6,15 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (2026-10-20, one change explained)
+
+- `HeyExplainFact` gains `'build.change'`; `projects.explain(slug, 'build.change', { event })` takes an optional
+  change-ledger id. `HeyExplainedFact.change` and `HeySummaryLine.change` (on the latest-change line) carry
+  `HeyChangeExplanation`: the stage HEY observed, who reported it and what corroborates it, whether a release and a
+  deployment are linked by an exact reference, activity on a contract tied to it (`success` always `not_measured`),
+  the source's date apart from HEY's, standing and unknowns. New types `HeyChangeStage`, `HeyChangeReporter`,
+  `HeyChangeActivityState`, `HeyPartnerChangeExplanation`; `HeyPartnerChange.explanation` (null when not read).
+
 ## 0.3.3 — 2026-10-18
 
 Prepared in the repository; published to npm by hand. The API's own dated record is

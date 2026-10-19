@@ -6,6 +6,7 @@
 import type { HeyCodeWeek, HeyDiscoveryGapWithheld, HeyProject, HeyStillBuildingState, HeyStillBuildingWithheld, HeyUnderTheRadar } from './projects';
 import type { HeyPeerContext } from './graph';
 import type { HeyUsageSummary } from './usage';
+import type { HeyChangePrecision, HeyChangeType } from './changes';
 
 /* ------------------------------------------------------------- coverage */
 
@@ -108,7 +109,9 @@ export type HeyExplainFact =
   | 'research.level'
   | 'token.verification'
   | 'source.counted'
-  | 'market_integrity.state';
+  | 'market_integrity.state'
+  /** One change explained (2026-10-20): the latest builder change, or `event=<ledger id>`. */
+  | 'build.change';
 
 export type HeyExplainInputValue = string | number | boolean | null | (string | number)[];
 
@@ -132,7 +135,101 @@ export type HeyExplainedFact = {
   evidence: { id: string; url: string }[];
   unknownInputs: string[];
   reason: string;
+  /** With `fact=build.change` only (2026-10-20, additive): the change explained. */
+  change?: HeyChangeExplanation;
   disclaimer: string;
+};
+
+/* --------------------------------------------------- change explanation */
+
+/** The stage HEY observed for one change. `source_verification` is the explorer showing verified source, never a deployment. */
+export type HeyChangeStage =
+  | 'announcement'
+  | 'code'
+  | 'maintenance'
+  | 'release'
+  | 'deployment'
+  | 'upgrade'
+  | 'interface'
+  | 'source_verification'
+  | 'site_change'
+  | 'owner_update'
+  | 'hey_reading';
+
+/** Who reported a change: the team's own unchecked word, the team's own source, a record HEY read itself, or HEY. */
+export type HeyChangeReporter = 'team_self_report' | 'team_source' | 'chain_record' | 'explorer_record' | 'third_party_record' | 'hey_reading';
+
+/** Activity on a contract tied to a change; never a zero standing in for unknown. */
+export type HeyChangeActivityState = 'MEASURED' | 'PARTIAL' | 'STALE' | 'NOT_WATCHED' | 'SHARED_INFRASTRUCTURE' | 'NOT_APPLICABLE' | 'NOT_READ';
+
+/**
+ * One change, explained (2026-10-20, `change-explain-v1`): what changed, what the team's words name, the stage HEY
+ * observed (an announcement is not code, code is not a deployment, a deployment is not adoption), who reported it and
+ * what independently corroborates it, whether a release and a deployment are linked by an exact reference (the release
+ * text naming the exact address — never timing), activity on a contract tied to it (own functions apart from ERC-20
+ * calls; whether calls succeeded is never measured), what HEY does not know, and the source's date apart from HEY's.
+ * Evidence withdrawn since is never cited and is listed under `standing`.
+ */
+export type HeyChangeExplanation = {
+  version: string;
+  eventId: string;
+  type: HeyChangeType;
+  /** The first typed evidence id the change cites that still stands; null when none does. */
+  evidenceId: string | null;
+  what: string;
+  /** The one line every surface prints. */
+  headline: string;
+  capability: {
+    /** The team's own words, quoted; null when no source names what changed (never inferred from function names). */
+    named: string | null;
+    basis: 'release_text' | 'team_text' | 'site_text' | 'code_week' | 'abi_diff' | 'not_held';
+    text: string;
+  };
+  stage: { observed: HeyChangeStage; basis: 'ship_type' | 'feed_classification' | 'ledger_type'; notObserved: HeyChangeStage[]; text: string };
+  reportedBy: { kind: HeyChangeReporter; text: string };
+  corroboration: {
+    state: 'corroborated' | 'not_corroborated' | 'not_applicable';
+    by: { kind: 'chain_record' | 'explorer_record' | 'package_publication' | 'moderator'; evidenceId?: string; detail?: string }[];
+    text: string;
+  };
+  releaseDeployment: {
+    state: 'established' | 'not_established' | 'not_applicable' | 'not_read';
+    basis?: 'release_names_contract' | 'release_names_implementation';
+    contracts: string[];
+    evidence: string[];
+    reason?: 'no_exact_reference' | 'release_text_truncated' | 'read_failed';
+    text: string;
+  };
+  activity: {
+    state: HeyChangeActivityState;
+    scope: 'contract' | 'none';
+    contract?: { chainId: number; address: string; role: 'token' | 'declared' | 'followup' | 'not_held'; shared: boolean };
+    window: { from: string; to: string; days: number; daysCovered: number } | null;
+    ownFunctionCalls: number | null;
+    tokenStandardCalls: number | null;
+    success: 'not_measured';
+    /** The before/after read on this API (observed context, never a cause), when it opens on this change. */
+    aroundUrl?: string;
+    text: string;
+  };
+  time: {
+    /** The source's date; null when only HEY's observation dates it. */
+    occurredAt: string | null;
+    precision: HeyChangePrecision;
+    detectedAt: string;
+    recordedAt: string;
+    origin: 'live' | 'bootstrap' | 'backfill';
+    basis: 'source_dated' | 'observed_by_hey';
+    lateIndexed: boolean;
+    text: string;
+  };
+  standing: { state: 'standing' | 'withdrawn' | 'not_checked'; withdrawnEvidence: { id: string; reason: string }[] };
+  /** Typed ids that still stand behind the statements, each with its receipt on this API. */
+  evidence: { id: string; receiptUrl: string }[];
+  unknowns: { code: string; text: string }[];
+  limit: string;
+  /** `GET /api/projects/{slug}/explain?fact=build.change&event=<id>`. */
+  explainUrl: string;
 };
 
 /** A bare `GET /api/projects/{slug}/explain`: the facts HEY can explain. */
@@ -360,6 +457,8 @@ export type HeySummaryLine = {
   answer?: string;
   /** Why the newest counted building event matters as a build event, with the typed evidence id it is about (2026-10-01). */
   significance?: { text: string; about: string; receiptUrl: string };
+  /** On the latest-change line (2026-10-20, additive): the change explained, as `explain?fact=build.change` answers. */
+  change?: HeyChangeExplanation;
 };
 
 /** The Project Research Summary: one line per dimension that applies. */

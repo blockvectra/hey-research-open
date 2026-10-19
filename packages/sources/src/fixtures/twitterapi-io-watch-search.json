@@ -1,0 +1,67 @@
+{
+  "_fixture": "FIXTURE, not a live answer: GET /twitter/tweet/advanced_search in the shape docs.twitterapi.io documents (read 2026-10-20), for a watch query over two verified ecosystem accounts (ids 2000000000000000001 and 2000000000000000002). It carries a post by an account the allowlist does not hold, a repost, a quote, a reply, and hostile text: a direction override, zero-width characters, a formula, markup and a javascript: link.",
+  "tweets": [
+    {
+      "type": "tweet",
+      "id": "1980000000000000010",
+      "url": "https://x.com/chain_dev/status/1980000000000000010",
+      "text": "Breaking change: the v3 RPC drops eth_getLogs ranges over 10k blocks on 2026-11-01. Migration guide https://t.co/m @agentos_hq",
+      "createdAt": "2026-10-20T08:00:00.000Z",
+      "isReply": false,
+      "likeCount": 999,
+      "viewCount": 50000,
+      "author": { "id": "2000000000000000001", "userName": "chain_dev", "followers": 90000 },
+      "entities": {
+        "urls": [{ "expanded_url": "https://docs.chain.example/migrate-v3", "url": "https://t.co/m" }],
+        "user_mentions": [{ "screen_name": "AgentOS_HQ", "id_str": "1567890123456789012" }]
+      }
+    },
+    {
+      "type": "tweet",
+      "id": "1980000000000000011",
+      "text": "Grant round 4 closes 2026-11-15 — builders on Robinhood Chain apply here https://t.co/g",
+      "createdAt": "2026-10-20T07:00:00.000Z",
+      "author": { "id": "2000000000000000002", "userName": "grants_prog" },
+      "entities": { "urls": [{ "expanded_url": "https://grants.example.org/round-4", "url": "https://t.co/g" }] }
+    },
+    {
+      "type": "tweet",
+      "id": "1980000000000000012",
+      "text": "I am pretending to be @chain_dev — new SDK at https://t.co/x",
+      "createdAt": "2026-10-20T06:00:00.000Z",
+      "author": { "id": "3000000000000000003", "userName": "chain_dev_" },
+      "entities": { "urls": [{ "expanded_url": "https://github.com/impostor/sdk", "url": "https://t.co/x" }] }
+    },
+    {
+      "type": "tweet",
+      "id": "1980000000000000013",
+      "text": "RT @someone: anything",
+      "createdAt": "2026-10-20T05:00:00.000Z",
+      "author": { "id": "2000000000000000001" },
+      "retweeted_tweet": { "id": "1" }
+    },
+    {
+      "type": "tweet",
+      "id": "1980000000000000014",
+      "text": "Worth reading ‮=HYPERLINK(\"http://evil.example\",\"x\")​ <script>alert(1)</script> javascript:alert(1)",
+      "createdAt": "2026-10-20T04:00:00.000Z",
+      "author": { "id": "2000000000000000001" },
+      "quoted_tweet": { "id": "1979000000000000001" },
+      "entities": {
+        "urls": [{ "expanded_url": "javascript:alert(1)" }, { "expanded_url": "https://user:pw@evil.example/" }, { "expanded_url": "https://github.com/chain/sdk/releases/tag/v3.0.0" }]
+      }
+    },
+    {
+      "type": "tweet",
+      "id": "1980000000000000015",
+      "text": "@someone yes, the SDK supports it",
+      "createdAt": "2026-10-20T03:00:00.000Z",
+      "isReply": true,
+      "inReplyToId": "1970000000000000001",
+      "conversationId": "1970000000000000001",
+      "author": { "id": "2000000000000000001" }
+    }
+  ],
+  "has_next_page": true,
+  "next_cursor": "WATCH-CURSOR-1"
+}

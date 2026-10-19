@@ -1,5 +1,6 @@
 import type {
   HeyBuildMarket,
+  HeyChangeExplanation,
   HeyContract,
   HeyDeveloperFootprint,
   HeyEconomicsMetric,
@@ -191,6 +192,8 @@ export function summaryLines(summary: HeyResearchSummary | undefined, sourceTitl
     // A line that repeats a ship's title carries a source's words and is quoted whole, as the agent contract types it (round 4); every other line is HEY's.
     const quotesSource = sourceTitles.some((title) => title.length > 0 && line.text.includes(title));
     out.push(`- ${line.tag} ${line.label}: ${quotesSource ? composedWords(line.text, 'research_summary_quoting_source') : derivedWords(line.text)}${stale}${reason}${evidence}`);
+    // The latest change explained (2026-10-20): HEY's own reading of the record, never stronger than the API's object.
+    if (line.change) out.push(`  ${changeExplanationLine(line.change)}`);
   }
   out.push('  Each line has a detailUrl and, for its evidence ids, a receiptUrl on the snapshot; get_evidence id=<id> reads one.', '');
   return out;
@@ -489,6 +492,33 @@ export function renderCoverage(c: HeyProjectCoverage): string {
 const inputValue = (value: unknown): string => (value === null ? 'null (not held)' : Array.isArray(value) ? value.join(', ') : String(value));
 
 /** `GET /api/projects/{slug}/explain?fact=` as text: the engine's state, never a stronger one. */
+/**
+ * One change explained, in one line (2026-10-20): the API's own headline and states, tagged DERIVED — the stage, who
+ * reported it and the link are HEY's reading of the record. Nothing is added the API object does not hold.
+ */
+export function changeExplanationLine(change: HeyChangeExplanation): string {
+  const unknown = change.unknowns.length > 0 ? ` Not known: ${change.unknowns.map((entry) => entry.code).join(', ')}.` : '';
+  return `DERIVED this change: ${derivedWords(change.headline)} (stage ${change.stage.observed}; reported by ${change.reportedBy.kind}; release↔deployment ${change.releaseDeployment.state}; activity ${change.activity.state}, call success not measured; time ${change.time.basis}).${unknown} explain_fact fact=build.change event=${change.eventId}.`;
+}
+
+/** The change explanation's sentences, each once, for `explain_fact fact=build.change`. */
+function changeExplanationBlock(change: HeyChangeExplanation): string[] {
+  const lines = [
+    '',
+    `Change ${change.eventId} (${change.type}) — ${derivedWords(change.headline)}`,
+    `- What it names: ${change.capability.named === null ? derivedWords(change.capability.text) : composedWords(change.capability.text, 'change_capability_quoting_source')}`,
+    `- Stage: ${change.stage.observed} (${change.stage.basis}). ${derivedWords(change.stage.text)}${change.stage.notObserved.length > 0 ? ` Not observed: ${change.stage.notObserved.join(', ')}.` : ''}`,
+    `- Reported by: ${change.reportedBy.kind}. ${derivedWords(change.corroboration.text)}`,
+    `- Release and deployment: ${change.releaseDeployment.state}. ${derivedWords(change.releaseDeployment.text)}`,
+    `- Activity: ${change.activity.state}. ${derivedWords(change.activity.text)}`,
+    `- When: ${derivedWords(change.time.text)} (occurredAt ${change.time.occurredAt ?? 'null'}, ${change.time.precision}; detectedAt ${change.time.detectedAt.slice(0, 16).replace('T', ' ')} UTC)`,
+  ];
+  if (change.standing.withdrawnEvidence.length > 0) lines.push(`- Withdrawn since (not cited): ${change.standing.withdrawnEvidence.map((entry) => `${entry.id} (${entry.reason})`).join(', ')}.`);
+  if (change.unknowns.length > 0) lines.push('- UNKNOWN:', ...change.unknowns.map((entry) => `  - ${entry.code}: ${derivedWords(entry.text)}`));
+  lines.push(`- Limit: ${change.limit}`);
+  return lines;
+}
+
 export function renderExplained(e: HeyExplainedFact): string {
   const lines: string[] = [`# Why HEY shows ${e.fact} for ${quotedName(e.project.name)}`, e.project.url, ''];
   lines.push(`${e.state} ${e.fact}: ${inputValue(e.value)} — ${e.classification}`);
@@ -499,6 +529,7 @@ export function renderExplained(e: HeyExplainedFact): string {
   if (e.lineage.length > 0) lines.push('', 'Lineage:', ...e.lineage.map((step) => `- ${step.step}: ${step.text}`));
   if (e.unknownInputs.length > 0) lines.push('', `UNKNOWN inputs HEY does not hold: ${e.unknownInputs.join(', ')}.`);
   if (e.evidence.length > 0) lines.push('', 'Evidence (open with get_evidence):', ...e.evidence.map((item) => `- ${item.id} — ${item.url}`));
+  if (e.change) lines.push(...changeExplanationBlock(e.change));
   lines.push('', `Reason: ${e.reason}`, TAG_LEGEND, e.disclaimer);
   return lines.join('\n');
 }

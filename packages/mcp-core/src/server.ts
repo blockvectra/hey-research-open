@@ -159,7 +159,7 @@ const FACTS = ['token', 'x', 'marketCap', 'launchpad', 'liveMarket', 'verifiedTo
 const STAGES = ['curve', 'graduated', 'dex'] as const;
 const AGES = ['day', 'week', 'month', 'older'] as const;
 const RADAR = ['all', 'pons', 'virtuals', 'other-launch', 'no-token', 'new', 'established', 'most-improved', 'development', 'onchain', 'resumed'] as const satisfies readonly HeyBuilderFilter[];
-const EXPLAIN = ['market.valuation', 'market.status', 'activity.status', 'build.momentum', 'discovery_gap', 'still_building', 'research.level', 'token.verification', 'source.counted', 'market_integrity.state'] as const satisfies readonly HeyExplainFact[];
+const EXPLAIN = ['market.valuation', 'market.status', 'activity.status', 'build.momentum', 'discovery_gap', 'still_building', 'research.level', 'token.verification', 'source.counted', 'market_integrity.state', 'build.change'] as const satisfies readonly HeyExplainFact[];
 const ALL_EXPLAIN: [Exclude<HeyExplainFact, (typeof EXPLAIN)[number]>] extends [never] ? true : false = true;
 void ALL_EXPLAIN;
 
@@ -743,22 +743,24 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         ...describe('explain_fact', [
           'Why does HEY say a project is Shipping, Dormant or Still Building, or show a figure? The value, FACT, DERIVED or UNKNOWN, the rule and version, the winning source, the inputs,',
           'the lineage and the evidence ids. Omit fact to list what can be explained; source.counted takes a source id.',
+          'build.change explains one change (event=<ledger id>, or the latest): its stage, who reported it, any exact release↔deployment link, what HEY does not know.',
         ]),
         inputSchema: {
           slug,
           fact: z.enum(facts as [HeyExplainFact, ...HeyExplainFact[]]).optional(),
           source: z.string().max(80).optional().describe('With fact=source.counted: the source id.'),
+          event: z.string().max(240).optional().describe('With fact=build.change: a change-ledger id; omit for the latest.'),
         },
       },
-      async ({ slug, fact, source }) => {
-        const canonical = apiUrl(`/api/projects/${encodeURIComponent(slug)}/explain`, { fact, source });
+      async ({ slug, fact, source, event }) => {
+        const canonical = apiUrl(`/api/projects/${encodeURIComponent(slug)}/explain`, { fact, source, event });
         if (!fact)
           return run('explain_fact', canonical, async () => {
             const index = await client.projects.explain(slug);
             return api(index, renderExplainIndex(index));
           }, slug);
         return run('explain_fact', canonical, async () => {
-          const explained = await client.projects.explain(slug, fact, source ? { source } : {});
+          const explained = await client.projects.explain(slug, fact, { ...(source ? { source } : {}), ...(event ? { event } : {}) });
           return api(explained, renderExplained(explained));
         }, slug);
       },
