@@ -11,7 +11,7 @@ import { envelope, evidenceRef, looksLikeEvidenceId, type AgentComposeContext } 
  * compare_builders (2026-09-30): two to four projects' building records side
  * by side over HEY's 30-day windows, restated from `/api/compare` (the
  * figures each project page shows, with the same gates) and each project's
- * peer cohort (`peers-v1`).
+ * peer cohort (`peers-v2`).
  *
  * Builder metrics only. The comparison's market fields are left out here on
  * purpose and listed as excluded: a side-by-side of valuations is a question
@@ -164,10 +164,10 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
       ignored: input.compare.ignoredSlugs.slice(0, 8).map((slug) => slug.slice(0, 120)),
       sameCohort,
       order: 'as_requested',
-      method: heyText('The figures each project page shows, side by side, with the same gates: builder metrics only. No winner, no ranking, no combined score. Projects in different peer cohorts are shown side by side and never placed against each other (peers-v1).'),
+      method: heyText('The figures each project page shows, side by side, with the same gates: builder metrics only. No winner, no ranking, no combined score. Projects in different peer cohorts are shown side by side and never placed against each other (peers-v2).'),
       excludedContext: EXCLUDED_FROM_COMPARISON.map((entry) => ({ item: entry.item, statement: heyText(entry.statement) })),
     },
-    rules: [{ id: 'peers', version: projects.find((project) => project.peer)?.peer?.rulesVersion ?? 'peers-v1' }],
+    rules: [{ id: 'peers', version: projects.find((project) => project.peer)?.peer?.rulesVersion ?? 'peers-v2' }],
     canonical: [`${ctx.baseUrl}/api/compare?slugs=${projects.map((project) => project.slug).join(',')}`],
   });
 }

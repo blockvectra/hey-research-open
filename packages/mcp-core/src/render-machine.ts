@@ -784,7 +784,7 @@ export function renderBuildMarket(page: HeyBuildMarket): string {
 }
 
 /**
- * Peer context in the snapshot (2026-09-28, peers-v1), no stronger than the
+ * Peer context in the snapshot (2026-09-28, peers-v2), no stronger than the
  * API: each measured figure's own line, restated verbatim; a figure whose
  * cohort is too small says so; nothing is combined into one number, and a
  * position against a median is never a judgement.

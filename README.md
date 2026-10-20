@@ -690,7 +690,7 @@ apart from HEY's own readings): every such row says "provider archive", with the
 read it, and the archive never supplies a liquidity or a valuation. It is display context only — no
 status, score, gap, badge, signal or order reads it.
 
-HEY also runs this across its whole record, for its own use (rules `before-attention-v1`): every
+HEY also runs this across its whole record, for its own use (rules `before-attention-v2`): every
 meaningful ship it knew of at the time, set against quiet builders on the same days. T0 is when HEY
 first held the work, never the source's date; work HEY read late or the change ledger took as
 backfill is excluded and counted; every exclusion, every unmeasured window and both tails of the case

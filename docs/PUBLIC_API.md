@@ -1330,7 +1330,7 @@ Never an input to activity status, Build Momentum, the Discovery Gap, Still Buil
 
 ### `snapshot.peerContext` (2026-09-28, additive)
 
-Peer context, rules `peers-v1`: some of the project's published
+Peer context, rules `peers-v2` (since 2026-10-20; `peers-v1` before): some of the project's published
 figures placed among comparable projects — same type (primary narrative × meme/product), same
 metric definition, same window, measured figures only. `state` is `COMPUTED`, `NO_COHORT` (with
 `reason`: `no_primary_narrative`, `narrative_not_a_type`, `kind_not_classified`) or
@@ -1345,6 +1345,13 @@ run has not replaced the context in 36 hours — or null when nothing was comput
 `reason: "recomputing_after_scoring_change"` until the next run. There is no overall figure, and
 peer context is never an input to anything. Absent only when the read failed. SDK:
 `HeyPeerContext`.
+
+**`peers-v2` (2026-10-20), a definition change of one metric:** `contract_calls_7d` ("Own-function calls · 7 d")
+counts calls to the watched contracts' own functions only; ERC-20 transfers, approvals and other token-standard
+calls — which a token's trading alone produces — are left out (product usage rules 1–3). Under `peers-v1` it counted
+every call. The key is unchanged and `rulesVersion` says which definition a figure was read under; a context whose
+stored run is from an earlier version reads `NOT_COMPUTED` with `reason: "rules_version_changed"` until the next daily
+run, so v1 and v2 figures are never mixed. The token-standard calls stay in `snapshot.usage.figures.erc20Calls`.
 
 ### `GET /api/projects/{slug}/relationships` (2026-09-28)
 
@@ -2675,7 +2682,7 @@ Every answer carries:
 - `evidence[]` — every id the answer cites, once, each resolvable at `/api/evidence/{id}`;
 - `data` — the capability's own payload (below), or null on a refusal;
 - `methodology.rules` — the rule versions it restates (`activity.status` at the scoring version,
-  `summary-v1`, `peers-v1`, `agent-freshness-v2`, `machine-text-v1`);
+  `summary-v1`, `peers-v2`, `agent-freshness-v2`, `machine-text-v1`);
 - `citation` — a `hey_agent_answer` reference to put in an AgentResearchReceipt; since 2026-10-14 with
   `text`, the citation as one sentence — "Source: HEY Research Lab, builder research for Robinhood
   Chain — https://heyresearch.xyz/project/chit, as of 2026-10-14, rules hbm-v28" — the last line of

@@ -6,6 +6,7 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **A website that answers keeps counting (2026-10-20).** A project's official website no longer stops counting as reachable after one failed read: it counts until it has failed three reads in a row, as intended. A site whose homepage is larger than HEY reads is treated as answering, not as down.
 - **What changed, explained (2026-10-20).** A project's latest change now says what stage HEY saw (announcement, code, release, deployment or upgrade), who reported it and what independently corroborates it, whether a release and a deployment are linked (only by exact evidence, never by timing), what activity HEY can measure on a contract tied to it, and what HEY does not know. The same explanation appears on the project page, the homepage check, the API, the SDK, MCP and the Telegram bot.
 - **Every page reviewed (2026-10-20).** All public, Terminal, account and developer pages were reviewed at phone, tablet and desktop widths, in light and dark: larger touch targets, clearer empty and error states, no sideways scrolling, and no email option shown where email is off.
 - **Bounded X research, off by default (2026-10-20).** New, switched-off tools for HEY's editors: announcements on a project's confirmed X account kept apart from what HEY corroborates, an operator-verified list of ecosystem accounts, and an internal review queue of conversations HEY's evidence can answer. HEY never posts, replies or follows.

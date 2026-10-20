@@ -111,7 +111,10 @@ export type HeyProjectBuiltOn = {
 /* ------------------------------------------------------------ peer context */
 
 export type HeyPeerDimension = {
-  /** `build_momentum`, `meaningful_events_30d`, `release_cadence_days`, `active_contracts_7d`, `contract_calls_7d`, `protocol_tvl_usd`, `protocol_fees_24h_usd`, `protocol_revenue_24h_usd`. */
+  /**
+   * `build_momentum`, `meaningful_events_30d`, `release_cadence_days`, `active_contracts_7d`, `contract_calls_7d`, `protocol_tvl_usd`, `protocol_fees_24h_usd`, `protocol_revenue_24h_usd`.
+   * Since `peers-v2` (2026-10-20) `contract_calls_7d` counts calls to the contracts' own functions only, ERC-20 calls left out; read it with the context's `rulesVersion` and the dimension's own `definition`.
+   */
   metric: string;
   label: string;
   unit: 'score' | 'count' | 'days' | 'usd';

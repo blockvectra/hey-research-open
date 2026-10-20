@@ -604,7 +604,7 @@ export type HeyProjectSnapshot = {
   usage?: HeyUsageSummary;
   /** Security context (2026-09-28): evidence, never a verdict; absent only when the read failed. */
   security?: HeySecurityContext;
-  /** Peer context (2026-09-28, `peers-v1`): each figure among comparable projects, one dimension at a time; never one score. Absent only when the read failed. */
+  /** Peer context (2026-09-28, `peers-v2`): each figure among comparable projects, one dimension at a time; never one score. Absent only when the read failed. */
   peerContext?: HeyPeerContext;
   contracts: { url: string };
   verification: {

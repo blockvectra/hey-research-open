@@ -432,7 +432,7 @@ const compareData = z
      */
     completeness: z.enum(['complete', 'partial', 'not_compared']).optional(),
     ignored: z.array(z.string().max(120)).max(8),
-    /** Whether every project sits in one peer cohort (peers-v1); null when a cohort is unknown. Different cohorts are shown side by side, never placed against each other. */
+    /** Whether every project sits in one peer cohort (peers-v2); null when a cohort is unknown. Different cohorts are shown side by side, never placed against each other. */
     sameCohort: z.boolean().nullable(),
     order: z.literal('as_requested'),
     method: agentTextSchema,
