@@ -6,6 +6,7 @@ record.
 
 ## Unreleased (2026-10-03)
 
+- **A dead X account gives way (2026-10-20).** When a project's official X account is suspended or gone, HEY now shows another official account the project's sources name instead, and looks again for the one account whose profile links the project's own website (marked "Found by HEY"). An account HEY could not read is not treated as gone.
 - **A website that answers keeps counting (2026-10-20).** A project's official website no longer stops counting as reachable after one failed read: it counts until it has failed three reads in a row, as intended. A site whose homepage is larger than HEY reads is treated as answering, not as down.
 - **What changed, explained (2026-10-20).** A project's latest change now says what stage HEY saw (announcement, code, release, deployment or upgrade), who reported it and what independently corroborates it, whether a release and a deployment are linked (only by exact evidence, never by timing), what activity HEY can measure on a contract tied to it, and what HEY does not know. The same explanation appears on the project page, the homepage check, the API, the SDK, MCP and the Telegram bot.
 - **Every page reviewed (2026-10-20).** All public, Terminal, account and developer pages were reviewed at phone, tablet and desktop widths, in light and dark: larger touch targets, clearer empty and error states, no sideways scrolling, and no email option shown where email is off.
