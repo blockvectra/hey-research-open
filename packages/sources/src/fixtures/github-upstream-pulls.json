@@ -1,0 +1,197 @@
+{
+  "total_count": 6,
+  "incomplete_results": false,
+  "items": [
+    {
+      "url": "https://api.github.com/repos/example-chain/chain-registry/issues/1757",
+      "repository_url": "https://api.github.com/repos/example-chain/chain-registry",
+      "html_url": "https://github.com/example-chain/chain-registry/pull/1757",
+      "id": 5900001757,
+      "node_id": "PR_fixture1757",
+      "number": 1757,
+      "title": "fix: replace dead Robinhood Chain explorer url",
+      "user": {
+        "login": "hey-research-lab",
+        "id": 327801004,
+        "type": "User"
+      },
+      "labels": [],
+      "state": "closed",
+      "locked": false,
+      "comments": 1,
+      "created_at": "2026-10-20T07:08:44Z",
+      "updated_at": "2026-10-20T09:46:03Z",
+      "closed_at": "2026-10-20T09:46:03Z",
+      "author_association": "CONTRIBUTOR",
+      "draft": false,
+      "body": "Fixture text: HEY keeps no pull request body.",
+      "state_reason": null,
+      "score": 1.0,
+      "pull_request": {
+        "url": "https://api.github.com/repos/example-chain/chain-registry/pulls/1757",
+        "html_url": "https://github.com/example-chain/chain-registry/pull/1757",
+        "diff_url": "https://github.com/example-chain/chain-registry/pull/1757.diff",
+        "patch_url": "https://github.com/example-chain/chain-registry/pull/1757.patch",
+        "merged_at": "2026-10-20T09:46:03Z"
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/example-dex/indexer/issues/2424",
+      "repository_url": "https://api.github.com/repos/example-dex/indexer",
+      "html_url": "https://github.com/example-dex/indexer/pull/2424",
+      "id": 5900002424,
+      "node_id": "PR_fixture2424",
+      "number": 2424,
+      "title": "fix: retry eth_getLogs block span limit errors",
+      "user": {
+        "login": "hey-research-lab",
+        "id": 327801004,
+        "type": "User"
+      },
+      "labels": [],
+      "state": "open",
+      "locked": false,
+      "comments": 1,
+      "created_at": "2026-10-20T07:07:16Z",
+      "updated_at": "2026-10-20T07:07:16Z",
+      "closed_at": null,
+      "author_association": "CONTRIBUTOR",
+      "draft": false,
+      "body": "Fixture text: HEY keeps no pull request body.",
+      "state_reason": null,
+      "score": 1.0,
+      "pull_request": {
+        "url": "https://api.github.com/repos/example-dex/indexer/pulls/2424",
+        "html_url": "https://github.com/example-dex/indexer/pull/2424",
+        "diff_url": "https://github.com/example-dex/indexer/pull/2424.diff",
+        "patch_url": "https://github.com/example-dex/indexer/pull/2424.patch",
+        "merged_at": null
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/example-app/bounty-app/issues/1579",
+      "repository_url": "https://api.github.com/repos/example-app/bounty-app",
+      "html_url": "https://github.com/example-app/bounty-app/pull/1579",
+      "id": 5900001579,
+      "node_id": "PR_fixture1579",
+      "number": 1579,
+      "title": "fix(mcp): link a new bounty to a page that exists",
+      "user": {
+        "login": "hey-research-lab",
+        "id": 327801004,
+        "type": "User"
+      },
+      "labels": [],
+      "state": "closed",
+      "locked": false,
+      "comments": 1,
+      "created_at": "2026-10-19T12:48:41Z",
+      "updated_at": "2026-10-19T16:31:30Z",
+      "closed_at": "2026-10-19T16:31:30Z",
+      "author_association": "CONTRIBUTOR",
+      "draft": false,
+      "body": "Fixture text: HEY keeps no pull request body.",
+      "state_reason": null,
+      "score": 1.0,
+      "pull_request": {
+        "url": "https://api.github.com/repos/example-app/bounty-app/pulls/1579",
+        "html_url": "https://github.com/example-app/bounty-app/pull/1579",
+        "diff_url": "https://github.com/example-app/bounty-app/pull/1579.diff",
+        "patch_url": "https://github.com/example-app/bounty-app/pull/1579.patch",
+        "merged_at": null
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/example-dex/indexer/issues/2425",
+      "repository_url": "https://api.github.com/repos/example-dex/indexer",
+      "html_url": "https://github.com/example-dex/indexer/issues/2425",
+      "id": 5900002425,
+      "node_id": "PR_fixture2425",
+      "number": 2425,
+      "title": "Fixture issue, not a pull request",
+      "user": {
+        "login": "hey-research-lab",
+        "id": 327801004,
+        "type": "User"
+      },
+      "labels": [],
+      "state": "open",
+      "locked": false,
+      "comments": 1,
+      "created_at": "2026-10-19T10:00:00Z",
+      "updated_at": "2026-10-19T10:00:00Z",
+      "closed_at": null,
+      "author_association": "CONTRIBUTOR",
+      "draft": false,
+      "body": "Fixture text: HEY keeps no pull request body.",
+      "state_reason": null,
+      "score": 1.0
+    },
+    {
+      "url": "https://api.github.com/repos/hey-research-lab/hey-cli/issues/12",
+      "repository_url": "https://api.github.com/repos/hey-research-lab/hey-cli",
+      "html_url": "https://github.com/hey-research-lab/hey-cli/pull/12",
+      "id": 5900000012,
+      "node_id": "PR_fixture12",
+      "number": 12,
+      "title": "HEY's own repository, never upstream",
+      "user": {
+        "login": "hey-research-lab",
+        "id": 327801004,
+        "type": "User"
+      },
+      "labels": [],
+      "state": "closed",
+      "locked": false,
+      "comments": 1,
+      "created_at": "2026-10-18T10:00:00Z",
+      "updated_at": "2026-10-18T11:00:00Z",
+      "closed_at": "2026-10-18T11:00:00Z",
+      "author_association": "CONTRIBUTOR",
+      "draft": false,
+      "body": "Fixture text: HEY keeps no pull request body.",
+      "state_reason": null,
+      "score": 1.0,
+      "pull_request": {
+        "url": "https://api.github.com/repos/hey-research-lab/hey-cli/pulls/12",
+        "html_url": "https://github.com/hey-research-lab/hey-cli/pull/12",
+        "diff_url": "https://github.com/hey-research-lab/hey-cli/pull/12.diff",
+        "patch_url": "https://github.com/hey-research-lab/hey-cli/pull/12.patch",
+        "merged_at": "2026-10-18T11:00:00Z"
+      }
+    },
+    {
+      "url": "https://api.github.com/repos/example-org/Docs.Site/issues/53",
+      "repository_url": "https://api.github.com/repos/example-org/Docs.Site",
+      "html_url": "https://github.com/example-org/Docs.Site/pull/53",
+      "id": 5900000053,
+      "node_id": "PR_fixture53",
+      "number": 53,
+      "title": "Fix the Robinhood Chain explorer links",
+      "user": {
+        "login": "hey-research-lab",
+        "id": 327801004,
+        "type": "User"
+      },
+      "labels": [],
+      "state": "closed",
+      "locked": false,
+      "comments": 1,
+      "created_at": "2026-10-18T18:05:44Z",
+      "updated_at": "2026-10-19T00:11:35Z",
+      "closed_at": "2026-10-19T00:11:35Z",
+      "author_association": "CONTRIBUTOR",
+      "draft": false,
+      "body": "Fixture text: HEY keeps no pull request body.",
+      "state_reason": null,
+      "score": 1.0,
+      "pull_request": {
+        "url": "https://api.github.com/repos/example-org/Docs.Site/pulls/53",
+        "html_url": "https://github.com/example-org/Docs.Site/pull/53",
+        "diff_url": "https://github.com/example-org/Docs.Site/pull/53.diff",
+        "patch_url": "https://github.com/example-org/Docs.Site/pull/53.patch",
+        "merged_at": "2026-10-19T00:11:35Z"
+      }
+    }
+  ]
+}

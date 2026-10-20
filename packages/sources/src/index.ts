@@ -37,6 +37,8 @@ export * from './adapters/github-app';
 export * from './adapters/github-app-webhook';
 export * from './adapters/github-commits';
 export * from './adapters/github-pulls';
+// HEY's own pull requests in other people's repositories (2026-10-21): the /contributions page only.
+export * from './adapters/github-upstream-pulls';
 export * from './adapters/github-commit-detail';
 export * from './adapters/launchpad';
 export * from './adapters/ponspad';

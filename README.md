@@ -436,6 +436,11 @@ the machine identity, as the working reference; `/developers?tab=sdk#open-source
 job. An outside-in check on 2026-10-02 (fresh clones and npm installs as a builder, a developer and
 an agent) led to 0.1.1 of nine of them.
 
+The fixes HEY sends to other projects' repositories are listed at
+[heyresearch.xyz/contributions](https://heyresearch.xyz/contributions) ("Fixes we sent upstream"): the pull
+requests `hey-research-lab` opened outside its own repositories, merged, open and closed, read from GitHub once a
+day (`adapters/github-upstream-pulls.ts`). Pull requests only, never issues; the list changes nothing HEY researches.
+
 
 ## For autonomous agents
 
