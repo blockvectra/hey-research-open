@@ -6,7 +6,7 @@ import { GITHUB_DEFAULT_BASE_URL } from './github';
 
 /**
  * HEY's own pull requests in other people's public repositories (2026-10-21,
- * founder ruling; the `/contributions` page, "Fixes we sent upstream").
+ * founder ruling; the `/contributions` page, "Contributions").
  *
  * One page of GitHub's issue search for `is:pr author:<account>
  * -user:<account>`: pull requests the account opened, in repositories it does

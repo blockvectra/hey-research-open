@@ -17,8 +17,6 @@
 export const AGENT_CAPABILITIES = ['research_project', 'what_changed', 'builder_status', 'verify_project', 'compare_builders', 'unknowns', 'chain_brief'] as const;
 export type AgentCapability = (typeof AGENT_CAPABILITIES)[number];
 
-export const isAgentCapability = (value: string): value is AgentCapability => (AGENT_CAPABILITIES as readonly string[]).includes(value);
-
 export type AgentCapabilityParam = {
   name: 'project' | 'projects' | 'address' | 'q' | 'days' | 'types' | 'limit' | 'building' | 'chainId';
   required: boolean;

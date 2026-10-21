@@ -8,9 +8,11 @@ import {
   marketIsLive,
   NOT_FUNGIBLE_REASON,
   READING_NOT_CURRENT_REASON,
+  rescuedMarketVolume,
   TOKEN_MARKET,
   TOKEN_MARKET_REASONS,
   tokenIsFungible,
+  tokenMarketDecidedVolume,
 } from './token-market';
 import { valuationDisplay } from './valuation-display';
 
@@ -111,6 +113,53 @@ describe('a rescued market prints no valuation from the thin pool (2026-10-03, f
     });
     // An ordinary active market is untouched.
     expect(valuationDisplay({ valueUsd: 3_000_000, marketStatus: 'ACTIVE_MARKET', marketReason: 'liquidity_and_volume' })).toMatchObject({ shown: true, usd: 3_000_000 });
+  });
+});
+
+describe('a market rescued by another pool is held to the current-reading rule too (2026-10-22 rule-twin audit)', () => {
+  // The token's own pool read five days ago, thin; HEY's chain pool index holds $40K today.
+  const stale = {
+    now,
+    latest: { observedAt: hoursAgo(5 * 24), liquidityUsd: 900, volume24hUsd: 2_400, fdvUsd: 400_000, priceUsd: 0.0004 },
+    latestObservedAt: hoursAgo(5 * 24),
+    otherPools: { observedAt: hoursAgo(2), liquidityUsd: 40_000, series: 'chain' },
+  };
+
+  it('is not current when its volume came only from a reading older than currentReadingMaxHours', () => {
+    expect(classifyTokenMarket(stale)).toEqual({ status: 'INSUFFICIENT_DATA', reason: READING_NOT_CURRENT_REASON });
+    // The same as on its own pool: a five-day-old reading says nothing about the last day.
+    expect(classifyTokenMarket({ ...stale, otherPools: undefined, latest: { ...stale.latest, liquidityUsd: 40_000 } })).toEqual({
+      status: 'INSUFFICIENT_DATA',
+      reason: READING_NOT_CURRENT_REASON,
+    });
+    // A stale "no trades", or no volume at all, is not current either.
+    expect(classifyTokenMarket({ ...stale, latest: { ...stale.latest, volume24hUsd: 0 } })).toEqual({ status: 'INSUFFICIENT_DATA', reason: READING_NOT_CURRENT_REASON });
+    const { volume24hUsd: _dropped, ...noVolume } = stale.latest;
+    expect(classifyTokenMarket({ ...stale, latest: noVolume })).toEqual({ status: 'INSUFFICIENT_DATA', reason: READING_NOT_CURRENT_REASON });
+  });
+
+  it('is active when something speaks for the last day: the other pool’s own volume, a fresh trade record or a current reading', () => {
+    expect(classifyTokenMarket({ ...stale, otherPools: { ...stale.otherPools, volume24hUsd: 610 } })).toEqual({
+      status: 'ACTIVE_MARKET',
+      reason: 'liquidity_in_another_pool',
+      activeSeries: 'chain',
+    });
+    expect(classifyTokenMarket({ ...stale, trades: { observedAt: hoursAgo(3), volume24hUsd: 610 } })).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
+    const current = { ...stale, latest: { ...stale.latest, observedAt: hoursAgo(TOKEN_MARKET.currentReadingMaxHours - 1) } };
+    expect(classifyTokenMarket(current)).toMatchObject({ status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool' });
+    // A current reading with no volume anywhere is still volume_unknown (2026-10-19 audit).
+    const { volume24hUsd: _none, ...currentNoVolume } = current.latest;
+    expect(classifyTokenMarket({ ...current, latest: currentNoVolume })).toEqual({ status: 'INSUFFICIENT_DATA', reason: 'volume_unknown' });
+  });
+
+  it('decides on, and stores, only a volume that speaks for the day', () => {
+    // The stale reading's $2,400 is no input; the other pool's $0 measured today decides: no trades.
+    const withOther = { ...stale, otherPools: { ...stale.otherPools, volume24hUsd: 0 } };
+    expect(classifyTokenMarket(withOther)).toEqual({ status: 'TRADING_INACTIVE', reason: 'no_volume_24h' });
+    expect(rescuedMarketVolume(withOther)).toBe(0);
+    expect(rescuedMarketVolume(stale)).toBeUndefined();
+    const traded = { ...stale, otherPools: { ...stale.otherPools, volume24hUsd: 610 } };
+    expect(tokenMarketDecidedVolume(traded, classifyTokenMarket(traded))).toBe(610);
   });
 });
 

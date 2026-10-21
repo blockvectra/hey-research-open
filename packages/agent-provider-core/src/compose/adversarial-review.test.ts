@@ -293,7 +293,7 @@ describe('verify_project names a Robinhood stock token (outsider OSS check, 2026
       address: '0xd0601ab0d6ad0b5d3e1a6a0e8b2c6c3c1f7a9b21',
       token: { status: 'unknown', scanUrl: `${BASE}/scan` } as unknown as HeyTokenLookup,
       contract: null,
-      issuerToken: { sentence: 'Robinhood stock token: NVIDIA (NVDA) — issued by Robinhood, not a project on HEY.', issuerName: 'Robinhood' },
+      issuerToken: { sentence: 'Robinhood Stock Token: NVIDIA (NVDA) — issued by Robinhood, not a project on HEY.', issuerName: 'Robinhood' },
     });
     expect(valid(answer)).toBe(true);
     expect(answer.data?.verdict).toBe('UNKNOWN');

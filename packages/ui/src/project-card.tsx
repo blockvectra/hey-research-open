@@ -755,16 +755,16 @@ const eventsPhrase = (count: number): string => `${count.toLocaleString('en-US')
 /**
  * The context line under an UNKNOWN token card (2026-09-13): what HEY does
  * know when it has nothing to read building from — whether the token traded
- * today and how many events its contract emitted. Context, never a status;
+ * in the last 24 hours and how many events its contract emitted. Context, never a status;
  * nothing invented, so a card with neither fact gets no line.
  */
 export function tradeContextLine(project: ProjectCardData): string | undefined {
   const parts: string[] = [];
-  if (isLaunchPoolOnlyMarket(project.tokenMarketStatus, project.tokenMarketReason)) parts.push(`${LAUNCH_POOL_ONLY_PRESENTATION.label} · traded today`);
-  else if (project.tokenMarketStatus === 'ACTIVE_MARKET') parts.push('Traded today');
+  if (isLaunchPoolOnlyMarket(project.tokenMarketStatus, project.tokenMarketReason)) parts.push(`${LAUNCH_POOL_ONLY_PRESENTATION.label} · traded in the last 24 h`);
+  else if (project.tokenMarketStatus === 'ACTIVE_MARKET') parts.push('Traded in the last 24 h');
   else if (project.tokenMarketStatus === 'TRADING_INACTIVE' && project.tokenMarketReason === 'launch_pool_no_trades') parts.push(LAUNCH_POOL_NO_TRADES_WORDS);
   else if (project.tokenMarketReason === 'launch_pool_volume_unknown') parts.push('Launch pool, trading unknown');
-  else if (project.tokenMarketStatus === 'TRADING_INACTIVE') parts.push('No trades today');
+  else if (project.tokenMarketStatus === 'TRADING_INACTIVE') parts.push('No trades in 24 h');
   if (project.onchainEvents24h !== undefined) parts.push(eventsPhrase(project.onchainEvents24h));
   return parts.length > 0 ? parts.join(' · ') : undefined;
 }

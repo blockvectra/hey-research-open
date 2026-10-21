@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { XMLParser } from 'fast-xml-parser';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { createFeedAdapter } from './adapters/feed';
 import { REPLACEMENT_CHARACTER } from './html';
@@ -27,10 +28,17 @@ describe('XML parser limits', () => {
     expect(MAX_XML_CHARS).toBe(2 * 1024 * 1024);
   });
 
-  it('leaves a billion-laughs document inert: nothing is expanded, and it parses at once', () => {
-    const started = performance.now();
-    const document = parseBoundedXml(readFixture('feed-billion-laughs.xml'));
-    expect(performance.now() - started).toBeLessThan(200);
+  // What the parser did, counted, rather than how long it took (2026-10-22 test hardening): the
+  // wall-clock budgets here failed on a loaded machine while the parser behaved.
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('leaves a billion-laughs document inert: nothing is expanded, so the output stays the size of the input', () => {
+    const fixture = readFixture('feed-billion-laughs.xml');
+    const document = parseBoundedXml(fixture);
+    // An expansion multiplies the output; inert entities leave it smaller than the document itself.
+    expect(JSON.stringify(document).length).toBeLessThan(fixture.length);
     const title = ((document.rss as Record<string, unknown>).channel as Record<string, unknown>).title;
     expect(title).toBe('Laughs &lol9;');
     expect(JSON.stringify(document).length).toBeLessThan(4_096);
@@ -46,16 +54,20 @@ describe('XML parser limits', () => {
     const sitemap = `<?xml version="1.0"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">${entry.repeat(
       Math.ceil((MAX_XML_CHARS + 1) / entry.length),
     )}</urlset>`;
-    const started = performance.now();
+    const parse = vi.spyOn(XMLParser.prototype, 'parse');
     expect(() => parseBoundedXml(sitemap)).toThrow(XmlTooLargeError);
-    expect(performance.now() - started).toBeLessThan(50);
+    // Refused on its length: the parser never saw a byte of it.
+    expect(parse).not.toHaveBeenCalled();
   });
 
   it('parses a sitemap within the cap', () => {
+    const parse = vi.spyOn(XMLParser.prototype, 'parse');
     const document = parseBoundedXml(
       '<?xml version="1.0"?><urlset><url><loc>https://ok.example/a</loc></url><url><loc>https://ok.example/b</loc></url></urlset>',
     );
     expect(((document.urlset as Record<string, unknown>).url as unknown[]).length).toBe(2);
+    // The spy sees the shared parser, so its silence above is a measurement.
+    expect(parse).toHaveBeenCalledTimes(1);
   });
 });
 

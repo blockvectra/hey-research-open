@@ -23,7 +23,6 @@ import {
   type AgentResolvedFrom,
   type AgentResponseOf,
   type AgentResponseStatus,
-  type AgentSourceType,
   type AgentSubject,
   type AgentUnknown,
 } from '../schema';
@@ -214,23 +213,6 @@ export function agentChange(event: ChangeLike, project: { slug: string; url: str
 const CONTEXT_DOMAINS: ReadonlySet<string> = new Set(['market', 'market_integrity']);
 const CONTEXT_TYPES: ReadonlySet<string> = new Set(['contract.usage_changed', 'contract.method_first_observed', 'contract.method_resumed', 'contract.v4_pool_initialized']);
 export const isContextChange = (change: { domain: string; type: string }): boolean => CONTEXT_DOMAINS.has(change.domain) || CONTEXT_TYPES.has(change.type);
-
-/** The source type a ledger domain's record comes from. */
-export function sourceTypeOfDomain(domain: string, id: string): AgentSourceType {
-  if (recordTag(id) === 'DERIVED') return 'hey_rule';
-  switch (domain) {
-    case 'build':
-      return 'builder_source';
-    case 'contract':
-    case 'token':
-    case 'lock':
-      return 'chain';
-    case 'market':
-      return 'market_provider';
-    default:
-      return 'hey_record';
-  }
-}
 
 /** Every evidence id the answer cites, once each, in first-seen order, bounded. */
 export function collectEvidence(groups: readonly (readonly AgentEvidenceRef[])[]): AgentEvidenceRef[] {

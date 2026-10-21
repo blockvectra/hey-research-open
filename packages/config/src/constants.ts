@@ -12,9 +12,6 @@ export const ROBINHOOD_CHAIN_ID = 4663;
  */
 export const APP_NAME = 'HEY Research Lab';
 
-/** Homepage hero line — PRD V4 section 16.0 E. */
-export const APP_TAGLINE = "Find who's actually building on Robinhood Chain.";
-
 /**
  * Source-refresh tiers (PRD V4 section 22.3). Declared here so scheduling logic
  * and admin tooling share one vocabulary; the schedules themselves land in M9.

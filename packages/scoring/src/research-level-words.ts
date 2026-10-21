@@ -15,7 +15,7 @@
 export type ResearchLevelWordsKey = 'INDEXED' | 'RESEARCHED' | 'VERIFIED_BUILDER';
 
 export const RESEARCH_LEVEL_WORDS: Readonly<Record<ResearchLevelWordsKey, { label: string; help: string }>> = {
-  INDEXED: { label: 'Indexed', help: 'Verified on Robinhood Chain. Not researched yet.' },
+  INDEXED: { label: 'Indexed', help: 'Recorded on Robinhood Chain. Not researched yet.' },
   RESEARCHED: { label: 'Researched', help: 'HEY has enriched this project from public sources.' },
   VERIFIED_BUILDER: { label: 'Verified Builder', help: 'HEY holds verified evidence of shipping.' },
 };

@@ -227,7 +227,7 @@ becomes `project_link`'s `utm_source`, so HEY can report your click-through to y
 
 The same answer as the one call above, in the shape a trading bot's card wants and with two more
 figures. Built for the Chit bot's line above its buy and sell buttons —
-`HEY: Shipping · 12 commits · 2 releases · Verified builder · see on HEY ↗` — and open to any bot.
+`HEY: Shipping · 12 commits · 2 releases · Verified Builder · see on HEY ↗` — and open to any bot.
 
 ```jsonc
 {
@@ -335,7 +335,7 @@ const card = await hey.scanCard(4663, address);
 if (!card.found) return null;                       // unpublished token or another chain: print nothing
 // releases_30d is always sent and reads 0 where HEY measured nothing: a count only when activity_measured.
 const releases = card.activity_measured ? ` · ${card.activity.releases_30d} releases` : '';
-return `HEY: ${card.status_label} · ${card.activity.commits_30d ?? '–'} commits${releases}${card.verified_builder ? ' · Verified builder' : ''} · see on HEY ↗ ${card.project_url}`;
+return `HEY: ${card.status_label} · ${card.activity.commits_30d ?? '–'} commits${releases}${card.verified_builder ? ' · Verified Builder' : ''} · see on HEY ↗ ${card.project_url}`;
 ```
 
 The client adds no field the route does not send and caches nothing, so everything on this page

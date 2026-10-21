@@ -18,20 +18,17 @@ export const BRAND = {
   chainId: 4663,
   /** Public block explorer for the chain; token pages live under `/token/<address>`. */
   explorerUrl: 'https://robinhoodchain.blockscout.com',
-  tagline: "Find who's actually building on Robinhood Chain.",
+  tagline: 'Find who’s actually building on Robinhood Chain.',
   /*
    * No "before the market notices" line (positioning pass, 2026-09-30): it
    * promised a timing edge on a price, which HEY cannot prove and must not
-   * sell. The site's words are in apps/web/src/lib/home-positioning.ts.
+   * sell. The site's words are in apps/web/src/lib/home-positioning.ts; the
+   * old `positioning` line ("Builder intelligence for Robinhood Chain.") was
+   * retired there on 2026-10-22 for its POSITIONING_LINE.
    */
-  positioning: 'Builder intelligence for Robinhood Chain.',
   description:
     'The evidence behind Robinhood Chain projects: what builders shipped, when, and the public source for it.',
 } as const;
-
-/** `{Page} | HEY Research Lab`, with the homepage carrying the full positioning. */
-export const pageTitle = (page?: string): string =>
-  page ? `${page} | ${BRAND.name}` : `${BRAND.name} — The public record of building on ${BRAND.chainName}`;
 
 /** The explorer's own page for a token contract. */
 export const explorerTokenUrl = (address: string): string =>

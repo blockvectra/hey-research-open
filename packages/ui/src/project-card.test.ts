@@ -154,9 +154,9 @@ describe('ProjectCard — fallbacks', () => {
   it('prints what it knows under an UNKNOWN token card: trades and on-chain events, and nothing when it knows neither', () => {
     const html = render({ ...tokenBacked, activityStatus: 'UNKNOWN', hasBuilderSource: false, tokenMarketStatus: 'ACTIVE_MARKET', onchainEvents24h: 1204 });
     expect(html).toContain('data-testid="card-context-line"');
-    expect(html).toContain('Traded today · 1,204 on-chain events / 24 h');
+    expect(html).toContain('Traded in the last 24 h · 1,204 on-chain events / 24 h');
     expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'launch_pool_no_trades' })).toBe('Launch pool, no trades in the last day');
-    expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', onchainEvents24h: 1 })).toBe('No trades today · 1 on-chain event / 24 h');
+    expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', onchainEvents24h: 1 })).toBe('No trades in 24 h · 1 on-chain event / 24 h');
     expect(tradeContextLine({ ...tokenBacked })).toBeUndefined();
     // Not under a status HEY could read, and never on a tokenless card.
     expect(render({ ...tokenBacked, activityStatus: 'ACTIVE', tokenMarketStatus: 'ACTIVE_MARKET', onchainEvents24h: 5 })).not.toContain('card-context-line');
@@ -207,12 +207,12 @@ describe('ProjectCard — fallbacks', () => {
     expect(lens).not.toContain('$2.4M');
     // The pool's trades are measured and stay; its "liquidity" is the token's own supply and does not.
     expect(marketLensLine(launchPool)).toBe('Launch pool only · 24 h volume $3.1K · 12 buys · 9 sells · on the launch curve');
-    expect(tradeContextLine(launchPool)).toBe('Launch pool only · traded today');
+    expect(tradeContextLine(launchPool)).toBe('Launch pool only · traded in the last 24 h');
     // A measured active market keeps its figures.
     const measured = { ...launchPool, tokenMarketReason: 'liquidity_and_volume' } as ProjectCardData;
     expect(render(measured)).toContain('$4.8M');
     expect(marketLensLine(measured)).toContain('Liquidity $2.4M');
-    expect(tradeContextLine(measured)).toBe('Traded today');
+    expect(tradeContextLine(measured)).toBe('Traded in the last 24 h');
   });
 
   it('a launch pool with no trades in the last day says just that, never "no trades yet" (RT2-06, 2026-10-09)', () => {

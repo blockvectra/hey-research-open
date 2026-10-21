@@ -80,6 +80,12 @@ export const MARKET_INTEGRITY = {
   deteriorationShare: 0.5,
   /** Two readings further apart than this are not "consecutive". */
   maxGapDays: 2,
+  /**
+   * How many days of the daily index the evaluation reads (`INTEGRITY_HISTORY_DAYS` in the engine), and so the
+   * window the sustained peak is the highest level held in — the stored liquidity peak (`tokens.peak_liquidity_usd`,
+   * ruling #138) reads the same window, being the same thing (2026-10-22 rule-twin audit, item 6).
+   */
+  historyDays: 120,
   /** From half the peak to a collapse in this many days or fewer is a rapid collapse. */
   rapidDays: 3,
   /** A daily index whose newest day is older than this says nothing about now. */

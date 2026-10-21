@@ -536,15 +536,21 @@ export function classifyTokenMarket(evidence: TokenMarketEvidence): TokenMarketC
   const lowLine = evidence.previousStatus === 'LOW_LIQUIDITY' ? TOKEN_MARKET.lowLiquidityExitUsd : TOKEN_MARKET.lowLiquidityUsd;
   if (heldElsewhere && latest.liquidityUsd < TOKEN_MARKET.lowLiquidityUsd && liquidity >= lowLine) {
     // The reading's own pool is thin or empty; another pool holds the market, and its volume counts too.
-    const otherVolume = evidence.otherPools?.volume24hUsd;
-    const pooled = otherVolume === undefined ? volume : volume === undefined ? otherVolume : Math.max(volume, otherVolume);
-    if (pooled !== undefined && pooled <= TOKEN_MARKET.inactiveVolumeUsd) return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
     /*
      * A rescue is held to the volume rules too (2026-10-19 audit): with no volume from this reading, a fresh trade record,
      * the 36-hour fallback or the other pool — a frozen figure arrives here as none — the market is not measured
      * (token-market-2026-10-12's `volume_unknown`), never ACTIVE_MARKET on depth alone.
+     *
+     * And to the current-reading rule (token-market-2026-10-03; 2026-10-22 rule-twin audit): the other pool's reading
+     * is at most a day old, but the current reading's own volume, when that reading is older than
+     * `currentReadingMaxHours` and no fresh trade record speaks for the day, says nothing about the last 24 hours — on
+     * its own pool it is `reading_not_current`, and fresh depth in another pool does not make it current
+     * (`rescuedMarketVolume`). With no volume that speaks for the day, a reading that is not current is not current,
+     * as on its own pool; a current one is `volume_unknown`, as before.
      */
-    if (pooled === undefined) return { status: 'INSUFFICIENT_DATA', reason: VOLUME_UNKNOWN_REASON };
+    const pooled = rescuedMarketVolume(evidence);
+    if (pooled === undefined) return tradingCurrent ? { status: 'INSUFFICIENT_DATA', reason: VOLUME_UNKNOWN_REASON } : notCurrent;
+    if (pooled <= TOKEN_MARKET.inactiveVolumeUsd) return { status: 'TRADING_INACTIVE', reason: 'no_volume_24h' };
     const series = evidence.otherPools?.series;
     return { status: 'ACTIVE_MARKET', reason: 'liquidity_in_another_pool', ...(series ? { activeSeries: series } : {}) };
   }
@@ -646,6 +652,21 @@ export function tokenMarketVolume(evidence: TokenMarketEvidence): number | undef
 export function tokenMarketDecidedVolume(evidence: TokenMarketEvidence, classification: TokenMarketClassification): number | undefined {
   const volume = tokenMarketVolume(evidence);
   if (classification.reason !== RESCUED_MARKET_REASON) return volume;
+  return rescuedMarketVolume(evidence);
+}
+
+/**
+ * The 24h volume a market rescued by another pool is decided on (2026-09-25; 2026-10-22 rule-twin audit): the
+ * other pool's own figure and the token's (`tokenMarketVolume`), the larger winning — the token's only when it
+ * speaks for the last day: a fresh trade record, a current reading inside `currentReadingMaxHours`, or the 36-hour
+ * fallback a reading with no volume field reads. A volume on a current reading older than that is no input.
+ */
+export function rescuedMarketVolume(evidence: TokenMarketEvidence): number | undefined {
+  const { latest, now } = evidence;
+  const freshTrades = evidence.trades && now.getTime() - evidence.trades.observedAt.getTime() <= DAY_MS ? evidence.trades.volume24hUsd : undefined;
+  const readingCurrent = latest !== undefined && now.getTime() - latest.observedAt.getTime() <= TOKEN_MARKET.currentReadingMaxHours * 3_600_000;
+  const ownCurrent = freshTrades !== undefined || readingCurrent || latest?.volume24hUsd === undefined;
+  const volume = ownCurrent ? tokenMarketVolume(evidence) : undefined;
   const otherVolume = evidence.otherPools?.volume24hUsd;
   return otherVolume === undefined ? volume : volume === undefined ? otherVolume : Math.max(volume, otherVolume);
 }
