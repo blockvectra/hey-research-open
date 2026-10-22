@@ -7,7 +7,7 @@ import { buildAnswerLead, buildLineFigures, countOf, leadName, valuationWithheld
 import { stillBuildingStateOf } from '../disclosures';
 import type { AgentEvidenceKind } from '../evidence-kinds';
 import { agentChange, envelope, evidenceRef, isContextChange, looksLikeEvidenceId, projectApi, type AgentCodeWeeks, type AgentComposeContext } from './common';
-import { projectUnknowns, type CanonicalGap } from './gaps';
+import { projectUnknowns, TOKEN_REASON_WORDS, type CanonicalGap } from './gaps';
 import { unknownCategorySummary } from '../unknowns';
 
 /**
@@ -356,7 +356,11 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
           ? 'The project itself names this token contract (its own site, a deploy record in its own repository, or an on-chain signature).'
           : state === 'MISMATCH'
             ? 'The project’s own site names a different contract than the token HEY tracks: its building activity does not apply to this token.'
-            : 'HEY has not seen the project name this token contract.',
+            : // The reason's own sentence (2026-10-22, full audit INV-2/INV-3): a site that names the contract and
+              // disowns it, or names it beside a lookalike, is not "HEY has not seen the project name it".
+              verification?.reason === 'site_disclaims_contract'
+              ? `${TOKEN_REASON_WORDS.site_disclaims_contract} Its building activity does not apply to this token.`
+              : (verification?.reason ? TOKEN_REASON_WORDS[verification.reason] : undefined) ?? 'HEY has not seen the project name this token contract.',
       ),
       status: state === 'VERIFIED' || state === 'MISMATCH' ? 'FACT' : 'UNKNOWN',
       value: state ?? null,

@@ -919,14 +919,15 @@ hour, is never cached, and spends a budget the scheduled pipeline needs.
 The by-contract lookup above in the shape a trading bot's card wants: `found`, `status` (HEY's six
 states, lower-cased) with `status_label` and `status_help` in HEY's own words, `verified_builder`,
 `activity` (`commits_30d` — absent when no repository is read, and a floor when `commits_30d_partial: true` says a commits page was cut inside the window; `releases_30d`, `ships_30d`,
-`last_ship`), `token_verification` (`VERIFIED`, `UNVERIFIED` or `MISMATCH`, 2026-09-25: on
+`last_ship`; since 2026-10-22 `releases_measured`, false when HEY reads no source releases come from or building is not measured — `releases_30d: 0` is then legacy, not a finding), `token_verification` (`VERIFIED`, `UNVERIFIED` or `MISMATCH`, 2026-09-25: on
 `MISMATCH` the project's own site names another contract, so do not print the activity as this
-token's), `activity_applies_to_token` (2026-09-27: `false` exactly on `MISMATCH`), `project_url`,
+token's), `activity_applies_to_token` (2026-09-27: `false` on `MISMATCH`; since 2026-10-22 also for the reason `site_disclaims_contract`), `project_url`,
 `logo_url`, `badge_url`, a `cta` that points at the project page (absent when
 `activity_applies_to_token` is `false`: nothing invites a reader from a disowned token to the
 project), and the disclaimer. `found: false` is a 200 for an unpublished token, for a chain HEY does
 not index (`reason: "chain"`) and, since 2026-09-27, for the zero address (`reason: "not_a_token"`,
-not metered); a malformed `token`, and the burn address, are a 400. `chain` defaults to 4663. Same limits as
+not metered); a malformed `token`, and the burn address, are a 400. `chain` defaults to 4663; since
+2026-10-22 a `chain` that is not digits (`chain=abc`) is a 400 `bad_request` too, never `reason: "chain"`. Same limits as
 `/api/token`, but never a shared cache: every answer is `private, max-age=60`, so each partner call reaches HEY and is
 counted (2026-10-05; `/api/token` is `public, max-age=60, s-maxage=60, stale-while-revalidate=300`); a database read only. Documented for bots in [Putting HEY in your bot](/developers/integrations).
 
@@ -1046,7 +1047,7 @@ every malformed token keep their `400`, which also spends nothing.
 
 | Route | Added | Meaning |
 |---|---|---|
-| `/api/v1/scan` | `activity_applies_to_token` | `false` exactly when `token_verification` is `MISMATCH`; the card then carries no `cta`. Every other field keeps its value |
+| `/api/v1/scan` | `activity_applies_to_token` | `false` when `token_verification` is `MISMATCH`, or (since 2026-10-22) when the reason is `site_disclaims_contract`; the card then carries no `cta`. Every other field keeps its value |
 | | `reason: "not_a_token"` | on `found: false`, for the zero address |
 | | `indexed`, `research_state`, `launched_via` (2026-10-09) | on `found: false` beside `scan_url`: whether HEY holds the token, `not_researched` / `not_published` / `not_indexed`, and the launchpad when known. `found` keeps its meaning |
 | | `publishedNamesakes` (2026-10-18) | on `found: false` beside `scan_url`: the published projects that carry this token's name or ticker on another contract (see below). `found` keeps its meaning |
@@ -2253,6 +2254,12 @@ from its rows (2026-10-16); a Radar version change re-ranks the day at the next 
 The archived weekly reports, one per ISO week (`2026-W37`): overview counts, chain totals,
 most active builders, movers, top builders, new verified builders, back to shipping, Still
 Building, Under the Radar, the week's signals. `final` is true once the week has closed.
+
+`chain.tokensTraded` is the busiest day's count of distinct tokens traded, never a weekly total —
+a token traded on several days counts once a day, so daily distinct counts cannot be summed — while
+`dexTrades`, `dexVolumeUsd` and `launches` beside it are 7-day sums. Since 2026-10-22 (additive) it
+says so: `chain.tokensTradedBasis: 'busiest_day'` on every report (stated on read for older ones) and
+`chain.tokensTradedDay`, the UTC day it was read on, on reports written since.
 
 Since 2026-10-11 (report version 4) a report also carries `uniswapV4Hooks`, the state of
 Robinhood Chain v4 hooks, as counts: hooks seen (total, first decoded this week), hooks with pools

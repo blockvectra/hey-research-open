@@ -124,6 +124,22 @@ describe('AgentIntelligenceResponse v1 from the API fixtures', () => {
     expect(research.unknowns.some((unknown) => unknown.dimension === 'buildMomentum' && unknown.category === 'NOT_MEASURED')).toBe(true);
   });
 
+  it('says an UNVERIFIED token in its reason’s words, never "has not seen the project name it" when the site named it (2026-10-22, INV-2/INV-3)', () => {
+    const url = `${BASE}/api/agent/research_project?project=agentos`;
+    const claimFor = (reason: string | undefined) => {
+      const snapshot = clone(fx.snapshot) as HeyProjectSnapshot;
+      snapshot.verification.token = { status: 'UNVERIFIED', verifiedAt: '2026-10-22T00:00:00.000Z', ...(reason ? { reason } : {}) } as typeof snapshot.verification.token;
+      return composeResearch(ctx(url), { snapshot, gaps: [] }).claims.find((entry) => entry.id === 'contract.token_verification')!.statement.text;
+    };
+    const disowned = claimFor('site_disclaims_contract');
+    expect(disowned).toContain('names the token contract and says it is not the project’s token');
+    expect(disowned).toContain('Its building activity does not apply to this token.');
+    expect(disowned).not.toContain('has not seen the project name');
+    expect(claimFor('site_names_contract_contested')).toContain('another published page of the same name and ticker');
+    expect(claimFor('self_reported')).toContain('named in the project’s submission');
+    expect(claimFor(undefined)).toBe('HEY has not seen the project name this token contract.');
+  });
+
   it('states Under the Radar and the Discovery Gap as the snapshot does, and not measured as unknown with its reason (persona audit PA-6)', () => {
     const url = `${BASE}/api/agent/research_project?project=agentos`;
     const held = clone(fx.snapshot) as HeyProjectSnapshot;

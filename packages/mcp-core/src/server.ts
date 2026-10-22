@@ -961,7 +961,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       {
         ...describe('research_answer', [
           'Is this Robinhood Chain project still being built, what did it ship, what changed, is this contract its own? One cited answer. capability: research_project or builder_status (q: a name or $TICKER, or address, or project: a slug; a shared name lists candidates);',
-          'what_changed (project or chain, 1–30 days); verify_project (address, project?); compare_builders (2–4, no winner); unknowns (every coverage state). Claims FACT/DERIVED/UNKNOWN with evidence ids. Not price advice or a safety verdict.',
+          'what_changed (project or chain, 1–30 days); verify_project (address, project?); compare_builders (2–4, no winner); unknowns (every coverage state). Claims FACT/DERIVED/UNKNOWN with evidence ids; not_found is a status, not isError. Not price advice or a safety verdict.',
         ]),
         inputSchema: {
           capability: z.enum(AGENT_CAPABILITIES),
@@ -1211,6 +1211,38 @@ export const HEY_MCP_ARGUMENT_ALIASES: Readonly<Partial<Record<HeyMcpToolName, R
   find_projects: { q: 'query' },
 };
 
+/**
+ * The project argument under either name (2026-10-22 audit API-6): research_answer and get_changes call a project
+ * `project`, every other per-project tool calls it `slug`, and an agent's first call on the other kind was refused.
+ * A tool that takes one of the pair and not the other reads the other as its own, as find_projects reads `q`; a tool
+ * that takes both, or neither, is unchanged.
+ */
+const PROJECT_ARGUMENT_PAIRS: readonly (readonly [string, string])[] = [
+  ['slug', 'project'],
+  ['slugs', 'projects'],
+];
+
+/** Every alias a tool reads: its named ones (`HEY_MCP_ARGUMENT_ALIASES`) and the project pair it takes one half of. */
+export function argumentAliasesOf(name: string, accepted: readonly string[]): Record<string, string> {
+  const aliases: Record<string, string> = { ...(HEY_MCP_ARGUMENT_ALIASES[name as HeyMcpToolName] ?? {}) };
+  for (const [a, b] of PROJECT_ARGUMENT_PAIRS) {
+    if (accepted.includes(a) && !accepted.includes(b) && !(b in aliases)) aliases[b] = a;
+    if (accepted.includes(b) && !accepted.includes(a) && !(a in aliases)) aliases[a] = b;
+  }
+  return aliases;
+}
+
+/** Whether a tool's argument schema is a list, under any optional or default wrapper (zod 3's `_def.typeName`). */
+function isListSchema(schema: unknown): boolean {
+  let def = (schema as { _def?: { typeName?: string; innerType?: unknown } } | undefined)?._def;
+  for (let depth = 0; def && depth < 4; depth += 1) {
+    if (def.typeName === 'ZodArray') return true;
+    if (def.typeName !== 'ZodOptional' && def.typeName !== 'ZodDefault' && def.typeName !== 'ZodNullable') return false;
+    def = (def.innerType as { _def?: { typeName?: string; innerType?: unknown } } | undefined)?._def;
+  }
+  return false;
+}
+
 /** An argument name safe to say back: an identifier, short. Anything else is "an argument", never the caller's text (the agent contract's rule). */
 const SAYABLE_ARGUMENT = /^[A-Za-z_][A-Za-z0-9_]{0,39}$/;
 
@@ -1228,9 +1260,9 @@ function guardToolArguments(server: McpServer, report: (event: HeyMcpCallEvent) 
   const call = handlers?.get('tools/call');
   const registered = (server as unknown as { _registeredTools?: Record<string, { inputSchema?: unknown }> })._registeredTools;
   if (!handlers || !call || !registered) throw new Error('The MCP SDK no longer exposes its tools/call handler: tool arguments cannot be checked.');
-  const acceptedOf = (schema: unknown): string[] | undefined => {
+  const shapeOf = (schema: unknown): Record<string, unknown> | undefined => {
     const shape = (schema as { shape?: unknown } | undefined)?.shape;
-    return shape && typeof shape === 'object' ? Object.keys(shape) : undefined;
+    return shape && typeof shape === 'object' ? (shape as Record<string, unknown>) : undefined;
   };
   const refuse = (tool: string, text: string): CallToolResult => {
     report({ tool, ok: false, truncated: false, bytes: text.length, ms: 0 });
@@ -1239,10 +1271,11 @@ function guardToolArguments(server: McpServer, report: (event: HeyMcpCallEvent) 
   handlers.set('tools/call', async (request, extra) => {
     const params = (request as { params?: { name?: unknown; arguments?: unknown } }).params;
     const name = typeof params?.name === 'string' ? params.name : undefined;
-    const accepted = name ? acceptedOf(registered[name]?.inputSchema) : undefined;
+    const shape = name ? shapeOf(registered[name]?.inputSchema) : undefined;
+    const accepted = shape ? Object.keys(shape) : undefined;
     const args = params?.arguments;
-    if (!name || !accepted || !args || typeof args !== 'object' || Array.isArray(args)) return call(request, extra);
-    const aliases = HEY_MCP_ARGUMENT_ALIASES[name as HeyMcpToolName] ?? {};
+    if (!name || !shape || !accepted || !args || typeof args !== 'object' || Array.isArray(args)) return call(request, extra);
+    const aliases = argumentAliasesOf(name, accepted);
     const read: Record<string, unknown> = { ...(args as Record<string, unknown>) };
     for (const [alias, own] of Object.entries(aliases)) {
       if (!(alias in read)) continue;
@@ -1256,6 +1289,19 @@ function guardToolArguments(server: McpServer, report: (event: HeyMcpCallEvent) 
       const said = named.length === unknown.length ? named.join(', ') : unknown.length === 1 ? 'an argument' : `${unknown.length} arguments`;
       const aliasNote = Object.entries(aliases).map(([alias, own]) => ` (${alias} is read as ${own})`).join('');
       return refuse(name, `${name} does not take ${said}, and nothing was answered. It takes: ${accepted.join(', ')}${aliasNote}.`);
+    }
+    /*
+     * A list argument sent as one string is read as the list the REST API reads (2026-10-22 audit API-6):
+     * `domain: "market"` or `"market,build"`, as `/api/changes?domain=market,build` takes it. Each item is still
+     * checked by the tool's own schema; nothing else is coerced.
+     */
+    for (const [key, value] of Object.entries(read)) {
+      if (typeof value === 'string' && isListSchema(shape[key])) {
+        read[key] = value
+          .split(',')
+          .map((part) => part.trim())
+          .filter((part) => part.length > 0);
+      }
     }
     return call({ ...(request as object), params: { ...params, arguments: read } }, extra);
   });

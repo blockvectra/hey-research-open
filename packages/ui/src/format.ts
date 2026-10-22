@@ -608,17 +608,44 @@ export function readableSummary(
   let text = shortenHexInText(plainText(value));
   if (cutAtStore) text = text.replace(/\s+\S*$/, '').replace(TRAILING_SEPARATORS, '');
   if (!text) return undefined;
-  // An inline bullet: a dash, star or dot standing alone between spaces.
-  const items = text
-    .split(/\s[-*•]\s+(?=\S)/)
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-  const joined = items.join(' · ');
+  const items = summaryPoints(text);
+  // The short form leaves out a generated release note's links and boilerplate; the full points keep every word.
+  const tidyItems = summaryPoints(tidyReleaseNote(text));
+  const shortItems = tidyItems.length > 0 ? tidyItems : items;
+  const tidied = shortItems.join('\n') !== items.join('\n');
+  const joined = shortItems.join(' · ');
   const cut = truncateAtWord(joined, max);
   const last = items.length - 1;
   return {
     short: cut.truncated ? cut.text : cutAtStore ? `${joined}…` : joined,
     items: cutAtStore ? items.map((item, index) => (index === last ? `${item}…` : item)) : items,
-    truncated: cut.truncated || cutAtStore,
+    truncated: cut.truncated || cutAtStore || tidied,
   };
+}
+
+/** An inline bullet: a dash, star or dot standing alone between spaces. */
+const summaryPoints = (text: string): string[] =>
+  text
+    .split(/\s[-*•]\s+(?=\S)/)
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0);
+
+/*
+ * GitHub's generated release notes (2026-10-22, audit WEB-8): "What's Changed - Add Agent ChatUI by
+ * @valory-coding-agent[bot] in https://github.com/…/pull/488 Full Changelog: https://github.com/…/compare/…" read
+ * as eight wrapped lines of URL on a phone, at body size under a shorter version title. The short form drops the
+ * heading, the bot's byline, the pull-request and bare links and the Full Changelog line; "Show all" still opens
+ * every point as stored, and the ship's evidence link opens the release itself.
+ */
+function tidyReleaseNote(text: string): string {
+  return text
+    .replace(/\bFull Changelog:?\s*\S*/gi, ' ')
+    .replace(/^\s*What['’]s Changed:?(?=\s|$)/i, ' ')
+    .replace(/\s+by\s+@[\w.-]+\[bot\]/gi, ' ')
+    .replace(/\s+in\s+https?:\/\/\S+/gi, ' ')
+    .replace(/https?:\/\/\S+/gi, ' ')
+    .replace(/\s{2,}/g, ' ')
+    .replace(TRAILING_SEPARATORS, '')
+    .trim()
+    .replace(/^[-*•·]\s+/, '');
 }

@@ -44,6 +44,22 @@ describe('readableSummary', () => {
     expect(summary?.items.at(-1)?.endsWith('…')).toBe(true);
   });
 
+  it('reads a generated GitHub release note without its links and boilerplate, and keeps them one tap away (WEB-8)', () => {
+    const note =
+      "## What's Changed\n* Add Agent ChatUI on the main agent page by @valory-coding-agent[bot] in https://github.com/valory-xyz/olas-operate-middleware/pull/488\n\n**Full Changelog**: https://github.com/valory-xyz/olas-operate-middleware/compare/v0.15.44...v0.15.45";
+    const summary = readableSummary(note);
+    expect(summary?.short).toBe('Add Agent ChatUI on the main agent page');
+    expect(summary?.truncated).toBe(true);
+    expect(summary?.items.join(' ')).toContain('https://github.com/valory-xyz/olas-operate-middleware/pull/488');
+    expect(summary?.items.join(' ')).toContain('Full Changelog');
+  });
+
+  it('keeps a person’s byline and a note that is nothing but a link', () => {
+    expect(readableSummary('Fix the fee display by @alice')?.short).toBe('Fix the fee display by @alice');
+    expect(readableSummary('Fix the fee display by @alice')?.truncated).toBe(false);
+    expect(readableSummary('https://example.org/notes')?.short).toBe('https://example.org/notes');
+  });
+
   it('is nothing for nothing', () => {
     expect(readableSummary(undefined)).toBeUndefined();
     expect(readableSummary('   ')).toBeUndefined();

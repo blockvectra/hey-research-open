@@ -378,7 +378,9 @@ export type TokenVerificationValue = 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';
 
 const TOKEN_VERIFICATION_PRESENTATION: Record<TokenVerificationValue, { label: string; help: string; tone: MarketTone }> = {
   VERIFIED: { label: 'Token verified', help: 'The project itself ties this contract to the project: its site names the contract, or the owner proved control of the deployer.', tone: 'neutral' },
-  UNVERIFIED: { label: 'Token unverified', help: 'HEY found this token through a launch record or a market listing. Nothing the project itself published ties the contract to the project yet.', tone: 'muted' },
+  // Reason-neutral (2026-10-22, full audit INV-3): the chip's title sat beside the reason's own sentence, and for a site that
+  // names the contract (contested, disowned, unreachable) "nothing the project published" was false.
+  UNVERIFIED: { label: 'Token unverified', help: 'HEY has not confirmed that the project stands behind this contract. The page says why.', tone: 'muted' },
   MISMATCH: { label: 'Contract mismatch', help: 'The project’s own site names a different contract than the one HEY tracks. Treat the tracked token with care.', tone: 'neutral' },
 };
 

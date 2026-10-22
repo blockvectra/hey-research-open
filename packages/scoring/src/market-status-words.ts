@@ -123,7 +123,9 @@ export function marketStatusWords(status: TokenMarketStatusValue, facts: MarketF
  */
 export const TOKEN_MARKET_REASON_WORDS: Readonly<Record<(typeof TOKEN_MARKET_REASONS)[number], string>> = {
   trades_observed: 'HEY decoded trades of the token on chain in the last day',
-  no_trades_24h: 'HEY decoded no trades of the token on chain in the last day',
+  // Above $1 (2026-10-22, full audit BL-6): the classifier reads a decoded day of $1 or less as no trading, and the payload
+  // beside this clause can show such a dust volume (cyberia: $0.10 on 2026-10-22).
+  no_trades_24h: 'HEY decoded no trading above $1 of the token on chain in the last day',
   no_liquidity_reading: 'HEY holds a recent reading, but none that reports liquidity',
   no_recent_reading_after_market: 'HEY recorded a market earlier and has read none for weeks',
   readings_stale: 'every reading HEY holds is more than 30 days old',

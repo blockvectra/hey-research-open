@@ -152,6 +152,17 @@ export const serverEnvSchema = z
      * should run with.
      */
     databaseStatementTimeoutMs: numberWithDefault(0).pipe(z.number().int().min(0)),
+    /**
+     * How long a request waits for a connection from the shared pool, in
+     * milliseconds (2026-10-22, performance PERF-5). Zero or unset waits for
+     * ever, which the worker's long jobs and a script want. The web sets one:
+     * with ten connections and an unbounded queue, a burst behind slow reads
+     * left requests waiting with no deadline, so the container looked hung to
+     * the proxy instead of answering. Past it the read fails with
+     * node-postgres's "timeout exceeded when trying to connect", which every
+     * route handler answers as a 503 with Retry-After (`isTransientDatabaseError`).
+     */
+    databasePoolAcquireTimeoutMs: numberWithDefault(0).pipe(z.number().int().min(0)),
 
     chain: z.object({
       chainId: numberWithDefault(ROBINHOOD_CHAIN_ID).pipe(z.number().int().positive()),
@@ -831,6 +842,7 @@ function shapeEnv(raw: RawEnv) {
     buildSha: raw.HEY_BUILD_SHA,
     databaseUrl: raw.DATABASE_URL,
     databaseStatementTimeoutMs: raw.DATABASE_STATEMENT_TIMEOUT_MS,
+    databasePoolAcquireTimeoutMs: raw.DATABASE_POOL_ACQUIRE_TIMEOUT_MS,
     sessionSecret: raw.SESSION_SECRET,
     chain: {
       chainId: raw.RH_CHAIN_ID,
@@ -975,6 +987,7 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   buildSha: 'HEY_BUILD_SHA',
   databaseUrl: 'DATABASE_URL',
   databaseStatementTimeoutMs: 'DATABASE_STATEMENT_TIMEOUT_MS',
+  databasePoolAcquireTimeoutMs: 'DATABASE_POOL_ACQUIRE_TIMEOUT_MS',
   sessionSecret: 'SESSION_SECRET',
   'chain.chainId': 'RH_CHAIN_ID',
   'chain.dexscreenerSlug': 'RH_DEXSCREENER_CHAIN_SLUG',

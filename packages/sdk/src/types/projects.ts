@@ -340,7 +340,22 @@ export type HeyPage<T> = {
   catalogue?: HeyCatalogueCounts;
   /** Parameters the request carried that the listing does not read (additive, 2026-10-17); absent when every one was read. */
   ignoredParameters?: string[];
+  /**
+   * Values the listing read otherwise than sent (additive, 2026-10-22): a `limit` or `offset` capped to its bounds, or
+   * a single-value parameter sent twice (its first value read). Absent when every value was read as sent.
+   */
+  adjustedParameters?: HeyParameterAdjustment[];
   disclaimer: string;
+};
+
+/** One value a listing read otherwise than it was sent (2026-10-22). */
+export type HeyParameterAdjustment = {
+  parameter: string;
+  /** What the request sent (a repeat: the values not read, comma-joined). */
+  value: string;
+  /** What the listing read instead. */
+  readAs: string | number;
+  reason: 'above_maximum' | 'below_minimum' | 'not_a_number' | 'not_an_integer' | 'repeated';
 };
 
 /**
@@ -424,6 +439,8 @@ export type HeyProjectDetail = HeyProject & {
      * none. Absent is unknown; a present `0` is a day HEY read and found none.
      */
     events24h?: number;
+    /** The UTC day `events24h` counts (2026-10-22, additive): the newest day HEY read, never a rolling 24 hours. */
+    eventsDay?: string;
     events7d?: number;
     /** Days HEY holds a row for. */
     daysCovered: number;
@@ -769,6 +786,8 @@ export type HeyScanCard =
         /** Present, true, when a commits page was cut inside the window: `commits_30d` is a floor. */
         commits_30d_partial?: true;
         releases_30d: number;
+        /** Whether `releases_30d` is a measurement (2026-10-22, additive): false when HEY reads no source releases come from, or building is not measured — then `releases_30d: 0` is legacy, not a finding. */
+        releases_measured: boolean;
         ships_30d: number;
         /** Meaningful ships by the rule behind the status (2026-09-26); absent when unmeasured and none. */
         meaningful_ships_30d?: number;

@@ -317,8 +317,12 @@ const sender = z
     typeof username === 'string' && TELEGRAM_USERNAME_PATTERN.test(username) ? { id, is_bot, username } : { id, is_bot },
   );
 
-/** Telegram's ceiling on a caption. */
-const CAPTION_MAX = 1024;
+/**
+ * Telegram's ceiling on a caption a reader can send: 1,024 characters, and 4,096 for a Telegram Premium
+ * account (2026-10-22). Bots send at most 1,024; this is the inbound ceiling, so a Premium reader's long
+ * caption — their own, or the one a `/hey` reply points at — is read, never refused as malformed.
+ */
+export const TELEGRAM_INBOUND_CAPTION_MAX = 4096;
 
 /**
  * The message a reader replied to (2026-10-05): read only for an explicit
@@ -329,7 +333,7 @@ const repliedMessage = z.object({
   message_id: z.number().int(),
   from: user.optional(),
   text: z.string().max(TELEGRAM_MESSAGE_MAX).optional(),
-  caption: z.string().max(CAPTION_MAX).optional(),
+  caption: z.string().max(TELEGRAM_INBOUND_CAPTION_MAX).optional(),
 });
 
 const inboundMessage = z.object({
@@ -346,8 +350,12 @@ const inboundMessage = z.object({
    * announcement is an image with its contract in the caption, and it got no answer at all. Read
    * in a private chat only, and only for its contracts, `$TICKER`s or a short name. Never stored.
    */
-  caption: z.string().max(CAPTION_MAX).optional(),
-  reply_to_message: repliedMessage.optional(),
+  caption: z.string().max(TELEGRAM_INBOUND_CAPTION_MAX).optional(),
+  /**
+   * Context only, never the request itself (2026-10-22): a replied-to message HEY cannot read is no
+   * replied-to message, never a reason to drop the reader's own request as malformed.
+   */
+  reply_to_message: repliedMessage.optional().catch(undefined),
   /** A message sent through a bot's inline mode, HEY's own cards included: never a request to HEY. */
   via_bot: user.optional(),
   /** Group → supergroup migration (service messages): the chat's id changes, and HEY's group record follows it. */

@@ -274,11 +274,45 @@ export function tokenMarketWords(status: string, reason?: string | null, label?:
  * with no provider is the token's last recorded depth, dated rather than
  * attributed to a source that did not report it.
  */
-export function liquidityWords(liquidity: NonNullable<HeyProject['liquidity']>, now?: Date): string {
-  const provenance = liquidity.source ? liquidity.source : liquidity.observedAt ? `last recorded ${ago(liquidity.observedAt, now)}` : 'last recorded';
+/*
+ * A sourced figure read more than a day ago carries its age too (2026-10-22 audit API-2): the card's
+ * liquidity may be the token's earlier depth, and "$209.1K liquidity (dexscreener)" beside today's
+ * valuation read as current.
+ */
+export function liquidityWords(liquidity: NonNullable<HeyProject['liquidity']>, now: Date = new Date()): string {
+  const readAt = liquidity.observedAt ? new Date(liquidity.observedAt) : undefined;
+  const old = readAt !== undefined && now.getTime() - readAt.getTime() > 86_400_000;
+  const provenance = liquidity.source
+    ? old
+      ? `${liquidity.source}, read ${ago(liquidity.observedAt!, now)}`
+      : liquidity.source
+    : liquidity.observedAt
+      ? `last recorded ${ago(liquidity.observedAt, now)}`
+      : 'last recorded';
   return liquidity.kind === 'launch_inventory'
     ? `${money(liquidity.usd)} of its own supply in the launch pool — not a market reading (${provenance})`
     : `${money(liquidity.usd)} liquidity (${provenance})`;
+}
+
+/**
+ * The official X account in words, when there is something to say about it (2026-10-18): held, read as suspended,
+ * unavailable or gone, or linking back to the project's site. Undefined for an active account with nothing more, and
+ * for a handle that is not one. One function for the project line and the snapshot (2026-10-22 audit INV-7).
+ */
+export function officialXWords(officialX: NonNullable<HeyProject['officialX']>): string | undefined {
+  if (!/^[A-Za-z0-9_]{1,15}$/.test(officialX.handle)) return undefined;
+  const xStatus = officialX.status;
+  const checked = typeof officialX.checkedAt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(officialX.checkedAt) ? ` (checked ${officialX.checkedAt.slice(0, 10)})` : '';
+  // A handle now answering for another account is held until a moderator confirms (founder ruling 4, 2026-10-18).
+  if (officialX.linkHeld === 'handle_reassigned') return `X handle @${officialX.handle} now belongs to a different account; link held${checked}`;
+  // Another project's account (2026-10-18): its profile links that project's site, not this one's.
+  if (officialX.linkHeld === 'links_other_project') return `X account @${officialX.handle} links another project's site, not this one's; link held${checked}`;
+  // A moderator held the account as not the project's (2026-10-19).
+  if (officialX.linkHeld === 'not_the_project') return `X account @${officialX.handle} is not this project's account; link held by a moderator`;
+  if (xStatus === 'SUSPENDED' || xStatus === 'UNAVAILABLE' || xStatus === 'NOT_FOUND') return `X account @${officialX.handle} ${xStatus === 'NOT_FOUND' ? 'not found' : xStatus.toLowerCase()}${checked}`;
+  // The account's profile links the project's own site (founder ruling 1, 2026-10-18): trust in the account, nothing more.
+  if (officialX.corroboration === 'mutual_site_link') return `X account @${officialX.handle} links back to the project's site${checked}`;
+  return undefined;
 }
 
 /** One project on one line: identity, what HEY claims, and the context behind it. */
@@ -319,19 +353,8 @@ export function projectLine(project: HeyProject, now?: Date): string {
   if (project.priceChange24hPct !== undefined) parts.push(`${project.priceChange24hPct >= 0 ? '+' : ''}${project.priceChange24hPct.toFixed(1)}% 24h`);
   if (project.venue) parts.push(`trades on ${quoteExternal(project.venue, 'market_provider')}`);
   // The official X account HEY last read as suspended, unavailable or gone (2026-10-18): stated, so a caller does not link it.
-  const xStatus = project.officialX?.status;
-  if (project.officialX && /^[A-Za-z0-9_]{1,15}$/.test(project.officialX.handle)) {
-    const checked = typeof project.officialX.checkedAt === 'string' && /^\d{4}-\d{2}-\d{2}/.test(project.officialX.checkedAt) ? ` (checked ${project.officialX.checkedAt.slice(0, 10)})` : '';
-    // A handle now answering for another account is held until a moderator confirms (founder ruling 4, 2026-10-18).
-    if (project.officialX.linkHeld === 'handle_reassigned') parts.push(`X handle @${project.officialX.handle} now belongs to a different account; link held${checked}`);
-    // Another project's account (2026-10-18): its profile links that project's site, not this one's.
-    else if (project.officialX.linkHeld === 'links_other_project') parts.push(`X account @${project.officialX.handle} links another project's site, not this one's; link held${checked}`);
-    // A moderator held the account as not the project's (2026-10-19).
-    else if (project.officialX.linkHeld === 'not_the_project') parts.push(`X account @${project.officialX.handle} is not this project's account; link held by a moderator`);
-    else if (xStatus === 'SUSPENDED' || xStatus === 'UNAVAILABLE' || xStatus === 'NOT_FOUND') parts.push(`X account @${project.officialX.handle} ${xStatus === 'NOT_FOUND' ? 'not found' : xStatus.toLowerCase()}${checked}`);
-    // The account's profile links the project's own site (founder ruling 1, 2026-10-18): trust in the account, nothing more.
-    else if (project.officialX.corroboration === 'mutual_site_link') parts.push(`X account @${project.officialX.handle} links back to the project's site${checked}`);
-  }
+  const xWords = project.officialX ? officialXWords(project.officialX) : undefined;
+  if (xWords) parts.push(xWords);
 
   return `- ${parts.join(' · ')}\n  ${project.url}`;
 }
@@ -782,12 +805,19 @@ export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
    * as well, so a server that predates the field cannot turn a disowned token
    * back into an invitation.
    */
-  const applies = p.activityAppliesToToken !== false && p.tokenVerification?.status !== 'MISMATCH';
+  const disowned = p.tokenVerification?.status !== 'MISMATCH' && p.tokenVerification?.reason === 'site_disclaims_contract';
+  const applies = p.activityAppliesToToken !== false && p.tokenVerification?.status !== 'MISMATCH' && !disowned;
   if (!applies) {
-    lines.push('- FACT MISMATCH: the project’s own site names a different contract. The activity above is the project’s; do not treat this address as its token.');
+    // A token the project's own site disowns (2026-10-22, INV-2) is said in the site's words, never as another contract.
+    lines.push(
+      disowned
+        ? '- FACT the project’s own site names this contract and says it is not the project’s token. The activity above is the project’s; do not treat this address as its token.'
+        : '- FACT MISMATCH: the project’s own site names a different contract. The activity above is the project’s; do not treat this address as its token.',
+    );
     lines.push('- FACT activity applies to this token: no. HEY sends no link from this address to the project.');
   } else if (p.tokenVerification?.status === 'UNVERIFIED') {
-    lines.push('- UNKNOWN whose token: HEY has not seen the project name this contract itself.');
+    // Reason-neutral, with the reason HEY recorded (2026-10-22, INV-3): a contested or unreachable site did name it.
+    lines.push(`- UNKNOWN whose token: HEY has not confirmed that the project stands behind this contract${p.tokenVerification.reason ? ` (${p.tokenVerification.reason})` : ''}.`);
   } else if (p.tokenVerification?.status === 'VERIFIED') {
     lines.push('- FACT verified: the project names this contract itself.');
   }
@@ -969,6 +999,23 @@ export function renderTimelineParts(timeline: HeyTimeline, limit = 30): Rendered
  * A retraction says only that an id is gone. The page ends with how to read
  * on, so a model never mistakes a page for the whole.
  */
+/**
+ * One side of a change's move in words (2026-10-22 audit API-3): a dollar figure as money, any other number rounded,
+ * a code as itself. The JSON keeps the raw value; "(4563.370986 → 30095.27)" was unitless six-decimal prose.
+ */
+export function moveValue(value: unknown, unit: unknown): string {
+  if (value === undefined || value === null) return '—';
+  if (typeof value !== 'number' || !Number.isFinite(value)) return String(value);
+  if (typeof unit === 'string' && unit.startsWith('usd')) return money(value);
+  return value.toLocaleString('en-US', { maximumFractionDigits: Number.isInteger(value) ? 0 : 2 });
+}
+
+/** The unit after a numeric move when it is not money: "(3 → 8 ships/7d)". */
+function moveUnitSuffix(before: unknown, after: unknown, unit: unknown): string {
+  if (typeof unit !== 'string' || unit === '' || unit.startsWith('usd')) return '';
+  return typeof before === 'number' || typeof after === 'number' ? ` ${unit}` : '';
+}
+
 export function renderChanges(page: HeyChangesPage): string {
   return joinParts(renderChangesParts(page));
 }
@@ -988,7 +1035,10 @@ export function renderChangesParts(page: HeyChangesPage): RenderedParts {
      * pool only", and the stored codes beside it ("LOW_LIQUIDITY → ACTIVE_MARKET") showed the code a launch pool must
      * never be read as. The codes stay in the JSON's `before` and `after`.
      */
-    const move = item.type !== 'market.status_changed' && (item.before !== undefined || item.after !== undefined) ? ` (${String(item.before ?? '—')} → ${String(item.after ?? '—')})` : '';
+    const move =
+      item.type !== 'market.status_changed' && (item.before !== undefined || item.after !== undefined)
+        ? ` (${moveValue(item.before, item.facts?.['unit'])} → ${moveValue(item.after, item.facts?.['unit'])}${moveUnitSuffix(item.before, item.after, item.facts?.['unit'])})`
+        : '';
     lines.push(`- ${recordTag(item.id)} ${when} · ${item.type} · ${quotedName(item.project.name)} (${item.project.slug}): ${summaryWords(item.id, item.summaryCurrent ?? item.summary, item.type)}${move}`);
     lines.push(`  id ${item.id} · revision ${item.revision}${item.origin === 'live' ? '' : ` · ${item.origin}`} · detected ${item.detectedAt.slice(0, 10)}${item.countsAsBuilding ? ' · counts as building' : ''}`);
     const substance = item.facts?.['codeSubstance'];

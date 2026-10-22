@@ -3,7 +3,7 @@
  * (2026-09-26). Each is read from HEY's own tables; none calls a provider.
  * Absent means HEY does not know; a withheld figure says it is withheld.
  */
-import type { HeyCodeWeek, HeyDiscoveryGapWithheld, HeyProject, HeyStillBuildingState, HeyStillBuildingWithheld, HeyUnderTheRadar } from './projects';
+import type { HeyCodeWeek, HeyDiscoveryGapWithheld, HeyOfficialX, HeyProject, HeyStillBuildingState, HeyStillBuildingWithheld, HeyUnderTheRadar } from './projects';
 import type { HeyPeerContext } from './graph';
 import type { HeyUsageSummary } from './usage';
 import type { HeyChangePrecision, HeyChangeType } from './changes';
@@ -542,6 +542,8 @@ export type HeyProjectSnapshot = {
     /** `true` when this is `$HEY`, HEY's own token, researched by the same rules (2026-09-30, additive); absent otherwise. */
     heysOwnToken?: true;
     websiteUrl?: string;
+    /** The official X account as the card carries it (2026-10-22, additive): HEY's last read, held link, corroboration. Absent when HEY holds none. */
+    officialX?: HeyOfficialX;
     /** When HEY first recorded the project: knowledge time. */
     firstRecordedByHeyAt: string;
     externalListedAt?: string;
@@ -595,7 +597,16 @@ export type HeyProjectSnapshot = {
   protocolEconomics?: HeyProtocolEconomics;
   /** Absent only when HEY could not read the project's coverage. */
   developerFootprint?: HeyDeveloperFootprint;
-  onchain?: { events24h?: number; events7d?: number; calls24h?: number; daysCovered: number; daysMeasured: number; observedAt: string };
+  onchain?: {
+    events24h?: number;
+    /** The UTC day `events24h` counts (2026-10-22, additive): the newest day HEY read, never a rolling 24 hours. */
+    eventsDay?: string;
+    events7d?: number;
+    calls24h?: number;
+    daysCovered: number;
+    daysMeasured: number;
+    observedAt: string;
+  };
   /**
    * Product usage over seven days (2026-09-28): its own dimension, never a
    * building or ranking input. The state says why figures are absent; the

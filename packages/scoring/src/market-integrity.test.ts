@@ -4,6 +4,7 @@ import {
   correlate,
   evaluateMarketIntegrity,
   MARKET_INTEGRITY_RULES_VERSION,
+  tradedOnDay,
   type IntegrityDay,
   type MarketIntegrityInput,
 } from './market-integrity';
@@ -425,5 +426,15 @@ describe('timeline correlation', () => {
     expect(out[0]).toMatchObject({ gapHours: -16.2, window: 24 });
     expect(out[1]).toMatchObject({ gapHours: 0.5, window: 1 });
     expect(out[2]?.window).toBeNull();
+  });
+});
+
+describe('tradedOnDay (2026-10-22, full audit BL-6)', () => {
+  it('reads the trade count when HEY has one, else a volume above $1', () => {
+    expect(tradedOnDay({ trades: 2, volumeUsd: 0 })).toBe(true);
+    expect(tradedOnDay({ trades: 0, volumeUsd: 500 })).toBe(false);
+    expect(tradedOnDay({ trades: null, volumeUsd: 1.5 })).toBe(true);
+    expect(tradedOnDay({ trades: null, volumeUsd: 0.1 })).toBe(false);
+    expect(tradedOnDay({ trades: null, volumeUsd: null })).toBe(false);
   });
 });

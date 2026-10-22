@@ -511,6 +511,14 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## Reliability pass (2026-10-22)
+
+A full audit of the site, API, MCP server, Telegram bot, pipelines and deploy scripts, fixed the same day: faster deep
+catalogue pages and cached counts, logos and share images served from HEY's own stored copy (never an SVG decoded),
+unknown values sent as `null` instead of 0 across the API and MCP, Telegram captions and handles read correctly, and a
+deploy that refuses unverified commits and restores the previous release on failure. API changes are dated in the
+[API changelog](https://heyresearch.xyz/developers/changelog).
+
 ## What counts as shipping (2026-10-02)
 
 Outside readers found automation leading the ship feeds. Since 2026-10-02 a commit from a bot

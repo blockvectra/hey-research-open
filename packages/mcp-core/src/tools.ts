@@ -76,7 +76,8 @@ export const HEY_MCP_PROFILE_PATHS: Readonly<Record<HeyMcpProfile, string>> = { 
  * bound attention itself"; the full list measures 20,164.
  */
 // +300 each for explain_fact's build.change and its `event` parameter (2026-10-20, one change explained).
-export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_500, research: 11_300 };
+// research +50 (2026-10-22, audit API-6): research_answer says a not_found project is a status, not isError; the list measures 11,319.
+export const HEY_MCP_TOOL_LIST_BUDGET: Readonly<Record<HeyMcpProfile, number>> = { full: 20_500, research: 11_350 };
 
 export type HeyMcpToolInfo = {
   name: string;

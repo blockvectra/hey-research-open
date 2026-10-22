@@ -58,6 +58,17 @@ import { TOKEN_MARKET, type TokenMarketStatusValue } from './token-market';
  * - The history names the source of the level and of the current reading,
  *   so every surface can say where each figure came from.
  */
+
+/**
+ * Whether a daily close of `token_market_days` is a day the token traded (2026-10-22, full audit BL-6): its decoded trade
+ * count when HEY has one, else a volume above `TOKEN_MARKET.inactiveVolumeUsd`. The one predicate behind Market
+ * Integrity's last trade day and the market page's (`tradedDaySql` in `@hey/domain`, its SQL twin), both read over
+ * complete UTC days only.
+ */
+export function tradedOnDay(day: { trades: number | null; volumeUsd: number | null }): boolean {
+  return day.trades !== null ? day.trades > 0 : day.volumeUsd !== null && day.volumeUsd > TOKEN_MARKET.inactiveVolumeUsd;
+}
+
 export const MARKET_INTEGRITY_RULES_VERSION = 'mi-v4';
 
 export const MARKET_INTEGRITY = {
@@ -342,8 +353,7 @@ export function evaluateMarketIntegrity(input: MarketIntegrityInput): MarketInte
    * after it and the recent trading window read days that are over.
    */
   const completeDays = days.filter((d) => d.day < today);
-  const lastTradeDay =
-    [...completeDays].reverse().find((d) => (d.trades !== null ? d.trades > 0 : d.volumeUsd !== null && d.volumeUsd > TOKEN_MARKET.inactiveVolumeUsd))?.day ?? null;
+  const lastTradeDay = [...completeDays].reverse().find(tradedOnDay)?.day ?? null;
 
   // Collapse: the last two observations, consecutive, both at or below the level.
   let collapse: CollapseLevel = 'NONE';

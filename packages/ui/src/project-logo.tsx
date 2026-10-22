@@ -11,14 +11,18 @@ import { cn } from './cn';
  * The colour is derived from the project's own slug, so it is stable across
  * renders and deployments, and it is picked from a controlled brand-adjacent
  * palette — never random neon.
+ *
+ * Every tile carries white initials at 4.5:1 or better (2026-10-22, audit WEB-9): Research Blue 500 (3.6:1)
+ * gave way to Midnight 900, and the infrastructure violet (4.4:1) to the same violet darkened (5.8:1). The
+ * order is kept, so a project keeps its tile's place in the palette.
  */
-const MONOGRAM_PALETTE = [
+export const MONOGRAM_PALETTE = [
   'bg-midnight-800 text-white',
   'bg-blue-600 text-white',
   'bg-midnight-700 text-white',
-  'bg-blue-500 text-white',
+  'bg-midnight-900 text-white',
   'bg-midnight-850 text-white',
-  'bg-narrative-infra text-white',
+  'bg-[#6454c8] text-white',
 ] as const;
 
 /** Deterministic: the same project always gets the same colour. */

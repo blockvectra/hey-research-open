@@ -28,7 +28,7 @@ import type {
 
 import { looksLikeEvidenceId, quoteExternal, stillBuildingStateOf, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
 
-import { activityTag, atPrecision, composedWords, derivedWords, liquidityWords, money, quotedName, recordTag, shownOf, STILL_BUILDING_MEANING, stillBuildingEvidence, summaryWords, TAG_LEGEND, tokenMarketWords, valuationWord } from './render';
+import { activityTag, atPrecision, composedWords, derivedWords, liquidityWords, money, officialXWords, quotedName, recordTag, shownOf, STILL_BUILDING_MEANING, stillBuildingEvidence, summaryWords, TAG_LEGEND, tokenMarketWords, valuationWord } from './render';
 
 /**
  * The machine-layer reads as text (2026-09-26): snapshot, coverage, explain,
@@ -211,6 +211,19 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   lines.push(`- DERIVED research level: ${pretty(i.researchLevel)}; catalogue: ${pretty(i.catalogStatus)}; kind: ${pretty(i.projectKind)}${i.primaryNarrative ? `; narrative: ${quoteExternal(i.primaryNarrative.name, 'narrative')}` : ''}`);
   lines.push(`- FACT first recorded by HEY ${i.firstRecordedByHeyAt.slice(0, 10)} (HEY's knowledge time)${i.externalListedAt ? `; listed by ${i.externalListedSource ?? 'an outside registry'} ${i.externalListedAt.slice(0, 10)} (their date, not HEY's)` : ''}`);
   lines.push(i.token ? `- FACT token: chain ${i.token.chainId}, contract ${i.token.contractAddress}` : '- FACT no token recorded — this is a project page, not a token.');
+  // The official X account, in the project line's own words (2026-10-22 audit INV-7): a held link is a rule HEY applied.
+  if (i.officialX && /^[A-Za-z0-9_]{1,15}$/.test(i.officialX.handle)) {
+    const x = i.officialX;
+    const said = officialXWords(x);
+    const checked = x.checkedAt && /^\d{4}-\d{2}-\d{2}/.test(x.checkedAt) ? `, checked ${x.checkedAt.slice(0, 10)}` : '';
+    lines.push(
+      said
+        ? `- ${x.linkHeld ? 'DERIVED' : 'FACT'} ${said}`
+        : x.status === 'ACTIVE'
+          ? `- FACT official X account @${x.handle} (active${checked})`
+          : `- UNKNOWN official X account @${x.handle}: not read yet`,
+    );
+  }
 
   lines.push('', '## Build');
   if (i.researchLevel === 'INDEXED') lines.push('- UNKNOWN activity: not researched yet — HEY indexed this record but has not read its sources.');
@@ -291,9 +304,18 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
      * unknown, and the newest readable day may not be the latest one.
      */
     const partial = o.daysMeasured < o.daysCovered;
-    const events = partial
-      ? `- FACT ${o.events24h} contract events on the newest day HEY could read${o.events7d === undefined ? '' : `, ${o.events7d} over the ${o.daysMeasured} days HEY could read`} (${o.daysCovered - o.daysMeasured} of ${o.daysCovered} days unreadable: unknown, not zero)`
-      : `- FACT ${o.events24h} contract events in 24 h${o.events7d === undefined ? '' : `, ${o.events7d} over ${o.daysCovered} days`}`;
+    /*
+     * A reading over 36 hours old is not "in 24 h" (2026-10-22 audit INV-8): "FACT 0 contract events in 24 h" was
+     * printed from a three-day-old read. The figure is said on its own day, and the days since are unknown, not zero.
+     */
+    const readAt = new Date(o.observedAt);
+    const old = !Number.isNaN(readAt.getTime()) && (now ?? new Date()).getTime() - readAt.getTime() > 36 * 3_600_000;
+    const day = o.eventsDay ?? o.observedAt.slice(0, 10);
+    const events = old
+      ? `- FACT ${o.events24h} contract events on ${day}, the newest day HEY read${o.events7d === undefined ? '' : `; ${o.events7d} over the ${o.daysMeasured} days HEY could read`} — the days since are unknown, not zero`
+      : partial
+        ? `- FACT ${o.events24h} contract events on the newest day HEY could read${o.events7d === undefined ? '' : `, ${o.events7d} over the ${o.daysMeasured} days HEY could read`} (${o.daysCovered - o.daysMeasured} of ${o.daysCovered} days unreadable: unknown, not zero)`
+        : `- FACT ${o.events24h} contract events in 24 h${o.events7d === undefined ? '' : `, ${o.events7d} over ${o.daysCovered} days`}`;
     lines.push(
       o.events24h === undefined
         ? `- UNKNOWN contract events: HEY could not index them (${o.daysMeasured} of ${o.daysCovered} days readable)${o.calls24h === undefined ? '' : `; FACT ${o.calls24h} calls in 24 h`}`
@@ -852,8 +874,8 @@ export function usageLines(u: HeyUsageSummary): string[] {
     );
   }
   lines.push(u.events === null || u.events === undefined ? `- UNKNOWN events (${u.eventsReason ?? 'not read'})` : `- FACT ${n(u.events)} contract events in the window`);
-  const facts = u.methodEvents.firstObserved + u.methodEvents.resumed;
-  if (facts > 0) {
+  const facts = u.methodEvents ? u.methodEvents.firstObserved + u.methodEvents.resumed : 0;
+  if (u.methodEvents && facts > 0) {
     lines.push(
       `- FACT method facts in the window: ${u.methodEvents.firstObserved} first-ever call${u.methodEvents.firstObserved === 1 ? '' : 's'}, ${u.methodEvents.resumed} resumed after 30+ silent days (ids ${u.methodEvents.ids.join(', ')}).`,
     );

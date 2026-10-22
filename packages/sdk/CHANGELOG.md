@@ -6,6 +6,28 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (2026-10-22, API truth repairs)
+
+- `HeyPage.adjustedParameters?: HeyParameterAdjustment[]` (new type): a `limit` or `offset` capped to its bounds, or a
+  single-value parameter sent twice, with what was sent, what was read and why. A repeated `has` or `type` is now
+  read as one list.
+- `HeyScanCard` (found) `activity.releases_measured: boolean`: false when HEY reads no source releases come from, or
+  building is not measured — `releases_30d: 0` is then legacy, not a finding.
+- `HeyProjectSnapshot.identity.officialX?: HeyOfficialX`, as the card and the detail carry it.
+- `eventsDay?: string` on `HeyProjectDetail.onchainActivity` and `HeyProjectSnapshot.onchain`: the UTC day
+  `events24h` counts.
+- `HeyWeeklyReport.chain.tokensTradedBasis?: 'busiest_day'` and `tokensTradedDay?: string`: `tokensTraded` is the
+  busiest day's distinct count, never a weekly total.
+
+### Changed (2026-10-22, truth repairs)
+
+- `has: ['liveMarket']` lists only projects whose tracked token has a live market, as its coverage count of the same
+  name always counted; a project with no token no longer passes it.
+- `HeyUsageSummary.methodEvents` is `… | null`: `null` where HEY holds no usage figures (no contract watched), never
+  `{ firstObserved: 0, resumed: 0 }`. The key is always present; check for `null` before reading its counts.
+- `activity_applies_to_token` (scan and builder cards) is also `false` when the token's verification reason is
+  `site_disclaims_contract`: the project's own site disowns the contract.
+
 ### Added (2026-10-20, one change explained)
 
 - `HeyExplainFact` gains `'build.change'`; `projects.explain(slug, 'build.change', { event })` takes an optional

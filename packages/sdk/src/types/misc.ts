@@ -130,7 +130,7 @@ export type HeyWeeklyReport = {
     stillBuilding: number;
     underTheRadar: number;
   };
-  chain: { days: number; dexTrades?: number; dexVolumeUsd?: number; /** Days withheld as implausible (2026-10-09, additive); `dexVolumeUsd` is then absent. */ dexVolumeWithheldDays?: number; tokensTraded?: number; launches?: number; projectsPublished?: number };
+  chain: { days: number; dexTrades?: number; dexVolumeUsd?: number; /** Days withheld as implausible (2026-10-09, additive); `dexVolumeUsd` is then absent. */ dexVolumeWithheldDays?: number; /** The busiest day's count of distinct tokens traded, never a weekly total. */ tokensTraded?: number; /** What `tokensTraded` is (2026-10-22, additive): `busiest_day`. */ tokensTradedBasis?: 'busiest_day'; /** The UTC day `tokensTraded` was read on (2026-10-22, additive; absent on older reports). */ tokensTradedDay?: string; launches?: number; projectsPublished?: number };
   shipped: { slug: string; name: string; ships: number; latest: string; latestAt: string }[];
   newBuilders: { slug: string; name: string; verifiedAt: string }[];
   backToShipping: { slug: string; name: string; from: string; to: string }[];

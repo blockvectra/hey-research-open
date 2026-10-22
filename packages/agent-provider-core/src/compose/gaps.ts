@@ -34,7 +34,8 @@ export type GapFacts = {
   brand?: { sentence: string; reason: string };
 };
 
-const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
+/** An UNVERIFIED token's reason in one sentence; the gap list and the `contract.token_verification` claim read it (INV-2/INV-3). */
+export const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   owner_has_not_published_contract: 'The verified owner has not published the token contract on the project’s own site or signed for it.',
   self_reported: 'The token was named in the project’s submission; the project’s own site or an on-chain signature has not confirmed it.',
   launchpad_record: 'HEY knows the token from a launchpad record; the project has not been seen naming it.',

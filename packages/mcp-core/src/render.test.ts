@@ -9,6 +9,7 @@ import {
   STILL_BUILDING_MEANING,
   ago,
   atPrecision,
+  liquidityWords,
   projectLine,
   renderAccelerating,
   renderAskAnswer,
@@ -154,6 +155,10 @@ describe('find_projects', () => {
 
   it('names a launch pool’s own supply for what it is, and prints no market figure it does not hold', () => {
     expect(projectLine(project({ liquidity: { usd: 42_000_000, source: 'dexscreener', kind: 'launch_inventory' } }), NOW)).toContain('of its own supply in the launch pool — not a market reading');
+    // A sourced figure read more than a day ago says when (2026-10-22 audit API-2); a fresh one names its source only.
+    const daysAgo = (days: number) => new Date(NOW.getTime() - days * 86_400_000).toISOString();
+    expect(liquidityWords({ usd: 209_135.48, source: 'dexscreener', observedAt: daysAgo(5), kind: 'market' }, NOW)).toBe('$209.1K liquidity (dexscreener, read 5 days ago)');
+    expect(liquidityWords({ usd: 209_135.48, source: 'dexscreener', observedAt: daysAgo(0.1), kind: 'market' }, NOW)).toBe('$209.1K liquidity (dexscreener)');
     expect(projectLine(project(), NOW)).not.toMatch(/\$0|n\/a|mcap|valuation/);
   });
 
@@ -278,6 +283,15 @@ describe('lookup_token', () => {
     const { activityAppliesToToken: _omitted, ...older } = disowned;
     expect(renderTokenLookup({ ...fx.lookupPublished, project: older as typeof disowned }, NOW)).not.toContain(fx.lookupPublished.project!.url);
   });
+
+  it('on a token the project’s own site disowns says so in the site’s words and sends no link (2026-10-22, INV-2)', () => {
+    const disowned = { ...fx.lookupPublished.project!, tokenVerification: { status: 'UNVERIFIED' as const, reason: 'site_disclaims_contract' }, activityAppliesToToken: false };
+    const text = renderTokenLookup({ ...fx.lookupPublished, project: disowned }, NOW);
+    expect(text).toContain('FACT the project’s own site names this contract and says it is not the project’s token');
+    expect(text).not.toContain('MISMATCH');
+    expect(text).toContain('FACT activity applies to this token: no');
+    expect(text).not.toContain(fx.lookupPublished.project!.url);
+  });
 });
 
 describe('get_project_snapshot', () => {
@@ -289,6 +303,19 @@ describe('get_project_snapshot', () => {
     expect(text).toContain('- UNKNOWN Discovery Gap: not measured');
     expect(text).toContain('DERIVED valuation withheld: the market is not live (liquidity removed)');
     expect(text).not.toMatch(/market cap|\$0\b/);
+  });
+
+  // 2026-10-22 audit INV-7: the one-call surface says whether the X account is live, gone, held or linked back.
+  it('prints the official X account in the project line’s words, tagged by what HEY read or ruled', () => {
+    const withX = (x: HeyOfficialX) => renderSnapshot({ ...fx.snapshot, identity: { ...fx.snapshot.identity, officialX: x } }, NOW);
+    expect(text).not.toContain('X account');
+    expect(withX(officialX({ handle: 'cyberia_temple', url: 'https://x.com/cyberia_temple', status: 'SUSPENDED', checkedAt: '2026-10-18T02:21:00.000Z' }))).toContain('- FACT X account @cyberia_temple suspended (checked 2026-10-18)');
+    expect(withX(officialX({ handle: 'shared', url: 'https://x.com/shared', status: 'ACTIVE', checkedAt: '2026-10-18T02:20:00.000Z', linkHeld: 'handle_reassigned' }))).toContain('- DERIVED X handle @shared now belongs to a different account; link held (checked 2026-10-18)');
+    expect(
+      withX(officialX({ handle: 'agentos', url: 'https://x.com/agentos', status: 'ACTIVE', checkedAt: '2026-10-18T02:21:00.000Z', corroboration: 'mutual_site_link', corroborationCheckedAt: '2026-10-18T02:21:00.000Z' })),
+    ).toContain("- FACT X account @agentos links back to the project's site (checked 2026-10-18)");
+    expect(withX(officialX({ handle: 'live', url: 'https://x.com/live', status: 'ACTIVE', checkedAt: '2026-10-18T02:21:00.000Z' }))).toContain('- FACT official X account @live (active, checked 2026-10-18)');
+    expect(withX(officialX({ handle: 'unread', url: 'https://x.com/unread', status: null, statusReason: 'not_read', checkedAt: null }))).toContain('- UNKNOWN official X account @unread: not read yet');
   });
 
   it('never renders a valuation FACT beside sources that disagree (2026-10-09 red-team F2)', () => {
@@ -377,6 +404,10 @@ describe('get_project_snapshot', () => {
     expect(partial).not.toContain('30 over 7 days');
     const whole = renderSnapshot({ ...fx.snapshot, onchain: { events24h: 10, events7d: 30, daysCovered: 7, daysMeasured: 7, observedAt: '2026-09-25T18:00:00.000Z' } }, NOW);
     expect(whole).toContain('- FACT 10 contract events in 24 h, 30 over 7 days');
+    // 2026-10-22 audit INV-8: a reading three days old is said on its own day, never "in 24 h".
+    const stale = renderSnapshot({ ...fx.snapshot, onchain: { events24h: 0, eventsDay: '2026-09-22', events7d: 0, daysCovered: 1, daysMeasured: 1, observedAt: '2026-09-23T01:19:50.000Z' } }, NOW);
+    expect(stale).toContain('- FACT 0 contract events on 2026-09-22, the newest day HEY read; 0 over the 1 days HEY could read — the days since are unknown, not zero');
+    expect(stale).not.toContain('in 24 h');
   });
 
   it('prints the latest changes at their precision, with ids, and where the rest are', () => {
@@ -417,6 +448,8 @@ describe('get_project_snapshot', () => {
   it('says why there is no usage figure instead of printing a zero', () => {
     const unwatched = renderSnapshot({ ...fx.snapshot, usage: { ...fx.snapshot.usage!, state: 'NOT_WATCHED', reason: 'contract_not_in_method_watch' } }, NOW);
     expect(unwatched).toContain("- UNKNOWN usage (contract_not_in_method_watch): the project has a contract, but none is in HEY's method watch");
+    // No method-event zeros beside a contract nobody watches (2026-10-22 audit INV-8): the API sends them as null.
+    expect(renderSnapshot({ ...fx.snapshot, usage: { ...fx.snapshot.usage!, methodEvents: null, state: 'NOT_WATCHED', reason: 'contract_not_in_method_watch' } }, NOW)).not.toContain('method facts');
     const { usage: _usage, ...rest } = fx.snapshot;
     expect(renderSnapshot(rest, NOW)).toContain("- UNKNOWN usage: HEY could not read this project's usage just now.");
     const partial = renderSnapshot({ ...fx.snapshot, usage: { ...fx.snapshot.usage!, state: 'PARTIAL', reason: 'collection_started_in_window', daysCovered: 3 } }, NOW);
@@ -491,6 +524,12 @@ describe('get_changes', () => {
     // Another move keeps its codes beside its words.
     const status = renderChanges({ ...fx.changes, items: [{ ...move('state:9b1c0000-0000-0000-0000-000000000001:activity_status:8', 'build.status_changed'), before: 'QUIET', after: 'SHIPPING' }] });
     expect(status).toContain('(QUIET → SHIPPING)');
+    // A numeric move is formatted by its unit (2026-10-22 audit API-3): never "(4563.370986 → 30095.27)".
+    const spike = renderChanges({ ...fx.changes, items: [{ ...move('signal:5c5c0000-0000-0000-0000-000000000001', 'market.volume_spike'), before: 4563.370986, after: 30095.27, facts: { kind: 'volume_spike', unit: 'usd/day' } }] });
+    expect(spike).toContain('($4.6K → $30.1K)');
+    expect(spike).not.toContain('4563.370986');
+    const ships = renderChanges({ ...fx.changes, items: [{ ...move('signal:5c5c0000-0000-0000-0000-000000000002', 'build.accelerating'), before: 3, after: 8.456, facts: { kind: 'development_spike', unit: 'ships/7d' } }] });
+    expect(ships).toContain('(3 → 8.46 ships/7d)');
     expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · build.accelerating');
     expect(text).toContain('- DERIVED OBSERVED (no source time; HEY saw it 2026-09-24) · market_integrity.event');
     // Token verification is FACT in the explain engine, and a release is a record with its source.

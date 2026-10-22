@@ -46,8 +46,8 @@ export type HeyUsageSummary = {
   basis?: { observed: number; reconstructedFromChain: number };
   topMethods: { rank: number; contract: string; bucket: 'erc20_standard' | 'named' | 'undecoded'; calls: number }[];
   names: 'WITHHELD';
-  /** The change ledger's `method:` ids for functions first called, or called again after 30+ silent days, in the window. */
-  methodEvents: { firstObserved: number; resumed: number; ids: string[] };
+  /** The change ledger's `method:` ids for functions first called, or called again after 30+ silent days, in the window. `null` when HEY holds no usage figures (2026-10-22): no watched contract is no zero. */
+  methodEvents: { firstObserved: number; resumed: number; ids: string[] } | null;
   contextOnly: true;
   url: string;
 };

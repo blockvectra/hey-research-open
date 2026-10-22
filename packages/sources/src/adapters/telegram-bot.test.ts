@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { readFixture, stubFetch, testContext } from '../testing';
-import { createTelegramBotAdapter, parseTelegramUpdate, redactedTelegramUrl, TELEGRAM_MESSAGE_MAX } from './telegram-bot';
+import { createTelegramBotAdapter, parseTelegramUpdate, redactedTelegramUrl, TELEGRAM_INBOUND_CAPTION_MAX, TELEGRAM_MESSAGE_MAX } from './telegram-bot';
 
 /**
  * The Telegram Bot API contract (2026-09-30, docs/TELEGRAM.md). Fixtures are
@@ -130,13 +130,28 @@ describe('inbound updates', () => {
     expect(parseTelegramUpdate('nonsense')).toEqual({ ok: false, reason: 'malformed' });
   });
 
-  it('keeps a photo’s caption, within Telegram’s 1,024 characters (2026-10-12, TG-5)', () => {
+  it('keeps a photo’s caption, within the 4,096 characters a Premium reader may write (2026-10-12, TG-5; 2026-10-22)', () => {
     const photo = (caption: string) => ({ update_id: 11, message: { message_id: 3, from: { id: 7, is_bot: false }, chat: { id: 7, type: 'private' }, date: 1, photo: [{ file_id: 'x' }], caption } });
     const parsed = parseTelegramUpdate(photo('CA: 0xa0a0000000000000000000000000000000000001'));
     expect(parsed.ok && parsed.update.kind === 'message' ? parsed.update.message.caption : undefined).toBe('CA: 0xa0a0000000000000000000000000000000000001');
     // The photo itself is never read.
     expect(JSON.stringify(parsed)).not.toContain('file_id');
-    expect(parseTelegramUpdate(photo('x'.repeat(1025)))).toEqual({ ok: false, reason: 'malformed', updateId: 11 });
+    // A Telegram Premium caption runs past the 1,024 a bot may send: it is still the reader's message.
+    const premium = parseTelegramUpdate(photo(`${'x'.repeat(2000)} CA: 0xa0a0000000000000000000000000000000000001`));
+    expect(premium.ok && premium.update.kind === 'message' ? premium.update.message.caption?.endsWith('0001') : undefined).toBe(true);
+    expect(parseTelegramUpdate(photo('x'.repeat(TELEGRAM_INBOUND_CAPTION_MAX + 1)))).toEqual({ ok: false, reason: 'malformed', updateId: 11 });
+  });
+
+  it('answers a request whose replied-to message it cannot read as a request with no replied-to message (2026-10-22)', () => {
+    const reply = (replied: unknown) => ({
+      update_id: 12,
+      message: { message_id: 4, from: { id: 7, is_bot: false }, chat: { id: -100, type: 'supergroup' }, date: 1, text: '/hey@HeyResearchBot', reply_to_message: replied },
+    });
+    const long = parseTelegramUpdate(reply({ message_id: 3, date: 1, chat: { id: -100, type: 'supergroup' }, caption: 'y'.repeat(TELEGRAM_INBOUND_CAPTION_MAX + 1) }));
+    expect(long).toMatchObject({ ok: true, update: { kind: 'message', message: { text: '/hey@HeyResearchBot' } } });
+    expect(long.ok && long.update.kind === 'message' ? long.update.message.reply_to_message : 'parsed').toBeUndefined();
+    const readable = parseTelegramUpdate(reply({ message_id: 3, caption: 'CA: 0xa0a0000000000000000000000000000000000001' }));
+    expect(readable.ok && readable.update.kind === 'message' ? readable.update.message.reply_to_message?.caption : undefined).toBe('CA: 0xa0a0000000000000000000000000000000000001');
   });
 });
 
