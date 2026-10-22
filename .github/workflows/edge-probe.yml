@@ -1,0 +1,98 @@
+# Edge probe: heyresearch.xyz as a visitor meets it, through Cloudflare, from a machine that is not HEY's server.
+#
+# Every other check (the deploy smoke, the daily smoke, liveness) runs on the server and reaches the app through
+# 127.0.0.1, so a server that is down, unreachable or slow at the edge raises nothing. This job runs from GitHub's
+# machines every hour (Actions minutes are free for a public repository) and fails when a route answers a server error
+# or nothing at all, answers slower than its limit three times running, or /api/health does not say "ok". A failed
+# scheduled run is GitHub's e-mail to whoever last changed the schedule; if the repository secrets
+# TELEGRAM_BOT_TOKEN and TELEGRAM_ALERT_CHAT_ID are set, a failure is also sent there.
+#
+# No credential is needed and nothing is written: plain public reads, labelled `hey-internal/edge-probe` so HEY's
+# analytics never count them as a reader.
+name: Edge probe
+
+on:
+  schedule:
+    # 23 minutes past every hour: off the top of the hour, when GitHub's scheduler runs late.
+    - cron: '23 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: edge-probe
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: probe
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    env:
+      BASE: ${{ vars.HEY_PROBE_URL || 'https://heyresearch.xyz' }}
+    steps:
+      - name: Probe through the edge
+        id: probe
+        run: |
+          set -u
+          UA='hey-internal/edge-probe (hey-research-open)'
+          # path | method | limit in seconds (median of three)
+          ROUTES='/|GET|4
+          /explore|GET|4
+          /updates|GET|4
+          /project/chit|GET|4
+          /api/health|GET|2
+          /api/projects?limit=5|GET|3
+          /api/changes?limit=50|GET|3
+          /.well-known/agent-card.json|GET|2
+          /mcp|POST|3'
+          failures=()
+          {
+            echo '| route | answers | median s | limit s |'
+            echo '| --- | --- | --- | --- |'
+          } >> "$GITHUB_STEP_SUMMARY"
+          while IFS='|' read -r path method limit; do
+            path="$(echo "$path" | xargs)"
+            codes=(); times=()
+            for try in 1 2 3; do
+              if [ "$method" = POST ]; then
+                out=$(curl -sS -o /dev/null --max-time 20 -A "$UA" -X POST -H 'content-type: application/json' \
+                  -H 'accept: application/json, text/event-stream' \
+                  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' -w '%{http_code} %{time_total}' "$BASE$path" 2>/dev/null || echo '000 20')
+              else
+                out=$(curl -sS -o /dev/null --max-time 20 -A "$UA" -w '%{http_code} %{time_total}' "$BASE$path" 2>/dev/null || echo '000 20')
+              fi
+              codes+=("${out% *}"); times+=("${out#* }")
+            done
+            median=$(printf '%s\n' "${times[@]}" | sort -n | sed -n 2p)
+            echo "| $method $path | ${codes[*]} | $median | $limit |" >> "$GITHUB_STEP_SUMMARY"
+            for c in "${codes[@]}"; do
+              if [ "$c" = 000 ] || [ "$c" -ge 500 ]; then failures+=("$method $path answered ${codes[*]}"); break; fi
+            done
+            if awk -v m="$median" -v l="$limit" 'BEGIN { exit !(m > l) }'; then
+              failures+=("$method $path median ${median}s over ${limit}s")
+            fi
+          done <<< "$ROUTES"
+          health=$(curl -sS --max-time 20 -A "$UA" "$BASE/api/health" 2>/dev/null || true)
+          if ! echo "$health" | grep -q '"status":"ok"'; then failures+=("/api/health did not say ok: ${health:0:120}"); fi
+          if [ ${#failures[@]} -gt 0 ]; then
+            printf '%s\n' "${failures[@]}"
+            { echo; echo '**Failed:**'; printf -- '- %s\n' "${failures[@]}"; } >> "$GITHUB_STEP_SUMMARY"
+            printf 'detail=%s\n' "$(printf '%s; ' "${failures[@]}" | cut -c1-600)" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "every route answered within its limit"
+
+      - name: Tell Telegram
+        if: failure()
+        env:
+          TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_ALERT_CHAT_ID }}
+          DETAIL: ${{ steps.probe.outputs.detail }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "${TOKEN:-}" ] || [ -z "${CHAT:-}" ]; then echo "no Telegram secrets; GitHub's failure e-mail is the alert"; exit 0; fi
+          curl -sS --max-time 20 -o /dev/null "https://api.telegram.org/bot${TOKEN}/sendMessage" \
+            --data-urlencode "chat_id=${CHAT}" \
+            --data-urlencode "text=HEY edge probe failed: ${DETAIL:-see the run} ${RUN}"
