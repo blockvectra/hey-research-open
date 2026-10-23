@@ -237,6 +237,33 @@ export const serverEnvSchema = z
     }),
 
     /*
+     * Proof of Ship (2026-10-24, founder ruling; CLAUDE.md "Proof of Ship"; docs/PUBLIC_API.md). HEY signs, as
+     * EIP-712, how many of a project's ships it counts as building in a window, for the open-source ShipEscrow
+     * contract to release a bounty on. Off unless the key is set; web only.
+     *
+     *  - HEY_SHIP_ATTESTER_KEY: the attester's private key, 0x and 64 hex characters. Secret: never logged, never
+     *    returned, never sent to a browser; a malformed value is refused at boot without quoting it.
+     *  - HEY_SHIP_ESCROW_ADDRESSES: the escrow contracts HEY signs for, comma-separated (the EIP-712 domain's
+     *    verifyingContract). An escrow not listed is refused, so a signature never verifies on a contract HEY did not name.
+     */
+    proofOfShip: z.object({
+      attesterKey: optionalString.pipe(
+        z
+          .string()
+          .regex(/^0x[0-9a-fA-F]{64}$/, 'HEY_SHIP_ATTESTER_KEY must be 0x followed by 64 hex characters')
+          .optional(),
+      ),
+      escrowAddresses: optionalString
+        .transform((value) =>
+          (value ?? '')
+            .split(',')
+            .map((entry) => entry.trim().toLowerCase())
+            .filter(Boolean),
+        )
+        .refine((list) => list.every((entry) => /^0x[0-9a-f]{40}$/.test(entry)), 'HEY_SHIP_ESCROW_ADDRESSES is a comma-separated list of 0x addresses (40 hex characters each)'),
+    }),
+
+    /*
      * twitterapi.io (2026-10-18, founder: "ok buat"; CLAUDE.md cost rule 7, amended): a metered,
      * pay-per-use read of projects' OFFICIAL X accounts — their state and their newest own posts, as
      * identity context and discovery leads. Off unless both are set:
@@ -866,6 +893,10 @@ function shapeEnv(raw: RawEnv) {
       swapEnabled: raw.UNISWAP_SWAP_ENABLED,
       apiKey: raw.UNISWAP_API_KEY,
     },
+    proofOfShip: {
+      attesterKey: raw.HEY_SHIP_ATTESTER_KEY,
+      escrowAddresses: raw.HEY_SHIP_ESCROW_ADDRESSES,
+    },
     twitterapiIo: {
       enabled: raw.TWITTERAPI_IO_ENABLED,
       apiKey: raw.TWITTERAPI_IO_KEY,
@@ -1005,6 +1036,8 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'uniswap.enabled': 'UNISWAP_ENABLED',
   'uniswap.swapEnabled': 'UNISWAP_SWAP_ENABLED',
   'uniswap.apiKey': 'UNISWAP_API_KEY',
+  'proofOfShip.attesterKey': 'HEY_SHIP_ATTESTER_KEY',
+  'proofOfShip.escrowAddresses': 'HEY_SHIP_ESCROW_ADDRESSES',
   'twitterapiIo.enabled': 'TWITTERAPI_IO_ENABLED',
   'twitterapiIo.apiKey': 'TWITTERAPI_IO_KEY',
   'twitterapiIo.dailyCredits': 'TWITTERAPI_IO_DAILY_CREDITS',
@@ -1190,6 +1223,14 @@ export function marketIntegrityVisible(env: ServerEnv, surface: 'admin' | 'termi
 /** Whether an exit-pattern classification may be named on that surface: the admin review, or a visible surface with the labels flag on. */
 export function marketIntegrityExitLabelsVisible(env: ServerEnv, surface: 'admin' | 'terminal' | 'public'): boolean {
   return surface === 'admin' || (env.hey.marketIntegrityExitLabels && marketIntegrityVisible(env, surface));
+}
+
+/**
+ * Proof of Ship attestations (2026-10-24): on only with the attester key set. The escrow allowlist may be empty;
+ * then every escrow is refused as not configured.
+ */
+export function isProofOfShipConfigured(env: ServerEnv): boolean {
+  return Boolean(env.proofOfShip.attesterKey);
 }
 
 /** AI must be opt-in; every caller checks this before doing enrichment work. */

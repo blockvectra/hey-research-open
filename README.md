@@ -511,6 +511,17 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## Proof of Ship (2026-10-24)
+
+HEY can sign what it counts. `GET /api/v1/proof-of-ship/attestation?slug=&builder=&since=&until=&escrow=` answers how
+many of a published project's ships HEY counts as building in a window — by the same rule as its activity status, and
+only ships HEY first recorded inside the window — with each ship's evidence id and receipt page, signed as EIP-712 typed
+data for the open-source `ShipEscrow` contract, which pays a builder only when HEY attests the project shipped after the
+bounty opened. HEY signs only for a payout address its evidence already ties to the project: the signer of a verified
+wallet-signature claim, or the recorded deployer of the project's verified token. The signature says what HEY counted,
+never that a project is good or worth funding; it changes nothing on HEY. Details in
+[docs/PUBLIC_API.md](docs/PUBLIC_API.md).
+
 ## Reliability pass (2026-10-22)
 
 A full audit of the site, API, MCP server, Telegram bot, pipelines and deploy scripts, fixed the same day: faster deep

@@ -91,9 +91,11 @@ Every public read route answers an error in one envelope:
 | 400 | `invalid_json` | no | a POST body (a receipt, a webhook subscription) is empty or not a JSON object |
 | 400 | `source_required` | no | `/explain?fact=source.counted` was asked without `source=` |
 | 400 | `invalid_event` | no | `/explain?fact=build.change` was given an `event` that is not a change-ledger id (2026-10-20) |
+| 400 | `escrow_not_configured` | no | `/api/v1/proof-of-ship/attestation` was given an escrow contract HEY does not sign for (2026-10-24) |
 | 401 | `unauthorized` | no | the key is not valid |
 | 401 | `key_required` | no | a keyed-only (bulk) route was called without a key |
 | 403 | `forbidden` | no | the key or account is held, or a partner key is not granted the route's group; `reason` says which |
+| 403 | `builder_not_tied` | no | `/api/v1/proof-of-ship/attestation`: HEY's evidence does not tie the payout `builder` to the project (2026-10-24) |
 | 404 | `not_found` | no | no published record, or no such route |
 | 405 | `method_not_allowed` | no | a read route was sent another method; `allow` names the ones it answers (2026-10-18; before, an empty body) |
 | 413 | `payload_too_large` | no | a bulk answer would exceed 256 KB; ask for fewer |
@@ -101,6 +103,7 @@ Every public read route answers an error in one envelope:
 | 429 | `quota` | yes | the monthly allowance is spent (or a bulk request would cross it) |
 | 500 | `internal_error` | yes | HEY failed; quote the `requestId` |
 | 503 | `service_unavailable` | yes | the database was busy for a moment (a timeout or a held lock); `retryAfterSeconds` and `retry-after` say when to ask again (2026-09-30) |
+| 503 | `not_configured` | yes | `/api/v1/proof-of-ship/attestation` on a host where the attester key is not set (2026-10-24); it answers once the operator sets it |
 
 The three 400 codes `invalid_evidence_id`, `invalid_cursor` and `invalid_json` were answered long before
 they were in this table; they were added on 2026-10-18, and `api-error-table.test.ts` now fails the build when
@@ -1018,6 +1021,69 @@ says "the project's own site names another contract". Markdown bolds the name an
 The JSON card is unchanged and stays the default — a browser's `Accept` and a missing header get
 JSON — and the answer carries `vary: accept`. A contract HEY has not published answers the same 404
 as a line of text.
+
+## `GET /api/v1/proof-of-ship/attestation?slug=&builder=&since=&until=&escrow=` (2026-10-24)
+
+A signed restatement of the ships HEY counts as building for one published project in one window, for the
+open-source `ShipEscrow` contract (`hey-open-ecosystem/proof-of-ship`), which pays a bounty to its builder only when
+HEY attests the project shipped after the bounty opened. Additive; the same public access rule as every read; in the
+`partner_cards` route group.
+
+```http
+GET /api/v1/proof-of-ship/attestation?slug=loom&builder=0x…&since=1790812800&escrow=0x…
+```
+
+| Parameter | |
+|---|---|
+| `slug` | the project's current HEY slug (`heyresearch.xyz/project/<slug>`) |
+| `builder` | the bounty's payout address; must be tied to the project (below) |
+| `since` | window start, unix seconds — the bounty's `start`; at most 400 days back |
+| `until` | window end, unix seconds; optional, defaults to `issuedAt` and is never later than it |
+| `escrow` | the escrow contract the signature is for (the EIP-712 `verifyingContract`); must be one HEY signs for |
+
+```json
+{
+  "attestation": { "project": "0x23ac…", "builder": "0x…", "since": 1790812800, "until": 1792497545, "ships": 2, "evidence": "0x1b00…", "issuedAt": 1792497545 },
+  "signature": "0x…",
+  "signer": "0x…",
+  "domain": { "name": "HEY Proof of Ship", "version": "1", "chainId": 4663, "verifyingContract": "0x…" },
+  "slug": "loom",
+  "builderTie": "wallet_claim",
+  "evidenceIds": ["ship:…", "ship:…"],
+  "evidenceUrls": ["https://heyresearch.xyz/evidence/ship:…", "https://heyresearch.xyz/evidence/ship:…"],
+  "definition": "These are the ships HEY counts as building for this project in the window — …"
+}
+```
+
+- **What is counted:** the project's ship events that count as building by the one definition activity status, the
+  timeline and `/explain` read — approved, standing, this project's own, of a building type, corroborated
+  (`SOURCE_LINKED` or better; a self-reported update never counts), a repository's release day, a prerelease week, a
+  code week or a deploy run counted once — narrowed by the window only: the ship is dated inside `[since, until]` (both
+  ends included), HEY first recorded it at or after `since` (a ship already on HEY's record before the bounty opened
+  never counts for it, whatever date its source gives), and a code week (`CODE_ACTIVITY`, keyed on its last commit's
+  UTC ISO week) counts only when that whole week starts at or after `since`.
+- **Whom HEY signs for:** the `builder` must be tied to the project by evidence HEY already holds, and only two ties
+  qualify — `wallet_claim`, the signer of a verified wallet-signature claim on the project (the claimant signed with
+  the key that launched, owns or deployed its token); or `token_deployer`, the deployer HEY recorded for the project's
+  tracked token while that token's verification is `VERIFIED` (never an account HEY holds as a launch service or a
+  serial launcher). Nothing else, and never a tie inferred from transfers. Otherwise `403 builder_not_tied`. The answer
+  names the tie in `builderTie`.
+- **What is signed:** EIP-712 typed data, primary type
+  `Ships(bytes32 project,address builder,uint64 since,uint64 until,uint32 ships,bytes32 evidence,uint64 issuedAt)`,
+  exactly the contract's `SHIPS_TYPEHASH`. `project = keccak256(utf8(slug))`;
+  `evidence = keccak256(utf8(evidenceIds.join(",")))` with the ids sorted ascending; times are integer seconds.
+  `issuedAt` is HEY's clock less 60 seconds — the contract refuses an `issuedAt` ahead of the block, and the route never
+  asks the chain — and `until` is never later than it. The contract accepts an attestation for at most one day after
+  `issuedAt`, so ask close to claiming. `ships` may be 0.
+- **Check it yourself:** every id in `evidenceIds` opens its receipt at `evidenceUrls` (and `/api/evidence/{id}`), and
+  hashing them as above gives `attestation.evidence`. `signer` is the address the escrow was deployed with.
+- **Refusals:** `400 invalid_parameter` (a malformed slug, builder, window or escrow; `since` after `until`, after
+  `issuedAt` or more than 400 days back), `400 escrow_not_configured` (an escrow HEY does not sign for), `403
+  builder_not_tied`, `404 not_found` (no published project has the slug — a renamed project answers only under its
+  current slug), `503 not_configured` (the host has no attester key). `cache-control: no-store`; no provider call.
+- **What it is not:** a signature is what HEY counted, never that a project is good, safe or worth funding. HEY holds no
+  funds and earns nothing from a bounty, stores nothing about the payout address, and the attestation changes nothing
+  on HEY — no status, score, badge or order.
 
 ## Partner additive fields (2026-09-26)
 
