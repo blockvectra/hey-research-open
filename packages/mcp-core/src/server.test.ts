@@ -317,13 +317,19 @@ describe('the HEY MCP server', () => {
     expect(textOf(result)).toContain('A sequence, never a cause.');
   });
 
-  it('escapes a slug rather than pasting it into the path', async () => {
+  it('takes only a slug as a slug: "..", ".", a slash or a space is refused before any request (2026-10-25)', async () => {
     const client = await connect(async (input) => {
       requested.push(new URL(input));
       return respond(fx.snapshot);
     });
-    await client.callTool({ name: 'get_project_snapshot', arguments: { slug: 'a b/../c' } });
-    expect(requested[0]!.href).toBe('https://hey.test/api/projects/a%20b%2F..%2Fc/snapshot');
+    requested = [];
+    for (const slug of ['..', '.', 'a b/../c', '-agentos', '']) {
+      expect((await client.callTool({ name: 'get_project_snapshot', arguments: { slug } })).isError, slug).toBe(true);
+    }
+    expect((await client.callTool({ name: 'get_contract', arguments: { slug: '..' } })).isError).toBe(true);
+    expect(requested).toHaveLength(0);
+    await client.callTool({ name: 'get_project_snapshot', arguments: { slug: 'AgentOS-2' } });
+    expect(requested[0]!.href).toBe('https://hey.test/api/projects/AgentOS-2/snapshot');
   });
 
   it('refuses bad arguments before making a request', async () => {
@@ -374,6 +380,11 @@ describe('the HEY MCP server', () => {
     expect((contract.contents[0] as { text: string }).text).toContain('beacon proxy');
     const latest = await client.readResource({ uri: 'hey://changes/latest' });
     expect((latest.contents[0] as { text: string }).text).toContain('What changed');
+    // A slug that is not one (2026-10-25) asks HEY nothing.
+    requested = [];
+    const odd = await client.readResource({ uri: 'hey://project/a.b/timeline' });
+    expect((odd.contents[0] as { text: string }).text).toContain('Expected hey://project/<slug>');
+    expect(requested).toHaveLength(0);
   });
 
   it('offers eight research workflows as prompts, each naming its tools and the rules', async () => {

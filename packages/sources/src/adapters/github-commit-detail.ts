@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { GITHUB_DEFAULT_BASE_URL, type GithubRepoInput } from './github';
+import { GITHUB_DEFAULT_BASE_URL, githubNameRefused, githubRepoPath, isGithubName, type GithubRepoInput } from './github';
 import { linkHasNext } from './github-commits';
 
 /**
@@ -23,7 +23,6 @@ import { linkHasNext } from './github-commits';
 export const GITHUB_COMMIT_FILES_PAGE_CAP = 300;
 
 const SHA_PATTERN = /^[0-9a-f]{7,64}$/i;
-const REPO_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 export const githubCommitDetailSchema = z.object({
   sha: z.string(),
@@ -71,13 +70,15 @@ export function createGithubCommitDetailAdapter(): SourceAdapter<GithubCommitDet
     name: 'github-commit-detail',
 
     canHandle(input) {
-      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo) && SHA_PATTERN.test(input.sha);
+      return isGithubName(input.owner) && isGithubName(input.repo) && SHA_PATTERN.test(input.sha);
     },
 
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubCommitDetail>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
       // Every part is validated by `canHandle` and encoded, so no value can alter the URL.
-      const url = `${base}/repos/${encodeURIComponent(input.owner)}/${encodeURIComponent(input.repo)}/commits/${encodeURIComponent(input.sha)}`;
+      const repoPath = githubRepoPath(input.owner, input.repo);
+      if (!repoPath) return githubNameRefused(ctx);
+      const url = `${base}${repoPath}/commits/${encodeURIComponent(input.sha)}`;
 
       return performSourceFetch(
         ctx,

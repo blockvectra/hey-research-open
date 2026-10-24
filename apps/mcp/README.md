@@ -1,7 +1,7 @@
 # @hey-research-lab/mcp
 
 ```sh
-npx -y @hey-research-lab/mcp          # Node 20 or newer
+npx -y @hey-research-lab/mcp@0.3.2          # Node 20 or newer
 ```
 
 Or use the hosted endpoint, which needs nothing installed:
@@ -30,7 +30,7 @@ and does not do.
 ## Local (stdio)
 
 ```sh
-npx -y @hey-research-lab/mcp
+npx -y @hey-research-lab/mcp@0.3.2
 ```
 
 Node 20 or newer — the floor `@modelcontextprotocol/sdk` brings with it.
@@ -38,7 +38,7 @@ Node 20 or newer — the floor `@modelcontextprotocol/sdk` brings with it.
 **Claude Code**
 
 ```sh
-claude mcp add hey-research -- npx -y @hey-research-lab/mcp
+claude mcp add hey-research -- npx -y @hey-research-lab/mcp@0.3.2
 ```
 
 **Claude Desktop** — in `claude_desktop_config.json`:
@@ -48,7 +48,7 @@ claude mcp add hey-research -- npx -y @hey-research-lab/mcp
   "mcpServers": {
     "hey-research": {
       "command": "npx",
-      "args": ["-y", "@hey-research-lab/mcp"]
+      "args": ["-y", "@hey-research-lab/mcp@0.3.2"]
     }
   }
 }

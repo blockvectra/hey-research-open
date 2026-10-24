@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
-import { GITHUB_DEFAULT_BASE_URL, type GithubRepoInput } from './github';
+import { GITHUB_DEFAULT_BASE_URL, githubNameRefused, githubRepoPath, isGithubName, type GithubRepoInput } from './github';
 import { GITHUB_BOT_LOGIN, linkHasNext } from './github-commits';
 
 /**
@@ -53,7 +53,6 @@ export type GithubPullsPage = {
 export type GithubPullsInput = GithubRepoInput & { perPage?: number };
 
 const CACHE_TTL_SECONDS = 1800;
-const REPO_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 const toDate = (value: string | null | undefined): Date | undefined => {
   if (!value) return undefined;
@@ -66,14 +65,16 @@ export function createGithubPullsAdapter(): SourceAdapter<GithubPullsInput, Gith
     name: 'github-pulls',
 
     canHandle(input) {
-      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
+      return isGithubName(input.owner) && isGithubName(input.repo);
     },
 
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubPullsPage>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
       const perPage = Math.min(Math.max(1, input.perPage ?? 50), 100);
       const query = new URLSearchParams({ state: 'closed', sort: 'updated', direction: 'desc', per_page: String(perPage) });
-      const url = `${base}/repos/${input.owner}/${input.repo}/pulls?${query.toString()}`;
+      const repoPath = githubRepoPath(input.owner, input.repo);
+      if (!repoPath) return githubNameRefused(ctx);
+      const url = `${base}${repoPath}/pulls?${query.toString()}`;
 
       return performSourceFetch(
         ctx,

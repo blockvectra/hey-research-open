@@ -165,6 +165,11 @@ void ALL_EXPLAIN;
 
 const ADDRESS = /^0[xX][a-fA-F0-9]{40}$/;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
+/**
+ * A project slug as HEY writes them (2026-10-25): a letter or digit, then letters, digits and hyphens. A slug
+ * becomes a path segment of the read behind the tool, so nothing else — `.`, `..`, a slash — is a slug.
+ */
+const SLUG = /^[a-z0-9][a-z0-9-]{0,119}$/i;
 
 /** Output cap per call (2026-09-26): 24 KB of text, cut on a line, with what was cut and where the whole is. */
 export const MAX_OUTPUT_BYTES = 24 * 1024;
@@ -522,7 +527,8 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
     annotations: READ_ONLY,
     outputSchema: name === 'research_answer' ? agentAnswerOutput : apiAnswerOutput,
   });
-  const slug = z.string().min(1).max(120).describe('A project slug, e.g. "agentos".');
+  // A refinement, not a schema pattern: the tool list's byte budget is unchanged, and the check still runs before any read.
+  const slug = z.string().min(1).max(120).refine((value) => SLUG.test(value), 'Not a project slug: letters, digits and hyphens only.').describe('A project slug, e.g. "agentos".');
   const lookupToken = (address: string, chainId = 4663) => run('find_projects', apiUrl(`/api/token/${chainId}/${address}`), async () => {
     const lookup = await client.token.lookup(chainId, address);
     return api(lookup, renderTokenLookup(lookup, at()));
@@ -1345,6 +1351,7 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
       { title: 'Project snapshot', description: 'One project’s snapshot, as get_project_snapshot renders it.', mimeType: 'text/markdown' },
       async (uri, variables) => {
         const slug = one(variables.slug);
+        if (!SLUG.test(slug)) return { contents: [{ uri: uri.href, mimeType: 'text/plain', text: 'Expected hey://project/<slug>: letters, digits and hyphens.' }] };
         return read('project', uri, context.apiUrl(`/api/projects/${encodeURIComponent(slug)}/snapshot`), async () => renderSnapshot(await client.projects.snapshot(slug), context.at()));
       },
     );
@@ -1356,6 +1363,7 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
     { title: 'Project timeline', description: context.research ? 'The newest page of one project’s building timeline.' : 'The newest page of one project’s timeline.', mimeType: 'text/markdown' },
     async (uri, variables) => {
       const slug = one(variables.slug);
+      if (!SLUG.test(slug)) return { contents: [{ uri: uri.href, mimeType: 'text/plain', text: 'Expected hey://project/<slug>: letters, digits and hyphens.' }] };
       return read('project_timeline', uri, context.apiUrl(`/api/projects/${encodeURIComponent(slug)}/timeline`, { ...timelineLens, limit: 30 }), async () =>
         (await fitPage(30, (limit) => client.projects.timeline(slug, { ...timelineLens, limit }), (timeline, limit) => renderTimelineParts(timeline, limit), (timeline) => timeline.items.length, 'entries')).parts,
       );
@@ -1367,6 +1375,7 @@ function registerResources(server: McpServer, client: HeyClient, context: Resour
     { title: 'Project coverage', description: 'What HEY knows and does not about one project.', mimeType: 'text/markdown' },
     async (uri, variables) => {
       const slug = one(variables.slug);
+      if (!SLUG.test(slug)) return { contents: [{ uri: uri.href, mimeType: 'text/plain', text: 'Expected hey://project/<slug>: letters, digits and hyphens.' }] };
       return read('project_coverage', uri, context.apiUrl(`/api/projects/${encodeURIComponent(slug)}/coverage`), async () => renderCoverage(await client.projects.coverage(slug)));
     },
   );

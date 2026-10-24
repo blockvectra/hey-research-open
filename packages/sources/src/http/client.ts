@@ -10,7 +10,7 @@ import type { Agent } from 'undici';
 
 import { isIpLiteralHost, pinnedDispatcher } from './pinned';
 import { readQuotaHeaders, type ProviderQuotaReading } from './quota';
-import { assertResolvesPublic, assertSafeUrl, systemLookup } from './url-safety';
+import { assertResolvesPublic, assertSafeUrl, ownOriginAddresses, systemLookup } from './url-safety';
 
 /** 5 MB ceiling on any single response body (PRD V4 section 27). */
 export const MAX_RESPONSE_BYTES = 5 * 1024 * 1024;
@@ -32,8 +32,13 @@ export type HttpRequest = {
    * - `true` — builder/user-submitted URL: literal host check plus DNS
    *   resolution before every hop, so a name pointing at a private address is
    *   refused (SSRF via DNS);
-   * - `undefined` — configured provider: literal host check only;
+   * - `undefined` — configured provider: literal host check on the URL it
+   *   was configured with; a redirect to any other host is checked exactly as
+   *   `true` checks a submitted URL (DNS, pinned connection, default port);
    * - `false` — no check.
+   *
+   * Both checking tiers also refuse HEY's own origin addresses
+   * (`ownOriginAddresses`) wherever they resolve a name.
    */
   enforceUrlSafety?: boolean;
   maxBytes?: number;
@@ -204,6 +209,8 @@ async function attemptOnce(
   const signal = ctx.signal ? AbortSignal.any([ctx.signal, timeout]) : timeout;
 
   let currentUrl = request.url;
+  // The host a configured provider was configured with; any other host a redirect names is a stranger's.
+  const configuredHost = request.enforceUrlSafety === undefined ? new URL(request.url).host : undefined;
   let method = request.method ?? 'GET';
   let body = request.body;
   let response: Response;
@@ -215,7 +222,16 @@ async function attemptOnce(
   // private address and bypass the SSRF guard entirely.
   for (;;) {
     dispatcher = undefined;
-    if (request.enforceUrlSafety === true) {
+    /*
+     * A configured provider is trusted for its own host only (2026-10-25): a
+     * redirect it answers with to another host gets the full check a
+     * submitted URL gets — the name resolved and every address public and not
+     * HEY's own, the socket pinned to what was checked, the scheme's own port.
+     */
+    const strict =
+      request.enforceUrlSafety === true ||
+      (request.enforceUrlSafety === undefined && new URL(currentUrl).host !== configuredHost);
+    if (strict) {
       /*
        * A stranger's URL is read on the scheme's own port (2026-09-27, audit G
        * S10): `https://example.com:6379` passed every check. No production
@@ -227,7 +243,7 @@ async function attemptOnce(
       let resolved: Awaited<ReturnType<typeof assertResolvesPublic>>;
       try {
         // Inside the request's deadline (2026-09-27, audit G S7).
-        resolved = await assertResolvesPublic(currentUrl, ctx.lookupImpl ?? systemLookup, signal);
+        resolved = await assertResolvesPublic(currentUrl, ctx.lookupImpl ?? systemLookup, signal, ownOriginAddresses());
       } catch (error) {
         if (isAbort(error)) throw new SourceError('TIMEOUT', `resolving ${currentUrl} timed out`);
         throw error;

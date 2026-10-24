@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { GITHUB_DEFAULT_BASE_URL, githubRepoSchema, type GithubSearchHit } from './github';
+import { GITHUB_DEFAULT_BASE_URL, githubNameRefused, githubRepoPath, githubRepoSchema, githubUserPath, isGithubName, type GithubSearchHit } from './github';
 
 /**
  * Repository files and owner listings — the reads behind the weak-candidate
@@ -15,7 +15,6 @@ import { GITHUB_DEFAULT_BASE_URL, githubRepoSchema, type GithubSearchHit } from 
  * answer settles a candidate that would otherwise sit PENDING forever (154
  * of them did, on 2026-09-04).
  */
-const REPO_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 /** Files are read raw; anything past this is not a README anyone reads. */
 export const GITHUB_FILE_MAX_BYTES = 256 * 1024;
@@ -57,8 +56,8 @@ export function createGithubFileAdapter(): SourceAdapter<GithubFileInput, Github
 
     canHandle(input) {
       return (
-        REPO_PATTERN.test(input.owner) &&
-        REPO_PATTERN.test(input.repo) &&
+        isGithubName(input.owner) &&
+        isGithubName(input.repo) &&
         (input.path === undefined || (!input.path.includes('..') && !input.path.startsWith('/')))
       );
     },
@@ -66,9 +65,13 @@ export function createGithubFileAdapter(): SourceAdapter<GithubFileInput, Github
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubFileContent>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
       const path = input.path ?? 'README';
-      const url = input.path
-        ? `${base}/repos/${input.owner}/${input.repo}/contents/${input.path.split('/').map(encodeURIComponent).join('/')}`
-        : `${base}/repos/${input.owner}/${input.repo}/readme`;
+      const repoPath = githubRepoPath(input.owner, input.repo);
+      // A file path is read segment by segment; a `.` or `..` step is never one.
+      const fileSegments = input.path ? input.path.split('/') : undefined;
+      if (!repoPath || fileSegments?.some((segment) => segment === '.' || segment === '..')) return githubNameRefused(ctx);
+      const url = fileSegments
+        ? `${base}${repoPath}/contents/${fileSegments.map(encodeURIComponent).join('/')}`
+        : `${base}${repoPath}/readme`;
 
       return performSourceFetch(
         ctx,
@@ -135,14 +138,16 @@ export function createGithubOwnerReposAdapter(): SourceAdapter<GithubOwnerReposI
     name: 'github-owner-repos',
 
     canHandle(input) {
-      return REPO_PATTERN.test(input.owner);
+      return isGithubName(input.owner);
     },
 
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubOwnerReposPage>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
       const perPage = Math.min(input.perPage ?? 100, 100);
       const page = Math.max(1, Math.floor(input.page ?? 1));
-      const url = `${base}/users/${input.owner}/repos?type=owner&sort=pushed&direction=desc&per_page=${perPage}&page=${page}`;
+      const userPath = githubUserPath(input.owner);
+      if (!userPath) return githubNameRefused(ctx);
+      const url = `${base}${userPath}/repos?type=owner&sort=pushed&direction=desc&per_page=${perPage}&page=${page}`;
 
       return performSourceFetch(
         ctx,
@@ -226,15 +231,17 @@ export function createGithubTreeAdapter(): SourceAdapter<GithubTreeInput, Github
     name: 'github-tree',
 
     canHandle(input) {
-      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
+      return isGithubName(input.owner) && isGithubName(input.repo);
     },
 
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubTree>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
+      const repoPath = githubRepoPath(input.owner, input.repo);
+      if (!repoPath) return githubNameRefused(ctx);
       return performSourceFetch(
         ctx,
         {
-          url: `${base}/repos/${input.owner}/${input.repo}/git/trees/HEAD?recursive=1`,
+          url: `${base}${repoPath}/git/trees/HEAD?recursive=1`,
           headers: {
             accept: 'application/vnd.github+json',
             'x-github-api-version': '2022-11-28',
@@ -287,13 +294,15 @@ const X_HANDLE = /^[A-Za-z0-9_]{1,15}$/;
 export function createGithubOwnerProfileAdapter(): SourceAdapter<GithubOwnerProfileInput, GithubOwnerProfile> {
   return {
     name: 'github-owner-profile',
-    canHandle: (input) => REPO_PATTERN.test(input.owner) && input.owner.length <= 100,
+    canHandle: (input) => isGithubName(input.owner) && input.owner.length <= 100,
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubOwnerProfile>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
+      const userPath = githubUserPath(input.owner);
+      if (!userPath) return githubNameRefused(ctx);
       return performSourceFetch(
         ctx,
         {
-          url: `${base}/users/${input.owner}`,
+          url: `${base}${userPath}`,
           headers: {
             accept: 'application/vnd.github+json',
             'x-github-api-version': '2022-11-28',

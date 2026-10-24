@@ -6,6 +6,11 @@ All notable changes to `@hey-research-lab/mcp` are recorded here. The format fol
 
 ## Unreleased
 
+### Changed (2026-10-25)
+
+- A tool's `slug` argument and a `hey://project/{slug}` resource take a project slug only — letters, digits and
+  hyphens, starting with a letter or digit — and refuse anything else before HEY is asked.
+
 ### Added (2026-10-20)
 
 - `explain_fact` explains `build.change` — one change, the latest builder change or `event=<ledger id>` — and the

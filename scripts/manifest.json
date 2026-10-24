@@ -29,6 +29,8 @@
     "docker",
     "docs/DEPLOYMENT.md",
     "docs/RUNBOOK.md",
+    "docs/SECURITY_RUNBOOK.md",
+    "docs/INCIDENT_RUNBOOK.md",
     "docs/DEPENDENCY_RISK.md",
     "docs/HEY_TREASURY_LEDGER.md",
     ".env.production.example",
@@ -53,7 +55,7 @@
     "vitest"
   ],
   "dbTypesFrom": "packages/db/src/schema/enums.ts",
-  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see. HEY's own API keys (2026-09-30): an account key `hey_` and a partner key `heyp_`, each 43 url-safe characters; a digit is required so a long snake_case identifier such as a foreign-key name is not taken for one. An Ory API key `ory_<two letters>_…` and a CoinGecko API key `CG-…` (S2, 2026-10-16). An Anthropic key `sk-ant-…` (the AI key this deployment holds), the OpenAI project, service-account and admin keys, an AWS access key id `AKIA`/`ASIA` (the S3 settings) and GitHub's OAuth, user-to-server, installation and refresh tokens `gho_`/`ghu_`/`ghs_`/`ghr_` (2026-10-16): `sk-[A-Za-z0-9]{20,}` needs twenty letters straight after `sk-`, so it saw none of the first two. An EVM private key (full audit 2026-10-24, SECURITY-8): 0x and 64 hex characters assigned to a private, attester, signer or deployer key variable, the shape HEY_SHIP_ATTESTER_KEY has; an assignment only, so a transaction hash or storage slot of the same shape in a fixture is not taken for one.",
+  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see. HEY's own API keys (2026-09-30): an account key `hey_` and a partner key `heyp_`, each 43 url-safe characters; a digit is required so a long snake_case identifier such as a foreign-key name is not taken for one. An Ory API key `ory_<two letters>_…` and a CoinGecko API key `CG-…` (S2, 2026-10-16). An Anthropic key `sk-ant-…` (the AI key this deployment holds), the OpenAI project, service-account and admin keys, an AWS access key id `AKIA`/`ASIA` (the S3 settings) and GitHub's OAuth, user-to-server, installation and refresh tokens `gho_`/`ghu_`/`ghs_`/`ghr_` (2026-10-16): `sk-[A-Za-z0-9]{20,}` needs twenty letters straight after `sk-`, so it saw none of the first two. An EVM private key (full audit 2026-10-24, SECURITY-8): 0x and 64 hex characters assigned to a private, attester, signer or deployer key variable, the shape HEY_SHIP_ATTESTER_KEY has; an assignment only, so a transaction hash or storage slot of the same shape in a fixture is not taken for one. A value assigned to one of the secret environment names packages/config and .env.example declare (2026-10-25): sixteen or more key characters with a digit after `NAME=`, after `NAME:` in quotes, or alone on its line after `NAME:` (YAML), so a provider key with no shape of its own (twitterapi.io, Bitquery, Uniswap, Blockscout, a session or webhook secret) is caught where it is pasted beside its name; a reference such as `process.env.NAME` or a placeholder or test value (change, replace, example, your, test, fake, fixture) is not taken for one.",
   "forbidden": [
     "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY",
     "ghp_[A-Za-z0-9]{20,}",
@@ -71,6 +73,7 @@
     "ory_[a-z]{2}_[A-Za-z0-9._-]{20,}",
     "CG-[A-Za-z0-9]{20,}",
     "postgres(ql)?://(?!hey:hey@)(?![^\\s'\"]*(change|replace|example|password|<))[^\\s'\"]*:[^\\s'\"@]+@(?!localhost)",
-    "(PRIVATE|ATTESTER|SIGNER|DEPLOYER)_?KEY['\"]?\\s*[:=]\\s*['\"]?0x[0-9a-fA-F]{64}"
+    "(PRIVATE|ATTESTER|SIGNER|DEPLOYER)_?KEY['\"]?\\s*[:=]\\s*['\"]?0x[0-9a-fA-F]{64}",
+    "(?<![A-Za-z0-9_])(AI_API_KEY|BITQUERY_[A-Z0-9_]*(KEY|TOKEN|SECRET)|COINGECKO_API_KEY|GITHUB_APP_PRIVATE_KEY|GITHUB_APP_WEBHOOK_SECRET|GITHUB_CLIENT_SECRET|GITHUB_DEPLOY_STATUS_TOKEN|GITHUB_PUBLIC_API_TOKEN|HEY_SHIP_ATTESTER_KEY|(HEY_)?TELEGRAM_BOT_TOKEN|INDEXNOW_KEY|RESEND_API_KEY|(RH_)?BLOCKSCOUT_[A-Z0-9_]*KEY|S3_SECRET_ACCESS_KEY|SESSION_SECRET|TELEGRAM_ACTOR_SECRET|TELEGRAM_WEBHOOK_SECRET|TWITTERAPI_IO_KEY|UNISWAP_API_KEY|WEBHOOK_MASTER_KEY|POSTGRES_PASSWORD|NPM_TOKEN)['\"]?\\s*(?:=\\s*['\"]?|:\\s*['\"]|:\\s*(?=[^\\s'\",;)}]+\\s*(?:#.*)?$))(?!process\\.|env\\.|import\\.)(?![^\\s'\"]*(change|replace|example|placeholder|your|dummy|redacted|xxxx|test|fake|sample|fixture))(?=[A-Za-z0-9_+/=.-]*[0-9])[A-Za-z0-9_+/=.-]{16,}"
   ]
 }

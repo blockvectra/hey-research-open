@@ -294,12 +294,23 @@ export async function assertResolvesPublic(
   candidate: string,
   lookup: AddressLookup = systemLookup,
   signal?: AbortSignal,
+  denyAddresses: readonly string[] = [],
 ): Promise<ResolvedUrlSafetyResult> {
   const literal = assertSafeUrl(candidate);
   if (!literal.ok) return literal;
 
+  const denied = new Set(denyAddresses.map(addressKey));
+  const ownOrigin = (address: string): ResolvedUrlSafetyResult => ({
+    ok: false,
+    reason: 'BLOCKED_HOST',
+    detail: `host ${literal.url.hostname} resolves to HEY's own origin address ${address}`,
+  });
+
   const hostname = literal.url.hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  if (isIpLiteral(hostname)) return { ok: true, url: literal.url, addresses: [hostname] };
+  if (isIpLiteral(hostname)) {
+    if (denied.has(addressKey(hostname))) return ownOrigin(hostname);
+    return { ok: true, url: literal.url, addresses: [hostname] };
+  }
 
   let addresses: string[];
   try {
@@ -321,6 +332,30 @@ export async function assertResolvesPublic(
       detail: `host ${hostname} resolves to private address ${offending}`,
     };
   }
+  const origin = addresses.find((address) => denied.has(addressKey(address)));
+  if (origin) return ownOrigin(origin);
 
   return { ok: true, url: literal.url, addresses };
+}
+
+/** One spelling per address, so `2001:DB8::1` and `[2001:db8:0:0::1]` compare equal. */
+const addressKey = (address: string): string => {
+  const bare = address.trim().replace(/^\[|\]$/g, '').toLowerCase();
+  const groups = bare.includes(':') ? ipv6Groups(bare) : undefined;
+  return groups ? groups.map((group) => group.toString(16)).join(':') : bare;
+};
+
+/**
+ * HEY's own origin addresses — the server behind the CDN — which no fetch of a
+ * stranger's URL may reach (2026-10-25). One list for every outbound guard:
+ * the operator's `WEBHOOK_DENY_ADDRESSES` (`webhooks.denyAddresses` in
+ * `@hey/config`), which webhook delivery already refuses. Read at call time,
+ * so the web and worker processes, and every script, see the deployment's
+ * value; empty when unset.
+ */
+export function ownOriginAddresses(env: Readonly<Record<string, string | undefined>> = process.env): string[] {
+  return (env.WEBHOOK_DENY_ADDRESSES ?? '')
+    .split(',')
+    .map((entry) => entry.trim())
+    .filter(Boolean);
 }

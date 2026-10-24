@@ -122,6 +122,16 @@ const URL_IN_TEXT = /(?:https?:)?\/\/[^\s"'<>()[\]`{}|\\^]{1,2048}/gi;
  */
 const BADGE_PATH = /^\/(?:api\/badge\/([a-z0-9-]{1,120})|badge\/([a-z0-9-]{1,120})(?:\.svg)?|embed\/project\/([a-z0-9-]{1,120}))\/?$/;
 
+/** Sentence punctuation that may follow a bare URL. */
+const TRAILING_PUNCTUATION = new Set(['.', ',', ';', ':', '!', '?', '*', '_', '~']);
+
+/** The text without its trailing punctuation: one backwards pass, linear in the length (2026-10-25). */
+export function trimTrailingPunctuation(text: string): string {
+  let end = text.length;
+  while (end > 0 && TRAILING_PUNCTUATION.has(text[end - 1] as string)) end -= 1;
+  return end === text.length ? text : text.slice(0, end);
+}
+
 function matchesTarget(raw: string, host: string, slugs: ReadonlySet<string>): boolean {
   let value = decodeEntities(raw.trim());
   if (value.startsWith('//')) value = `https:${value}`;
@@ -174,7 +184,7 @@ export function findBadgePlacement(body: string, kind: BadgeBodyKind, target: Ba
     }
   } else {
     // A bare URL ending a sentence keeps its full stop out of the path.
-    for (const match of visible.matchAll(URL_IN_TEXT)) candidates.push(match[0].replace(/[.,;:!?*_~]+$/, ''));
+    for (const match of visible.matchAll(URL_IN_TEXT)) candidates.push(trimTrailingPunctuation(match[0]));
   }
   for (const candidate of candidates) {
     if (candidate && matchesTarget(candidate, parts.host, parts.slugs)) return { found: true, url: decodeEntities(candidate.trim()) };

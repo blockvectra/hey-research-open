@@ -6,6 +6,11 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Changed (2026-10-25)
+
+- A request whose path holds a `.` or `..` segment (or either spelt with `%2e`) is refused with a `bad_request`
+  `HeyApiError` before anything is sent. Every other value is still percent-encoded as one path segment.
+
 ### Added (2026-10-22, API truth repairs)
 
 - `HeyPage.adjustedParameters?: HeyParameterAdjustment[]` (new type): a `limit` or `offset` capped to its bounds, or a

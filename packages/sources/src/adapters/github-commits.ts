@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
-import { GITHUB_DEFAULT_BASE_URL, type GithubRepoInput } from './github';
+import { GITHUB_DEFAULT_BASE_URL, githubNameRefused, githubRepoPath, isGithubName, type GithubRepoInput } from './github';
 
 /**
  * GitHub commit activity (PRD V4 section 26).
@@ -86,7 +86,6 @@ export type GithubCommitsInput = GithubRepoInput & {
 };
 
 const CACHE_TTL_SECONDS = 1800;
-const REPO_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
 /**
  * Automation that should not be mistaken for a human shipping (PRD V4 26).
@@ -126,7 +125,7 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
     name: 'github-commits',
 
     canHandle(input) {
-      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
+      return isGithubName(input.owner) && isGithubName(input.repo);
     },
 
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubCommitsPage>> {
@@ -139,7 +138,9 @@ export function createGithubCommitsAdapter(): SourceAdapter<GithubCommitsInput, 
         per_page: String(perPage),
         ...(input.page !== undefined && input.page > 1 ? { page: String(Math.floor(input.page)) } : {}),
       });
-      const url = `${base}/repos/${input.owner}/${input.repo}/commits?${query.toString()}`;
+      const repoPath = githubRepoPath(input.owner, input.repo);
+      if (!repoPath) return githubNameRefused(ctx);
+      const url = `${base}${repoPath}/commits?${query.toString()}`;
 
       return performSourceFetch(
         ctx,

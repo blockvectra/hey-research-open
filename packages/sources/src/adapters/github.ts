@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
+import { errorResult, type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { opt } from '../optional';
 import { keepToProviderHost } from './provider-host';
@@ -140,6 +140,30 @@ const CACHE_TTL_SECONDS = 1800;
 
 const REPO_PATTERN = /^[A-Za-z0-9_.-]+$/;
 
+/**
+ * An owner or repository name HEY puts in a GitHub API path (2026-10-25): GitHub's own characters, and never `.` or
+ * `..`, which GitHub does not allow as a name and a URL reads as a path step. A leading dot stays allowed (`.github`).
+ */
+export function isGithubName(value: string): boolean {
+  return REPO_PATTERN.test(value) && value !== '.' && value !== '..';
+}
+
+/** `/repos/<owner>/<repo>`, each name checked and encoded; undefined when either is not a GitHub name. */
+export function githubRepoPath(owner: string, repo: string): string | undefined {
+  if (!isGithubName(owner) || !isGithubName(repo)) return undefined;
+  return `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}`;
+}
+
+/** `/users/<owner>`, checked and encoded; undefined when it is not a GitHub name. */
+export function githubUserPath(owner: string): string | undefined {
+  return isGithubName(owner) ? `/users/${encodeURIComponent(owner)}` : undefined;
+}
+
+/** The answer when an owner or repository is not a GitHub name: nothing is requested. */
+export function githubNameRefused<T>(ctx: SourceContext): Promise<SourceResult<T>> {
+  return Promise.resolve(errorResult<T>(ctx, 'BLOCKED_URL', 'the owner or repository is not a GitHub name'));
+}
+
 const authHeaders = (token?: string): Record<string, string> => ({
   accept: 'application/vnd.github+json',
   'x-github-api-version': '2022-11-28',
@@ -158,12 +182,14 @@ export function createGithubRepoAdapter(): SourceAdapter<GithubRepoInput, Github
     name: 'github-repo',
 
     canHandle(input) {
-      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
+      return isGithubName(input.owner) && isGithubName(input.repo);
     },
 
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubRepoActivity>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
-      const url = `${base}/repos/${input.owner}/${input.repo}`;
+      const repoPath = githubRepoPath(input.owner, input.repo);
+      if (!repoPath) return githubNameRefused(ctx);
+      const url = `${base}${repoPath}`;
 
       return performSourceFetch(
         ctx,
@@ -203,12 +229,14 @@ export function createGithubReleasesAdapter(): SourceAdapter<GithubRepoInput, Gi
     name: 'github-releases',
 
     canHandle(input) {
-      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
+      return isGithubName(input.owner) && isGithubName(input.repo);
     },
 
     fetch(input, ctx: SourceContext): Promise<SourceResult<GithubRelease[]>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
-      const url = `${base}/repos/${input.owner}/${input.repo}/releases?per_page=30`;
+      const repoPath = githubRepoPath(input.owner, input.repo);
+      if (!repoPath) return githubNameRefused(ctx);
+      const url = `${base}${repoPath}/releases?per_page=30`;
 
       return performSourceFetch(
         ctx,
@@ -407,12 +435,14 @@ export function createGithubDeploymentsAdapter(): SourceAdapter<GithubRepoInput,
     name: 'github-deployments',
 
     canHandle(input) {
-      return REPO_PATTERN.test(input.owner) && REPO_PATTERN.test(input.repo);
+      return isGithubName(input.owner) && isGithubName(input.repo);
     },
 
     async fetch(input, ctx: SourceContext): Promise<SourceResult<GithubDeploymentsReading>> {
       const base = (input.baseUrl ?? GITHUB_DEFAULT_BASE_URL).replace(/\/$/, '');
-      const url = `${base}/repos/${input.owner}/${input.repo}/deployments?environment=production&per_page=5`;
+      const repoPath = githubRepoPath(input.owner, input.repo);
+      if (!repoPath) return githubNameRefused(ctx);
+      const url = `${base}${repoPath}/deployments?environment=production&per_page=5`;
 
       const result = await performSourceFetch(
         { ...ctx, timeoutMs: Math.min(ctx.timeoutMs, DEPLOYMENTS_TIMEOUT_MS) },

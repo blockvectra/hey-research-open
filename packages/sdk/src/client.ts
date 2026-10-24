@@ -180,6 +180,27 @@ function changeParams(query: HeyChangesQuery): QueryParams {
 }
 
 /** A 3xx, or the opaque stand-in a browser returns for one under `redirect: 'manual'`. */
+/**
+ * One value as one path segment (2026-10-25): always percent-encoded, so a `/`, `?` or `#` inside it stays
+ * inside the segment.
+ */
+function pathSegment(value: string): string {
+  return encodeURIComponent(value);
+}
+
+/**
+ * Whether a path holds a dot-segment (2026-10-25): `.` or `..`, or either spelt with `%2e`, which a URL
+ * resolves as a step through the path rather than a name. `encodeURIComponent` leaves a bare `.` as it is,
+ * so the SDK refuses such a path before anything is sent: every read goes to the route its method names.
+ */
+export function hasDotSegment(path: string): boolean {
+  const bare = path.split(/[?#]/, 1)[0] ?? '';
+  return bare.split('/').some((part) => {
+    const plain = part.replace(/%2e/gi, '.');
+    return plain === '.' || plain === '..';
+  });
+}
+
 function isRedirect(response: Response): boolean {
   if (response.type === 'opaqueredirect') return true;
   return response.status >= 300 && response.status < 400;
@@ -304,6 +325,9 @@ export class HeyClient {
   }
 
   private async request<T>(path: string, params: QueryParams): Promise<T> {
+    if (hasDotSegment(path)) {
+      throw new HeyApiError('A path segment cannot be "." or "..": pass a project slug, id or address as it is.', { code: 'bad_request' });
+    }
     const url = new URL(`${this.baseUrl}${path}`);
     for (const [key, value] of Object.entries(params)) {
       if (value === undefined || value === '') continue;
@@ -394,29 +418,29 @@ export class HeyClient {
     /** `GET /api/projects`. */
     list: (query: HeyProjectsQuery = {}): Promise<HeyPage<HeyProject>> => this.get('/api/projects', query),
     /** `GET /api/projects/{slug}`: the dossier. */
-    get: (slug: string): Promise<HeyProjectDetail> => this.get(`/api/projects/${encodeURIComponent(slug)}`),
+    get: (slug: string): Promise<HeyProjectDetail> => this.get(`/api/projects/${pathSegment(slug)}`),
     /** `GET /api/projects/{slug}/market`: HEY's own daily index of the token; `days` 1–400, default 30. */
     market: (slug: string, options: { days?: number } = {}): Promise<HeyTokenMarket> =>
-      this.get(`/api/projects/${encodeURIComponent(slug)}/market`, { days: options.days }),
+      this.get(`/api/projects/${pathSegment(slug)}/market`, { days: options.days }),
     /** `GET /api/projects/{slug}/intelligence`. */
-    intelligence: (slug: string): Promise<HeyProjectIntelligence> => this.get(`/api/projects/${encodeURIComponent(slug)}/intelligence`),
+    intelligence: (slug: string): Promise<HeyProjectIntelligence> => this.get(`/api/projects/${pathSegment(slug)}/intelligence`),
     /** `GET /api/projects/{slug}/ask?q=`: a question matched to the evidence HEY holds, every line tagged. */
-    ask: (slug: string, question: string): Promise<HeyAskAnswer> => this.get(`/api/projects/${encodeURIComponent(slug)}/ask`, { q: question }),
+    ask: (slug: string, question: string): Promise<HeyAskAnswer> => this.get(`/api/projects/${pathSegment(slug)}/ask`, { q: question }),
     /**
      * `GET /api/projects/{slug}/timeline?lens=&limit=&before=`: every kind of
      * evidence on one axis, newest first, with `totals`, `truncated` and a
      * `nextCursor` to pass as `before`.
      */
     timeline: (slug: string, options: { lens?: string; limit?: number; before?: string } = {}): Promise<HeyTimeline> =>
-      this.get(`/api/projects/${encodeURIComponent(slug)}/timeline`, { lens: options.lens, limit: options.limit, before: options.before }),
+      this.get(`/api/projects/${pathSegment(slug)}/timeline`, { lens: options.lens, limit: options.limit, before: options.before }),
     /** Every page of a project's timeline, older and older, until `nextCursor` is null. */
     timelinePages: (slug: string, options: { lens?: string; limit?: number } = {}): AsyncIterable<HeyTimeline> =>
       ((step) => cursorPages((before) => step(() => this.projects.timeline(slug, { ...options, ...(before ? { before } : {}) }))))(this.walker()),
     /** `GET /api/projects/{slug}/market-integrity`: the tracked token market beside the builder activity, and their conflicts (404 until published). */
-    marketIntegrity: (slug: string): Promise<HeyMarketIntegrity> => this.get(`/api/projects/${encodeURIComponent(slug)}/market-integrity`),
+    marketIntegrity: (slug: string): Promise<HeyMarketIntegrity> => this.get(`/api/projects/${pathSegment(slug)}/market-integrity`),
     /** `GET /api/projects/{slug}/market-moves?days=&min=`: day-on-day market moves with what shipped in the week up to each — a sequence, never a cause. */
     marketMoves: (slug: string, options: { days?: number; min?: number } = {}): Promise<HeyMarketMoves> =>
-      this.get(`/api/projects/${encodeURIComponent(slug)}/market-moves`, { days: options.days, min: options.min }),
+      this.get(`/api/projects/${pathSegment(slug)}/market-moves`, { days: options.days, min: options.min }),
     /** `GET /api/compare?slugs=`: two to four projects side by side, no winner. */
     compare: (slugs: readonly string[]): Promise<HeyCompare> => this.get('/api/compare', { slugs: slugs.join(',') }),
     /**
@@ -424,7 +448,7 @@ export class HeyClient {
      * one project in one read — identity, build, market with its withholding,
      * on-chain, verification, locks, the newest changes, freshness and coverage.
      */
-    snapshot: (slug: string): Promise<HeyProjectSnapshot> => this.get(`/api/projects/${encodeURIComponent(slug)}/snapshot`),
+    snapshot: (slug: string): Promise<HeyProjectSnapshot> => this.get(`/api/projects/${pathSegment(slug)}/snapshot`),
     /**
      * `GET /api/projects/{slug}/usage?window=1|7|30` (2026-09-28): is what the
      * project shipped being used — calls, active contracts, distinct caller
@@ -432,23 +456,23 @@ export class HeyClient {
      * and up to thirty rolled-up days. Its own dimension, never a ranking input.
      */
     usage: (slug: string, options: { window?: 1 | 7 | 30 } = {}): Promise<HeyProjectUsage> =>
-      this.get(`/api/projects/${encodeURIComponent(slug)}/usage`, { window: options.window }),
+      this.get(`/api/projects/${pathSegment(slug)}/usage`, { window: options.window }),
     /**
      * `GET /api/projects/{slug}/relationships` (2026-09-28): what is connected
      * to one project and why HEY thinks so — first degree, every edge with its
      * state, typed evidence and when HEY observed it. No account is a node and
      * there is no partnership edge; what HEY does not hold is in `notHeld`.
      */
-    relationships: (slug: string): Promise<HeyProjectRelationships> => this.get(`/api/projects/${encodeURIComponent(slug)}/relationships`),
+    relationships: (slug: string): Promise<HeyProjectRelationships> => this.get(`/api/projects/${pathSegment(slug)}/relationships`),
     /**
      * `GET /api/projects/{slug}/built-on` (2026-10-17): which builders the
      * project builds on and which build on it — named in code or runs on a
      * hook, each link with its evidence. Never a partnership, never an
      * on-chain interaction.
      */
-    builtOn: (slug: string): Promise<HeyProjectBuiltOn> => this.get(`/api/projects/${encodeURIComponent(slug)}/built-on`),
+    builtOn: (slug: string): Promise<HeyProjectBuiltOn> => this.get(`/api/projects/${pathSegment(slug)}/built-on`),
     /** `GET /api/projects/{slug}/coverage`: what HEY knows and does not, per dimension, as states — never a score. */
-    coverage: (slug: string): Promise<HeyProjectCoverage> => this.get(`/api/projects/${encodeURIComponent(slug)}/coverage`),
+    coverage: (slug: string): Promise<HeyProjectCoverage> => this.get(`/api/projects/${pathSegment(slug)}/coverage`),
     /**
      * `GET /api/projects/{slug}/explain?fact=&source=&event=`: why HEY publishes a
      * fact, from the persisted evaluation. Without `fact`, the facts HEY can
@@ -456,7 +480,7 @@ export class HeyClient {
      * ledger event id of this project; without it, the latest builder change.
      */
     explain: ((slug: string, fact?: HeyExplainFact, options: { source?: string; event?: string } = {}): Promise<HeyExplainedFact | HeyExplainIndex> =>
-      this.get(`/api/projects/${encodeURIComponent(slug)}/explain`, { fact, source: options.source, event: options.event })) as {
+      this.get(`/api/projects/${pathSegment(slug)}/explain`, { fact, source: options.source, event: options.event })) as {
       (slug: string): Promise<HeyExplainIndex>;
       (slug: string, fact: HeyExplainFact, options?: { source?: string; event?: string }): Promise<HeyExplainedFact>;
     },
@@ -465,12 +489,12 @@ export class HeyClient {
      * persisted, each with its basis; a day HEY did not record is absent.
      */
     history: (slug: string, query: HeyHistoryQuery = {}): Promise<HeyHistory> =>
-      this.get(`/api/projects/${encodeURIComponent(slug)}/history`, { series: query.series, from: query.from, to: query.to }),
+      this.get(`/api/projects/${pathSegment(slug)}/history`, { series: query.series, from: query.from, to: query.to }),
     /** `GET /api/projects/{slug}/diff?from=&to=` (YYYY-MM-DD, at most 400 days apart): then and now, never a cause. */
     diff: (slug: string, window: { from: string; to: string }): Promise<HeyDiff> =>
-      this.get(`/api/projects/${encodeURIComponent(slug)}/diff`, { from: window.from, to: window.to }),
+      this.get(`/api/projects/${pathSegment(slug)}/diff`, { from: window.from, to: window.to }),
     /** `GET /api/projects/{slug}/contracts`: the project's contracts, each as `contracts.get` serves it. */
-    contracts: (slug: string): Promise<HeyProjectContracts> => this.get(`/api/projects/${encodeURIComponent(slug)}/contracts`),
+    contracts: (slug: string): Promise<HeyProjectContracts> => this.get(`/api/projects/${pathSegment(slug)}/contracts`),
     /** Every page, following `nextOffset` from `query.offset`. */
     pages: (query: HeyProjectsQuery = {}): AsyncIterable<HeyPage<HeyProject>> =>
       ((step) => nextOffsetPages((offset) => step(() => this.projects.list({ ...query, offset })), query.offset ?? 0))(this.walker()),
@@ -492,7 +516,7 @@ export class HeyClient {
     /** `GET /api/signals`. */
     list: (query: HeySignalsQuery = {}): Promise<HeySignalPage> => this.get('/api/signals', query),
     /** `GET /api/signals/{id}`. */
-    get: (id: string): Promise<HeySignalDetail> => this.get(`/api/signals/${encodeURIComponent(id)}`),
+    get: (id: string): Promise<HeySignalDetail> => this.get(`/api/signals/${pathSegment(id)}`),
     /** Every page, stepping by what each page held until `total`. */
     pages: (query: HeySignalsQuery = {}): AsyncIterable<HeySignalPage> =>
       ((step) => totalPages((offset) => step(() => this.signals.list({ ...query, offset })), query.offset ?? 0))(this.walker()),
@@ -536,7 +560,7 @@ export class HeyClient {
       /** `GET /api/reports/weekly`: the archive index, newest first. */
       list: (): Promise<HeyWeeklyIndex> => this.get('/api/reports/weekly'),
       /** `GET /api/reports/weekly/{week}`, an ISO week such as `2026-W37`. */
-      get: (week: string): Promise<HeyWeeklyReport> => this.get(`/api/reports/weekly/${encodeURIComponent(week)}`),
+      get: (week: string): Promise<HeyWeeklyReport> => this.get(`/api/reports/weekly/${pathSegment(week)}`),
     },
   };
 
@@ -545,14 +569,14 @@ export class HeyClient {
   readonly token = {
     /** `GET /api/token/{chainId}/{address}`: `status: 'unknown'` is an answer, not an error. */
     lookup: (chainId: number, address: string): Promise<HeyTokenLookup> =>
-      this.get(`/api/token/${encodeURIComponent(String(chainId))}/${encodeURIComponent(address)}`),
+      this.get(`/api/token/${pathSegment(String(chainId))}/${pathSegment(address)}`),
     /**
      * `GET /api/token/{chainId}?addresses=` (2026-09-26): up to 30 addresses in
      * one call, each answered in input order with its own `found`/`error`.
      * Keyed only; it costs one request per address.
      */
     bulk: (chainId: number, addresses: readonly string[]): Promise<HeyTokenLookupBulk> =>
-      this.get(`/api/token/${encodeURIComponent(String(chainId))}`, { addresses }),
+      this.get(`/api/token/${pathSegment(String(chainId))}`, { addresses }),
   };
 
   /** `GET /api/v1/scan?chain=&token=`: the partner card; `found: false` means print nothing. */
@@ -584,13 +608,13 @@ export class HeyClient {
      * withdrawn or hidden record answers `withdrawn: true` and names nothing
      * it may not.
      */
-    get: (id: string): Promise<HeyEvidenceReceipt> => this.get(`/api/evidence/${encodeURIComponent(id)}`),
+    get: (id: string): Promise<HeyEvidenceReceipt> => this.get(`/api/evidence/${pathSegment(id)}`),
   };
 
   readonly contracts = {
     /** `GET /api/contracts/{chainId}/{address}` (2026-09-26): one contract as a research entity — counts, proxy, source, interface, activity. */
     get: (chainId: number, address: string): Promise<HeyContract> =>
-      this.get(`/api/contracts/${encodeURIComponent(String(chainId))}/${encodeURIComponent(address)}`),
+      this.get(`/api/contracts/${pathSegment(String(chainId))}/${pathSegment(address)}`),
   };
 
   readonly v4Hooks = {
@@ -609,7 +633,7 @@ export class HeyClient {
      * what HEY does not know, each null with its reason. A hook HEY does not
      * hold throws `not_found`; a malformed address `invalid_address`.
      */
-    get: (address: string): Promise<HeyV4HookDetail> => this.get(`/api/v4-hooks/${encodeURIComponent(address)}`),
+    get: (address: string): Promise<HeyV4HookDetail> => this.get(`/api/v4-hooks/${pathSegment(address)}`),
   };
 
   /* ------------------------------------------------------ the agent contract */
@@ -630,7 +654,7 @@ export class HeyClient {
         params[key] = Array.isArray(value) ? (value as string[]).join(',') : (value as string | number);
       }
       try {
-        return await this.get<HeyAgentResponseOf<C>>(`/api/agent/${encodeURIComponent(capability)}`, params);
+        return await this.get<HeyAgentResponseOf<C>>(`/api/agent/${pathSegment(capability)}`, params);
       } catch (error) {
         const body = error instanceof HeyApiError && error.body && typeof error.body === 'object' ? (error.body as { schema?: unknown }) : undefined;
         if (body?.schema === 'hey.agent-intelligence-response') return body as HeyAgentResponseOf<C>;
@@ -655,7 +679,7 @@ export class HeyClient {
     /** `GET /api/bounties`. Read-only: claiming is a wallet sign-in on the site. */
     list: (query: HeyBountiesQuery = {}): Promise<HeyBountyPage> => this.get('/api/bounties', query),
     /** `GET /api/bounties/{id}`. */
-    get: (id: string): Promise<HeyBountyDetail> => this.get(`/api/bounties/${encodeURIComponent(id)}`),
+    get: (id: string): Promise<HeyBountyDetail> => this.get(`/api/bounties/${pathSegment(id)}`),
   };
 
   /** `GET /api/chain/accelerating`: builders whose meaningful shipping is accelerating, by the project page's own rule. */

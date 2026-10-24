@@ -104,6 +104,7 @@ Every public read route answers an error in one envelope:
 | 500 | `internal_error` | yes | HEY failed; quote the `requestId` |
 | 503 | `service_unavailable` | yes | the database was busy for a moment (a timeout or a held lock); `retryAfterSeconds` and `retry-after` say when to ask again (2026-09-30) |
 | 503 | `not_configured` | yes | `/api/v1/proof-of-ship/attestation` on a host where the attester key is not set (2026-10-24); it answers once the operator sets it |
+| 503 | `paused` | yes | `/api/v1/proof-of-ship/attestation` while the operator has paused attestations (2026-10-25) |
 
 The three 400 codes `invalid_evidence_id`, `invalid_cursor` and `invalid_json` were answered long before
 they were in this table; they were added on 2026-10-18, and `api-error-table.test.ts` now fails the build when
@@ -1035,7 +1036,7 @@ GET /api/v1/proof-of-ship/attestation?slug=loom&builder=0x…&since=1790812800&e
 
 | Parameter | |
 |---|---|
-| `slug` | the bounty's project slug: the page's current HEY slug (`heyresearch.xyz/project/<slug>`), or an old slug that redirects to it (2026-10-24 full audit) |
+| `slug` | the bounty's project slug: the page's current HEY slug (`heyresearch.xyz/project/<slug>`), or an old slug that redirects to it (2026-10-24 full audit). It must already be the lower-case HEY slug (`^[a-z0-9][a-z0-9-]{0,127}$`, no surrounding spaces); anything else answers `400 invalid_parameter`, never a tidied copy — HEY signs over the exact bytes the escrow hashed (2026-10-25) |
 | `builder` | the bounty's payout address; must be tied to the project (below) |
 | `since` | window start, unix seconds — the bounty's `start`; at most 400 days back |
 | `until` | window end, unix seconds; optional, defaults to `issuedAt` and is never later than it |

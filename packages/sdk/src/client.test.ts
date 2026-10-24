@@ -597,3 +597,28 @@ describe('rate limits and error codes (0.3.3)', () => {
     expect(never.waits).toEqual([]);
   });
 });
+
+describe('path segments (2026-10-25)', () => {
+  it('refuses "." and ".." as a slug, id or address before anything is sent, so a read never lands on another route', async () => {
+    const { client, calls } = recording();
+    for (const value of ['..', '.']) {
+      const error = await caught(client.projects.contracts(value));
+      expect(error.code).toBe('bad_request');
+    }
+    expect((await caught(client.evidence.get('..'))).code).toBe('bad_request');
+    for (const path of ['/api/projects/../contracts', '/api/projects/%2e%2E/contracts', '/api/projects/.%2e/contracts?x=1']) {
+      expect((await caught(client.get(path))).code).toBe('bad_request');
+    }
+    expect(calls).toHaveLength(0);
+    // A percent sign in a value is encoded, so it can never spell a dot-segment.
+    await client.projects.contracts('%2e%2e');
+    expect(calls[0]!.url.pathname).toBe('/api/projects/%252e%252e/contracts');
+  });
+
+  it('encodes every other value as one segment', async () => {
+    const { client, calls } = recording();
+    await client.projects.snapshot('a/b?c#d');
+    await client.projects.snapshot('..a');
+    expect(calls.map((call) => call.url.pathname)).toEqual(['/api/projects/a%2Fb%3Fc%23d/snapshot', '/api/projects/..a/snapshot']);
+  });
+});

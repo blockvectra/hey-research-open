@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { findBadgePlacement, type BadgeTarget } from './badge-match';
+import { findBadgePlacement, trimTrailingPunctuation, type BadgeTarget } from './badge-match';
 import { createGithubFileAdapter } from './adapters/github-contents';
 import { createWebsiteAdapter } from './adapters/website';
 import { readFixture, stubFetch, testContext } from './testing';
@@ -139,5 +139,27 @@ describe('the adapters carry the verdict, never the body', () => {
     expect(requests[0]?.url).toBe('https://api.github.com/repos/agentos/agentos/readme');
     expect(result.status).toBe('fresh');
     expect(findBadgePlacement(result.data?.text ?? '', 'readme', target()).found).toBe(true);
+  });
+});
+
+describe('trailing punctuation after a bare URL', () => {
+  it('is trimmed from the end only', () => {
+    expect(trimTrailingPunctuation('https://heyresearch.xyz/badge/agentos.svg.')).toBe('https://heyresearch.xyz/badge/agentos.svg');
+    expect(trimTrailingPunctuation('https://heyresearch.xyz/badge/agentos?!*_~;:,.')).toBe('https://heyresearch.xyz/badge/agentos');
+    expect(trimTrailingPunctuation('https://heyresearch.xyz/a.b')).toBe('https://heyresearch.xyz/a.b');
+    expect(trimTrailingPunctuation('...')).toBe('');
+    expect(trimTrailingPunctuation('')).toBe('');
+  });
+
+  it('reads a 1 MB README of long punctuation runs in linear time', () => {
+    const candidate = `//${'.'.repeat(2045)}x `;
+    const body = candidate.repeat(Math.ceil((1024 * 1024) / candidate.length)) + 'https://heyresearch.xyz/badge/agentos.svg.';
+    expect(body.length).toBeGreaterThan(1024 * 1024);
+    findBadgePlacement(body.slice(0, 10_000), 'readme', target()); // warm the regex engine
+    const started = performance.now();
+    const match = findBadgePlacement(body, 'readme', target());
+    const elapsed = performance.now() - started;
+    expect(match).toEqual({ found: true, url: 'https://heyresearch.xyz/badge/agentos.svg' });
+    expect(elapsed).toBeLessThan(100);
   });
 });

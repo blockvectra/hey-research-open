@@ -80,10 +80,11 @@ partner key reaches it with the `mcp` route group.
 
 ### Local
 
-On npm since 2026-09-27 as `@hey-research-lab/mcp` (Node 20 or newer):
+On npm since 2026-09-27 as `@hey-research-lab/mcp` (Node 20 or newer). Name the version: `npx` then runs exactly the
+release you chose, and a newer one only when you change the number.
 
 ```bash
-claude mcp add hey-research -- npx -y @hey-research-lab/mcp
+claude mcp add hey-research -- npx -y @hey-research-lab/mcp@0.3.2
 ```
 
 To run a change of your own, build it from a clone instead —

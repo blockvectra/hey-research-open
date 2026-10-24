@@ -112,7 +112,7 @@ Use the packages from npm (published 27 September 2026):
 
 ```bash
 npm i @hey-research-lab/sdk                                   # the typed client
-claude mcp add hey-research -- npx -y @hey-research-lab/mcp   # the MCP server
+claude mcp add hey-research -- npx -y @hey-research-lab/mcp@0.3.2   # the MCP server
 ```
 
 Or build this tree:
@@ -406,7 +406,7 @@ only:
 claude mcp add --transport http hey-research https://heyresearch.xyz/mcp
 
 # or from npm
-npx -y @hey-research-lab/mcp
+npx -y @hey-research-lab/mcp@0.3.2
 
 # or from this repository
 pnpm --filter @hey-research-lab/mcp build
@@ -465,7 +465,7 @@ key, no account, no install for the hosted doors:
 ```bash
 claude mcp add --transport http hey-research https://heyresearch.xyz/mcp        # Claude Code, hosted
 # any MCP client, hosted:  { "mcpServers": { "hey-research": { "type": "http", "url": "https://heyresearch.xyz/mcp" } } }
-# any MCP client, local:   { "mcpServers": { "hey-research": { "command": "npx", "args": ["-y", "@hey-research-lab/mcp"] } } }
+# any MCP client, local:   { "mcpServers": { "hey-research": { "command": "npx", "args": ["-y", "@hey-research-lab/mcp@0.3.2"] } } }
 
 # REST end to end: find a project that shipped this week, read it, open the evidence behind it
 BASE=https://heyresearch.xyz
@@ -986,7 +986,8 @@ rounds the founder opens by hand; none has been opened yet (2026-10-03).
 ## How this repository is produced
 
 A script in the private repository copies the paths listed above, generates a types-only
-`@hey/db`, refuses to publish anything that must not leave, and pushes one commit per sync. Issues
+`@hey/db`, refuses to publish anything that must not leave (archives are opened and scanned too), installs with the
+private lockfile's exact versions and no install scripts, and pushes one commit per sync. Issues
 and pull requests are welcome here: a change accepted here is applied privately and comes back in
 the next sync.
 

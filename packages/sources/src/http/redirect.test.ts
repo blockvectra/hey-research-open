@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { httpRequest, MAX_REDIRECTS } from './client';
 import { stubFetch, testContext } from '../testing';
@@ -170,5 +170,133 @@ describe('timeout wiring', () => {
     );
 
     expect(stub.requests[0]?.init?.signal).toBeInstanceOf(AbortSignal);
+  });
+});
+
+/*
+ * A configured provider is trusted for the host it was configured with only (2026-10-25): a redirect it answers with
+ * to another host is checked as a submitted URL is — the name resolved, every address public and not HEY's own, the
+ * socket pinned to the checked address, the scheme's own port.
+ */
+describe('a configured provider redirecting to another host', () => {
+  const lookupOf = (table: Record<string, string[]>) => {
+    const asked: string[] = [];
+    const lookupImpl = async (hostname: string) => {
+      asked.push(hostname);
+      return table[hostname] ?? ['93.184.216.34'];
+    };
+    return { asked, lookupImpl };
+  };
+
+  it.each([
+    ['an internal service name', 'http://web/api/health', { web: ['172.18.0.5'] }],
+    ['an internal service name on its own port', 'http://web:3000/api/health', { web: ['172.18.0.5'] }],
+    ['the database container', 'http://postgres/', { postgres: ['172.18.0.2'] }],
+    ['a name pointing at the cloud metadata address', 'http://metadata.example/v1.json', { 'metadata.example': ['169.254.169.254'] }],
+    ['a name pointing at the IPv6 metadata address', 'http://meta6.example/latest', { 'meta6.example': ['fd00:ec2::254'] }],
+    ['a name pointing at IPv4 loopback', 'http://127.0.0.1.nip.io/', { '127.0.0.1.nip.io': ['127.0.0.1'] }],
+    ['a name pointing at IPv6 loopback', 'http://loop6.example/', { 'loop6.example': ['::1'] }],
+    ['a name pointing at a private network', 'http://lan.example/', { 'lan.example': ['10.0.0.7'] }],
+    ['a name with one public and one private answer', 'http://mixed.example/', { 'mixed.example': ['93.184.216.34', '192.168.1.1'] }],
+  ])('refuses %s and never requests it', async (_label, target, table) => {
+    const stub = stubFetch([redirectTo(target), page('SECRET')]);
+    const { lookupImpl } = lookupOf(table);
+    await expect(
+      httpRequest({ url: 'https://api.launchpad.example/v1/tokens' }, testContext({ fetchImpl: stub.fetchImpl, lookupImpl })),
+    ).rejects.toMatchObject({ code: 'BLOCKED_URL' });
+    expect(stub.requests.map((r) => r.url)).toEqual(['https://api.launchpad.example/v1/tokens']);
+  });
+
+  it.each([
+    ['the cloud metadata address', 'http://169.254.169.254/latest/meta-data/'],
+    ['the IPv6 metadata address', 'http://[fd00:ec2::254]/latest/meta-data/'],
+    ['IPv6 loopback', 'http://[::1]/'],
+    ['a blocked metadata name', 'http://metadata.google.internal/computeMetadata/v1/'],
+  ])('refuses %s as a literal host', async (_label, target) => {
+    const stub = stubFetch([redirectTo(target), page('SECRET')]);
+    await expect(
+      httpRequest({ url: 'https://api.launchpad.example/v1/tokens' }, testContext({ fetchImpl: stub.fetchImpl })),
+    ).rejects.toMatchObject({ code: 'BLOCKED_URL' });
+    expect(stub.callCount()).toBe(1);
+  });
+
+  it('refuses another host on a port other than the scheme’s own', async () => {
+    const stub = stubFetch([redirectTo('https://elsewhere.example:6379/'), page('x')]);
+    await expect(
+      httpRequest({ url: 'https://api.launchpad.example/v1' }, testContext({ fetchImpl: stub.fetchImpl })),
+    ).rejects.toMatchObject({ code: 'BLOCKED_URL' });
+    expect(stub.callCount()).toBe(1);
+  });
+
+  it('follows a public host with the connection pinned to the checked address', async () => {
+    const stub = stubFetch([redirectTo('https://objects.example/asset'), page('ok')]);
+    const { asked, lookupImpl } = lookupOf({ 'objects.example': ['93.184.216.34'] });
+    const outcome = await httpRequest({ url: 'https://api.launchpad.example/v1' }, testContext({ fetchImpl: stub.fetchImpl, lookupImpl }));
+    expect(outcome.kind).toBe('ok');
+    expect(asked).toEqual(['objects.example']);
+    // The configured host is read as configured; the other host's socket is pinned.
+    expect((stub.requests[0]?.init as Record<string, unknown> | undefined)?.dispatcher).toBeUndefined();
+    expect((stub.requests[1]?.init as Record<string, unknown> | undefined)?.dispatcher).toBeDefined();
+  });
+
+  it('reads a redirect within the configured host without resolving it', async () => {
+    const stub = stubFetch([redirectTo('https://api.github.com/repositories/1/releases', 301), page('[]')]);
+    const { asked, lookupImpl } = lookupOf({});
+    const outcome = await httpRequest({ url: 'https://api.github.com/repos/a/b/releases' }, testContext({ fetchImpl: stub.fetchImpl, lookupImpl }));
+    expect(outcome.kind).toBe('ok');
+    expect(asked).toEqual([]);
+  });
+});
+
+describe("HEY's own origin addresses", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  it('refuses a submitted URL whose name resolves to the origin', async () => {
+    vi.stubEnv('WEBHOOK_DENY_ADDRESSES', '203.0.113.9, 2001:db8::1');
+    const allowed = stubFetch(page('ok'));
+    await expect(
+      httpRequest(
+        { url: 'https://looks-public.example/', enforceUrlSafety: true },
+        testContext({ fetchImpl: allowed.fetchImpl, lookupImpl: async () => ['45.77.1.2'] }),
+      ),
+    ).resolves.toMatchObject({ kind: 'ok' });
+
+    vi.stubEnv('WEBHOOK_DENY_ADDRESSES', '45.77.1.2');
+    const refused = stubFetch(page('ok'));
+    await expect(
+      httpRequest(
+        { url: 'https://looks-public.example/', enforceUrlSafety: true },
+        testContext({ fetchImpl: refused.fetchImpl, lookupImpl: async () => ['45.77.1.2'] }),
+      ),
+    ).rejects.toMatchObject({ code: 'BLOCKED_URL' });
+    expect(refused.callCount()).toBe(0);
+  });
+
+  it('refuses the origin however its IPv6 address is spelled, and as a literal host', async () => {
+    vi.stubEnv('WEBHOOK_DENY_ADDRESSES', '2A05:F480:1800:0:0::1');
+    const stub = stubFetch(page('ok'));
+    await expect(
+      httpRequest(
+        { url: 'https://looks-public.example/', enforceUrlSafety: true },
+        testContext({ fetchImpl: stub.fetchImpl, lookupImpl: async () => ['2a05:f480:1800::1'] }),
+      ),
+    ).rejects.toMatchObject({ code: 'BLOCKED_URL' });
+
+    vi.stubEnv('WEBHOOK_DENY_ADDRESSES', '45.77.1.2');
+    await expect(
+      httpRequest({ url: 'https://45.77.1.2/', enforceUrlSafety: true }, testContext({ fetchImpl: stub.fetchImpl })),
+    ).rejects.toMatchObject({ code: 'BLOCKED_URL' });
+    expect(stub.callCount()).toBe(0);
+  });
+
+  it('refuses a configured provider’s redirect to a host that resolves to the origin', async () => {
+    vi.stubEnv('WEBHOOK_DENY_ADDRESSES', '45.77.1.2');
+    const stub = stubFetch([redirectTo('https://origin-alias.example/'), page('ok')]);
+    await expect(
+      httpRequest({ url: 'https://api.launchpad.example/v1' }, testContext({ fetchImpl: stub.fetchImpl, lookupImpl: async () => ['45.77.1.2'] })),
+    ).rejects.toMatchObject({ code: 'BLOCKED_URL' });
+    expect(stub.callCount()).toBe(1);
   });
 });
