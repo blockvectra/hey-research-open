@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatUsdCompact, oneLineDescription, plainText, formatRelativeTime } from './format';
+import { formatAgeShort, formatCount, formatPercent, formatUtcDay, formatUsdCompact, oneLineDescription, plainText, formatRelativeTime } from './format';
 
 /**
  * Source text reaches the interface as words, never as markup (QA sweep
@@ -100,6 +100,13 @@ describe('a project description that arrived as Markdown', () => {
 });
 
 describe('formatRelativeTime', () => {
+  it('reads an age in days up to 60, then in months — never "1mo ago" (UI-12)', () => {
+    const now = new Date('2026-10-24T12:00:00Z');
+    expect(formatRelativeTime(new Date('2026-09-17T08:00:00Z'), now)).toBe('37d ago');
+    expect(formatRelativeTime(new Date('2026-09-17T00:00:00Z'), now)).toBe('37d ago');
+    expect(formatRelativeTime(new Date('2026-08-25T08:00:00Z'), now)).toBe('2mo ago');
+  });
+
   it('reads a future instant as a countdown, never as "just now" (2026-09-17)', () => {
     const now = new Date('2026-09-17T12:00:00Z');
     expect(formatRelativeTime(new Date('2026-09-22T12:00:00Z'), now)).toBe('in 5d');
@@ -266,5 +273,39 @@ describe('oneLineDescription', () => {
     const words = oneLineDescription('word '.repeat(80), 60);
     expect(words.length).toBeLessThanOrEqual(61);
     expect(words.endsWith('word…')).toBe(true);
+  });
+});
+
+describe('formatAgeShort', () => {
+  /* One rule with formatRelativeTime (2026-10-24 full audit, frontend-7): from a day on, UTC calendar days. */
+  it('reads days as UTC calendar dates, never hours divided by 24', () => {
+    const now = new Date('2026-10-23T04:00:00Z');
+    expect(formatAgeShort(new Date('2026-10-21T22:00:00Z'), now)).toBe('2d');
+    expect(formatRelativeTime(new Date('2026-10-21T22:00:00Z'), now)).toBe('2d ago');
+  });
+
+  it('keeps minutes and hours under a day', () => {
+    const now = new Date('2026-10-23T12:00:00Z');
+    expect(formatAgeShort(new Date('2026-10-23T11:55:00Z'), now)).toBe('5m');
+    expect(formatAgeShort(new Date('2026-10-23T01:00:00Z'), now)).toBe('11h');
+    expect(formatAgeShort(new Date('2026-10-23T11:59:50Z'), now)).toBe('0m');
+  });
+});
+
+describe('formatCount, formatPercent, formatUtcDay (2026-10-24 full audit, frontend-6)', () => {
+  it('groups a count the same everywhere', () => {
+    expect(formatCount(1234567)).toBe('1,234,567');
+    expect(formatCount(0)).toBe('0');
+  });
+
+  it('prints a share in per cent, rounded half up', () => {
+    expect(formatPercent(0.375)).toBe('38%');
+    expect(formatPercent(0.0042, 1)).toBe('0.4%');
+    expect(formatPercent(0.125)).toBe('13%');
+    expect(formatPercent(1)).toBe('100%');
+  });
+
+  it('dates by the UTC day', () => {
+    expect(formatUtcDay(new Date('2026-10-23T23:59:59Z'))).toBe('2026-10-23');
   });
 });

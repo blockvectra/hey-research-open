@@ -496,6 +496,12 @@ export const serverEnvSchema = z
         paymentConfirmations: optionalString.pipe(
           z.coerce.number().int().min(0).max(10_000).default(30),
         ),
+        /**
+         * Reserved, refusal-only (2026-10-24 full audit, frontend-17): Scout staking and evidence challenges are
+         * designed, not built (M13 economy §22). No code reads these two; they exist so that setting either to
+         * "true" fails validation below instead of being silently ignored, and the $HEY profile names the second
+         * as what keeps challenges off. Remove them only together with that refusal.
+         */
         scoutStakingEnabled: optionalString
           .transform((value) => value === 'true')
           .pipe(z.boolean()),

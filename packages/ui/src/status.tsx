@@ -17,6 +17,7 @@ import {
   activityPresentation,
   NO_BUILDER_SIGNAL,
   unknownActivityReason,
+  type ActivityStatusWordsKey,
   type UnknownActivityReason,
 } from '@hey/scoring/activity-words';
 import {
@@ -29,6 +30,8 @@ import {
   type UnconfirmedMarketReason,
 } from '@hey/scoring/market-status-words';
 import { RESEARCH_LEVEL_WORDS, researchLevelWordsFor } from '@hey/scoring/research-level-words';
+
+import type { TokenMarketStatusValue as StoredTokenMarketStatus } from '@hey/scoring';
 
 import { cn } from './cn';
 
@@ -44,8 +47,42 @@ import { cn } from './cn';
  * "HEY has not researched this yet" is a gap in HEY's knowledge, not a fault of
  * the project.
  */
-export type ActivityStatusValue =
-  'SHIPPING' | 'ACTIVE' | 'QUIET' | 'DORMANT' | 'RESUMED' | 'UNKNOWN';
+export type ActivityStatusValue = ActivityStatusWordsKey;
+
+/*
+ * One guard per status union (2026-10-24 full audit, frontend-8). The unions are the scoring
+ * package's own (the words tables are keyed by them, and `lib/status-unions.test.ts` holds them to
+ * `@hey/db`'s enums), so a string from a row or a payload is checked once here instead of cast at
+ * every call site — a cast let a bad value through to a chip that then silently read UNKNOWN.
+ */
+const hasKey = (table: object, value: string | null | undefined): value is string =>
+  typeof value === 'string' && Object.prototype.hasOwnProperty.call(table, value);
+
+/** A stored activity status, or UNKNOWN for anything else — what the chip falls back to anyway. */
+export function asActivityStatus(value: string | null | undefined): ActivityStatusValue {
+  return hasKey(ACTIVITY_STATUS_WORDS, value) ? (value as ActivityStatusValue) : 'UNKNOWN';
+}
+
+/** The stored activity statuses in the enum's order (`@hey/db` ACTIVITY_STATUSES, held by `lib/status-unions.test.ts`). */
+export const ACTIVITY_STATUS_VALUES = Object.keys(ACTIVITY_STATUS_WORDS) as readonly ActivityStatusValue[];
+
+/**
+ * The colour token of an activity status, for a mark drawn in SVG or a style attribute (2026-10-24 full
+ * audit, frontend-9: the same six-entry table was typed in the scatter, the map and the admin site page).
+ * Anything that is not a stored status is UNKNOWN's grey, as the chip reads it.
+ */
+export function statusColorVar(status: string | null | undefined): string {
+  return `var(--color-status-${asActivityStatus(status).toLowerCase()})`;
+}
+
+/**
+ * "Building now": shipping, active or resumed — the statuses a share post leads with and the Mini App
+ * accents. The project page's badge offer (`badgeOffered`) excludes RESUMED under ruling O3 b; whether
+ * a resumed Verified Builder is offered the badge is open for the founder (2026-10-24 full audit).
+ */
+export const BUILDING_NOW_STATUSES: ReadonlySet<ActivityStatusValue> = new Set<ActivityStatusValue>(['SHIPPING', 'ACTIVE', 'RESUMED']);
+
+export const isBuildingNowStatus = (status: string | null | undefined): boolean => BUILDING_NOW_STATUSES.has(asActivityStatus(status));
 
 /*
  * The words come from `@hey/scoring/activity-words` (2026-10-01): the one
@@ -255,15 +292,16 @@ export function Badge({ children, className }: { children: ReactNode; className?
 /** A market or token-identity state's tone: never a builder colour, never a direction colour. */
 type MarketTone = 'neutral' | 'muted';
 
-export type TokenMarketStatusValue =
-  | 'ACTIVE_MARKET'
-  | 'LOW_LIQUIDITY'
-  | 'NO_LIQUIDITY'
-  | 'TRADING_INACTIVE'
-  | 'LIQUIDITY_REMOVED'
-  | 'MARKET_ABANDONED'
-  | 'INSUFFICIENT_DATA'
-  | 'TOKEN_NOT_LAUNCHED';
+/**
+ * The scoring package's market statuses plus `TOKEN_NOT_LAUNCHED`, which is no status HEY stores:
+ * it is the chip's own word ("No token tracked") for a project with no tracked token.
+ */
+export type TokenMarketStatusValue = StoredTokenMarketStatus | 'TOKEN_NOT_LAUNCHED';
+
+/** A stored token market status, or null for anything else (never the chip-only TOKEN_NOT_LAUNCHED). */
+export function asTokenMarketStatus(value: string | null | undefined): StoredTokenMarketStatus | null {
+  return hasKey(TOKEN_MARKET_LABELS, value) ? (value as StoredTokenMarketStatus) : null;
+}
 
 const TOKEN_MARKET_PRESENTATION: Record<TokenMarketStatusValue, { label: string; help: string; tone: MarketTone }> = {
   ACTIVE_MARKET: { label: TOKEN_MARKET_LABELS.ACTIVE_MARKET, help: 'The tracked token has liquidity and traded in the last 24 hours.', tone: 'neutral' },
@@ -374,7 +412,13 @@ export function tokenMarketHelp(status: TokenMarketStatusValue, reason?: string 
   return marketPresentation(status, reason).help;
 }
 
-export type TokenVerificationValue = 'VERIFIED' | 'UNVERIFIED' | 'MISMATCH';
+export const TOKEN_VERIFICATION_VALUES = ['VERIFIED', 'UNVERIFIED', 'MISMATCH'] as const;
+export type TokenVerificationValue = (typeof TOKEN_VERIFICATION_VALUES)[number];
+
+/** A stored token verification, or null for anything else. */
+export function asTokenVerification(value: string | null | undefined): TokenVerificationValue | null {
+  return typeof value === 'string' && (TOKEN_VERIFICATION_VALUES as readonly string[]).includes(value) ? (value as TokenVerificationValue) : null;
+}
 
 const TOKEN_VERIFICATION_PRESENTATION: Record<TokenVerificationValue, { label: string; help: string; tone: MarketTone }> = {
   VERIFIED: { label: 'Token verified', help: 'The project itself ties this contract to the project: its site names the contract, or the owner proved control of the deployer.', tone: 'neutral' },

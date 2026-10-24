@@ -1035,7 +1035,7 @@ GET /api/v1/proof-of-ship/attestation?slug=loom&builder=0x…&since=1790812800&e
 
 | Parameter | |
 |---|---|
-| `slug` | the project's current HEY slug (`heyresearch.xyz/project/<slug>`) |
+| `slug` | the bounty's project slug: the page's current HEY slug (`heyresearch.xyz/project/<slug>`), or an old slug that redirects to it (2026-10-24 full audit) |
 | `builder` | the bounty's payout address; must be tied to the project (below) |
 | `since` | window start, unix seconds — the bounty's `start`; at most 400 days back |
 | `until` | window end, unix seconds; optional, defaults to `issuedAt` and is never later than it |
@@ -1048,6 +1048,7 @@ GET /api/v1/proof-of-ship/attestation?slug=loom&builder=0x…&since=1790812800&e
   "signer": "0x…",
   "domain": { "name": "HEY Proof of Ship", "version": "1", "chainId": 4663, "verifyingContract": "0x…" },
   "slug": "loom",
+  "currentSlug": "loom",
   "builderTie": "wallet_claim",
   "evidenceIds": ["ship:…", "ship:…"],
   "evidenceUrls": ["https://heyresearch.xyz/evidence/ship:…", "https://heyresearch.xyz/evidence/ship:…"],
@@ -1059,15 +1060,31 @@ GET /api/v1/proof-of-ship/attestation?slug=loom&builder=0x…&since=1790812800&e
   timeline and `/explain` read — approved, standing, this project's own, of a building type, corroborated
   (`SOURCE_LINKED` or better; a self-reported update never counts), a repository's release day, a prerelease week, a
   code week or a deploy run counted once — narrowed by the window only: the ship is dated inside `[since, until]` (both
-  ends included), HEY first recorded it at or after `since` (a ship already on HEY's record before the bounty opened
-  never counts for it, whatever date its source gives), and a code week (`CODE_ACTIVITY`, keyed on its last commit's
+  ends included), HEY first recorded it inside `[since, until]` too (a ship already on HEY's record before the bounty
+  opened never counts for it, and since the 2026-10-24 full audit neither does one HEY first read after `until` — work
+  pushed during the escrow's claim grace and dated back by a commit's author date or a feed's own date is not work
+  before the deadline; there is no ingestion allowance), and a code week (`CODE_ACTIVITY`, keyed on its last commit's
   UTC ISO week) counts only when that whole week starts at or after `since`.
+- **One a day of each kind (2026-10-24 full audit):** at most one counted ship of each kind per UTC day of HEY's first
+  record — a GitHub release (any repository), a contract deployment or upgrade, a code week, and every other counted
+  entry (a feed, changelog or site entry, a moderator-verified update) — the first one HEY recorded standing for it.
+  Releases a day per repository, deploy runs 61 seconds apart or a poll's worth of changelog entries would otherwise
+  each be a payable ship. `evidenceIds` lists exactly the ships counted. This narrows the attestation only; activity
+  status and every score count as before.
+- **At the window's end:** the release-day, prerelease-week, code-week and deploy-run keepers keep a group's newest
+  row before the window applies, so a group whose kept row is dated after `until` does not count, even for its rows
+  inside the window. It under-counts at the edge, never over.
 - **Whom HEY signs for:** the `builder` must be tied to the project by evidence HEY already holds, and only two ties
-  qualify — `wallet_claim`, the signer of a verified wallet-signature claim on the project (the claimant signed with
-  the key that launched, owns or deployed its token); or `token_deployer`, the deployer HEY recorded for the project's
-  tracked token while that token's verification is `VERIFIED` (never an account HEY holds as a launch service or a
-  serial launcher). Nothing else, and never a tie inferred from transfers. Otherwise `403 builder_not_tied`. The answer
-  names the tie in `builderTie`.
+  qualify — `wallet_claim`, the signer of a verified wallet-signature claim on the project made for its current
+  tracked token (the claim's proof names that chain and contract; a claim signed for a token the page no longer
+  tracks ties nothing); or `token_deployer`, the deployer HEY recorded for the project's tracked token (never an
+  account HEY holds as a launch service, and only one HEY measured as no serial launcher — unmeasured is no tie).
+  Both only while the token stands as the project's own (2026-10-24 full audit): `VERIFIED`, not an issuer's token or
+  a Robinhood Stock Token, not disowned by the project's own site, not passed over by the site for another contract,
+  and not contested by a lookalike page of the same name and ticker whose own site names a different contract — a
+  wallet signature verifies a token ahead of what the site says, so these are read on their own. Nothing else, and
+  never a tie inferred from transfers. Otherwise `403 builder_not_tied` (the refusal never repeats the address). The
+  answer names the tie in `builderTie`.
 - **What is signed:** EIP-712 typed data, primary type
   `Ships(bytes32 project,address builder,uint64 since,uint64 until,uint32 ships,bytes32 evidence,uint64 issuedAt)`,
   exactly the contract's `SHIPS_TYPEHASH`. `project = keccak256(utf8(slug))`;
@@ -1075,12 +1092,16 @@ GET /api/v1/proof-of-ship/attestation?slug=loom&builder=0x…&since=1790812800&e
   `issuedAt` is HEY's clock less 60 seconds — the contract refuses an `issuedAt` ahead of the block, and the route never
   asks the chain — and `until` is never later than it. The contract accepts an attestation for at most one day after
   `issuedAt`, so ask close to claiming. `ships` may be 0.
+- **A renamed page:** the escrow keys a bounty on `keccak256(slug)` for good, while HEY renames pages. An old slug
+  that redirects to a published page answers for that page: HEY signs over the slug as asked (the bounty's) and returns
+  the page's `currentSlug`.
 - **Check it yourself:** every id in `evidenceIds` opens its receipt at `evidenceUrls` (and `/api/evidence/{id}`), and
   hashing them as above gives `attestation.evidence`. `signer` is the address the escrow was deployed with.
 - **Refusals:** `400 invalid_parameter` (a malformed slug, builder, window or escrow; `since` after `until`, after
   `issuedAt` or more than 400 days back), `400 escrow_not_configured` (an escrow HEY does not sign for), `403
-  builder_not_tied`, `404 not_found` (no published project has the slug — a renamed project answers only under its
-  current slug), `503 not_configured` (the host has no attester key). `cache-control: no-store`; no provider call.
+  builder_not_tied`, `404 not_found` (no published page answers to the slug, by its current slug or an old one that
+  redirects to it; a slug that is one page's current slug while its redirect names another is refused too),
+  `503 not_configured` (the host has no attester key). `cache-control: no-store`; no provider call.
 - **What it is not:** a signature is what HEY counted, never that a project is good, safe or worth funding. HEY holds no
   funds and earns nothing from a bounty, stores nothing about the payout address, and the attestation changes nothing
   on HEY — no status, score, badge or order.

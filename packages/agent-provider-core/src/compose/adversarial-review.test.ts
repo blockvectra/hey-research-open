@@ -262,6 +262,16 @@ describe('what HEY does not know, said fairly (builder and compliance review)', 
     expect(projectUnknowns({ ...base, facts }).map((unknown) => unknown.dimension)).not.toContain('brandAffiliation');
   });
 
+  it('a token the project’s own site disowns or contradicts is never "do not treat it as false either" (2026-10-24 full audit INV-7)', () => {
+    const disowned = projectUnknowns({ ...base, facts: { ...facts, tokenVerification: { status: 'UNVERIFIED', reason: 'site_disclaims_contract' } } }).find((unknown) => unknown.dimension === 'tokenOwnership')!;
+    expect(disowned.doNotConclude.text).toBe('The project’s own site says this is not its token; do not treat it as the project’s.');
+    const mismatch = projectUnknowns({ ...base, facts: { ...facts, tokenVerification: { status: 'MISMATCH' } } }).find((unknown) => unknown.dimension === 'tokenOwnership')!;
+    expect(mismatch.doNotConclude.text).not.toMatch(/false either/);
+    // Any other unverified token keeps the category's own sentence.
+    const unread = projectUnknowns({ ...base, facts: { ...facts, tokenVerification: { status: 'UNVERIFIED', reason: 'not_checked' } } }).find((unknown) => unknown.dimension === 'tokenOwnership')!;
+    expect(unread.doNotConclude.text).toMatch(/do not treat it as false either/);
+  });
+
   it('a mismatched token is named among the unknowns and in the builder status answer', () => {
     const unknowns = projectUnknowns({ ...base, facts: { ...facts, tokenVerification: { status: 'MISMATCH', reason: 'site_names_another_contract' } } });
     expect(unknowns.find((unknown) => unknown.dimension === 'tokenOwnership')).toMatchObject({ category: 'NOT_VERIFIED', reason: 'token_site_names_another_contract' });

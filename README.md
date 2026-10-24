@@ -70,10 +70,9 @@ latest change that is a market or lock event says so, and its link opens that ev
 
 </details>
 
-Captured from production on 20 September 2026. Since 30 September 2026 the whole site wears the
-Research Terminal's Luminous Glass material system — Lab Paper in light, graphite in dark, a glass
-header, translucent cards, a search that opens as a palette — with the same simple, card-first
-pages; the screenshots above predate it.
+Captured from production on 20 September 2026, before the Luminous Glass material system (30
+September) and the homepage token check (19 October): the pages are laid out as shown, and look
+different today.
 
 Since 1 October 2026 a first visit starts research-ready: Explore lists the projects HEY can
 answer the builder question for (a measured activity status or a source-backed ship in the last
@@ -97,7 +96,7 @@ This is the published half of HEY: the parts that stand on their own and are saf
 | [`packages/sources`](packages/sources) | Every public-data adapter HEY reads — GitHub, Blockscout, Sourcify (verification and its signature database), DEX Screener, GeckoTerminal, CoinGecko, launchpads, feeds, npm, deps.dev, OSV — each with saved fixtures and contract tests, plus the Telegram Bot API adapter HEY's alert bot sends through. The tests fail on a real network call. All of them go through one fetch guard (private-address and DNS-rebinding checks, redirect and credential rules, size, time and content-type limits) and bounded HTML and XML parsers, tested against hostile pages and feeds. |
 | [`packages/scoring`](packages/scoring) | Activity status, Build Momentum, Still Building and Under the Radar, deterministic and versioned. They read no price and no balance, and that is tested. |
 | [`packages/sdk`](packages/sdk) | `@hey-research-lab/sdk`, the typed client over the public API. No dependencies, ESM and CJS, Node 18 or a browser. |
-| [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: fifteen read-only tools, each answer tagged FACT, DERIVED or UNKNOWN. |
+| [`packages/mcp-core`](packages/mcp-core) | The MCP tools, renderers, resources and prompts with no transport: thirteen read-only tools (fourteen where Market Integrity is published, as on heyresearch.xyz), each answer tagged FACT, DERIVED or UNKNOWN. |
 | [`packages/agent-provider-core`](packages/agent-provider-core) | The agent contract, AgentIntelligenceResponse v1: six bounded capabilities composed from the public API's own objects, the freshness contract, machine-safe text (`contentOrigin`), and thin REST, MCP and A2A adapters. The Robinhood Agent Apps adapter is an interface only, pending an official provider specification. |
 | [`apps/mcp`](apps/mcp) | `@hey-research-lab/mcp`, the stdio entry point that bundles them. Node 20. The same tools are hosted at `https://heyresearch.xyz/mcp`. |
 | [`packages/config`](packages/config) | Environment schema and chain constants. |
@@ -120,7 +119,7 @@ Or build this tree:
 
 ```bash
 pnpm install
-pnpm lint && pnpm typecheck && pnpm test     # 686 tests, no network
+pnpm lint && pnpm typecheck && pnpm test     # no network
 pnpm --filter @hey-research-lab/sdk build        # packages/sdk/dist
 pnpm --filter @hey-research-lab/mcp build        # apps/mcp/dist/index.js
 ```
@@ -183,7 +182,9 @@ contract's timeline entry reads "Contract source verified", never "Contract depl
 description line keeps a dash before a closing emphasis mark, drops a mark left without its partner,
 and is empty for text whose words run together. A repository that says it is a third-party profile
 of someone else is never promoted into a project. Cards say "No token tracked" rather than "No
-token".
+token". A card prints a valuation only for a verified token, or an active market
+whose ticker is not contested, and never the ticker or valuation of a token the project's own site
+disowns (2026-10-24).
 
 Markets, the same day. A token that reads 0 decimals (an NFT collection) has no fungible market: no
 valuation, Discovery Gap, Under the Radar or Still Building, and NFT marketplaces such as Seaport are
@@ -395,7 +396,7 @@ A value a listing cannot read is refused, never dropped into a wider answer: an 
 cursor past the end of the ledger is a `400 invalid_cursor`. Only an unknown parameter *name* is
 ignored. The OpenAPI document states each of those vocabularies as an enum (2026-10-03).
 
-**For an assistant** — fifteen read-only tools over the same API, hosted or on your machine, listed in the
+**For an assistant** — thirteen read-only tools (fourteen where Market Integrity is published, as on heyresearch.xyz) over the same API, hosted or on your machine, listed in the
 Official MCP Registry as `io.github.hey-research-lab/hey-research`. The research profile at
 `/mcp/research` is builder intelligence first: no market-move, Under the Radar or valuation tool,
 while `research_answer` there still carries its agent contract's market context, labelled context
@@ -518,9 +519,24 @@ many of a published project's ships HEY counts as building in a window — by th
 only ships HEY first recorded inside the window — with each ship's evidence id and receipt page, signed as EIP-712 typed
 data for the open-source `ShipEscrow` contract, which pays a builder only when HEY attests the project shipped after the
 bounty opened. HEY signs only for a payout address its evidence already ties to the project: the signer of a verified
-wallet-signature claim, or the recorded deployer of the project's verified token. The signature says what HEY counted,
+wallet-signature claim made for its tracked token, or that token's recorded deployer, while the token stands as the
+project's own. Each kind of ship counts at most once per day HEY first recorded it, and only ships HEY first recorded
+before the window closed. The signature says what HEY counted,
 never that a project is good or worth funding; it changes nothing on HEY. Details in
 [docs/PUBLIC_API.md](docs/PUBLIC_API.md).
+
+## Data repairs (2026-10-24)
+
+A GitHub ship counts only while its repository is still the project's own source: a renamed repository HEY holds as
+context holds its ships, and a ship whose repository the project no longer lists is recorded as context. Official
+project sites keep a share of HEY's daily site reads, hosts that keep failing are backed off, and feed reads are
+metered.
+
+## Frontend housekeeping (2026-10-24)
+
+The sign-in page loads wallet code only when a reader chooses the wallet door, and its link returns to the page the
+reader is on. Addresses, counts, percentages and dates each print through one formatter, and status values are checked
+once against the stored enums. Older whitepaper and deck editions redirect to the current ones.
 
 ## Reliability pass (2026-10-22)
 
@@ -592,6 +608,13 @@ page; pages that read the week add its own commit count. "Week of" always names 
 count of meaningful events — the snapshot, the agent answers, the Terminal — is the scorer's: a
 week HEY read as documentation only counts nowhere. Rows written before are rewritten by one logged,
 reversible command, `pnpm data:code-week-titles`.
+
+## Calmer public pages (2026-10-24)
+
+A project page says each fact once, shows the newest 8 timeline entries before "Earlier ships", folds
+maintenance-only code weeks to one line, and draws a section only when it has something to say. Empty
+public pages (research queue, bounties, Built with HEY, desks, the vote) are noindex and out of the
+sitemap until they have an entry; the roadmap carries no execution or market-alert items.
 
 ## Following and what changed
 
@@ -904,7 +927,11 @@ figures in `catalogue`, scoped and dated, beside the unchanged `verifiedBuilders
   A market active only because another pool of the same token holds the liquidity is measured on
   that pool's reading, never on the thin pool, and not at all when HEY holds no reading of it; a
   project with no tracked token, or whose building HEY cannot read, is "not measured" too; and
-  Under the Radar is stored only beside a positive gap (scoring `hbm-v21`).
+  Under the Radar is stored only beside a positive gap (scoring `hbm-v21`). Since then a gap, Under
+  the Radar and Still Building are also withheld, never 0, on a launch pool, a market under $1,000
+  of 24-hour volume, a reading over a day old, unreadable activity or a contested unverified ticker,
+  and Under the Radar needs attention below the 60th percentile (scoring `hbm-v32`); the full list
+  is on /methodology.
 - **A valuation must be plausible from the readings HEY has.** A market cap or FDV at least
   10,000× the liquidity in the same reading, or above $10B on a Robinhood Chain token no listing
   HEY reads carries, is never printed, never FACT and never a scoring input; it reads "Not

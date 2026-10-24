@@ -38,6 +38,12 @@ export type TimelineItem = {
    * weeks of code from two repositories never read as the same week twice.
    */
   repo?: string;
+  /**
+   * HEY read the week as maintenance or automation only, so it does not count as building
+   * (`codeSubstance.countsAsBuilding === false`). Consecutive such weeks fold to one line
+   * (2026-10-24 full audit, UI-2); the week stays on the record, one tap away.
+   */
+  notCounted?: boolean;
 };
 
 /**
@@ -54,13 +60,54 @@ export type TimelineRun = {
   items: readonly TimelineItem[];
 };
 
-const isRun = (entry: TimelineItem | TimelineRun): entry is TimelineRun => 'line' in entry && 'items' in entry;
+/** Consecutive weeks HEY read as maintenance or automation only, folded to one line (UI-2). */
+export type TimelineQuiet = { kind: 'not_counted'; id: string; items: readonly TimelineItem[] };
+
+type TimelineEntryShape = TimelineItem | TimelineRun | TimelineQuiet;
+
+const isRun = (entry: TimelineEntryShape): entry is TimelineRun => 'line' in entry && 'items' in entry;
+const isQuiet = (entry: TimelineEntryShape): entry is TimelineQuiet => 'kind' in entry && entry.kind === 'not_counted' && 'items' in entry;
+
+/** How many entries the timeline shows before "Earlier ships" (2026-10-24 full audit, UI-2). */
+export const TIMELINE_SHOWN = 8;
+
+/**
+ * The timeline's shape (2026-10-24 full audit, UI-2): runs of two or more consecutive not-counted
+ * weeks fold to one line, then the newest `limit` entries are shown and the rest sit behind one
+ * "Earlier ships" disclosure. Nothing is dropped: every item stays in exactly one place.
+ */
+export function shapeTimeline(
+  items: readonly (TimelineItem | TimelineRun)[],
+  limit: number = TIMELINE_SHOWN,
+): { shown: TimelineEntryShape[]; earlier: TimelineEntryShape[]; earlierCount: number } {
+  const folded: TimelineEntryShape[] = [];
+  let quiet: TimelineItem[] = [];
+  const flush = () => {
+    if (quiet.length >= 2) folded.push({ kind: 'not_counted', id: quiet[0]!.id, items: quiet });
+    else folded.push(...quiet);
+    quiet = [];
+  };
+  for (const entry of items) {
+    if (!isRun(entry) && entry.notCounted) {
+      quiet.push(entry);
+      continue;
+    }
+    flush();
+    folded.push(entry);
+  }
+  flush();
+  const shown = folded.slice(0, Math.max(0, limit));
+  const earlier = folded.slice(shown.length);
+  const earlierCount = earlier.reduce((sum, entry) => sum + (isRun(entry) || isQuiet(entry) ? entry.items.length : 1), 0);
+  return { shown, earlier, earlierCount };
+}
 
 export function BuildTimeline({
   items,
   now,
   className,
   action,
+  limit = TIMELINE_SHOWN,
 }: {
   items: readonly (TimelineItem | TimelineRun)[];
   now?: Date;
@@ -71,11 +118,31 @@ export function BuildTimeline({
    * only places it, so this package holds no share semantics.
    */
   action?: (item: TimelineItem) => ReactNode;
+  /** Entries shown before the "Earlier ships" disclosure (UI-2). */
+  limit?: number;
 }) {
+  const { shown, earlier, earlierCount } = shapeTimeline(items, limit);
+  const draw = (entry: TimelineEntryShape) =>
+    isQuiet(entry) ? (
+      <TimelineQuietEntry key={`quiet-${entry.id}`} quiet={entry} now={now} action={action} />
+    ) : isRun(entry) ? (
+      <TimelineRunEntry key={`run-${entry.id}`} run={entry} now={now} action={action} />
+    ) : (
+      <TimelineEntry key={entry.id} item={entry} now={now} action={action} />
+    );
   return (
-    <ol className={cn('relative space-y-6', className)}>
-      {items.map((entry) => (isRun(entry) ? <TimelineRunEntry key={`run-${entry.id}`} run={entry} now={now} action={action} /> : <TimelineEntry key={entry.id} item={entry} now={now} action={action} />))}
-    </ol>
+    <div className={className}>
+      <ol className="relative space-y-6">{shown.map(draw)}</ol>
+      {earlier.length > 0 ? (
+        <details className="group mt-6" data-testid="timeline-earlier">
+          <summary className="inline-flex min-h-6 cursor-pointer list-none items-center text-sm text-hey-secondary underline decoration-hey-border-strong underline-offset-4 marker:hidden hover:text-hey-ink [&::-webkit-details-marker]:hidden">
+            <span className="group-open:hidden">Earlier ships ({earlierCount})</span>
+            <span className="hidden group-open:inline">Hide earlier ships</span>
+          </summary>
+          <ol className="relative mt-6 space-y-6">{earlier.map(draw)}</ol>
+        </details>
+      ) : null}
+    </div>
   );
 }
 
@@ -132,6 +199,38 @@ function TimelineRunEntry({ run, now, action }: { run: TimelineRun; now?: Date |
   );
 }
 
+/**
+ * Weeks HEY read as maintenance or automation only, as one line (UI-2): they never count as
+ * building, so they do not take a card each; every week stays listed one tap away.
+ */
+function TimelineQuietEntry({ quiet, now, action }: { quiet: TimelineQuiet; now?: Date | undefined; action?: ((item: TimelineItem) => ReactNode) | undefined }) {
+  const newest = quiet.items[0];
+  if (!newest) return null;
+  return (
+    <li className="relative pl-6 last:[&>span:nth-child(2)]:hidden" data-testid="timeline-not-counted">
+      <TimelineMarks />
+      <p className="text-sm text-hey-secondary">
+        {quiet.items.length} code weeks of maintenance or automation only — not counted as building
+        <span aria-hidden="true"> · </span>
+        <time dateTime={newest.publishedAt.toISOString()} className="text-xs">
+          newest {formatRelativeTime(newest.publishedAt, now)}
+        </time>
+      </p>
+      <details className="group mt-2">
+        <summary className="inline-flex min-h-6 cursor-pointer list-none items-center text-sm text-hey-secondary underline decoration-hey-border-strong underline-offset-4 marker:hidden hover:text-hey-ink [&::-webkit-details-marker]:hidden">
+          <span className="group-open:hidden">Show the {quiet.items.length} weeks</span>
+          <span className="hidden group-open:inline">Hide the weeks</span>
+        </summary>
+        <ol className="relative mt-4 space-y-5">
+          {quiet.items.map((item) => (
+            <TimelineEntry key={item.id} item={item} now={now} action={action} />
+          ))}
+        </ol>
+      </details>
+    </li>
+  );
+}
+
 function TimelineEntry({ item, now, action }: { item: TimelineItem; now?: Date | undefined; action?: ((item: TimelineItem) => ReactNode) | undefined }) {
   return (
     <li
@@ -144,8 +243,10 @@ function TimelineEntry({ item, now, action }: { item: TimelineItem; now?: Date |
         {/* Release notes arrive as Markdown; the timeline shows the words (QA sweep 2026-09-04). */}
         <h3 className="text-sm font-medium break-words">
           {emailSafe(shortenHexInText(plainText(item.title)))}
+          {/* A space in the text, not only a margin (UI-15): "15 commitsowner/repo" read run together. */}
+          {item.repo ? ' ' : null}
           {item.repo ? (
-            <span className="ml-1.5 font-mono text-[12px] font-normal text-hey-secondary [overflow-wrap:anywhere]" data-testid="timeline-repo">
+            <span className="font-mono text-[12px] font-normal text-hey-secondary [overflow-wrap:anywhere]" data-testid="timeline-repo">
               {item.repo}
             </span>
           ) : null}
@@ -175,8 +276,21 @@ function TimelineEntry({ item, now, action }: { item: TimelineItem; now?: Date |
         <ShipSummary summary={readableSummary(item.summary)} className="mt-2 text-sm" />
       )}
 
+      {/*
+        How HEY read the week (UI-2): a counted week's reading sits behind one press — the timeline's
+        heading says the rule once; a week that does not count keeps its sentence in view.
+      */}
       {item.substanceNote ? (
-        <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{emailSafe(item.substanceNote)}</p>
+        item.notCounted ? (
+          <p className="mt-1 text-xs text-hey-secondary [overflow-wrap:anywhere]">{emailSafe(item.substanceNote)}</p>
+        ) : (
+          <details className="mt-1 text-xs text-hey-secondary" data-testid="timeline-substance">
+            <summary className="inline-flex min-h-6 cursor-pointer list-none items-center underline decoration-hey-border-strong underline-offset-4 marker:hidden hover:text-hey-ink [&::-webkit-details-marker]:hidden">
+              How HEY read this week
+            </summary>
+            <p className="mt-1 [overflow-wrap:anywhere]">{emailSafe(item.substanceNote)}</p>
+          </details>
+        )
       ) : null}
 
       {item.sourceUrl || action ? (

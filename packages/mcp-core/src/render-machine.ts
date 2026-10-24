@@ -85,8 +85,20 @@ export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<HeyStillBuildingWith
  * this build does not know yet — the lists only grow — still reads "not
  * measured", never a crash or "undefined".
  */
-function withheldWords(words: Readonly<Record<string, string>>, code: string): string {
+function withheldWords(words: Readonly<Record<string, string>>, code: string, marketStatus?: string): string {
+  // A market HEY confirmed no reading for is "market readings not confirmed", never "too thin" (2026-10-24 INV-9; label only, the code stands).
+  if (code === 'market_too_thin' && marketStatus === 'INSUFFICIENT_DATA') return 'not measured — market readings not confirmed';
   return (words[code] ?? 'Not measured').replace(/^Not measured/, 'not measured');
+}
+
+/**
+ * Why a tracked token is not the project's (2026-10-24 full audit INV-1), from the snapshot's own token verification,
+ * in the partner line's words; undefined when the project's building applies to the token.
+ */
+function tokenNotTheProjects(token: { status: string; reason?: string } | undefined): string | undefined {
+  if (token?.status === 'MISMATCH') return 'the project’s own site names another contract';
+  if (token?.reason === 'site_disclaims_contract') return 'the project’s own site says this token is not its own';
+  return undefined;
 }
 
 /** A coverage state as the tag an agent should read it with: measured is a fact about HEY's record, anything else is a gap. */
@@ -203,7 +215,10 @@ export function summaryLines(summary: HeyResearchSummary | undefined, sourceTitl
 export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   const i = s.identity;
   const b = s.build;
-  const lines: string[] = [`# ${quotedName(i.name, i.symbol)} — snapshot as of ${s.asOf.slice(0, 16).replace('T', ' ')} UTC`, i.url, ''];
+  const notTheProjects = tokenNotTheProjects(s.verification?.token);
+  const marketStatus = s.market?.tokenMarket?.status;
+  // Never a disowned token's ticker beside the project's name (INV-1; the share line's rule).
+  const lines: string[] = [`# ${quotedName(i.name, notTheProjects ? undefined : i.symbol)} — snapshot as of ${s.asOf.slice(0, 16).replace('T', ' ')} UTC`, i.url, ''];
 
   lines.push(...summaryLines(s.summary, s.latestChanges.available ? s.latestChanges.items.flatMap((item) => (item.op === 'upsert' && summaryIsSourceText(item.id, item.type) ? [item.summary] : [])) : []));
 
@@ -234,7 +249,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     b.discoveryGap !== undefined
       ? `- DERIVED Discovery Gap ${b.discoveryGap}`
       : b.discoveryGapWithheld
-        ? `- UNKNOWN Discovery Gap: ${withheldWords(GAP_WITHHELD_WORDS, b.discoveryGapWithheld)} (${b.discoveryGapWithheld})`
+        ? `- UNKNOWN Discovery Gap: ${withheldWords(GAP_WITHHELD_WORDS, b.discoveryGapWithheld, marketStatus)} (${b.discoveryGapWithheld})`
         : '- UNKNOWN Discovery Gap: not measured',
   );
   // Under the Radar as the page states it (2026-10-17, DT-4): the API's own reading, said once; absent when unread.
@@ -257,7 +272,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     lines.push(`- DERIVED STILL BUILDING${evidence ? `: ${evidence}` : ''}. ${STILL_BUILDING_MEANING} (stillBuildingState ${stillState})`);
   } else if (b.stillBuildingWithheld) {
     // Not measured, never "not met" (hbm-v19): the market is not one HEY measures a drawdown on.
-    lines.push(`- UNKNOWN Still Building: ${withheldWords(STILL_BUILDING_WITHHELD_WORDS, b.stillBuildingWithheld)} (${b.stillBuildingWithheld}; stillBuildingState ${stillState})`);
+    lines.push(`- UNKNOWN Still Building: ${withheldWords(STILL_BUILDING_WITHHELD_WORDS, b.stillBuildingWithheld, marketStatus)} (${b.stillBuildingWithheld}; stillBuildingState ${stillState})`);
   } else if (stillState === 'NOT_MEASURED') {
     lines.push('- UNKNOWN Still Building: not measured — HEY has not scored this project (stillBuildingState NOT_MEASURED)');
   } else {
@@ -270,7 +285,9 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   else {
     if (m.tokenMarket) lines.push(`- DERIVED token market: ${tokenMarketWords(m.tokenMarket.status, m.tokenMarket.reason, m.tokenMarket.label)}${m.tokenMarket.reason ? ` (${pretty(m.tokenMarket.reason)})` : ''}. A reading of the market, not of the team.`);
     // Sources that disagree are not FACT (2026-10-09 red-team F2): the API's own `sourcesDisagree`, never a stronger claim.
-    if (m.marketCap)
+    if (m.marketCap && notTheProjects)
+      lines.push(`- DERIVED the tracked token's ${valuationWord(m.marketCap.kind)} ${money(m.marketCap.usd)} (${m.marketCap.source}${m.marketCap.observedAt ? `, ${m.marketCap.observedAt.slice(0, 10)}` : ''}) — not the project's valuation: ${notTheProjects}`);
+    else if (m.marketCap)
       lines.push(
         m.sourcesDisagree
           ? `- DERIVED ${valuationWord(m.marketCap.kind)} ${money(m.marketCap.usd)} (${m.marketCap.source}${m.marketCap.observedAt ? `, ${m.marketCap.observedAt.slice(0, 10)}` : ''}) — sources disagree: ${m.sourcesDisagree.source} priced it at $${m.sourcesDisagree.priceUsd} on ${m.sourcesDisagree.observedAt.slice(0, 10)}`

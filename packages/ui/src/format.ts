@@ -28,7 +28,7 @@ export function formatRelativeTime(date: Date, now: Date = new Date()): string {
     const days = utcDaysAgo(date, now);
     if (days <= 0) return 'today';
     if (days === 1) return 'yesterday';
-    if (days < 30) return `${days}d ago`;
+    if (days < AGE_DAYS_LIMIT) return `${days}d ago`;
   }
   if (delta < 60) return 'just now';
   /*
@@ -38,12 +38,28 @@ export function formatRelativeTime(date: Date, now: Date = new Date()): string {
    * card never says "1d ago" for a ship two dates back that the MCP and the
    * summary call "2 days ago".
    */
-  if (delta >= DAY_SECONDS && delta < MONTH_SECONDS) return `${utcDaysAgo(date, now)}d ago`;
+  /* Days up to 60, then months (2026-10-24 full audit, UI-12): "1mo ago" sat beside "37 days ago" on one page. */
+  if (delta >= DAY_SECONDS && delta < AGE_DAYS_LIMIT * DAY_SECONDS) return `${utcDaysAgo(date, now)}d ago`;
   return `${span(delta)} ago`;
+}
+
+/**
+ * The same age without "ago" ("5m", "13h", "3d"), for a line that already says what it is
+ * ("bars not read for 3d"). One rule with `formatRelativeTime` (2026-10-24 full audit,
+ * frontend-7): from a day on it is the UTC calendar difference, never hours divided by 24.
+ */
+export function formatAgeShort(date: Date, now: Date = new Date()): string {
+  const words = formatRelativeTime(date, now);
+  if (words === 'just now') return '0m';
+  if (words === 'today') return '0d';
+  if (words === 'yesterday') return '1d';
+  return words.replace(/ ago$/, '');
 }
 
 const DAY_SECONDS = 86_400;
 const MONTH_SECONDS = 30 * DAY_SECONDS;
+/** An age reads in days below this many, then in months (UI-12). */
+const AGE_DAYS_LIMIT = 60;
 
 const isMidnightUtc = (date: Date): boolean =>
   date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0 && date.getUTCMilliseconds() === 0;
@@ -513,6 +529,25 @@ export function staleReadingAge(observedAt: Date | string | null | undefined, no
  */
 export function valuationLabel(valueUsd: number | null | undefined, fdvUsd: number | null | undefined, short = false): string {
   return valuationKindLabel(valuationKindOf({ valueUsd, fdvUsd }) ?? null, short);
+}
+
+/**
+ * A count as printed: en-US grouping ("12,345"), the same on the server and in the browser
+ * (2026-10-24 full audit, frontend-6 — about 25 files each typed their own).
+ */
+export function formatCount(value: number): string {
+  return value.toLocaleString('en-US');
+}
+
+/** A share between 0 and 1 in per cent ("37%", "4.2%" with `digits` 1), rounded half up. */
+export function formatPercent(share: number, digits = 0): string {
+  const scale = 10 ** digits;
+  return `${(Math.round(share * 100 * scale) / scale).toFixed(digits)}%`;
+}
+
+/** The UTC calendar day of an instant, `YYYY-MM-DD` — the day every HEY surface dates by. */
+export function formatUtcDay(at: Date): string {
+  return at.toISOString().slice(0, 10);
 }
 
 /**

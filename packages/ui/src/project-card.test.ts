@@ -16,6 +16,8 @@ const tokenBacked: ProjectCardData = {
   activityStatus: 'SHIPPING',
   marketCapUsd: 1_240_000,
   token: { chainId: 4663, contractAddress: ADDRESS },
+  // A verified token: a default card prints a valuation for it whatever its market status (UI-7, 2026-10-24).
+  tokenVerification: 'VERIFIED',
   launchedVia: { name: 'Pons', url: 'https://ponsfamily.com/launchpad/0x82ae' },
   officialX: { handle: 'agentos', url: 'https://x.com/agentos' },
 };
@@ -230,6 +232,37 @@ describe('ProjectCard — fallbacks', () => {
     const disagree = { ...tokenBacked, tokenMarketStatus: 'INSUFFICIENT_DATA', tokenMarketReason: 'pool_readings_disagree' } as ProjectCardData;
     expect(marketLensLine(disagree)).toBe('Pool readings disagree');
     expect(render(disagree)).toContain('Unconfirmed');
+  });
+
+  it('a default card prints a valuation only for a verified token, or an active, uncontested market (2026-10-24 full audit UI-7)', () => {
+    const unverified = { ...tokenBacked, tokenVerification: 'UNVERIFIED', marketCapUsd: 17 } as ProjectCardData;
+    // Cyberia on the homepage: "Valuation $17" on an unverified token with no active market.
+    for (const status of [undefined, 'LOW_LIQUIDITY', 'TRADING_INACTIVE', 'INSUFFICIENT_DATA']) {
+      const html = render({ ...unverified, ...(status ? { tokenMarketStatus: status } : {}) });
+      expect(html).not.toContain('data-testid="market-cap"');
+      expect(html).not.toContain('$17');
+      // No placeholder in its place; the contract row still names the token.
+      expect(html).toContain('data-testid="token-unverified"');
+    }
+    expect(render({ ...unverified, tokenMarketStatus: 'ACTIVE_MARKET' })).toContain('data-testid="market-cap"');
+    expect(render({ ...unverified, tokenMarketStatus: 'ACTIVE_MARKET', tokenTickerContested: true })).not.toContain('data-testid="market-cap"');
+    // A verified token keeps its market row whatever the status says.
+    expect(render({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE' })).toContain('data-testid="market-cap"');
+    // The Token Projects view is where the reader asked for market context: the rule is the default card's.
+    expect(renderToStaticMarkup(createElement(ProjectCard, { project: { ...unverified, tokenMarketStatus: 'LOW_LIQUIDITY' }, marketLens: true }))).toContain('data-testid="market-cap"');
+  });
+
+  it('prints neither the ticker nor the valuation of a token the project’s own site disowns or contradicts (2026-10-24 full audit INV-1)', () => {
+    for (const patch of [{ tokenVerification: 'MISMATCH' }, { tokenVerification: 'UNVERIFIED', tokenVerificationReason: 'site_disclaims_contract' }]) {
+      const project = { ...tokenBacked, tokenMarketStatus: 'ACTIVE_MARKET', ...patch } as ProjectCardData;
+      for (const marketLens of [false, true]) {
+        const html = renderToStaticMarkup(createElement(ProjectCard, { project, marketLens }));
+        expect(html).not.toContain('data-testid="ticker"');
+        expect(html).not.toContain('data-testid="market-cap"');
+        expect(html).toContain('data-testid="contract-address"');
+      }
+    }
+    expect(render({ ...tokenBacked, tokenVerification: 'UNVERIFIED', tokenVerificationReason: 'not_checked', tokenMarketStatus: 'ACTIVE_MARKET' })).toContain('data-testid="ticker"');
   });
 
   it('qualifies a contract the project’s own site contradicts, as the page does (2026-09-28)', () => {

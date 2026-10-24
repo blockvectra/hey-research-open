@@ -53,10 +53,13 @@ describe('isDrawableLogo', () => {
 });
 
 /** WEB-9 (2026-10-22): white initials on Research Blue 500 measured 3.56:1, on the infrastructure violet 4.4:1. */
-// The open-source subset carries packages/ui without apps/web, so the check runs where the stylesheet is.
+// The open-source subset carries packages/ui without apps/web, so the check runs in the private tree only — told by
+// packages/domain, which is never published. There a moved stylesheet fails the read instead of skipping the check
+// (2026-10-24 full audit, QA-14).
 const GLOBALS_CSS = fileURLToPath(new URL('../../../apps/web/src/app/globals.css', import.meta.url));
-describe.skipIf(!existsSync(GLOBALS_CSS))('the monogram palette', () => {
-  const css = existsSync(GLOBALS_CSS) ? readFileSync(GLOBALS_CSS, 'utf8') : '';
+const PRIVATE_TREE = existsSync(fileURLToPath(new URL('../../domain/package.json', import.meta.url)));
+describe.skipIf(!PRIVATE_TREE)('the monogram palette', () => {
+  const css = PRIVATE_TREE ? readFileSync(GLOBALS_CSS, 'utf8') : '';
   const hexOf = (background: string): string => {
     const arbitrary = /^bg-\[(#[0-9a-f]{6})\]$/i.exec(background);
     if (arbitrary) return arbitrary[1]!;

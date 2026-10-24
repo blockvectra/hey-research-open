@@ -52,6 +52,33 @@ import { BrandNotice, type BrandNoticeData } from './brand-notice';
  * name or a ticker — the token's identity is its chain id and contract
  * address — and nothing here is derived: every value is a canonical card fact.
  */
+/**
+ * A token the project's own site does not stand behind (2026-10-24 full audit INV-1): MISMATCH — the site names
+ * another contract — or one the site names and disowns (`site_disclaims_contract`). The share line's rule
+ * (`shareSymbolOf`, founder F7): the card prints neither its ticker beside the project's name nor its valuation as
+ * the project's, on any card. The contract row and its chip still say which token HEY tracks.
+ */
+export function cardTokenNotTheProjects(project: Pick<ProjectCardData, 'tokenVerification' | 'tokenVerificationReason'>): boolean {
+  return project.tokenVerification === 'MISMATCH' || project.tokenVerificationReason === 'site_disclaims_contract';
+}
+
+/**
+ * Whether a card prints a valuation at all (2026-10-24 full audit UI-7, founder delegation; display only, never a
+ * score or an order input). A default card — every card but the Token Projects view, where the reader asked for
+ * market context — prints one only when the tracked token is VERIFIED, or its market is ACTIVE_MARKET and its
+ * ticker is not contested; otherwise it prints no valuation row and no placeholder (the project page carries the
+ * sentence). "Valuation $17" on a known project's lead card, beside a tiny "Token unverified", read as a bug.
+ * A token that is not the project's (INV-1) prints none on any card.
+ */
+export function cardShowsValuation(
+  project: Pick<ProjectCardData, 'tokenVerification' | 'tokenVerificationReason' | 'tokenMarketStatus' | 'tokenTickerContested'>,
+  options: { marketLens?: boolean } = {},
+): boolean {
+  if (cardTokenNotTheProjects(project)) return false;
+  if (options.marketLens) return true;
+  return project.tokenVerification === 'VERIFIED' || (project.tokenMarketStatus === 'ACTIVE_MARKET' && project.tokenTickerContested !== true);
+}
+
 /** What "Valuation" means on a card when the figure is a fully diluted valuation: the card's title and the glossary read it. */
 export const FDV_HELP = 'Fully diluted valuation: the provider reports no circulating supply, so this is price × total supply.';
 
@@ -76,6 +103,10 @@ export type ProjectCardData = {
   marketCapObservedAt?: Date;
   /** Whether the project itself ties the contract to the project: a mismatch is the page's chip, an unverified token quiet text (2026-10-09). */
   tokenVerification?: string;
+  /** Why: `site_disclaims_contract` is a token the project's own site names and disowns (INV-1, 2026-10-24). */
+  tokenVerificationReason?: string;
+  /** An UNVERIFIED token whose ticker another published project's token carries (hbm-v30): no valuation on a default card (UI-7). */
+  tokenTickerContested?: boolean;
   /*
    * Market Lens (2026-09-12): the same reading's liquidity and 24 h volume,
    * and the token's launch stage. Drawn only when the reader chose the Token
@@ -309,7 +340,8 @@ export function ProjectCard({
   const narrative = category.narrative;
   const showKind = category.kindLabel !== undefined || (project.projectKind === 'OTHER' && !project.symbol && !narrative);
   const identityParts: ReactNode[] = [];
-  if (project.symbol)
+  const showValuation = cardShowsValuation(project, { marketLens });
+  if (project.symbol && !cardTokenNotTheProjects(project))
     identityParts.push(
       <span key="ticker" data-testid="ticker" className="font-medium text-hey-ink/80 [font-family:var(--font-mono)] text-[12px] tracking-[0.02em]">
         {tickerLabel(project.symbol)}
@@ -551,7 +583,8 @@ export function ProjectCard({
         <div className="mt-auto space-y-2.5 border-t border-hey-border pt-3">
         {hasToken ? (
           <>
-            {/* Market context: valuation kind + value, from stored snapshots only */}
+            {/* Market context: valuation kind + value, from stored snapshots only; only where the card may print one (UI-7, INV-1). */}
+            {showValuation ? (
             <p className="flex items-baseline justify-between gap-3 text-[13.5px]" data-testid="market-cap">
               {/*
                 Named for what it is (parity audit, 2026-09-25): a figure equal to
@@ -596,6 +629,7 @@ export function ProjectCard({
                 </span>
               )}
             </p>
+            ) : null}
 
             {marketLens ? (
               <p className="-mt-1 text-[12.5px] leading-[1.5] text-hey-muted" data-testid="market-lens-line">

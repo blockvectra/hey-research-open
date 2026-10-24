@@ -1,6 +1,6 @@
 import { cn } from './cn';
 import { formatBuildMomentum, formatRelativeTime, formatUsdCompact, valuationKindLabel, tickerLabel } from './format';
-import { activityLabel, type ActivityStatusValue } from './status';
+import { activityLabel, statusColorVar, type ActivityStatusValue } from './status';
 
 /**
  * Charts are plain SVG, server-rendered.
@@ -27,15 +27,6 @@ export type ScatterDatum = {
    * The rule, not the top-left quadrant, decides membership.
    */
   underTheRadar?: boolean;
-};
-
-const STATUS_FILL: Record<string, string> = {
-  SHIPPING: 'var(--color-status-shipping)',
-  ACTIVE: 'var(--color-status-active)',
-  QUIET: 'var(--color-status-quiet)',
-  DORMANT: 'var(--color-status-dormant)',
-  RESUMED: 'var(--color-status-resumed)',
-  UNKNOWN: 'var(--color-status-unknown)',
 };
 
 /**
@@ -179,9 +170,9 @@ export function BuildVsMarketChart({
                 cx={x(point.marketAttention)}
                 cy={y(point.buildMomentum)}
                 r={radius(point.marketCapUsd)}
-                fill={STATUS_FILL[point.activityStatus] ?? STATUS_FILL.UNKNOWN}
+                fill={statusColorVar(point.activityStatus)}
                 fillOpacity={0.22}
-                stroke={STATUS_FILL[point.activityStatus] ?? STATUS_FILL.UNKNOWN}
+                stroke={statusColorVar(point.activityStatus)}
                 strokeWidth={1.25}
                 className="cursor-pointer hover:fill-opacity-40"
               >

@@ -99,7 +99,19 @@ export type AgentUnknownInput = {
   coverageState?: CoverageStateCode;
   asOf?: string;
   detailUrl?: string;
+  /**
+   * The gap's own "do not conclude" when the category's generic one would say too little (2026-10-24 full audit
+   * INV-7): a token the project's own site disowns or contradicts is not "HEY has not verified this link … do not
+   * treat it as false either" — the project said it is not its own.
+   */
+  doNotConclude?: string;
 };
+
+/** The project's own site says the token is not its own (disowned, or another contract named): one sentence each. */
+export const TOKEN_NOT_THE_PROJECTS_DO_NOT_CONCLUDE = {
+  site_names_another_contract: 'The project’s own site names another contract; do not treat this token as the project’s.',
+  site_disclaims_contract: 'The project’s own site says this is not its token; do not treat it as the project’s.',
+} as const;
 
 export function agentUnknown(input: AgentUnknownInput) {
   return {
@@ -107,7 +119,7 @@ export function agentUnknown(input: AgentUnknownInput) {
     dimension: input.dimension,
     // Canonical gap sentences are HEY's fixed words; a sentence that carries a record value is derived.
     statement: /\d|"/.test(input.statement) ? derivedText(input.statement) : heyText(input.statement),
-    doNotConclude: doNotConclude(input.category),
+    doNotConclude: input.doNotConclude ? heyText(input.doNotConclude) : doNotConclude(input.category),
     ...(input.coverageState ? { coverageState: input.coverageState } : {}),
     reason: input.reason,
     ...(input.asOf ? { asOf: input.asOf } : {}),

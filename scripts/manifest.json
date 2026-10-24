@@ -53,7 +53,7 @@
     "vitest"
   ],
   "dbTypesFrom": "packages/db/src/schema/enums.ts",
-  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see. HEY's own API keys (2026-09-30): an account key `hey_` and a partner key `heyp_`, each 43 url-safe characters; a digit is required so a long snake_case identifier such as a foreign-key name is not taken for one. An Ory API key `ory_<two letters>_…` and a CoinGecko API key `CG-…` (S2, 2026-10-16). An Anthropic key `sk-ant-…` (the AI key this deployment holds), the OpenAI project, service-account and admin keys, an AWS access key id `AKIA`/`ASIA` (the S3 settings) and GitHub's OAuth, user-to-server, installation and refresh tokens `gho_`/`ghu_`/`ghs_`/`ghr_` (2026-10-16): `sk-[A-Za-z0-9]{20,}` needs twenty letters straight after `sk-`, so it saw none of the first two.",
+  "$patternsComment": "The token classes this repository actually holds (round-9 security, 2026-09-19): npm automation (the release workflow's NPM_TOKEN), Resend (mail), a Telegram bot token, and a PEM smuggled into a single line as \\n-escaped text, which the multi-line pattern above cannot see. HEY's own API keys (2026-09-30): an account key `hey_` and a partner key `heyp_`, each 43 url-safe characters; a digit is required so a long snake_case identifier such as a foreign-key name is not taken for one. An Ory API key `ory_<two letters>_…` and a CoinGecko API key `CG-…` (S2, 2026-10-16). An Anthropic key `sk-ant-…` (the AI key this deployment holds), the OpenAI project, service-account and admin keys, an AWS access key id `AKIA`/`ASIA` (the S3 settings) and GitHub's OAuth, user-to-server, installation and refresh tokens `gho_`/`ghu_`/`ghs_`/`ghr_` (2026-10-16): `sk-[A-Za-z0-9]{20,}` needs twenty letters straight after `sk-`, so it saw none of the first two. An EVM private key (full audit 2026-10-24, SECURITY-8): 0x and 64 hex characters assigned to a private, attester, signer or deployer key variable, the shape HEY_SHIP_ATTESTER_KEY has; an assignment only, so a transaction hash or storage slot of the same shape in a fixture is not taken for one.",
   "forbidden": [
     "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY",
     "ghp_[A-Za-z0-9]{20,}",
@@ -70,6 +70,7 @@
     "\\\\nMII[A-Za-z0-9+/]{40,}",
     "ory_[a-z]{2}_[A-Za-z0-9._-]{20,}",
     "CG-[A-Za-z0-9]{20,}",
-    "postgres(ql)?://(?!hey:hey@)(?![^\\s'\"]*(change|replace|example|password|<))[^\\s'\"]*:[^\\s'\"@]+@(?!localhost)"
+    "postgres(ql)?://(?!hey:hey@)(?![^\\s'\"]*(change|replace|example|password|<))[^\\s'\"]*:[^\\s'\"@]+@(?!localhost)",
+    "(PRIVATE|ATTESTER|SIGNER|DEPLOYER)_?KEY['\"]?\\s*[:=]\\s*['\"]?0x[0-9a-fA-F]{64}"
   ]
 }

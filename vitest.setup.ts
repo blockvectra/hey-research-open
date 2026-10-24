@@ -129,3 +129,27 @@ const failOnHits = (where: string): void => {
 
 afterEach(() => failOnHits('This test'));
 afterAll(() => failOnHits('A hook of this file'));
+
+// ------------------------------------------------------- the clock shift
+
+/**
+ * The opt-in time-travel run (2026-10-24 full audit, QA-1; `CLOCK_SHIFT_ENV` in `packages/db/src/testing.ts`):
+ * with `HEY_TEST_CLOCK_SHIFT_DAYS=N` the test process's `Date` runs N days ahead (or behind) of the real clock, as
+ * every test database's `now()` does. `new Date()` and `Date.now()` move; a date built from a value does not.
+ */
+const clockShiftDays = Number(process.env.HEY_TEST_CLOCK_SHIFT_DAYS ?? '0');
+if (Number.isInteger(clockShiftDays) && clockShiftDays !== 0) {
+  const shiftMs = clockShiftDays * 86_400_000;
+  const RealDate = Date;
+  class ShiftedDate extends RealDate {
+    constructor(...args: unknown[]) {
+      if (args.length === 0) super(RealDate.now() + shiftMs);
+      else super(...(args as [string | number | Date]));
+    }
+
+    static override now(): number {
+      return RealDate.now() + shiftMs;
+    }
+  }
+  globalThis.Date = ShiftedDate as DateConstructor;
+}

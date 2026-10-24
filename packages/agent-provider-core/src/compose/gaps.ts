@@ -1,6 +1,6 @@
 import type { HeyCoverageEntry } from '@hey-research-lab/sdk';
 
-import { agentUnknown, categoryOfCoverage, type CoverageStateCode } from '../unknowns';
+import { agentUnknown, categoryOfCoverage, TOKEN_NOT_THE_PROJECTS_DO_NOT_CONCLUDE, type CoverageStateCode } from '../unknowns';
 import type { AgentUnknown } from '../schema';
 
 /**
@@ -73,11 +73,11 @@ export function projectUnknowns(input: { gaps: readonly CanonicalGap[]; dimensio
   }
   if (facts.tokenVerification?.status === 'MISMATCH') {
     // A known conflict, not an absence (2026-09-30): the project's own site names another contract, so this token is not shown to be its own.
-    push(agentUnknown({ category: 'NOT_VERIFIED', dimension: 'tokenOwnership', statement: 'The project’s own site names a different contract than the token HEY tracks for it: its building activity does not apply to this token.', reason: 'token_site_names_another_contract', detailUrl: input.explainUrl('token.verification') }));
+    push(agentUnknown({ category: 'NOT_VERIFIED', dimension: 'tokenOwnership', statement: 'The project’s own site names a different contract than the token HEY tracks for it: its building activity does not apply to this token.', reason: 'token_site_names_another_contract', doNotConclude: TOKEN_NOT_THE_PROJECTS_DO_NOT_CONCLUDE.site_names_another_contract, detailUrl: input.explainUrl('token.verification') }));
   }
   if (facts.tokenVerification?.status === 'UNVERIFIED') {
     const reason = facts.tokenVerification.reason ?? 'not_checked';
-    push(agentUnknown({ category: 'NOT_VERIFIED', dimension: 'tokenOwnership', statement: TOKEN_REASON_WORDS[reason] ?? 'The project has not been seen naming this token contract.', reason: `token_${reason}`, detailUrl: input.explainUrl('token.verification') }));
+    push(agentUnknown({ category: 'NOT_VERIFIED', dimension: 'tokenOwnership', statement: TOKEN_REASON_WORDS[reason] ?? 'The project has not been seen naming this token contract.', reason: `token_${reason}`, ...(reason === 'site_disclaims_contract' ? { doNotConclude: TOKEN_NOT_THE_PROJECTS_DO_NOT_CONCLUDE.site_disclaims_contract } : {}), detailUrl: input.explainUrl('token.verification') }));
   }
   if (!facts.ownerVerified) {
     push(agentUnknown({ category: 'NOT_VERIFIED', dimension: 'projectOwner', statement: 'No owner has proved control of this project’s site, repository or contract to HEY.', reason: 'owner_not_verified' }));

@@ -252,6 +252,14 @@ describe('AG-04: the summary text is the lean default', () => {
     scoringVersion: 'hbm-v28',
   });
 
+  it('prints Still Building’s state once when the classification already says it (2026-10-24 full audit INV-12)', () => {
+    const data = response.data as Extract<AgentIntelligenceResponse, { capability: 'builder_status' }>['data'] & object;
+    const unmeasured = { ...response, data: { ...data, stillBuilding: { ...data.stillBuilding, value: false, state: 'UNKNOWN', classification: 'NOT_MEASURED', stillBuildingState: 'NOT_MEASURED' } } } as unknown as AgentIntelligenceResponse;
+    const text = renderAgentResponseText(unmeasured, { detail: 'full' });
+    expect(text).toContain('Still Building: UNKNOWN NOT_MEASURED.');
+    expect(text).not.toContain('NOT_MEASURED (NOT_MEASURED)');
+  });
+
   it('keeps the answer, claims, unknowns, links and citation; drops data lines, freshness and the evidence list', () => {
     const summary = renderAgentResponseText(response, { detail: 'summary' });
     expect(summary).toContain('Answer (DERIVED)');

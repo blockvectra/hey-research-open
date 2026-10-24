@@ -1,6 +1,6 @@
 import { cn } from './cn';
 import { formatRelativeTime, formatUsdCompact, valuationKindLabel } from './format';
-import { activityLabel, type ActivityStatusValue } from './status';
+import { activityLabel, statusColorVar, type ActivityStatusValue } from './status';
 
 /**
  * Ecosystem map (UI/UX V2 sections 28-29).
@@ -76,15 +76,6 @@ const STATUS_OPACITY: Record<string, number> = {
   QUIET: 0.5,
   DORMANT: 0.32,
   UNKNOWN: 0.32,
-};
-
-const RING_STROKE: Record<string, string> = {
-  SHIPPING: 'var(--color-status-shipping)',
-  ACTIVE: 'var(--color-status-active)',
-  QUIET: 'var(--color-status-quiet)',
-  DORMANT: 'var(--color-status-dormant)',
-  RESUMED: 'var(--color-status-resumed)',
-  UNKNOWN: 'var(--color-status-unknown)',
 };
 
 export const mapHueFor = (narrativeSlug: string | null | undefined, order: readonly string[]): string => {
@@ -397,7 +388,7 @@ export function EcosystemMapChart({
             cy={node.y}
             r={node.r + 3}
             fill="none"
-            stroke={RING_STROKE[node.activityStatus] ?? 'var(--color-status-unknown)'}
+            stroke={statusColorVar(node.activityStatus)}
             strokeWidth={2}
             opacity={STATUS_OPACITY[node.activityStatus] ?? 0.4}
           />

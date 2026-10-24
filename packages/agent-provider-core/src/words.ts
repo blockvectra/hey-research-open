@@ -201,3 +201,14 @@ export function valuationWithheldSentence(code: string): string {
     ? `HEY holds a market reading for this token and withholds its valuation: ${valuationWithheldClause(code)}.`
     : 'HEY holds a market reading for this token and withholds the valuation: the market is not live.';
 }
+
+/**
+ * Why a tracked token is not the project's, in the partner line's and the Telegram card's words (2026-10-24 full
+ * audit INV-1): MISMATCH, or an UNVERIFIED token the project's own site names and disowns (`site_disclaims_contract`).
+ * Undefined when the project's building applies to the token. The domain's twin is `tokenNotTheProjectsWords`.
+ */
+export function tokenNotTheProjectsWords(verification: string | null | undefined, reason: string | null | undefined): string | undefined {
+  if (verification === 'MISMATCH') return 'the project’s own site names another contract';
+  if (reason === 'site_disclaims_contract') return 'the project’s own site says this token is not its own';
+  return undefined;
+}

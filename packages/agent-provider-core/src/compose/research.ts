@@ -3,7 +3,7 @@ import type { HeyProjectSnapshot, HeySummaryLine } from '@hey-research-lab/sdk';
 import { ageBucket, familyFreshness, SNAPSHOT_SOURCE_FAMILY, type AgentFreshnessEntry, type RefreshTier } from '../freshness';
 import type { AgentChange, AgentClaim, AgentFreshness, AgentResponseOf, AgentSourceType } from '../schema';
 import { derivedText, externalText, heyText, looksLikeInstruction } from '../text';
-import { buildAnswerLead, buildLineFigures, countOf, leadName, valuationWithheldSentence, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
+import { buildAnswerLead, buildLineFigures, countOf, leadName, tokenNotTheProjectsWords, valuationWithheldSentence, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
 import { stillBuildingStateOf } from '../disclosures';
 import type { AgentEvidenceKind } from '../evidence-kinds';
 import { agentChange, envelope, evidenceRef, isContextChange, looksLikeEvidenceId, projectApi, type AgentCodeWeeks, type AgentComposeContext } from './common';
@@ -377,6 +377,8 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
   }
 
   const market = snapshot.market;
+  // A token the project's own site disowns or contradicts (2026-10-24 full audit INV-1): its figure and ticker are never the project's.
+  const notTheProjects = tokenNotTheProjectsWords(verification?.status, verification?.reason);
   if (market) {
     const cap = market.marketCap;
     const marketFresh = freshness.find((entry) => entry.family === 'market');
@@ -385,8 +387,13 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         ? {
             id: 'market.valuation',
             dimension: 'market',
-            statement: derivedText(`${cap.kind === 'fdv' ? 'FDV' : cap.kind === 'marketCap' ? 'Market cap' : 'Valuation'} about $${Math.round(cap.usd).toLocaleString('en-US')} from ${cap.source}: market context only, never a builder judgement.`),
-            status: 'FACT',
+            statement: derivedText(
+              notTheProjects
+                ? `The tracked token's ${cap.kind === 'fdv' ? 'FDV' : cap.kind === 'marketCap' ? 'market cap' : 'valuation'} is about $${Math.round(cap.usd).toLocaleString('en-US')} from ${cap.source}; it is not the project's valuation: ${notTheProjects}.`
+                : `${cap.kind === 'fdv' ? 'FDV' : cap.kind === 'marketCap' ? 'Market cap' : 'Valuation'} about $${Math.round(cap.usd).toLocaleString('en-US')} from ${cap.source}: market context only, never a builder judgement.`,
+            ),
+            status: notTheProjects ? 'DERIVED' : 'FACT',
+            ...(notTheProjects ? { reason: 'token_not_the_projects' } : {}),
             value: cap.usd,
             source: { name: cap.source.slice(0, 120), type: 'market_provider' },
             observedAt: cap.observedAt ?? null,
@@ -437,7 +444,12 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
   const shipWords = b.lastShippedAt ? `, last meaningful ship ${b.lastShippedAt.slice(0, 10)}` : b.activityMeasured === true ? ', no meaningful ship recorded' : '';
   const eventWords = events30d === null ? 'meaningful events in 30 days not measured' : `${countOf(events30d, WORD_MEANINGFUL_EVENT)} in 30 days`;
   // A mismatched token is named in the answer itself (2026-09-30, adversarial review), not only in a claim further down.
-  const tokenWords = verification?.status === 'MISMATCH' ? ' The token HEY tracks for it is not the one its own site names: this building does not apply to that token.' : '';
+  const tokenWords =
+    verification?.status === 'MISMATCH'
+      ? ' The token HEY tracks for it is not the one its own site names: this building does not apply to that token.'
+      : notTheProjects
+        ? ' Its own site says the token HEY tracks for it is not its own: this building does not apply to that token.'
+        : '';
   // The categories the list actually holds (full audit, 2026-10-03), never a fixed "(coverage gaps and unverified identity)".
   const unknownWords = unknowns.length === 0 ? 'HEY lists nothing it does not know for it.' : `HEY lists ${countOf(unknowns.length, WORD_THING)} it does not know (${unknownCategorySummary(unknowns)}) under unknowns.`;
   /*
@@ -475,7 +487,8 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
       identity: {
         slug,
         name: externalText(snapshot.identity.name, 'project_record'),
-        symbol: snapshot.identity.symbol ? externalText(snapshot.identity.symbol, 'token_metadata', undefined, 40) : null,
+        // Never a disowned token's ticker as the project's (INV-1; the share line's rule, `shareSymbolOf`).
+        symbol: snapshot.identity.symbol && !notTheProjects ? externalText(snapshot.identity.symbol, 'token_metadata', undefined, 40) : null,
         projectKind: snapshot.identity.projectKind,
         researchLevel: snapshot.identity.researchLevel,
         catalogStatus: snapshot.identity.catalogStatus,

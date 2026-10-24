@@ -43,6 +43,10 @@ export function HeyLogo({
       <img
         src={BRAND_MARKS.heyDark}
         alt=""
+        // Only the light mark is preloaded (2026-10-24 full audit, PERF-6): React preloads every eager <img> in the shell,
+        // and this twin is display:none unless the theme is dark. Low priority leaves it out of the preload; a dark reader
+        // still loads it at once.
+        fetchPriority="low"
         width={Math.round(markSize * 1.067)}
         height={markSize}
         className="hey-mark-dark shrink-0"

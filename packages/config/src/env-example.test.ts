@@ -12,10 +12,12 @@ import { parseServerEnv } from './env';
  * they existed.
  */
 const read = (relative: string) => readFileSync(fileURLToPath(new URL(relative, import.meta.url)), 'utf8');
-// The published subset of the source carries this package without the private root's example file.
-const HAS_EXAMPLE = existsSync(fileURLToPath(new URL('../../../.env.example', import.meta.url)));
+// The published subset of the source carries this package without the private root's example file. The private tree
+// is told by packages/domain, which is never published, so there a moved example fails the read instead of skipping
+// (2026-10-24 full audit, QA-14).
+const PRIVATE_TREE = existsSync(fileURLToPath(new URL('../../domain/package.json', import.meta.url)));
 
-describe.skipIf(!HAS_EXAMPLE)('.env.example', () => {
+describe.skipIf(!PRIVATE_TREE)('.env.example', () => {
   it('names every variable env.ts reads', () => {
     const source = read('./env.ts');
     const example = read('../../../.env.example');

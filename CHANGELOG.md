@@ -4,22 +4,37 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
-## Unreleased (2026-10-03)
+## 2026-10-24
 
 - **Proof of Ship (2026-10-24).** A new partner endpoint, `GET /api/v1/proof-of-ship/attestation`, signs (EIP-712) how many of a published project's ships HEY counts as building between two dates — only ships HEY first recorded in that window — with each ship's evidence id, for the open-source `ShipEscrow` contract that pays a builder only when the project shipped after the bounty opened. HEY signs only for a payout address its evidence already ties to the project. It restates the ships HEY already counts and changes nothing else on HEY.
+
+## 2026-10-22
+
 - **Identity checks tightened (2026-10-22).** A website that only a token's DEX or market listing named no longer counts as the project's building when the project's own site does not verify the token. A link to a post on X is never shown as a project's X account, and when a project's X account and website were both copied from the same listing, the account is no longer shown as linking back if it looks like someone else's: a known brand's account, or one beside a famous site. A small project's own account copied with its own site still links back. Famous sites that belong to a government, a company, a charity or a person are never shown as a meme token's website; Robinhood's own Stock Tokens keep Robinhood's documentation as their site. A launchpad's own code is no longer counted as building for every token that launchpad minted, however HEY first linked it.
 - **One spelling, plainer words (2026-10-22).** The site and the Telegram bot say "HEY Research Lab" everywhere, the community line included ("Community-run by HEY Research Lab · not an official Robinhood channel."). The badge reads "Verified Builder" wherever it is a label, an indexed project reads "Recorded on Robinhood Chain. Not researched yet.", a card's market line says "Traded in the last 24 h", and Robinhood's issued tokens are "Stock Tokens". Unused exports left the public packages: `BRAND.positioning` and `pageTitle` (`packages/ui`), `APP_TAGLINE` (`packages/config`), `isAgentCapability` and `sourceTypeOfDomain` (`packages/agent-provider-core`).
+
+## 2026-10-21
+
 - **Fixes we sent upstream (2026-10-21).** A new page, /contributions, lists the pull requests HEY Research Lab opened in other projects' public repositories: merged first, then open, then closed, each linked to the pull request and the project's own repository, and to the project's HEY page when HEY holds that repository as the project's own. It is read from GitHub once a day, lists pull requests only (never issues), and changes nothing else on HEY.
+
+## 2026-10-20
+
 - **A dead X account gives way (2026-10-20).** When a project's official X account is suspended or gone, HEY now shows another official account the project's sources name instead, and looks again for the one account whose profile links the project's own website (marked "Found by HEY"). An account HEY could not read is not treated as gone.
 - **A website that answers keeps counting (2026-10-20).** A project's official website no longer stops counting as reachable after one failed read: it counts until it has failed three reads in a row, as intended. A site whose homepage is larger than HEY reads is treated as answering, not as down.
 - **What changed, explained (2026-10-20).** A project's latest change now says what stage HEY saw (announcement, code, release, deployment or upgrade), who reported it and what independently corroborates it, whether a release and a deployment are linked (only by exact evidence, never by timing), what activity HEY can measure on a contract tied to it, and what HEY does not know. The same explanation appears on the project page, the homepage check, the API, the SDK, MCP and the Telegram bot.
 - **Every page reviewed (2026-10-20).** All public, Terminal, account and developer pages were reviewed at phone, tablet and desktop widths, in light and dark: larger touch targets, clearer empty and error states, no sideways scrolling, and no email option shown where email is off.
 - **Bounded X research, off by default (2026-10-20).** New, switched-off tools for HEY's editors: announcements on a project's confirmed X account kept apart from what HEY corroborates, an operator-verified list of ecosystem accounts, and an internal review queue of conversations HEY's evidence can answer. HEY never posts, replies or follows.
+
+## 2026-10-19
+
 - **Check a token on the homepage (2026-10-19).** The homepage now opens with one box: type a token's name, ticker or contract and press Check, and HEY answers right there — whether the project is building, its latest ship with its evidence, its contract and how many other tokens share the ticker, and its official X account — or lists the projects that share it, or, for a contract HEY has not researched, what HEY Scan reads. A Post to X button shares the answer with a link to the page. Search suggestions also come back faster.
 - **A repository a project's site links must point back (2026-10-19).** A GitHub repository counts as a project's building because the project's website links it only when GitHub points back to the project too: the repository's homepage or its owner's website is the project's site, its owner's X account is the project's, its README names the project's site, token, X account or Robinhood Chain, or a small account is named for the project. Otherwise it stays on the page as context and a person reviews it; a repository HEY has not been able to read keeps counting. An auditor's report repository is never counted as a project's building.
 - **X accounts on the Telegram bot (2026-10-19).** A project's card in Telegram now shows its official X account the way its HEY page does: a link while HEY reads the account as live, otherwise the dated reason (suspended, gone, or not the project's), and whether the account links back to the project's site. In a private chat the card also gives the date of the account's newest post. X never changes what the bot sends to groups, alerts or the channel.
 - **Platform audit and repairs (2026-10-19).** An X account HEY found by a project's name no longer speaks for the project until a person verifies it: no posts on the page, no repositories added from its posts, and it is never described as linked both ways. A market whose pool reading had no trading figure is no longer called active just because another pool holds liquidity. Automated risk scores of other chains' tokens are no longer counted as a project's releases. CSV exports and data files leave out X accounts HEY holds back. Partner cards print the same market words as the project page. Error pages' "Try again" now reloads the page; phone inputs no longer zoom; clearer link labels for screen readers; faster report pages and evidence receipts.
 - **Only the project's own X account speaks for it (2026-10-19).** A project page shows posts only from an X account whose profile links the project's own website. An account a page borrowed (a company's or a famous person's) can be held by a moderator and is then never linked, and searching for such an account no longer leads to that page.
+
+## 2026-10-18
+
 - **More from X (2026-10-18).** Official X accounts are now checked every day. An account that links another project's website is no longer shown as this project's. A GitHub repository a project's own X account posts becomes its official repository when GitHub points back to the project, so projects whose only source was X can now show what they build. HEY also finds new builders from public posts about Robinhood Chain that link GitHub, and finds the X account of projects that had none when exactly one account links the project's own website; such an account is marked "Found by HEY".
 - **Official X accounts are checked (2026-10-18).** HEY now checks each project's official X account every week. A suspended or missing account is shown as such, never as a working link, and is never tagged. A project's own recent posts on X appear on its page as context; they never count as shipping. An account whose profile links the project's own website is shown as linked both ways.
 - **Truer "Built on" (2026-10-18).** A project's code naming another project's token now reads "Names in its code", not "builds on"; only a pool on another project's hook says "builds on". Data files and lists in a repository no longer count as code.
@@ -35,6 +50,9 @@ record.
 - **Steadier badges (2026-10-18).** The nightly quality check now finishes and no longer switches Verified Builder on and off on the same evidence.
 - **For developers (2026-10-18).** A public API changelog at /developers/changelog, rate-limit headers, every error code documented, a security.txt, and agent answers that keep counts and paging, state Under the Radar and the Discovery Gap, and lead with what was shipped.
 - **Smaller fixes (2026-10-18).** The trading caveat stays beside token usage figures; /updates fits a phone screen; plainer attention and count lines; links in old weekly reports follow merged pages.
+
+## 2026-10-17
+
 - **Usage counts only a project’s own contracts (2026-10-17).** Usage now counts only what a project's own contracts did. Shared chain infrastructure, such as the Uniswap v4 PoolManager and PositionManager, USDG, the Pons factories and locker, HoodLock and the pools and routers everyone trades through, is no longer counted as one project's product usage. A contract a page names counts only when the source is official and no other page claims it. Pages that showed tens of millions of calls from the chain's own plumbing now show their own contracts, or say the contract is not watched. Usage-change signals no longer count trading in a project's own token or in contracts that only saw transfers and approvals. When the latest change on a page is a usage change, the Research summary now says it is context, not building.
 - **Alerts wait for the quality gate (2026-10-17).** Alerts now wait 75 minutes before telling anyone about a new ship, contract deployment, activity status move, market status move or Market Integrity event. HEY's quality checks sometimes withdraw these shortly after they appear, and a withdrawn one is now never sent by email, webhook or Telegram, and never shown in your alerts inbox. An activity status change between Shipping and Active stays in your HEY inbox; only a move to or from Quiet, Dormant or unknown is sent. Following a project no longer ticks docs and site changes by default, and that alert now says which links were added or removed (for example "Added docs link: example.com/pricing"). Telegram alerts now start with the kind of change in plain words, such as "Release:" or "Contract deployed:".
 - **What changed tells news from history (2026-10-17).** What changed now tells news from history. A changelog's or repository's back catalogue that HEY reads for the first time no longer counts as changes in the window. /updates counts it separately and folds it to one line per project ('TrackDefi: 23 earlier entries … read by HEY 3h ago'), and the RSS feed folds it to one item per project per day. A market or token state that moves and moves back within a day is no longer shown; an activity status that does the same reads as one 'moved and back' line. A project's official-site changes of one day form one row, and token verification changes sit with the other context below the builder changes. /updates now opens with 'Worth a look': up to five releases, deploys, resumed builders, verifications or new projects, one per project. The homepage shows returning readers how many builder changes arrived since their last visit. That count is worked out in the reader's own browser, so HEY never receives the time of the visit.
@@ -44,6 +62,9 @@ record.
 - **Builder attribution (2026-10-17).** Builder attribution fixes. A new repository under a GitHub organisation that a published project already holds as its own now joins that project's page, instead of a sibling page started from another of the organisation's repositories. The note beside a source that is shown as context now says exactly what would make it count under today's rules, and a source the owner added has its own note. When a project's owner adds or removes a source, HEY re-checks the project within minutes instead of at the next nightly pass. A release a builder reported but HEY has not checked yet is shown as awaiting HEY's check and is no longer counted as a recorded release. The step that matches tokens to the repositories that name them was stuck behind entries it could not judge, and is moving again.
 - **Project page first screen and speed (2026-10-17).** A project page now says right under its name when HEY cannot confirm the tracked token belongs to the project, in the same words as the token market row. The summary card answers whether the project may be under-noticed, using the Discovery Gap's own sentence where HEY measured one. The first screen uses plain words: a contract-usage change reads 'Contract calls narrowed' rather than an address-days figure, and the building answer no longer carries a Fact/Derived tag. On project cards, an implausible valuation reads 'Withheld: not plausible from the readings HEY has' instead of a bare 'Not plausible'. Under the hood, /signals reads each page with three database queries instead of about twenty-two. Pulse keeps the reads that are the same for every reader for one minute. The HEY and HoodLock marks are cached for a year under content-hashed names.
 - **Builders building on builders (2026-10-17).** Project pages now show which Robinhood Chain builders build on which. 'Builds on' lists projects whose token this project's own official repository names in source, config or a deployment record, and projects whose Uniswap v4 hooks carry this project's token's pools. 'Built on by' lists the reverse. Each link names the other project, says what it is in plain words ('Its code names X’s token', 'Its pools run on Y’s hook') and links to the file or the pool's receipt. The same links are served at /api/projects/{slug}/built-on and as two new edge types on /relationships. A link means the code names the token or the pool runs on the hook. It is never a partnership or an on-chain interaction, and it changes no status, score or order.
+
+## 2026-10-16
+
 - **Owner-added repositories (2026-10-16).** A repository the verified owner added counts once something HEY reads ties it to the project (a GitHub claim naming it, the token named in it, a Robinhood Chain dedication HEY matched to the page, or a moderator), even if HEY's search had earlier attached it as "same owner, identity not corroborated"; before, that earlier flag kept it context. Repositories HEY found by search alone keep the flag. No field changed shape.
 - **Overnight truth and wiring repair (2026-10-16).** Additive API fields: `tokenMarket.label` (listing, dossier, snapshot) and `marketStatusLabel` (`/market`) carry HEY's own market-status words, so a launch pool never reads "active market"; `distribution.stale`; `tvlRead` (`MEASURED`, `STALE` or `NONE_HELD` with a reason) beside `tvlDays`; `marketAttentionWithheld` beside `marketAttention`, which is now also `null` where the Discovery Gap does not measure the market (thin market, launch pool or curve). `/api/changes` browse (no cursor, or `before=`) is newest first by each event's first arrival and hands out `c2.` cursors; a `c1.` browse cursor keeps its old meaning; sync (`after=`, `detectedSince`) is unchanged. A2A text opens on the Research Summary line and ends with its citation. The Radar's on-chain sub-score counts address-days of callers only (`builders-v4`). Migration 0268 drops an unused index.
 - **Rulings (2026-10-16).** Scoring `hbm-v30`: the Discovery Gap is withheld as `token_not_the_projects` on an unverified token whose ticker another published project's token carries, and as `no_market_reading` on a reading older than a day; Under the Radar requires typical market attention or lower. Token market rules `token-market-2026-10-16`: new reason `liquidity_not_current` ("Readings not confirmed"); a graduated Pons launch in a seeded two-sided pool is judged as a pool; `peakLiquidityUsd` is the level held on two consecutive daily closes.
@@ -51,13 +72,19 @@ record.
 - **Verification round (2026-10-16).** `/api/changes` browse (and MCP `get_changes`) lists each event once, at its current revision; sync is unchanged. A market-status change on a launch pool reads "Launch pool only", never "Active market" (the reason is stored with the move, migration 0269). Rolling-window signal titles name their window ("in the 7 days to 16 Oct"), never "this week". A follow-up deployment the quality gate holds as context is context from the moment it is written. A2A `research_project` names the project and its market label. Pool depth reads 3,000 tokens a run.
 - **Reader wording (2026-10-16).** A code week still running reads "Code changes this week (since Mon …)" on every surface that prints it, never a range ending in days that have not happened; the Discovery Gap and Still Building explanations name a thin market by its label ("reads “Launch pool only”"), never the raw status. The stored and published title of a change is unchanged.
 - **Bitquery stream and freshness (2026-10-16).** One always-on Bitquery subscription (Pons V2 factory, Uniswap v4 `Initialize`, HoodLock, `Upgraded` on watched proxies) is a trigger only: HEY re-reads each event over RPC through the path that owns the fact (migration 0267, `chain_event_triggers` holds positions only). Follow-up deploys by project deployers are found within the hour. Bitquery market readings and contract activity refresh every two hours, chain days every three, pool depth covers every eligible token.
+
+## 2026-10-15
+
 - **Pons V2 launch lifecycle (2026-10-15).** HEY reads the Pons V2 factory's `LaunchSwept`, `PoolGraduated` and `GraduationTokensPermanentlyLocked` events in the same log request as its launches. A graduation read from the chain sets the launch stage with its block time (`occurredAt` EXACT) and adds the seeded amounts, the permanent lock and the graduation transaction as facts on `token.launch_stage_changed` (evidence `ponsgrad:<chainId>:<token>`); while the factory says a token is still on its curve, a market reading can no longer move it to a DEX stage. The market API, SDK and MCP gain `lifecycle.launchLifecycle` (omitted when nothing was read). The early Pons V2 factory is read with its real launch topic. Migration 0266.
 - **New v4 pools on a project's own hook (2026-10-15).** New ledger type `contract.v4_pool_initialized` (event id `v4pools:<chainId>:<hook>:<day>`, evidence `v4pool:<chainId>:<poolId>`): pools initialised on a hook HEY attributes to a project's deployer or its own contract listing, folded per hook per UTC day, never building, in-app alerts only and never a webhook. Pons V2's common hook is launch infrastructure (migration 0265).
 - **Bitquery (2026-10-15).** Points are booked per job (migration 0264); the discovery backlog takes at most 15% of the cycle a day; contract activity reads 400 contracts a request. The usage `methodology.calls` text now says what is counted: every call frame into a watched contract, internal and read-only calls included, of successful transactions only (the provider's Robinhood index holds no failed transaction). No field changed shape.
 - **Dependency bumps are maintenance (2026-10-15, commit-substance-v4, hbm-v29).** A commit that only moves dependency versions in a manifest (package.json, composer.json, Cargo.toml, go.mod, requirements*.txt, pyproject.toml, Gemfile), with or without its lockfile, reads "dependency or version updates only" and does not count as building; any other manifest change, or one whose patch GitHub did not return, still does. Bumped manifests are counted in `codeSubstance.files.dependency`; no field changed shape.
-- **Display names (2026-10-14).** A project whose name was a repository slug ("onchain-trading-bot") is shown by a name its evidence supports: its own token's name as the chain records it, its launchpad listing, its site's own name (respelling the same words only) or the slug spelled as words ("Onchain Trading Bot"); a name an owner or moderator set never changes, and slugs never change. The previous name stays searchable. The `name` field keeps its meaning; no field is added or removed. Migration 0261 (`projects.name_basis`, `project_name_history`).
 - **Speed and user value (2026-10-15).** /ships picks its page's ship ids before reading cards (3.6 s uncached before); the project page reads in two rounds instead of seven; search runs its matcher once; What changed counts with a per-project probe; /scan reads four facts instead of the full profile. Whether a project is built on Robinhood Chain is stored on the project and cleared by triggers whenever its evidence moves, so chain feeds, rankings and counts stop re-probing every project; a row not yet recomputed is read live. Search results show the latest ship and an Open research action, the homepage search sits under the one-line answer, Follow links to What changed, and the evidence page puts Follow before Cite this. No value, wording or order a page shows changed.
 - **Integration records (2026-10-15).** A published page with no Robinhood Chain evidence whose own repository Electric Capital's Open Dev Data taxonomy files under another ecosystem, or as a shared framework, is an integration record: published, its ships kept, never a Verified Builder, and the page says so. Any Robinhood Chain evidence keeps the badge; a moderator's acknowledgement of the flag lifts it. The flag only withholds.
+
+## 2026-10-14
+
+- **Display names (2026-10-14).** A project whose name was a repository slug ("onchain-trading-bot") is shown by a name its evidence supports: its own token's name as the chain records it, its launchpad listing, its site's own name (respelling the same words only) or the slug spelled as words ("Onchain Trading Bot"); a name an owner or moderator set never changes, and slugs never change. The previous name stays searchable. The `name` field keeps its meaning; no field is added or removed. Migration 0261 (`projects.name_basis`, `project_name_history`).
 - **Build vs Market, tidied (2026-10-14).** Bubbles stay inside the chart frame (the scale is inset by the largest bubble), sizes run 4 to 13 px across the drawn projects' valuations instead of nearly all 18 to 26 px, larger bubbles are drawn first so none hides a smaller one, and the quadrant labels sit on top with a halo. Positions, rings and data are unchanged.
 - **Pulse (2026-10-14).** Activity Cooling is two lists — "Slowing down" ("3 ships, down from 7") and "Went quiet" ("HEY read no meaningful activity for N weeks") — counted as the scorer counts building, on projects built on Robinhood Chain, each with its total. Public Code lists projects built on Robinhood Chain only. Under the Radar has one predicate shared by the Radar tab and Pulse; the Build vs Market chart rings the projects it holds instead of naming a quadrant after it. The heartbeat counts the weekly report's verified ships and states its total and last full day; Most Active Narratives says "Average Build Momentum N of 100"; a builder week-over-week line and the ERC-8004 registration count are added; namesakes show a ticker or short contract. No API field changes.
 - **Positioning (2026-10-14).** The title tag, meta description, llms.txt summary, agent card description and `/developers` lead with one line: "The public record of building on Robinhood Chain — every ship with its source." No field changes.
@@ -68,11 +95,17 @@ record.
 - **Feeds and alerts (2026-10-14).** `/api/changes?narrative=<slug>`, `/narrative/{slug}/feed.xml`, `/feed/verified-builders.xml`, `/feed/status.xml`; alert rules accept scope `narrative`. `/api/v1/builder` answers `text/markdown` as one line.
 - **HEY as data (2026-10-14).** `/data` publishes a daily CC BY 4.0 snapshot (projects, chain-feed ships, the day's public ledger slice) as NDJSON and CSV at `/data/{day}/{file}` and `/data/latest/{file}`, with `SHA256SUMS` and metadata. `/api/projects` answers a caller past ~500 pages a day with a notice header and a `Link` to `/data` (never a block). llms.txt gains "Read HEY as data". With `INDEXNOW_KEY` set, HEY announces changed pages to IndexNow hourly.
 - **Developers (2026-10-14).** `/developers/agents/stats` (`/api/agent/stats`) publishes agent-use counts; `/developers/built-with` lists partners that recorded a public site; `/receipt#<base64url>` renders a research receipt client-side; receipt validation 120/min. Telegram: a share pack's `startgroup` parameter is signed and one admin press watches the group; every bot card ends with its source line.
+
+## 2026-10-13
+
 - **ERC-8004 registration file (2026-10-13).** New `GET /.well-known/agent-registration.json`: HEY's ERC-8004 registration (type `registration-v1`; web, MCP, A2A and e-mail services; `supportedTrust` empty). HEY is agentId 8783 on Robinhood Chain's Identity Registry, and the file lists that registration. No API field changes.
 - **Agent-framework plugins (2026-10-13).** New public repos: plugin-hey-research (ElizaOS), hey-agentkit (Coinbase AgentKit), hey-goat-plugin (GOAT SDK) and hey-virtuals-plugin (Virtuals GAME and an ACP scaffold), all at 0.1.0, and hey-agent-skills (the `hey-research` Agent Skill and Claude Code plugin). `/.well-known/hey-project.json` lists them among HEY's repositories.
 - **Official X account (2026-10-13).** `officialX` on `/api/projects` and `/api/projects/{slug}` prefers the account a project links from its own site over one discovered elsewhere (migration 0254 updates `hey_official_x_url`). The field's meaning is unchanged; 53 projects show a different, better-sourced account.
 - **MCP tool descriptions (2026-10-13).** Tool descriptions, titles and the instructions sent at connection lead with the user's question and name the inputs an agent holds (a name, a $TICKER, a 0x contract). A2A skills and llms.txt carry the same questions. No tool, input or output changes.
 - **Homepage signals and badges (2026-10-13).** The homepage strip shows six signals from the last two days, newest first. /badges matches a placement to its source by key. No API field changes.
+
+## 2026-10-12
+
 - **Founder list settled (2026-10-12).**
   - **Terminal:** a self-serve 7-day trial (migration 0251: `terminal_access_requests.kind`, `expires_at`). Removed on 2026-10-13 (migration 0252 ends any trial row, 0253 drops both columns): Terminal access is a $HEY holding of at least $500, or an early-access request an admin approves.
   - **Narratives:** rule version `narratives-v3`.
@@ -99,6 +132,9 @@ record.
 - **Discovery and Terminal analytics (2026-10-12).** The daily traffic rollup writes the dimensions `surface` (`discovery`, `terminal`, `both`) and `surface_engaged` to `traffic_days`; a staff console page compares the two surfaces. No public API field changes.
 - **Full-platform audit repairs (2026-10-12).** hbm-v27: a project whose activity HEY cannot read gets no Discovery Gap (`discoveryGapWithheld: 'activity_unknown'`). Token market status `INSUFFICIENT_DATA` with reason `volume_unknown` when no reading in 36 h measured a volume. Token verification reasons `site_names_contract_contested`, `site_disclaims_contract` and `site_off_page_names_contract` (UNVERIFIED). Website mention context gains `disclaimed`. Migrations 0245–0248 (indexes, the quality sweep's hidden-slice rotation, a commits ETag). Logos from hosts outside the image proxy are no longer drawn (a monogram shows). `pnpm test` fails when integration tests would be skipped unless `HEY_ALLOW_INTEGRATION_SKIP=1`; Playwright refuses a non-scratch database unless `HEY_E2E_ALLOW_ANY_DB=1`. No public API field changes meaning; the new reasons are additive values.
 - **Founder Control Center (2026-10-12).** The staff console's first page summarises operations and production and opens every issue at its exact detail (`?focus=` on the health page, one incident, one job type's failed rows). New staff-only operator actions `provider.pause` (1, 6 or 24 hours, through the existing provider cool-off), `provider.resume` (an operator's pause only), `recovery.run-checks` and `jobs.retry-failed` (at most 25 rows), each audited. A new browser key `hey.admin.guide.v1` (staff console only) is listed on the Privacy page. No public API field changes.
+
+## 2026-10-11
+
 - **Self-healing operations (2026-10-11).** Admin health vocabulary of ten states; a recovery registry and ledger (`ops_recovery_incidents`, migration 0244) with proven recovery and bounded escalation; `jobs.revivals`; a provider capacity advisor with `provider_quota_days` (migration 0242); contradiction re-checks (migration 0243). No public API field changes.
 - **DEX Screener links (2026-10-11).** Market refresh reads every pool of a token; the project's DEX Screener link is the deepest pool from a reading under a day old, otherwise DEX Screener's search by contract. Liquidity and volume are summed across the token's pools (a minimum when the 30-pool list is full). Token verification judges each token on a shared site on its own.
 - **Telegram admin analytics (2026-10-11).** Admin-only Telegram actor record (`telegram_actors`, `telegram_actor_events`, migration 0240) with eight console tabs; optional `TELEGRAM_ACTOR_SECRET`. The Telegram update parser keeps the sender's own username when valid. New product events `telegram.group_watch_removed` and `telegram.group_digest_disabled`. `product_events` are pruned at 90 days. Privacy copy updated. No public API, SDK, MCP or A2A field changes.
@@ -106,33 +142,27 @@ record.
 - **v4 hooks across reads (2026-10-11).** `GET /api/contracts/{chainId}/{address}`, MCP `get_contract`, A2A `investigate_contract` and `POST /api/scan` gain an additive `uniswapV4Hook` section for a hook address HEY stores (callbacks, attribution state, the project only when listed, pools on tracked tokens, hooklist context, `v4hook:` id). The `v4hook:` receipt's withdrawn reason gains `not_read`. A scan report's `evidence` is now optional (absent on a hook answer). The weekly report gains `uniswapV4Hooks` (report version 4). `/api/v1/builder` gains `uniswap_v4_hooks` and `uniswap_v4_hooks_state`, additively.
 - **$HEY profile (2026-10-11).** `/api/hey/profile` gains `receipts`, `treasury.reconciliation` and `liquidityLock`, additively; the schema stays `hey.token-profile/v1`.
 - **Discovery and agents (2026-10-11).** Verified Builder pages without a description are indexed. A2A answers `message/send` and header-less `SendMessage`; `tasks/send` returns -32601 naming the supported methods. `/llms-full.txt` exists. Product events gain `email.subscribe`; `telegram.lookup` carries a daily-salted asker digest.
-
 - **Reviewed token pages (2026-10-11).** The site screener also reads a page on a project's own site that a person reviewed as naming its token (`REVIEWED_TOKEN_PAGES`), while the homepage does not, and counts it only while the page still names the contract. `token_candidates.website_mention_context` gains the value `reviewed`. No API field changes meaning.
-
 - **Launch-pool valuation on cards (2026-10-11).** A card whose token trades only in its launch pool prints its valuation with "· launch pool" beside it, as the project page does, instead of "Launch pool only" with no figure. Its liquidity stays off the card and the figure still orders no list. No API field changes.
 
+## 2026-10-10
+
 - **Site navigation (2026-10-10).** The header has four or five links (Explore, Ships, Scan, the Terminal while it resolves, What changed from 1280px), a quiet Telegram button that opens the bot's attributed start link, and a Menu at every width (Discover, Research, Monitor, Developers, $HEY, a Telegram row, Submit, the account, Reduce transparency). The footer is the site map in six columns, with a Telegram block and one last line for the chain, the $HEY contract, About, the roadmap, Status, Terms, Privacy and X. Every page that was linked is still linked. The footer now also links the builder guide, the badge page, the embed kit, the partner card, the Uniswap integration, the research queue and the vote. No API field changes.
-
 - **Owner workspace and badge emails (2026-10-10).** `/account` "Your projects" shows each verified page's ownership, GitHub connection, badge (found, gone or not found yet), following and research coverage in plain words, with one next step (Connect GitHub, Add your badge, Follow, Share your profile) — never a score or a bar. A project's verified owner gets one email when HEY first finds the project's badge on its own site or README, and one when a placement goes gone, under the existing ownership-claims email setting. Neither changes research, ranking or any API field.
-
 - **Embed widgets count as badge placements (2026-10-10).** `findBadgePlacement` also matches the widget frame `/embed/project/<slug>` and a visible `<hey-project project="<slug>">` element on a page that loads HEY's `/embed/hey-project.js`.
-
 - **GitHub claims need admin (2026-10-10).** A claim through GitHub is verified only for a repository or organisation admin; a `maintain` role is refused.
-
 - **Self-reported posts (2026-10-10).** A share of a self-reported `build.ship` or `build.release` reads "<project> reported <title> (self-reported, not checked by HEY)", never "shipped".
-
 - **Launch contracts and the share API (2026-10-10).** On-chain context labels a contract created in the token's own transaction as its launch contract (`launch`, "Launch contract (created with the token)") and counts it with pools, never as a holding; unread stays unnamed. `GET /api/share/{subject}` gains `markdown` and, for a research summary, `thesis` (additive).
-
 - **Self-reported stays self-reported (2026-10-10).** A builder's own contract-deploy update never makes a page chain-native. In a research summary's `thesis`, a self-reported record carries the new tag `SELF_REPORTED` ("Self-reported by the project") and a code-activity week `DERIVED`; a self-reported latest change is `DERIVED` and says "self-reported by the project, not checked by HEY". An owner-added contract another project already declares is context (`contextReason: contract_shared_with_published`). An owner can prove a repository they added with a GitHub claim or the GitHub App. No other field changes meaning.
-
 - **Reader and researcher path (2026-10-10).** Share compositions are `share-v3`: a research or recap link carries `?share=research|recap` and unfurls as its own card (`/og/share/research:<slug>`); posts write dates, never "today"; every composition gains `markdown`, and a research summary gains `thesis` (its lines and newest recorded ships, each with evidence, for a reader's own draft, composed in the browser). `/api/search/suggest` project rows gain an additive `status` (the card's status words). The evidence page's citation ends with `Evidence <id>: <page>` and `Receipt: <url>`. `/api/projects/{slug}/explain` is unchanged. Product events: `share.copy` gains outcome `markdown`; `share.compose` counts a composed draft by its kept-line bucket, never its text.
-
 - **Telegram groups, A2A plain text and the partner page (2026-10-10).** A group's research card has "Watch in this group" (the group's own watch, admins only); "Daily digest" with nothing watched says how to watch; the private menu offers "Add HEY to a group" instead of a dead-end watchlist to an unlinked chat, and one example lookup. `POST /api/a2a` answers a plain-text part through HEY's search — one exact project is researched (`metadata.resolvedFrom: "text"`), several are listed (`status: "ambiguous"`), none is `not_found` — and an A2A 0.x call's error carries the 1.0 `SendMessage` example in `ErrorInfo.metadata`. `/developers/partners` has "Try it on your token" (`?token=`) and a product-name input that rewrites the snippets; a free key is described as naming you and unlocking bulk, holder and partner keys as lifting the limit. A declared integration name with no key is never a repeat partner. The MCP server's instructions name `research_answer`'s `capability` argument. Additive only; no field changes meaning.
 - **Owner input and claims (2026-10-10).** A claim proves ownership only: a wallet-signature claim is chain evidence, and a GitHub claim whose proof names a repository ties that repository; no other claim makes a page chain-native or a repository its own. A repository, docs page, changelog or feed a verified owner adds stays context (`contextReason: owner_declared_untied`) until something ties it to the project. Builder updates are self-reported and count only once a HEY moderator verifies them; an update dated more than 14 days back is refused. An upgrade of a contract the owner declared is context (`declared_contract_not_tied`) unless the token's deployer put it up. The badge reads "Verified Builder · researched by HEY Research Lab", and badge snippets use `/api/badge/<slug>` (the `.svg` form keeps working). `/badges` counts projects besides HEY. No API field changes; `contextReason` gains two values.
-
 - **Analytics beacon (2026-10-10).** `/api/hit` writes a page view or click only when the browser's own fetch metadata says `Sec-Fetch-Site: same-origin` with a beacon fetch mode, beside the existing same-origin `Origin` check; a cross-site or same-site page, a navigation or a client without fetch metadata writes nothing. Beacon-built figures are labelled observed, unauthenticated on the operator console. A hosted-MCP call that never sends `initialize` is attributed to its own `x-hey-integration` header. No API field changes.
 - **Robinhood Chain Terms of Service (2026-10-10).** The Telegram bot's `/start`, `/help` and Mini App footer, and its description texts, say "Community-run by Hey Research Lab · not an official Robinhood channel." (§5.6(d)(i)); `/badge/<slug>` and `/badges` say "Verified by Hey Research Lab from public evidence — not a Robinhood certification." (§5.11(b)); HEY's own copy uses "Robinhood Chain" and "Stock Tokens", held by the copy tests. The badge SVG is unchanged. No API field changes.
 - **HEY Scan's distribution from the explorer (2026-10-10).** A scan of a token HEY does not track reads its distribution from the Blockscout API (free tier, key required) first — the explorer's holder count and fifty largest balances, labelled and summed as before, never returned or stored — and from Bitquery only when the explorer is not configured, declines or fails. `POST /api/scan` gains two additive fields: `report.onchain.distribution.source` (`blockscout` or `bitquery`) and `report.onchain.transfersSinceLaunch`, the explorer's all-time transfer count, dated and never added to a day. On an explorer read `nakamotoHalf` is `null` (not counted). Nothing else changed meaning.
+
+## 2026-10-09
+
 - **Projects showing their HEY badge (2026-10-09).** A new public page, `/badges`, thanks the projects HEY itself found showing their badge on their own official website or GitHub README — alphabetically, with where and when HEY found it. A badge request is never a placement (anyone can embed anyone's badge); a daily bounded read on the existing website and GitHub budgets looks for this project's badge URL, ignoring comments and code, and marks a placement gone after two reads without it. Being listed changes nothing else: no ranking, Featured pick, Radar, score, change event or alert reads it. No API field changes.
 - **On-chain context on the bot's cards and in HEY Scan (2026-10-09).** A founder decision widens HEY Scan's "never maps holders" boundary for one token's concentration: the bot's cards show a token's stored on-chain readings after the builder story (the day's transfers and trades, the distribution summary, pools and depth, the lock, the contract), and a scan of a token HEY does not track reads them live — shares and counts, never an address — under its own `scan-onchain` allowance, keeping the distribution as the token's daily summary. `POST /api/scan` gains an additive "On-chain context" group and `report.onchain`. A ticker that names one project says how many other tokens use it.
 - **Telegram bot: unpublished addresses and tickers (2026-10-09).** The bot answers an address or ticker HEY has not published with what HEY holds (its record, launch, the card's market reading, declared links as unverified text, every token sharing the symbol with a true count), and on an explicit request in a chat reads the address live through the same HEY Scan as `POST /api/scan`, after answering, within per-user and per-group limits; never in inline mode or Guest Mode.
@@ -165,7 +195,6 @@ record.
   definition; a `/search` with no published project records what it showed instead of `zero`
   (`launch_records`, `issuer_tokens`, `foreign_address`, `answered`); route analytics template
   identifiers. `$HEY` profile: an open perk with nothing behind it reads `statusReason: open_none_yet`.
-
 - **Red-team repair (2026-10-09).** A valuation another source prices more than 10× away within a
   day is withheld with `valuationWithheld: sources_disagree` (additive code) and leaves the valuation
   sort, filter and count. An earlier liquidity figure now carries its own reading's `source` and is
@@ -176,7 +205,6 @@ record.
   weekly report whose stored DEX volume sums a withheld day reads with no total and
   `chain.dexVolumeWithheldDays`. A project whose own description names Robinhood Chain now counts as
   built on it (Explore's default lens and the rankings); a chain id in a config file still does not.
-
 - **Follow → alert → return, repaired (2026-10-09).** Alerts: two presets, `ship` (`build.ship`) and
   `code` (`build.code_activity`, shown in the HEY inbox only; never emailed, sent to a webhook or to
   Telegram), both in the one-press follow bundle; `build.code_activity` is now an alertable type
@@ -186,7 +214,6 @@ record.
   doesn't HEY know" to existing reads; the suggested "What did {p} ship before the price moved?" is now
   "What happened around {p}'s last release?", answered from the around-event read. Migration
   `follow_bundle_ship_code`.
-
 - **Market truth (2026-10-09).** A valuation HEY's own chain readings contradict more than 10× — the
   price of the token's decoded on-chain trades, or its chain pool index on a day the reading barely
   traded — is withheld with `valuationWithheld: chain_evidence_contradicts` (additive code). A price
@@ -197,6 +224,8 @@ record.
   The scan's evidence breakdown prints words, never numbers. AI brief observations are DERIVED at
   most, and a cause beside a market figure is quarantined.
 
+## 2026-10-08
+
 - **A repository the project's site links, with no owner tie, goes to review (2026-10-08).** A link
   from the project's own website says the site points at the code, not that the project wrote it. Such
   a repository now counts toward building only when something ties it to the project: its owner is
@@ -205,7 +234,6 @@ record.
   on the page with its provenance as context (`contextReason: site_link_without_owner_tie`) and its
   ships do not count until a moderator confirms it. A token's site that linked a research lab's public
   repository had made its page a Verified Builder on the lab's commits.
-
 - **CI build-stamp tags and data feeds are not ships (2026-10-08).** A GitHub release cut from a
   CI build stamp — a word stem with a run number and an attempt (`server-image-1234-1`), or
   `build-<n>` / `ci-<n>` — is a rolling tag, kept as context (`rolling_tag`); versions such as
@@ -217,6 +245,9 @@ record.
   numbered newsletters stay ship sources; no market figure decides anything. Ships already counted
   were withdrawn through the change ledger as retractions, each row kept. Migration
   `0233_data_feeds_and_ci_build_stamps`.
+
+## 2026-10-07
+
 - **HEY's own feeds are never a release feed (2026-10-07).** A feed on HEY's own host
   (`/feed/updates.xml`, `/feed/ships.xml`, `/feed/this-week.xml`, a project's `feed.xml`) is never
   registered or read as a project's release feed, and a feed entry that links to a HEY page is never
@@ -232,13 +263,14 @@ record.
   week of only automated commits stops counting and the project is rescored. A week GitHub cannot
   list stays unread and keeps counting. `codeSubstance` fields are unchanged.
 
+## 2026-10-04
+
 - **The Research Terminal guide, illustrated (2026-10-04).** `/docs/terminal` shows a real
   screenshot of the live Terminal under each step: the Projects page, the two ways in, the
   workspace on desktop and phone, the research summary and a receipt, every view, What changed,
   Compare, the watchlist, the command palette and the More menu. Taken signed out on the sample
   project; what a signed-out reader cannot open is shown locked. A picture in a document is drawn
   with its size reserved, lazily, and opens the full-size file.
-
 - **Uniswap v4 hooks: one card per project, Uniswap's hooklist as context (2026-10-04).**
   `/integrations/uniswap/hooks` shows one card per published project with its hooks inside, the
   project with the newest hook deployment first; the answer counts hooks and projects. Additive on
@@ -248,7 +280,6 @@ record.
   descriptions or deployer accounts — shown as a labelled third-party listing beside attributed
   hooks and on their receipts, with both readings when its flags and the address disagree. Never an
   attribution, a ship or a score. Migration `0223_uniswap_hooklist`.
-
 - **Builders shipping Uniswap v4 hooks (2026-10-04).** New `/integrations/uniswap/hooks` and
   `GET /api/v4-hooks`: only hooks HEY ties to a published project (created by the account that
   launched its token, or listed by the project), each with its `v4hook:` id, newest deployment
@@ -258,6 +289,8 @@ record.
   `contract.followup_deployed` keyed by its `v4hook:` id, never counted as building. The "deploys a
   contract" alert preset now includes `contract.followup_deployed`. Hook attribution reads hourly in
   priority order within the same explorer budget.
+
+## 2026-10-03
 
 - **Building facts say one thing everywhere.** A code-activity ship's `title` (and its ledger
   `summary`, the partner card's `last_ship_title`, the builder card's latest ship) is the week's
@@ -269,7 +302,6 @@ record.
   nowhere). RESUMED names the real break, ACTIVE on its 45-day path says so, and the status line
   says "latest ship". `research_project` names the unknown categories it lists; an AI brief older
   than the project's status or scoring version is hidden and asked again.
-
 - **Terminal audit: what a trader would screenshot.** A token a page took on a deploy record that
   no longer proves anything goes back to its launch record (logged in `identity_repairs`,
   reversible). "Same name, different contract": project pages, the Terminal, search and the
@@ -278,7 +310,6 @@ record.
   Chain evidence first within each group. A span around an event that has not started or ended is
   never printed as observed (additive `state`, `observedThrough` on the around read). Every public
   count on the homepage, Explore, the Terminal, the Radar and `llms.txt` comes from one snapshot.
-
 - **Live markets.** Every live market's 15m and 1H bars are built hourly from decoded trades
   against USDG, WETH and ETH (Bitquery, five points for a hundred tokens), and a token a Terminal
   reader opens is refreshed by the queue within about twenty minutes; GeckoTerminal reads such a
@@ -288,7 +319,7 @@ record.
   repository no longer stops a site's other repository links from being checked. Usage watches a
   project's attributed follow-up contracts beside its token.
 
-## Unreleased (2026-10-02)
+## 2026-10-02
 
 - **Resumed only inside HEY's coverage (scoring `hbm-v25`, 2026-10-07).** A comeback is Resumed
   building only when every ship in it was read from a source HEY was already reading when the gap
@@ -375,7 +406,7 @@ record.
   `ChangeTypeCount.dataCheck` and the Today kind `datacheck` are additive. Telegram reads "coming
   soon" until its bot is registered.
 
-## Unreleased (2026-10-01)
+## 2026-10-01
 
 - **Who built a Uniswap v4 hook.** A daily, paced read of each hook's creation record (five hooks a
   call, sixty calls a day on its own budget) compares the creating transaction's sender with the
@@ -968,8 +999,6 @@ record.
   hour, one-click unsubscribe) or at one of your own webhook subscriptions. Every alert is an event
   from HEY's change ledger, told once per rule and withdrawn if the ledger withdraws it; HEY sends no
   price or trading alerts. Managed at `/api/alerts` with an API key; see `docs/ALERTS.md`.
-## Unreleased (2026-09-28)
-
 - **Review repairs: words that say what was measured.** The Builder Radar's on-chain score and its
   "Most address-days of calls" sort are worded as **address-days of calls** — each day's distinct
   caller addresses added across seven days and the project's contracts, so an address calling on

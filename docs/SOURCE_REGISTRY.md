@@ -4,11 +4,12 @@ Every external source HEY reads, with what was actually observed when it was ver
 not what its documentation claims. A source is not integrated until it appears here.
 
 **Scope lock:** Robinhood Chain only, `chain_id = 4663`. Aggregators are queried for
-Robinhood Chain contracts and nothing else. One paid provider is present — Bitquery Pro and its
-historical trading pack, named in its own row below — and no other may be added without explicit
-founder approval.
+Robinhood Chain contracts and nothing else. Two paid providers are present, each named in its own
+row below: Bitquery Pro with its historical trading pack ($179 a month), and twitterapi.io (metered
+pay-per-use, at most 60,000 credits ≈ $0.60 a day, official project X accounts only; founder approval
+2026-10-18). No other may be added without explicit founder approval.
 
-**Verified:** 2026-09-01. Re-verify before trusting any row: endpoints change without notice,
+**Verified:** 2026-09-01; rows added later carry their own date. Re-verify before trusting any row: endpoints change without notice,
 and a stale registry is worse than none.
 
 **Paths:** the `packages/domain/...` and `apps/web/...` files named below live in the lab's
@@ -360,6 +361,16 @@ read API; names come from the token contracts.
 
 ---
 
+### ERC-8004 Identity Registry (`erc8004_registry`, 2026-10-14)
+
+| | |
+| --- | --- |
+| Source | The canonical Identity Registry's `Registered(uint256,string,address)` logs on Robinhood Chain, read from the public RPC (`SYNC_ERC8004_REGISTRATIONS`, daily, from block 0, resuming after the last block read) |
+| Kept | Per UTC day: new registrations, the running total and the block read through (`erc8004_registration_days`, basis `reconstructed_from_chain`). **No owner, agent id, URI or transaction** |
+| Shown | `/developers/agents/stats` and `/api/agent/stats` (`erc8004Registrations`): total, last 7 and 30 days, the daily series; unread is `null` with `not_read`, never 0 |
+| What it may prove | Nothing about a project (tier CHAIN, context only): never identity, a ship, building, a score, an order, a change event or an alert |
+| Auth / cost | None / free; its own budget key `rpc-erc8004` |
+
 ## Tier B — Public market aggregators (Robinhood Chain queries only)
 
 ### DEX Screener
@@ -562,6 +573,16 @@ Registry pages opened before are held by `pnpm data:duplicate-listings` (dry run
 
 ---
 
+### Uniswap Trading API — indicative quote (`uniswap-trading`, 2026-09-30)
+
+| | |
+| --- | --- |
+| Endpoint | `POST https://trade-api.gateway.uniswap.org/v1/quote` (official, documented) |
+| Purpose | An indicative quote for a token HEY already places in a Uniswap pool, for a Terminal reader who presses for one |
+| When | Only on that press: never on a render or read path (machine rule 8's second labelled exception), rate-limited per address (`api.uniswap.quote`), budget `uniswap-api` (2,000 a day) |
+| Kept | **Nothing.** The answer is shown and dropped: never stored, never HEY research, never an input to activity status, Build Momentum, the Discovery Gap, Still Building or the Radar |
+| Auth / cost | `UNISWAP_API_KEY`; off unless `UNISWAP_ENABLED` and the key are set. Free tier |
+
 ## Tier C — Public development and project sources
 
 ### GitHub
@@ -637,6 +658,16 @@ discovery: `packages/domain/src/builders/discover-code.ts`; candidates carry
 | Purpose | A faster read of a repository HEY already follows (a release or default-branch push queues the existing `REFRESH_GITHUB`); proof of repository control for a claim; an opt-in README badge PR |
 | Authority | A delivery writes no source row and no ship: the read it queues is `github_repo`, under the same rules as polling. Both budget keys are `PLUMBING`. An install corroborates ownership exactly as the GitHub sign-in claim does |
 | Never | a ship, a score, a status or an order; a URL from a payload fetched; a commit message, release body, login of the installer or e-mail stored; a push to a default branch |
+
+### twitterapi.io — official project X accounts (`twitterapi_io`, paid, 2026-10-18)
+
+| | |
+| --- | --- |
+| Base URL | `https://api.twitterapi.io` — an independent, pay-per-use X data API, not affiliated with X |
+| Reads | `GET /twitter/user/info` and `/twitter/user/batch_info_by_ids` for the **official** account a published project's own sources name (state, stable id, handle, created date, verification flags, profile links); `GET /twitter/user/last_tweets` for a confirmed account's own newest posts (no retweets of others, no replies), kept 90 days; HEY's fixed discovery queries and the name search for a project with no live X, kept as leads only |
+| Never | A firehose, anyone else's account, followers, following, mentions or any engagement figure |
+| What it may prove | Identity context and discovery leads (tier DISCOVERY, context only). A mutual site link corroborates the X account itself and nothing else; a posted repository counts only through GitHub's own pointback; never a ship, building, a score, an order, publication, a change event, an alert, a webhook or a Telegram delivery |
+| Cost | Metered credits under `twitterapi-io-credits`: 60,000 a day (≈ $0.60), declined beyond it and carried to the next day; off until `TWITTERAPI_IO_ENABLED` and `TWITTERAPI_IO_KEY` are set |
 
 ### npm registry (2026-09-05)
 
@@ -831,9 +862,12 @@ factory reader (`REFRESH_LAUNCH_STAGE`, `getLaunchedToken(token).phase`, daily, 
 
 ## Cost
 
-**One paid source.** Bitquery Pro, $179 a month, points-metered: it decodes the trades, contract
-calls and balances no free endpoint on this chain exposes, and it is the only source for the 772
-tokens no aggregator indexes. HEY spends roughly 9,500 of its ~33,000 daily points. This table used
+**Two paid sources.** Bitquery Pro, $179 a month, points-metered: it decodes the trades, contract
+calls and balances no free endpoint on this chain exposes, and it was the only source for the 772
+tokens no aggregator indexed (measured 2026-09-12, as are the figures in this paragraph). HEY then
+spent roughly 9,500 of its ~33,000 daily points; `/status` carries the current meter. And twitterapi.io
+(2026-10-18), metered per credit with a ceiling of 60,000 a day (≈ $0.60, ≈ $18 in a 30-day month),
+for official project X accounts only (its row under Tier C). This table used
 to list Bitquery under "deliberately not used" and this section used to say $0; both were written
 before the integration shipped on 2026-09-12 and were simply stale.
 

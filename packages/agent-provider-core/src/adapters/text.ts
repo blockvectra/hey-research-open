@@ -1,5 +1,6 @@
 import type { AgentChange, AgentClaim, AgentIntelligenceResponse, AgentResearchData, AgentUnknown } from '../schema';
 import { quoteForTransport, QUOTED_TEXT_LEGEND, type AgentText } from '../text';
+import { tokenNotTheProjectsWords } from '../words';
 
 /**
  * The agent contract as plain text (2026-09-30), for transports that carry
@@ -85,7 +86,8 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
       else if (!d.recentChanges.available) lines.push(`Recent changes: UNKNOWN (${d.recentChanges.reason ?? 'ledger unavailable'}).`);
       if (d.marketContext) {
         const m = d.marketContext;
-        lines.push(`Market context (context only, never a builder judgement): ${m.valuation ? `${m.valuation.kind === 'fdv' ? 'FDV' : m.valuation.kind === 'marketCap' ? 'market cap' : 'valuation'} $${Math.round(m.valuation.usd).toLocaleString('en-US')} from ${m.valuation.source}${m.valuation.observedAt ? ` read ${day(m.valuation.observedAt)}` : ''}` : m.valuationWithheld ? `valuation withheld (${m.valuationWithheld})` : 'no reading'}${m.tokenMarketStatus ? `; market status ${m.tokenMarketLabel ? `${m.tokenMarketLabel} (${m.tokenMarketStatus})` : m.tokenMarketStatus}` : ''}.`);
+        const notTheProjects = tokenNotTheProjectsWords(d.contractIdentity.token?.verification, d.contractIdentity.token?.verificationReason);
+        lines.push(`Market context (context only, never a builder judgement): ${m.valuation ? `${notTheProjects ? `the tracked token's (not the project's: ${notTheProjects}) ` : ''}${m.valuation.kind === 'fdv' ? 'FDV' : m.valuation.kind === 'marketCap' ? 'market cap' : 'valuation'} $${Math.round(m.valuation.usd).toLocaleString('en-US')} from ${m.valuation.source}${m.valuation.observedAt ? ` read ${day(m.valuation.observedAt)}` : ''}` : m.valuationWithheld ? `valuation withheld (${m.valuationWithheld})` : 'no reading'}${m.tokenMarketStatus ? `; market status ${m.tokenMarketLabel ? `${m.tokenMarketLabel} (${m.tokenMarketStatus})` : m.tokenMarketStatus}` : ''}.`);
       }
       if (d.usageContext) lines.push(`Usage context (context only): ${d.usageContext.state} (${d.usageContext.reason})${d.usageContext.calls === null ? '' : `; ${d.usageContext.calls} calls over ${d.usageContext.windowDays ?? '?'} days`}${d.usageContext.activeContracts === null ? '' : `; ${d.usageContext.activeContracts} of ${d.usageContext.watchedContracts} watched contracts active`}.`);
       return lines;
@@ -110,7 +112,7 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
         ...(!summary && d.inputs.length > 0 ? ['Inputs:', ...d.inputs.map((input) => `- ${input.name}: ${Array.isArray(input.value) ? input.value.join(', ') : String(input.value)}${input.source ? ` (${input.source})` : ''}${input.observedAt ? ` read ${day(input.observedAt)}` : ''}`)] : []),
         ...(!summary && d.lineage.length > 0 ? ['Lineage:', ...d.lineage.map((step) => `- ${step.step}: ${q(step.text)}`)] : []),
         `Status rests on current evidence: ${d.statusRestsOnCurrentEvidence === null ? 'unknown' : d.statusRestsOnCurrentEvidence ? 'yes' : 'no — due to be scored again'}.`,
-        `Build Momentum: ${d.buildMomentum.state} ${d.buildMomentum.value ?? d.buildMomentum.classification}. Still Building: ${d.stillBuilding.state} ${d.stillBuilding.classification}${d.stillBuilding.stillBuildingState ? ` (${d.stillBuilding.stillBuildingState})` : ''}. ${q(d.stillBuilding.meaning)}`,
+        `Build Momentum: ${d.buildMomentum.state} ${d.buildMomentum.value ?? d.buildMomentum.classification}. Still Building: ${d.stillBuilding.state} ${d.stillBuilding.classification}${d.stillBuilding.stillBuildingState && d.stillBuilding.stillBuildingState !== d.stillBuilding.classification ? ` (${d.stillBuilding.stillBuildingState})` : ''}. ${q(d.stillBuilding.meaning)}`,
         `Never an input to this status: ${d.excludedContext.map((entry) => entry.item).join(', ')}.`,
         ...(d.unknownInputs.length > 0 ? [`UNKNOWN inputs: ${d.unknownInputs.join(', ')}.`] : []),
       ];

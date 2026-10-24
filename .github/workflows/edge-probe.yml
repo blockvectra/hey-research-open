@@ -1,8 +1,9 @@
 # Edge probe: heyresearch.xyz as a visitor meets it, through Cloudflare, from a machine that is not HEY's server.
 #
 # Every other check (the deploy smoke, the daily smoke, liveness) runs on the server and reaches the app through
-# 127.0.0.1, so a server that is down, unreachable or slow at the edge raises nothing. This job runs from GitHub's
-# machines every hour (Actions minutes are free for a public repository) and fails when a route answers a server error
+# 127.0.0.1, so a server that is down, unreachable or slow at the edge raises nothing. This job is scheduled hourly on
+# GitHub's machines (Actions minutes are free for a public repository; GitHub's scheduler has run it every four to five
+# hours in practice) and fails when a route answers a server error
 # or nothing at all, answers slower than its limit three times running, or /api/health does not say "ok". A failed
 # scheduled run is GitHub's e-mail to whoever last changed the schedule; if the repository secrets
 # TELEGRAM_BOT_TOKEN and TELEGRAM_ALERT_CHAT_ID are set, a failure is also sent there.
@@ -59,15 +60,19 @@ jobs:
               if [ "$method" = POST ]; then
                 out=$(curl -sS -o /dev/null --max-time 20 -A "$UA" -X POST -H 'content-type: application/json' \
                   -H 'accept: application/json, text/event-stream' \
-                  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' -w '%{http_code} %{time_total}' "$BASE$path" 2>/dev/null || echo '000 20')
+                  -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' -w '%{http_code} %{time_total}' "$BASE$path" 2>/dev/null) || true
               else
-                out=$(curl -sS -o /dev/null --max-time 20 -A "$UA" -w '%{http_code} %{time_total}' "$BASE$path" 2>/dev/null || echo '000 20')
+                out=$(curl -sS -o /dev/null --max-time 20 -A "$UA" -w '%{http_code} %{time_total}' "$BASE$path" 2>/dev/null) || true
               fi
-              codes+=("${out% *}"); times+=("${out#* }")
+              # A timed-out request still prints its -w line ("000 20.01"); never append a second one to it
+              # (full audit 2026-10-24, OPS-7: "000 20.011 20" failed the `= 000` test and the probe passed it).
+              [ -n "$out" ] || out='000 20'
+              codes+=("${out%% *}"); times+=("${out##* }")
             done
             median=$(printf '%s\n' "${times[@]}" | sort -n | sed -n 2p)
             echo "| $method $path | ${codes[*]} | $median | $limit |" >> "$GITHUB_STEP_SUMMARY"
             for c in "${codes[@]}"; do
+              case "$c" in ''|*[!0-9]*) c=000 ;; esac
               if [ "$c" = 000 ] || [ "$c" -ge 500 ]; then failures+=("$method $path answered ${codes[*]}"); break; fi
             done
             if awk -v m="$median" -v l="$limit" 'BEGIN { exit !(m > l) }'; then

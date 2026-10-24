@@ -1,4 +1,5 @@
 import { cn } from './cn';
+import { shortenAddress } from './format';
 
 /**
  * Token distribution as a bubble map (2026-09-14, third cut).
@@ -52,7 +53,6 @@ export type BubbleNode = {
 
 export type BubbleEdge = { from: string; to: string; transfers: number };
 
-const short = (address: string) => `${address.slice(0, 6)}…${address.slice(-4)}`;
 // A real balance never prints as 0.00% (2026-09-25): under a hundredth of a per cent says so.
 const pct = (value: number) =>
   value >= 10 ? value.toFixed(0) : value >= 1 ? value.toFixed(1) : value > 0 && value < 0.01 ? '<0.01' : value.toFixed(2);
@@ -147,7 +147,7 @@ export function BubbleMap({
           .slice(0, 10)
           .map(
             (node) =>
-              `${node.label ?? short(node.address)} ${pct(node.sharePct)} per cent${node.cluster !== undefined ? `, cluster ${node.cluster}` : ''}`,
+              `${node.label ?? shortenAddress(node.address)} ${pct(node.sharePct)} per cent${node.cluster !== undefined ? `, cluster ${node.cluster}` : ''}`,
           )
           .join('; ')}`}
       >
@@ -179,7 +179,7 @@ export function BubbleMap({
                 strokeWidth={0.6 + strength * 1.4}
                 strokeOpacity={inCluster ? 0.35 + strength * 0.4 : 0.25 + strength * 0.25}
               >
-                <title>{`${short(edge.from.address)} sent to ${short(edge.to.address)}: ${edge.transfers.toLocaleString('en-US')} transfer${edge.transfers === 1 ? '' : 's'} in the last few days`}</title>
+                <title>{`${shortenAddress(edge.from.address)} sent to ${shortenAddress(edge.to.address)}: ${edge.transfers.toLocaleString('en-US')} transfer${edge.transfers === 1 ? '' : 's'} in the last few days`}</title>
               </line>
             );
           })}
@@ -199,7 +199,7 @@ export function BubbleMap({
               vectorEffect="non-scaling-stroke"
               className={href ? 'cursor-pointer' : undefined}
             >
-              <title>{`#${node.rank} · ${node.label ?? short(node.address)} · ${pct(node.sharePct)}% of supply${node.cluster !== undefined ? ` · cluster ${node.cluster}` : ''}`}</title>
+              <title>{`#${node.rank} · ${node.label ?? shortenAddress(node.address)} · ${pct(node.sharePct)}% of supply${node.cluster !== undefined ? ` · cluster ${node.cluster}` : ''}`}</title>
             </circle>
           );
           /*
@@ -339,11 +339,11 @@ export function BubbleList({
                   rel="noreferrer"
                   className="-my-1.5 truncate py-1.5 font-mono text-t-meta underline decoration-hey-border-strong underline-offset-4 hover:decoration-hey-ink"
                 >
-                  {node.label ?? short(node.address)}
+                  {node.label ?? shortenAddress(node.address)}
                 </a>
               ) : (
                 <span className="truncate font-mono text-t-meta">
-                  {node.label ?? short(node.address)}
+                  {node.label ?? shortenAddress(node.address)}
                 </span>
               )}
               {node.cluster !== undefined ? (
