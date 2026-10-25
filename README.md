@@ -512,6 +512,15 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## Token Passport (2026-10-26)
+
+A token's page on HEY carries a passport of stamps from other Robinhood Chain protocols — a HoodLock lock, the
+launchpad that minted the token and its graduation, the project's Uniswap v4 hooks, its RHTools chart — each a fact HEY
+already reads, crediting the protocol by name with a link. It sits after the builder story and the timeline, changes no
+status, score, badge or order, and nobody pays for a stamp. An empty passport says so in one sentence about what HEY
+reads, never "none" about the token. [heyresearch.xyz/passport](https://heyresearch.xyz/passport) explains the stamps
+and how a protocol on Robinhood Chain joins.
+
 ## Proof of Ship (2026-10-24)
 
 HEY can sign what it counts. `GET /api/v1/proof-of-ship/attestation?slug=&builder=&since=&until=&escrow=` answers how
