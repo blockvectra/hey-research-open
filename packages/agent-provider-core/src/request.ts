@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { ZOD_MESSAGES } from '@hey/config/zod-messages';
+
 import { AGENT_CAPABILITIES, type AgentCapability } from './capabilities';
 import { AGENT_LIMITS } from './schema';
 import { foldText } from './text';
@@ -34,9 +36,9 @@ export const agentRequestSchema = z.discriminatedUnion('capability', [
     .object({
       capability: z.literal('what_changed'),
       project: slug.optional(),
-      days: z.number().int().min(1).max(30).default(7),
+      days: z.number().int().min(1).max(30).prefault(7),
       types: z.array(changeType).min(1).max(20).optional(),
-      limit: z.number().int().min(1).max(AGENT_LIMITS.changes).default(AGENT_LIMITS.changesDefault),
+      limit: z.number().int().min(1).max(AGENT_LIMITS.changes).prefault(AGENT_LIMITS.changesDefault),
       /** `only` (2026-09-30, additive): events that count toward activity status, by the ledger's own `countsAsBuilding` flag. */
       building: z.literal('only').optional(),
       chainId,
@@ -75,7 +77,7 @@ export function parseAgentRequest(raw: unknown): ParsedAgentRequest {
   if (typeof capability !== 'string' || !(AGENT_CAPABILITIES as readonly string[]).includes(capability)) {
     return { ok: false, code: 'unknown_capability', message: `capability must be one of: ${AGENT_CAPABILITIES.join(', ')}.` };
   }
-  const parsed = agentRequestSchema.safeParse(raw);
+  const parsed = agentRequestSchema.safeParse(raw, ZOD_MESSAGES);
   if (parsed.success) {
     const request = parsed.data;
     if ((SUBJECT_CAPABILITIES as readonly string[]).includes(request.capability)) {

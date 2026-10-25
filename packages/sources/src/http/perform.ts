@@ -1,5 +1,7 @@
 import type { ZodType } from 'zod';
 
+import { zod3Issues, ZOD_MESSAGES } from '@hey/config/zod-messages';
+
 import { errorResult, resolveNow, type SourceContext, type SourceResult } from '../adapter';
 import { SourceError } from '../errors';
 import { type HttpRequest, type HttpResponse } from './client';
@@ -59,9 +61,9 @@ export async function performSourceFetch<TRaw, TOut>(
       });
     }
 
-    const validated = options.schema.safeParse(parsed);
+    const validated = options.schema.safeParse(parsed, ZOD_MESSAGES);
     if (!validated.success) {
-      const detail = validated.error.issues
+      const detail = zod3Issues(validated.error.issues)
         .slice(0, 3)
         .map((issue) => `${issue.path.join('.') || 'root'}: ${issue.message}`)
         .join('; ');

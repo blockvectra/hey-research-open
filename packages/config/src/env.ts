@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { ROBINHOOD_CHAIN_ID } from './constants';
+import { isUrl, URL_MESSAGE, zod3Issues, ZOD_MESSAGES } from './zod-messages';
 
 const DEFAULT_APP_URL = 'http://localhost:3000';
 const DEFAULT_DEXSCREENER_BASE_URL = 'https://api.dexscreener.com';
@@ -32,10 +33,13 @@ const optionalString = z
   .optional()
   .transform((value) => (value === '' ? undefined : value));
 
-const optionalUrl = optionalString.pipe(z.string().url().optional());
+/** An unset variable read as null, the value a nullable setting defaults to. */
+const nullWhenAbsent = (value: string | undefined): string | null => value ?? null;
+
+const optionalUrl = optionalString.pipe(z.string().refine(isUrl, URL_MESSAGE).optional());
 
 const requiredUrlWithDefault = (fallback: string) =>
-  optionalString.transform((value) => value ?? fallback).pipe(z.string().url());
+  optionalString.transform((value) => value ?? fallback).pipe(z.string().refine(isUrl, URL_MESSAGE));
 
 const numberWithDefault = (fallback: number) =>
   optionalString
@@ -109,7 +113,7 @@ export const MIN_SESSION_SECRET_LENGTH = 32;
 export const serverEnvSchema = z
   .object({
     nodeEnv: optionalString.pipe(
-      z.enum(['development', 'test', 'production']).default('development'),
+      z.enum(['development', 'test', 'production']).prefault('development'),
     ),
     appUrl: requiredUrlWithDefault(DEFAULT_APP_URL),
     /**
@@ -139,8 +143,10 @@ export const serverEnvSchema = z
     databaseUrl: optionalString.pipe(
       z
         .string({
-          required_error:
-            'DATABASE_URL is required. Copy .env.example to .env and run `pnpm db:up`.',
+          error: (issue) =>
+            issue.input === undefined
+              ? 'DATABASE_URL is required. Copy .env.example to .env and run `pnpm db:up`.'
+              : undefined,
         })
         .min(1),
     ),
@@ -332,7 +338,7 @@ export const serverEnvSchema = z
         if (value === undefined) return undefined;
         const pem = normaliseGithubAppPrivateKey(value);
         if (!pem) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'GITHUB_APP_PRIVATE_KEY must be the app’s PEM private key, or that PEM base64-encoded on one line.' });
+          ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'GITHUB_APP_PRIVATE_KEY must be the app’s PEM private key, or that PEM base64-encoded on one line.', continue: true });
           return z.NEVER;
         }
         return pem;
@@ -358,14 +364,14 @@ export const serverEnvSchema = z
       provider: optionalString.pipe(
         z
           .enum(AI_PROVIDERS, {
-            errorMap: () => ({ message: `AI_PROVIDER must be one of ${AI_PROVIDERS.join(', ')}. Only the Anthropic adapter is wired; any other provider would silently do nothing (docs/AI_RESEARCH.md).` }),
+            error: () => ({ message: `AI_PROVIDER must be one of ${AI_PROVIDERS.join(', ')}. Only the Anthropic adapter is wired; any other provider would silently do nothing (docs/AI_RESEARCH.md).` }),
           })
-          .default('disabled'),
+          .prefault('disabled'),
       ),
       apiKey: optionalString,
       dailyBudgetUsd: numberWithDefault(0).pipe(z.number().nonnegative()),
       /** The model Ask HEY composes with when AI is on (2026-09-24). */
-      model: optionalString.pipe(z.string().default('claude-sonnet-5')),
+      model: optionalString.pipe(z.string().prefault('claude-sonnet-5')),
       /**
        * Per-model prices in USD per million tokens, overriding or extending the
        * built-in table (`ai-research/pricing.ts`), as JSON:
@@ -377,7 +383,7 @@ export const serverEnvSchema = z
           try {
             return JSON.parse(value) as unknown;
           } catch {
-            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'AI_MODEL_PRICES must be JSON: {"model":{"inputPerMTok":n,"outputPerMTok":n}}.' });
+            ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'AI_MODEL_PRICES must be JSON: {"model":{"inputPerMTok":n,"outputPerMTok":n}}.', continue: true });
             return z.NEVER;
           }
         })
@@ -400,19 +406,19 @@ export const serverEnvSchema = z
     hey: z
       .object({
         chainId: numberWithDefault(ROBINHOOD_CHAIN_ID).pipe(z.number().int().positive()),
-        status: optionalString.pipe(z.enum(['prelaunch', 'live']).default('prelaunch')),
-        tokenAddress: optionalString.pipe(evmAddress.nullable().default(null)),
-        treasuryAddress: optionalString.pipe(evmAddress.nullable().default(null)),
+        status: optionalString.pipe(z.enum(['prelaunch', 'live']).prefault('prelaunch')),
+        tokenAddress: optionalString.transform(nullWhenAbsent).pipe(evmAddress.nullable()),
+        treasuryAddress: optionalString.transform(nullWhenAbsent).pipe(evmAddress.nullable()),
         // V2 since 2026-09-09 (founder): bonding curve into a locked Uniswap v4 position.
-        ponsVersion: optionalString.pipe(z.enum(['v1', 'v2']).default('v2')),
-        ponsFactory: optionalString.pipe(evmAddress.nullable().default(null)),
+        ponsVersion: optionalString.pipe(z.enum(['v1', 'v2']).prefault('v2')),
+        ponsFactory: optionalString.transform(nullWhenAbsent).pipe(evmAddress.nullable()),
         /**
          * The creator tax $HEY will launch with, in basis points (Pons V2 allows
          * 0 to 1000). Null until the founder decides (2026-09-09): the token page
          * says so, and verification records the on-chain value without enforcing one.
          */
-        creatorTaxBps: optionalString.pipe(
-          z.coerce.number().int().min(0).max(1000).nullable().default(null),
+        creatorTaxBps: optionalString.transform(nullWhenAbsent).pipe(
+          z.coerce.number<string | null>().int().min(0).max(1000).nullable(),
         ),
         ponsLaunchConfigId: optionalString
           .transform((value) => (value === undefined ? null : Number(value)))
@@ -494,7 +500,7 @@ export const serverEnvSchema = z
         bondsEnabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
         /** Blocks a receipt must be buried under before a payment counts (M13-B). */
         paymentConfirmations: optionalString.pipe(
-          z.coerce.number().int().min(0).max(10_000).default(30),
+          z.coerce.number<string | undefined>().int().min(0).max(10_000).prefault('30'),
         ),
         /**
          * Reserved, refusal-only (2026-10-24 full audit, frontend-17): Scout staking and evidence challenges are
@@ -1146,10 +1152,10 @@ export type ParsedServerEnv =
 
 /** Parse without throwing. Used by health endpoints and diagnostics. */
 export function safeParseServerEnv(raw: RawEnv = process.env): ParsedServerEnv {
-  const result = serverEnvSchema.safeParse(shapeEnv(raw));
+  const result = serverEnvSchema.safeParse(shapeEnv(raw), ZOD_MESSAGES);
   if (result.success) return { ok: true, env: result.data };
 
-  const named = result.error.issues.map((issue) => {
+  const named = zod3Issues(result.error.issues).map((issue) => {
     const path = issue.path.join('.');
     return { variable: ENV_KEY_BY_PATH[path] ?? (path || 'env'), message: issue.message };
   });

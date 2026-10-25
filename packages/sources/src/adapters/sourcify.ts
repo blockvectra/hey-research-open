@@ -212,7 +212,7 @@ export function createSourcifyAdapter(): SourceAdapter<SourcifyInput, SourcifyVe
  * anything specific.
  */
 const listSchema = z.object({
-  results: z.array(contractSchema).default([]),
+  results: z.array(contractSchema).prefault([]),
 });
 
 export type SourcifyListInput = {

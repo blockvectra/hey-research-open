@@ -441,7 +441,7 @@ export const openApiDocumentSchema = z
     swagger: z.string().max(20).optional(),
     info: z.object({ title: z.unknown().optional(), version: z.unknown().optional() }).passthrough().optional(),
     paths: z.record(z.string(), z.unknown()).optional(),
-    servers: z.array(z.object({ url: z.unknown() }).passthrough()).optional(),
+    servers: z.array(z.object({ url: z.unknown().optional() }).passthrough()).optional(),
     host: z.unknown().optional(),
     basePath: z.unknown().optional(),
   })

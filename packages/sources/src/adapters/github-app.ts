@@ -2,6 +2,8 @@ import { createSign } from 'node:crypto';
 
 import { z } from 'zod';
 
+import { isUrl, URL_MESSAGE } from '@hey/config/zod-messages';
+
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 
@@ -80,7 +82,7 @@ const conversionSchema = z.object({
   slug: z.string().regex(/^[a-z0-9][a-z0-9-]{0,99}$/),
   pem: z.string().min(100).max(10_000),
   webhook_secret: z.string().min(20).max(512),
-  html_url: z.string().url(),
+  html_url: z.string().refine(isUrl, URL_MESSAGE),
   owner: z.object({ login: z.string() }).nullish(),
 });
 const tokenSchema = z.object({
@@ -105,7 +107,7 @@ const readmeSchema = z.object({
 });
 const pullsSchema = z.array(z.object({ number: z.number().int(), html_url: z.string(), state: z.string(), head: z.object({ ref: z.string() }) }));
 const putSchema = z.object({ commit: z.object({ sha: z.string().regex(SHA) }) });
-const pullSchema = z.object({ number: z.number().int(), html_url: z.string().url(), state: z.string() });
+const pullSchema = z.object({ number: z.number().int(), html_url: z.string().refine(isUrl, URL_MESSAGE), state: z.string() });
 
 export type GithubAppResult =
   /** The client id and client secret GitHub also returns are dropped here: HEY never uses user-to-server OAuth for the app. */

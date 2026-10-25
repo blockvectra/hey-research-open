@@ -20,7 +20,7 @@
     "@hey/agent-provider-core": "workspace:*",
     "@hey-research-lab/sdk": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.32.0",
-    "zod": "^3.24.1"
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

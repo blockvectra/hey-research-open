@@ -196,7 +196,7 @@ export function createFeedAdapter(): SourceAdapter<FeedInput, FeedResult> {
            * other builder source read DORMANT. It is now an invalid response.
            */
           schema: z
-            .object({ body: z.string(), document: z.record(z.unknown()), page: z.boolean() })
+            .object({ body: z.string(), document: z.record(z.string(), z.unknown()), page: z.boolean() })
             .refine((value) => value.page || value.document.rss !== undefined || value.document.feed !== undefined, { message: 'not an RSS or Atom document' }),
           parse: (body) =>
             input.changelogPage === true && isHtmlPage(body)

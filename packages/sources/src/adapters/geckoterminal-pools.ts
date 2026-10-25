@@ -31,7 +31,7 @@ const poolSchema = z.object({
       fdv_usd: z.union([z.string(), z.number()]).nullish(),
       reserve_in_usd: z.union([z.string(), z.number()]).nullish(),
     })
-    .default({}),
+    .prefault({}),
   relationships: z
     .object({
       base_token: z.object({ data: z.object({ id: z.string() }).nullish() }).nullish(),

@@ -1,6 +1,11 @@
 import { McpServer, ResourceTemplate } from '@modelcontextprotocol/sdk/server/mcp.js';
 import type { CallToolResult, ListToolsResult, ReadResourceResult } from '@modelcontextprotocol/sdk/types.js';
-import { z } from 'zod';
+/*
+ * zod 3's API, from inside the zod 4 package (2026-10-25). The MCP SDK turns a zod 3 schema into JSON Schema with
+ * zod-to-json-schema and a zod 4 one with zod's own converter, and the two write different documents; the tool list
+ * clients read (and its byte budget) stays the one zod 3 wrote. Every other HEY schema is zod 4.
+ */
+import { z } from 'zod/v3';
 
 import {
   DEFAULT_BASE_URL,

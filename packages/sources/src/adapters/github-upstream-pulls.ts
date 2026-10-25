@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { isUrl, URL_MESSAGE } from '@hey/config/zod-messages';
+
 import { type SourceAdapter, type SourceContext, type SourceResult } from '../adapter';
 import { performSourceFetch } from '../http/perform';
 import { GITHUB_DEFAULT_BASE_URL } from './github';
@@ -32,11 +34,11 @@ export const githubUpstreamPullsSchema = z.object({
     z.object({
       number: z.number().int().positive(),
       title: z.string(),
-      html_url: z.string().url(),
+      html_url: z.string().refine(isUrl, URL_MESSAGE),
       state: z.enum(['open', 'closed']),
       created_at: z.string(),
       closed_at: z.string().nullish(),
-      repository_url: z.string().url(),
+      repository_url: z.string().refine(isUrl, URL_MESSAGE),
       /** Read to drop anything another account opened; never kept. */
       user: z.object({ login: z.string().nullish() }).nullish(),
       /** Present on a pull request only; an issue has none and is dropped. */

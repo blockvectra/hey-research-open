@@ -1,3 +1,5 @@
+import { zod3Issues, ZOD_MESSAGES } from '@hey/config/zod-messages';
+
 import { AGENT_CAPABILITIES } from '../capabilities';
 import { ageBucket } from '../freshness';
 import { AGENT_LIMITS, AGENT_SCHEMA, agentIntelligenceResponseSchema, type AgentIntelligenceResponse } from '../schema';
@@ -348,9 +350,9 @@ export function evaluate(question: BenchQuestion, observation: BenchObservation)
   /* Schema, when the door carries the envelope as JSON. */
   let schema: BenchQuestionResult['schema'] = 'not_applicable';
   if (rawEnvelope) {
-    const parsedSchema = agentIntelligenceResponseSchema.safeParse(rawEnvelope);
+    const parsedSchema = agentIntelligenceResponseSchema.safeParse(rawEnvelope, ZOD_MESSAGES);
     schema = parsedSchema.success ? 'valid' : 'invalid';
-    check(checks, 'schema', 'AgentIntelligenceResponse v1', parsedSchema.success, parsedSchema.success ? undefined : parsedSchema.error.issues.slice(0, 3).map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; '));
+    check(checks, 'schema', 'AgentIntelligenceResponse v1', parsedSchema.success, parsedSchema.success ? undefined : zod3Issues(parsedSchema.error.issues).slice(0, 3).map((issue) => `${issue.path.join('.')}: ${issue.message}`).join('; '));
   }
 
   const subject = rawEnvelope ?? observation.body;
