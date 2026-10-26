@@ -4,6 +4,11 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-10-26
+
+- **Faster search (2026-10-26).** Search and Explore sorted by newest went from 2.4 s to about 0.1 s, and a search for a common word shows the matching projects at once, with the launch records that share the word loading just below them. Nothing a reader sees changed except the time.
+- **Token Passport (2026-10-26).** A token's page shows stamps from the Robinhood Chain protocols whose facts HEY already reads (a HoodLock lock, the launchpad that minted it, its Uniswap v4 hooks, the RHTools chart), each naming the protocol with a link. A stamp is context: nobody pays for one, it endorses nothing and it changes nothing else on HEY.
+
 ## 2026-10-24
 
 - **Proof of Ship (2026-10-24).** A new partner endpoint, `GET /api/v1/proof-of-ship/attestation`, signs (EIP-712) how many of a published project's ships HEY counts as building between two dates — only ships HEY first recorded in that window — with each ship's evidence id, for the open-source `ShipEscrow` contract that pays a builder only when the project shipped after the bounty opened. HEY signs only for a payout address its evidence already ties to the project. It restates the ships HEY already counts and changes nothing else on HEY.

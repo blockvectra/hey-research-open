@@ -512,6 +512,12 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## Faster search (2026-10-26)
+
+Sorting a search or the Explore list by newest no longer reads the whole catalogue backwards: it went from 2.4 s to
+about 0.1 s. A search for a common word now shows the matching projects at once and loads the launch records that
+share the word just below them, instead of waiting for both. Nothing a reader sees changed except the time.
+
 ## Token Passport (2026-10-26)
 
 A token's page on HEY carries a passport of stamps from other Robinhood Chain protocols — a HoodLock lock, the
