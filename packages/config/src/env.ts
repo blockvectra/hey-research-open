@@ -1237,14 +1237,6 @@ export function marketIntegrityExitLabelsVisible(env: ServerEnv, surface: 'admin
   return surface === 'admin' || (env.hey.marketIntegrityExitLabels && marketIntegrityVisible(env, surface));
 }
 
-/**
- * Proof of Ship attestations (2026-10-24): on only with the attester key set. The escrow allowlist may be empty;
- * then every escrow is refused as not configured.
- */
-export function isProofOfShipConfigured(env: ServerEnv): boolean {
-  return Boolean(env.proofOfShip.attesterKey);
-}
-
 /** AI must be opt-in; every caller checks this before doing enrichment work. */
 /**
  * The twitterapi.io reads of official X accounts (2026-10-18): on only with the flag set to exactly "true"
