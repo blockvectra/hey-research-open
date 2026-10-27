@@ -106,11 +106,50 @@ describe('DefiLlama adapter', () => {
     expect(result.errorCode).toBe('INVALID_RESPONSE');
   });
 
-  it('refuses a body that does not say it is JSON', async () => {
-    const stub = stubFetch({ status: 200, body: readFixture('defillama-protocols.json'), headers: { 'content-type': 'text/html' } });
+  it('refuses a body that says it is neither JSON nor the registry\'s text/html', async () => {
+    const stub = stubFetch({ status: 200, body: readFixture('defillama-protocols.json'), headers: { 'content-type': 'text/plain' } });
     const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
     expect(result.status).toBe('error');
     expect(result.errorCode).toBe('UNSUPPORTED_CONTENT_TYPE');
+  });
+
+  /*
+   * 2026-10-27 audit BD-1: since 2026-10-24 the live registry answers its JSON
+   * as `text/html; charset=utf-8`. The fixture is three live records of
+   * 27 Oct (one not on the chain), served with that header.
+   */
+  it('reads the registry\'s JSON served as text/html (live since 2026-10-24)', async () => {
+    const stub = stubFetch({
+      status: 200,
+      body: readFixture('defillama-protocols-text-html-2026-10-27.json'),
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    });
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('fresh');
+    expect(result.data?.map((p) => p.slug)).toEqual(['morpho-blue', 'deepstate']);
+    expect(result.data?.find((p) => p.slug === 'deepstate')?.chainTvlUsd).toBeCloseTo(25906.374204696735, 6);
+  });
+
+  it('fails an actual HTML page served as text/html, naming it, never as an empty registry', async () => {
+    const stub = stubFetch({
+      status: 200,
+      body: readFixture('defillama-protocols-html-page.html'),
+      headers: { 'content-type': 'text/html; charset=utf-8' },
+    });
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+
+    expect(result.status).toBe('error');
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
+    expect(result.errorMessage).toContain('an HTML page, not the registry JSON');
+    expect(result.data).toBeUndefined();
+  });
+
+  it('fails a JSON body served as text/html that is not the registry', async () => {
+    const stub = stubFetch({ status: 200, body: JSON.stringify({ message: 'rate limited' }), headers: { 'content-type': 'text/html' } });
+    const result = await adapter.fetch(input, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(result.status).toBe('error');
+    expect(result.errorCode).toBe('INVALID_RESPONSE');
   });
 });
 

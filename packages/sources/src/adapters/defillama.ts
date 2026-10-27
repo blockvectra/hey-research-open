@@ -29,6 +29,24 @@ const DEFILLAMA_DEFAULT_BASE_URL = 'https://api.llama.fi';
 /** The registry returns every protocol at once; ~10 MB, well past the default cap. */
 const PROTOCOLS_MAX_BYTES = 32 * 1024 * 1024;
 
+/**
+ * The registry's content types (2026-10-27 audit BD-1). Since 2026-10-24
+ * `/protocols` sends its JSON body as `text/html; charset=utf-8`, and the
+ * daily snapshot failed on the header for four days while the body was the
+ * registry as before. This one URL also takes `text/html`; the body must
+ * still parse as JSON and pass `protocolsSchema`, and an actual HTML page
+ * (an error or challenge page) fails as `INVALID_RESPONSE`, named as such.
+ * The `/overview/*` endpoints still say `application/json` and keep
+ * the strict list (`defillama-overview.ts`).
+ */
+export const DEFILLAMA_PROTOCOLS_CONTENT_TYPES = ['application/json', 'text/html'] as const;
+
+/** JSON.parse, refusing an HTML document by name rather than by a JSON syntax error. */
+export const parseProtocolsBody = (body: string): unknown => {
+  if (/^\s*</.test(body)) throw new Error('an HTML page, not the registry JSON');
+  return JSON.parse(body) as unknown;
+};
+
 const CACHE_TTL_SECONDS = 6 * 60 * 60;
 
 /*
@@ -213,10 +231,10 @@ export function createDefillamaAdapter(): SourceAdapter<DefillamaInput, Ecosyste
 
       return performSourceFetch(
         ctx,
-        { url: `${base}/protocols`, maxBytes: PROTOCOLS_MAX_BYTES, allowedContentTypes: ['application/json'] },
+        { url: `${base}/protocols`, maxBytes: PROTOCOLS_MAX_BYTES, allowedContentTypes: DEFILLAMA_PROTOCOLS_CONTENT_TYPES },
         {
           schema: protocolsSchema,
-          parse: (body) => JSON.parse(body) as unknown,
+          parse: parseProtocolsBody,
           cacheTtlSeconds: CACHE_TTL_SECONDS,
           normalize: (raw): EcosystemListing[] =>
             raw

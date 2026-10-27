@@ -4,6 +4,12 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-10-27
+
+- **Shorter passport stamps (2026-10-27).** A Token Passport stamp credits the protocol with its link and a short label, and no longer repeats a sentence the page already prints. The RHTools chart link is no longer a stamp, because HEY reads nothing from RHTools; it stays among the page's links, and a token with no lock, launch record or hook shows the empty passport sentence.
+- **DeFi figures read again (2026-10-27).** DefiLlama began serving its protocol registry as `text/html`; HEY accepts that answer when the body is still the registry JSON, so TVL and protocol economics update again after four days frozen.
+- **Faster reads (2026-10-27).** The search-key rebuild parses each X handle once (13–40 s to about 1.5 s) and skips when nothing it reads changed; token verification uses a partial index; the API's `/api/export/projects` keeps each filter's file for 90 seconds.
+
 ## 2026-10-26
 
 - **Faster search (2026-10-26).** Search and Explore sorted by newest went from 2.4 s to about 0.1 s, and a search for a common word shows the matching projects at once, with the launch records that share the word loading just below them. Nothing a reader sees changed except the time.

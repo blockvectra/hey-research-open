@@ -512,6 +512,14 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## Shorter passport stamps and a faster platform (2026-10-27)
+
+A Token Passport stamp now credits the protocol with its link and a short label ("Locked at HoodLock", the next date),
+and leaves the full sentence to the page, which already prints it. The RHTools chart link is no longer a stamp, since
+HEY reads nothing from RHTools; it stays among the page's links, so a token with no lock, launch record or hook shows
+the empty passport. DeFi TVL figures from DefiLlama are read again after DefiLlama began serving its registry as
+`text/html`, and several slow background reads are faster (a search-key rebuild from 13–40 s to about 1.5 s).
+
 ## Faster search (2026-10-26)
 
 Sorting a search or the Explore list by newest no longer reads the whole catalogue backwards: it went from 2.4 s to
