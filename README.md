@@ -512,6 +512,14 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## Plainer labels, fewer dead ends (2026-10-28)
+
+A market whose readings HEY cannot confirm now carries one label, "Readings not confirmed", on the card, in the API's
+display label and in the summary alike. Under the Radar and Still Building each have one definition used everywhere,
+and Still Building's names the valuation drawdown it measures. An official X account whose link is held no longer
+counts as "has X", sixteen natural URLs such as `/check` and `/faq` redirect to the page that answers them, and a
+project's share page fits a phone screen.
+
 ## Shorter passport stamps and a faster platform (2026-10-27)
 
 A Token Passport stamp now credits the protocol with its link and a short label ("Locked at HoodLock", the next date),

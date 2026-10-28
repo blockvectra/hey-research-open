@@ -7,6 +7,9 @@ describe('activity words: one table for the chip, the summary and the API (2026-
     expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastMeaningfulShipAt: new Date() })).toBe('no_readable_source');
     expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastMeaningfulShipAt: null })).toBe('no_builder_signal');
     expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: true })).toBeNull();
+    // A ship on record beside UNKNOWN is the scorer's no-coverage reading, whatever the flag says now (DATA-10).
+    expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: true, lastMeaningfulShipAt: new Date() })).toBe('no_readable_source');
+    expect(unknownActivityReason({ activityStatus: 'UNKNOWN', lastMeaningfulShipAt: new Date() })).toBeNull();
     // A caller that does not know keeps the plain word rather than guess.
     expect(unknownActivityReason({ activityStatus: 'UNKNOWN' })).toBeNull();
     expect(unknownActivityReason({ activityStatus: 'SHIPPING', hasBuilderSource: false })).toBeNull();

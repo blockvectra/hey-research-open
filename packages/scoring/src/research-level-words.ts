@@ -20,6 +20,18 @@ export const RESEARCH_LEVEL_WORDS: Readonly<Record<ResearchLevelWordsKey, { labe
   VERIFIED_BUILDER: { label: 'Verified Builder', help: 'HEY holds verified evidence of shipping.' },
 };
 
+/**
+ * Whether a surface draws the Verified Builder badge (2026-10-28 simplicity study, CON-5): only where both columns
+ * that hold it agree — the scorer's `research_level` and the catalogue's `catalog_status`. The header pill, the share
+ * card and the embeddable badge read the first; the Terminal, search and the Telegram card read the second. The two
+ * writers stay apart on purpose (the scorer may step down a day before the catalogue's daily gate; it never claims
+ * more), so this only reads: a badge is never drawn on one surface while another withholds it. Display only — the API's
+ * `catalogStatus`, `researchLevel` and `verified_builder` fields keep their meanings (machine rule 10).
+ */
+export function showsVerifiedBuilder(facts: { researchLevel: string | null | undefined; catalogStatus: string | null | undefined }): boolean {
+  return facts.researchLevel === 'VERIFIED_BUILDER' && facts.catalogStatus === 'VERIFIED_BUILDER';
+}
+
 /** The badge's word for a level; an unknown level reads as the lowest one, never as more research than HEY did. */
 export function researchLevelWords(level: string | null | undefined): { label: string; help: string } {
   return RESEARCH_LEVEL_WORDS[level as ResearchLevelWordsKey] ?? RESEARCH_LEVEL_WORDS.INDEXED;

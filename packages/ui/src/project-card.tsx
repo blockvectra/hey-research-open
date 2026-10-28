@@ -9,6 +9,7 @@ import {
   formatUsdCompact,
   formatVerification,
   oneLineDescription,
+  projectDisplayName,
   shipKindLabel,
   staleReadingAge,
   tickerLabel,
@@ -341,6 +342,8 @@ export function ProjectCard({
   const showKind = category.kindLabel !== undefined || (project.projectKind === 'OTHER' && !project.symbol && !narrative);
   const identityParts: ReactNode[] = [];
   const showValuation = cardShowsValuation(project, { marketLens });
+  // A name a reader can read (DATA-9), never a disowned token's ticker in its place (the 2026-10-24 card rule).
+  const name = projectDisplayName({ name: project.name, slug: project.slug, symbol: cardTokenNotTheProjects(project) ? undefined : project.symbol });
   if (project.symbol && !cardTokenNotTheProjects(project))
     identityParts.push(
       <span key="ticker" data-testid="ticker" className="font-medium text-hey-ink/80 [font-family:var(--font-mono)] text-[12px] tracking-[0.02em]">
@@ -395,7 +398,7 @@ export function ProjectCard({
       ) : project.officialX ? (
         <ExternalRef
           href={project.officialX.url}
-          label={`Open ${project.name} on X`}
+          label={`Open ${name} on X`}
           className="shrink-0"
           data-testid="official-x"
         >
@@ -432,7 +435,7 @@ export function ProjectCard({
       {/* IDENTITY — logo, name, ticker · narrative · kind */}
       <div className="flex items-start gap-3">
         <ProjectLogo
-          name={project.name}
+          name={name}
           slug={project.slug}
           logoUrl={project.logoUrl}
           size={44}
@@ -450,7 +453,7 @@ export function ProjectCard({
               href={`/project/${project.slug}`}
               className="line-clamp-2 [overflow-wrap:anywhere] after:absolute after:inset-0 after:rounded-card after:content-[''] focus-visible:outline-none focus-visible:after:ring-2 focus-visible:after:ring-hey-ink/30"
             >
-              {project.name}
+              {name}
             </a>
           </h3>
           {identityParts.length > 0 ? (
@@ -679,7 +682,7 @@ export function ProjectCard({
           <p className="flex min-w-0 items-baseline justify-between gap-3 text-[13.5px]" data-testid="no-token">
             <span className="shrink-0 text-hey-secondary" title="HEY tracks no token for this project.">No token tracked</span>
             {project.websiteUrl ? (
-              <ExternalRef href={project.websiteUrl} label={`Open ${project.name} website`} data-testid="website">
+              <ExternalRef href={project.websiteUrl} label={`Open ${name} website`} data-testid="website">
                 {hostOf(project.websiteUrl)}
               </ExternalRef>
             ) : null}

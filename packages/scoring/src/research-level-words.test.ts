@@ -6,6 +6,7 @@ import {
   RESEARCHED_NO_BUILDER_SOURCE_WORDS,
   researchLevelWords,
   researchLevelWordsFor,
+  showsVerifiedBuilder,
   VERIFIED_BUILDER_SCOPE_WORDS,
   verifiedBuilderScopeWords,
 } from './research-level-words';
@@ -52,5 +53,18 @@ describe('researchLevelWordsFor', () => {
     expect(researchLevelWordsFor('INDEXED', false).label).toBe('Indexed');
     expect(RESEARCHED_NO_BUILDER_SOURCE_WORDS.help).toMatch(/says nothing about building, the token/);
     expect(RESEARCHED_NO_BUILDER_SOURCE_WORDS.label).not.toMatch(/research|verified|checked/i);
+  });
+});
+
+// 2026-10-28 simplicity study, CON-5: one display predicate; the two writers stay apart.
+describe('showsVerifiedBuilder', () => {
+  it('draws the badge only where the scorer and the catalogue both hold it', () => {
+    expect(showsVerifiedBuilder({ researchLevel: 'VERIFIED_BUILDER', catalogStatus: 'VERIFIED_BUILDER' })).toBe(true);
+    // The scorer stepped down before the catalogue's daily gate: no surface claims more than the other.
+    expect(showsVerifiedBuilder({ researchLevel: 'RESEARCHED', catalogStatus: 'VERIFIED_BUILDER' })).toBe(false);
+    // The catalogue withdrew it (an integration record, a hidden candidate) while the level lagged.
+    expect(showsVerifiedBuilder({ researchLevel: 'VERIFIED_BUILDER', catalogStatus: 'QUALIFIED' })).toBe(false);
+    expect(showsVerifiedBuilder({ researchLevel: 'VERIFIED_BUILDER', catalogStatus: 'HIDDEN_CANDIDATE' })).toBe(false);
+    expect(showsVerifiedBuilder({ researchLevel: undefined, catalogStatus: null })).toBe(false);
   });
 });

@@ -572,6 +572,30 @@ export function tickerLabel(symbol: string): string {
   return bare ? `$${bare}` : symbol.trim();
 }
 
+/** A name a reader can read: at least two characters, one of them a letter or digit in any script (富贵 is one). */
+const readableName = (value: string | null | undefined): string | undefined => {
+  const trimmed = (value ?? '').trim();
+  return [...trimmed].length >= 2 && /[\p{L}\p{N}]/u.test(trimmed) ? trimmed : undefined;
+};
+
+/**
+ * The name a card and a page header print (2026-10-28 simplicity study, DATA-9): the stored name when a reader can read
+ * it, else the ticker, else the slug in words ("hookr-fun" → "Hookr Fun"). Seven published pages were named "-", "7",
+ * "i" or "%%%%", one of them a Verified Builder. Display only: the stored name is never changed.
+ */
+export function projectDisplayName(project: { name: string; symbol?: string | null | undefined; slug: string }): string {
+  const name = readableName(project.name);
+  if (name) return name;
+  const ticker = readableName((project.symbol ?? '').replace(/^\$+/, ''));
+  if (ticker) return ticker;
+  const words = project.slug
+    .split('-')
+    .filter(Boolean)
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ');
+  return words || project.name;
+}
+
 /** Separators a cut must not leave dangling before its ellipsis. */
 const TRAILING_SEPARATORS = /[\s,;:·—–(/-]+$/u;
 

@@ -108,7 +108,7 @@ describe('an unknown 24h volume is never an active market (2026-10-12, audit DI-
     expect(marketStatusWords('INSUFFICIENT_DATA', { hasCurrentReading: true, pricedDays: 30, reason: VOLUME_UNKNOWN_REASON })).toBe('Readings not confirmed');
     expect(TOKEN_MARKET_REASON_WORDS[VOLUME_UNKNOWN_REASON]).toMatch(/no reading from the last 36 hours/);
     expect(tokenMarketReasonSentence('INSUFFICIENT_DATA', VOLUME_UNKNOWN_REASON)).toBe(
-      'Market data insufficient: the pool holds liquidity, but no reading from the last 36 hours reports how much traded.',
+      'Readings not confirmed: the pool holds liquidity, but no reading from the last 36 hours reports how much traded.',
     );
   });
 });

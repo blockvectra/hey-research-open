@@ -259,11 +259,23 @@ const TOKEN_MARKET_WORDS: Record<string, string> = {
  * that is not current have their own words. An answer from a server that
  * predates the label falls back to the same rule over the reason code.
  */
+/** A copy of `@hey/scoring`'s `UNCONFIRMED_MARKET_REASONS` (2026-10-28, CON-2): readings that exist but settle no status. */
+const UNCONFIRMED_MARKET_REASONS: ReadonlySet<string> = new Set([
+  'liquidity_in_another_pool',
+  'pool_readings_disagree',
+  'launch_pool_volume_unknown',
+  'readings_implausible',
+  'removal_unconfirmed',
+  'volume_unknown',
+  'liquidity_not_current',
+]);
+
 export function tokenMarketWords(status: string, reason?: string | null, label?: string | null): string {
   if (label) return label.toLowerCase();
   if (reason === 'not_a_fungible_token') return 'not a fungible token';
   if (reason === 'reading_not_current') return 'no current reading';
   if (reason === 'liquidity_not_current') return 'readings not confirmed';
+  if (status === 'INSUFFICIENT_DATA' && UNCONFIRMED_MARKET_REASONS.has(reason ?? '')) return 'readings not confirmed';
   if (status === 'ACTIVE_MARKET' && (reason ?? '').startsWith('launch_pool')) return 'launch pool only';
   return TOKEN_MARKET_WORDS[status] ?? status.toLowerCase().replace(/_/g, ' ');
 }
@@ -324,8 +336,9 @@ export function projectLine(project: HeyProject, now?: Date): string {
     // Not beside a last ship (2026-09-25): a project with a recorded ship has had a builder signal.
     project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false && !project.lastShippedAt
       ? 'UNKNOWN activity: no builder signal yet (no repository, changelog or feed to read; trading is not building)'
-      : // The site's "Activity not measurable" (2026-09-28): a ship on record, nothing HEY can keep reading.
-        project.activityStatus === 'UNKNOWN' && project.hasBuilderSource === false
+      : // The site's "Activity not measurable" (2026-09-28): a ship on record, nothing HEY can keep reading — the scorer's
+        // reading whatever the source flag says now (2026-10-28, DATA-10).
+        project.activityStatus === 'UNKNOWN' && (project.hasBuilderSource === false || (project.hasBuilderSource === true && !!project.lastShippedAt))
         ? 'UNKNOWN activity: not measurable (a ship on record, but no repository, changelog or feed HEY can keep reading)'
         : project.researchLevel === 'INDEXED'
         ? 'UNKNOWN activity: not researched yet'

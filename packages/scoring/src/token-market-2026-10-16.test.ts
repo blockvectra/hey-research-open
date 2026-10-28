@@ -120,4 +120,15 @@ describe('a depth reading older than a week makes no market active (ruling #139)
     expect(marketIsLive('INSUFFICIENT_DATA', LIQUIDITY_NOT_CURRENT_REASON)).toBe(true);
     expect(discoveryGapMarketMeasurable('INSUFFICIENT_DATA', 'DEX', LIQUIDITY_NOT_CURRENT_REASON)).toBe(false);
   });
+
+  // 2026-10-28 simplicity study, CON-2: the label and the summary read one reason set.
+  it('labels every unconfirmed reason as the summary does', () => {
+    for (const reason of UNCONFIRMED_MARKET_REASONS) {
+      if (reason === 'liquidity_in_another_pool') continue; // a rescued market is ACTIVE_MARKET, never INSUFFICIENT_DATA
+      expect(tokenMarketStatusLabel('INSUFFICIENT_DATA', reason), reason).toBe(READINGS_NOT_CONFIRMED_LABEL);
+      expect(tokenMarketStatusLabel('INSUFFICIENT_DATA', reason), reason).toBe(marketStatusWords('INSUFFICIENT_DATA', { hasCurrentReading: true, reason }));
+    }
+    expect(tokenMarketStatusLabel('INSUFFICIENT_DATA', null)).toBe('Market data insufficient');
+    expect(tokenMarketStatusLabel('ACTIVE_MARKET', 'liquidity_in_another_pool')).toBe('Active market');
+  });
 });

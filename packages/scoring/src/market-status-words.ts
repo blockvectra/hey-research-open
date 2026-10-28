@@ -40,11 +40,20 @@ export const READING_NOT_CURRENT_LABEL = 'No current reading';
  */
 export const READINGS_NOT_CONFIRMED_LABEL = 'Readings not confirmed';
 
-/** The market label for a status and its reason: "Launch pool only" for an active launch pool, else the status's own label. */
+/**
+ * The market label for a status and its reason: "Launch pool only" for an
+ * active launch pool, "Readings not confirmed" for every unconfirmed reason
+ * (`UNCONFIRMED_MARKET_REASONS`, the set `marketStatusWords` reads), else the
+ * status's own label. 2026-10-28 simplicity study, CON-2: only
+ * `liquidity_not_current` was mapped here, so 157 tokens' chip and API label
+ * said "Market data insufficient" beside a summary saying "Readings not
+ * confirmed" (hbm-v27, token-market-2026-10-16).
+ */
 export function tokenMarketStatusLabel(status: TokenMarketStatusValue, reason?: string | null): string {
   if (reason === NOT_FUNGIBLE_REASON) return NOT_FUNGIBLE_LABEL;
   if (reason === READING_NOT_CURRENT_REASON) return READING_NOT_CURRENT_LABEL;
   if (reason === LIQUIDITY_NOT_CURRENT_REASON) return READINGS_NOT_CONFIRMED_LABEL;
+  if (status === 'INSUFFICIENT_DATA' && isUnconfirmedMarketReason(reason)) return READINGS_NOT_CONFIRMED_LABEL;
   if (status === 'ACTIVE_MARKET' && isLaunchPoolReason(reason)) return LAUNCH_POOL_ONLY_LABEL;
   return TOKEN_MARKET_LABELS[status] ?? TOKEN_MARKET_LABELS.INSUFFICIENT_DATA;
 }
@@ -78,6 +87,10 @@ export const UNCONFIRMED_MARKET_REASONS = [
 ] as const;
 export type UnconfirmedMarketReason = (typeof UNCONFIRMED_MARKET_REASONS)[number];
 
+/** Whether a status reason is one whose readings exist but do not settle a status. */
+export const isUnconfirmedMarketReason = (reason: string | null | undefined): reason is UnconfirmedMarketReason =>
+  !!reason && (UNCONFIRMED_MARKET_REASONS as readonly string[]).includes(reason);
+
 /** What HEY holds beside the status, so the words can name which part is missing. */
 export type MarketFacts = {
   /** A current reading exists (price, valuation or liquidity). */
@@ -106,8 +119,7 @@ export type MarketFacts = {
  */
 export function marketStatusWords(status: TokenMarketStatusValue, facts: MarketFacts): string {
   if (facts.reason === NOT_FUNGIBLE_REASON || facts.reason === READING_NOT_CURRENT_REASON) return tokenMarketStatusLabel(status, facts.reason);
-  if (status === 'INSUFFICIENT_DATA') {
-    if (facts.reason && (UNCONFIRMED_MARKET_REASONS as readonly string[]).includes(facts.reason)) return READINGS_NOT_CONFIRMED_LABEL;
+  if (status === 'INSUFFICIENT_DATA' && !isUnconfirmedMarketReason(facts.reason)) {
     if ((facts.pricedDays ?? 0) >= 2) return 'Not classified yet';
     if (facts.hasCurrentReading) return 'Daily history too short; current reading available';
   }

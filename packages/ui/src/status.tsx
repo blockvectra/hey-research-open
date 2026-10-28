@@ -22,11 +22,13 @@ import {
 } from '@hey/scoring/activity-words';
 import {
   isLaunchPoolReason,
+  isUnconfirmedMarketReason,
   LAUNCH_POOL_ONLY_LABEL,
   NOT_FUNGIBLE_LABEL,
   READING_NOT_CURRENT_LABEL,
   READINGS_NOT_CONFIRMED_LABEL,
   TOKEN_MARKET_LABELS,
+  tokenMarketStatusLabel,
   type UnconfirmedMarketReason,
 } from '@hey/scoring/market-status-words';
 import { RESEARCH_LEVEL_WORDS, researchLevelWordsFor } from '@hey/scoring/research-level-words';
@@ -178,11 +180,24 @@ export function activityHelp(status: ActivityStatusValue): string {
  *
  * Gold Soft on Gold Dark text — a HEY intelligence signal, not a market one.
  * The wording stays factual for the same reason the colour is not green: it
- * records that building continued through a decline in attention, and implies
+ * records that building continued through a drawdown HEY tracked, and implies
  * nothing about what happens next.
  */
-/** What the badge means, in one sentence: the badge's title, the glossary and the card's Term read it. */
-export const STILL_BUILDING_HELP = 'Market attention declined while meaningful building continued.';
+/**
+ * What the badge means, in one sentence: the badge's title, the glossary, the card's Term and /radar read it. It names
+ * the measure the rule uses, the token's valuation against the high HEY tracked (2026-10-28 simplicity study, CON-19:
+ * it said "Market attention declined").
+ */
+export const STILL_BUILDING_HELP = 'Kept shipping while its token’s valuation fell well below the high HEY tracked.';
+
+/**
+ * What Under the Radar means, in one sentence: the glossary, the homepage's list link and Explore's empty state and
+ * list note read it (2026-10-28 simplicity study, CON-7). The glossary said it "is not a claim that attention is low in
+ * itself" while hbm-v30 holds it only at TYPICAL attention or lower, and the other copies left out the attention,
+ * fresh-reading and $1,000-volume rules (hbm-v30, hbm-v31).
+ */
+export const UNDER_THE_RADAR_HELP =
+  'Verified building, with at least two meaningful ships in 30 days, while the token’s market attention is typical or lower and trails that building, relative to the other projects HEY measures (a Discovery Gap above zero). Measured only on an active market HEY read in the last day, with at least $1,000 of 24-hour volume; never a launch pool. Not a list of cheap tokens, and not a buy signal.';
 
 export function StillBuildingBadge({ className }: { className?: string }) {
   return (
@@ -360,16 +375,26 @@ const LIQUIDITY_NOT_CURRENT_PRESENTATION = {
   help: 'The token traded in the last day, but HEY’s newest reading of its pool’s liquidity is more than 7 days old. How deep the market is now is not known, so HEY does not call it an active market.',
   tone: 'muted' as MarketTone,
 };
-const marketPresentation = (status: TokenMarketStatusValue, reason?: string | null) =>
-  reason === 'not_a_fungible_token'
-    ? NOT_FUNGIBLE_PRESENTATION
-    : reason === 'reading_not_current'
-      ? READING_NOT_CURRENT_PRESENTATION
-      : reason === 'liquidity_not_current'
-        ? LIQUIDITY_NOT_CURRENT_PRESENTATION
-        : isLaunchPoolOnlyMarket(status, reason)
-          ? LAUNCH_POOL_ONLY_PRESENTATION
-          : (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA);
+/*
+ * The label is the scoring package's one rule, `tokenMarketStatusLabel` (2026-10-28 simplicity study, CON-2): this file
+ * kept a literal copy that named only `liquidity_not_current` "Readings not confirmed", so the chip said "Market data
+ * insufficient" beside a summary saying "Readings not confirmed". An unconfirmed reason's title is its own sentence.
+ */
+const marketPresentation = (status: TokenMarketStatusValue, reason?: string | null): { label: string; help: string; tone: MarketTone } => {
+  if (status === 'TOKEN_NOT_LAUNCHED') return TOKEN_MARKET_PRESENTATION.TOKEN_NOT_LAUNCHED;
+  const base =
+    reason === 'not_a_fungible_token'
+      ? NOT_FUNGIBLE_PRESENTATION
+      : reason === 'reading_not_current'
+        ? READING_NOT_CURRENT_PRESENTATION
+        : reason === 'liquidity_not_current'
+          ? LIQUIDITY_NOT_CURRENT_PRESENTATION
+          : isLaunchPoolOnlyMarket(status, reason)
+            ? LAUNCH_POOL_ONLY_PRESENTATION
+            : (TOKEN_MARKET_PRESENTATION[status] ?? TOKEN_MARKET_PRESENTATION.INSUFFICIENT_DATA);
+  const unconfirmed = status === 'INSUFFICIENT_DATA' && isUnconfirmedMarketReason(reason) ? TOKEN_MARKET_REASON_HELP[reason] : undefined;
+  return { ...base, label: tokenMarketStatusLabel(status, reason), help: unconfirmed ?? base.help };
+};
 
 export function TokenMarketChip({ status, reason, className }: { status: TokenMarketStatusValue; reason?: string | null; className?: string }) {
   const presentation = marketPresentation(status, reason);

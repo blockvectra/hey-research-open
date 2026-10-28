@@ -89,8 +89,15 @@ export function unknownActivityReason(project: {
   heldBuilderSource?: boolean | null | undefined;
   lastMeaningfulShipAt?: Date | string | null | undefined;
 }): UnknownActivityReason | null {
-  if (project.activityStatus !== 'UNKNOWN' || project.hasBuilderSource !== false) return null;
+  if (project.activityStatus !== 'UNKNOWN' || project.hasBuilderSource === undefined || project.hasBuilderSource === null) return null;
+  /*
+   * A ship on record beside UNKNOWN is the scorer's "not enough source coverage" whatever the source flag reads now
+   * (2026-10-28 simplicity study, DATA-10): the scorer files a project with a ship as UNKNOWN only when it found no
+   * source it could keep reading (`deriveActivityStatus`'s `hasSourceCoverage`). A source read since, or one another
+   * page holds, made 38 pages print a bare "Activity unknown" beside their last ship date; the next score decides.
+   */
   if (project.lastMeaningfulShipAt) return 'no_readable_source';
+  if (project.hasBuilderSource !== false) return null;
   return project.heldBuilderSource === true ? 'held_as_context' : 'no_builder_signal';
 }
 

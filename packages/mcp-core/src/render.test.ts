@@ -151,6 +151,8 @@ describe('find_projects', () => {
     expect(projectLine(project({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastShippedAt: '2026-08-05T00:00:00Z' }), NOW)).not.toContain('no builder signal yet');
     // The site's "Activity not measurable" (2026-09-28): a ship on record, nothing HEY can keep reading.
     expect(projectLine(project({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastShippedAt: '2026-08-05T00:00:00Z' }), NOW)).toContain('UNKNOWN activity: not measurable');
+    // Whatever the source flag reads now (2026-10-28, DATA-10): UNKNOWN beside a ship is the scorer's no-coverage reading.
+    expect(projectLine(project({ activityStatus: 'UNKNOWN', hasBuilderSource: true, lastShippedAt: '2026-08-05T00:00:00Z' }), NOW)).toContain('UNKNOWN activity: not measurable');
   });
 
   it('names a launch pool’s own supply for what it is, and prints no market figure it does not hold', () => {
@@ -704,6 +706,11 @@ describe('get_token_market', () => {
     expect(tokenMarketWords('ACTIVE_MARKET', 'reading_not_current')).toBe('no current reading');
     // A traded market on a depth reading over a week old (2026-10-16, ruling #139).
     expect(tokenMarketWords('INSUFFICIENT_DATA', 'liquidity_not_current')).toBe('readings not confirmed');
+    // Every unconfirmed reason, as the site's label (2026-10-28, CON-2): never "market data insufficient".
+    for (const reason of ['volume_unknown', 'removal_unconfirmed', 'launch_pool_volume_unknown', 'readings_implausible', 'pool_readings_disagree']) {
+      expect(tokenMarketWords('INSUFFICIENT_DATA', reason), reason).toBe('readings not confirmed');
+    }
+    expect(tokenMarketWords('INSUFFICIENT_DATA', null)).toBe('market data insufficient');
     expect(tokenMarketWords('ACTIVE_MARKET', 'liquidity_and_volume')).toBe('active market');
     const row = projectLine({ ...fx.agentos, tokenMarket: { status: 'ACTIVE_MARKET', reason: 'launch_pool_trading', label: 'Launch pool only' } }, NOW);
     expect(row).toContain('market: launch pool only');

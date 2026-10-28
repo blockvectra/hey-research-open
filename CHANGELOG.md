@@ -4,6 +4,13 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-10-28
+
+- **One label per market reading (2026-10-28).** Every reason HEY cannot confirm a market's readings now reads "Readings not confirmed" on the chip, in the API's `tokenMarket.label` and in the summary alike; the field values are unchanged.
+- **Plainer help text (2026-10-28).** Under the Radar and Still Building each have one definition, used everywhere; Still Building's names the valuation drawdown it measures.
+- **"Has X" means a live link (2026-10-28).** An official X account whose link is held (a moderator's hold, a reassigned handle or another project's account) no longer counts toward card completeness or `has=x`.
+- **Fewer dead ends (2026-10-28).** Sixteen natural URLs such as `/check`, `/faq` and `/bot` redirect to the page that answers them, and `/this-week` and `/api/this-week` read one window.
+
 ## 2026-10-27
 
 - **Shorter passport stamps (2026-10-27).** A Token Passport stamp credits the protocol with its link and a short label, and no longer repeats a sentence the page already prints. The RHTools chart link is no longer a stamp, because HEY reads nothing from RHTools; it stays among the page's links, and a token with no lock, launch record or hook shows the empty passport sentence.
