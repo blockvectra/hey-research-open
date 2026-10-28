@@ -4,6 +4,10 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-10-29
+
+- **Stock Tokens (2026-10-29).** A new page, `/stock-tokens`, lists Robinhood's Stock Tokens by ticker with the published projects whose own repository names each in code, a corporate action Robinhood's feed announced (dated) and the trading sessions the feed lists. Context only; it changes no status, score or order.
+
 ## 2026-10-28
 
 - **One label per market reading (2026-10-28).** Every reason HEY cannot confirm a market's readings now reads "Readings not confirmed" on the chip, in the API's `tokenMarket.label` and in the summary alike; the field values are unchanged.

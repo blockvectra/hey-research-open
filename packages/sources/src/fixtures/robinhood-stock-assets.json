@@ -86,11 +86,7 @@
         },
         "extended": {
           "whole": "TRADING_STATUS_TRADABLE",
-          "fractional": "TRADING_STATUS_TRADABLE"
-        },
-        "overnight": {
-          "whole": "TRADING_STATUS_TRADABLE",
-          "fractional": "TRADING_STATUS_TRADABLE"
+          "fractional": "TRADING_STATUS_UNTRADABLE"
         }
       },
       "tokenDecimals": 18,

@@ -247,7 +247,7 @@ addresses its own launch tabs use.
 | Base URL | `https://api.robinhood.com/rhj` (https://docs.robinhood.com/chain/stock-token-apis/) |
 | Purpose | The issuer's own price for each tokenized equity on the chain |
 | Endpoints | `GET /assets` (asset id, `tokenSymbol`, `tokenName`, `deployments[].{contractAddress,chainId}`, `currentMultiplier`, `pendingMultiplier`, `status`, `logoUrl`); `GET /prices/{symbol}` (`bid`, `ask`, `currency`, `isTradingHalt`, `generatedAt`, `dailyTradingVolume`); `GET /corporate-actions` (not read) |
-| Fields used | assets: identity, deployment on 4663, `currentMultiplier`; prices: `bid`, `ask`, `currency`, `generatedAt` |
+| Fields used | assets: identity, deployment on 4663, `currentMultiplier`, `pendingMultiplier`, `status`, `tradingCapabilities` (`market` / `extended` / `overnight`, each `whole` / `fractional`; the docs show `TRADING_STATUS_TRADABLE`); prices: `bid`, `ask`, `currency`, `generatedAt` |
 | Price rule | `/prices` is the **raw underlying-equity** bid/ask, not multiplier-adjusted; per-token USD = `mid(bid, ask) × currentMultiplier` ("18-dp shares-per-token"). No supply is published, so **no market cap** is derived |
 | Auth | None |
 | Free | Yes |
@@ -259,6 +259,14 @@ addresses its own launch tabs use.
 Adapter: `packages/sources/src/adapters/robinhood-stock-tokens.ts`; job
 `REFRESH_MARKET_STOCK_TOKENS` hourly when enabled; CLI `pnpm data:refresh-stock-token-prices`
 (runs manually even while the flag is off; use `--dry-run` first). Source `robinhood-stock-api`.
+
+**Assets feed for `/stock-tokens` (2026-10-29, founder "kau bina 1,2,3"): implemented, ON.** `SYNC_STOCK_TOKEN_FEED`
+reads `GET /assets` every six hours — one request on the same `robinhood-stock-api` budget — and keeps, per Stock Token
+on 4663, the exact `currentMultiplier` and `pendingMultiplier`, `status` and `tradingCapabilities` with HEY's read time
+in `stock_token_feed_readings` (`packages/domain/src/stock-tokens/feed.ts`). It is not a price and is not gated by
+`HEY_STOCK_TOKEN_PRICES_ENABLED`; `/prices` stays off. A pending multiplier that differs from the current one is shown
+as a dated corporate action notice linking https://docs.robinhood.com/rhj/corporate-actions; `/corporate-actions` itself
+is still not read. Context only: never a project's token, usage, valuation or market, never a ranking input.
 ### Launch factories added 2026-09-04 (on-chain)
 
 Every launchpad below is indexed the way Pons is: `eth_getLogs` on a factory

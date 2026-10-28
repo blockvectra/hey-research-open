@@ -512,6 +512,16 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## Stock Tokens (2026-10-29)
+
+[heyresearch.xyz/stock-tokens](https://heyresearch.xyz/stock-tokens) lists Robinhood's Stock Tokens on Robinhood Chain
+alphabetically by ticker and, under each, the published projects whose own official repository names its contract in
+code — never a test, a fixture or a list. Each entry also shows, from Robinhood's own Stock Token feed and with when HEY
+read it, a corporate action Robinhood announced (the shares-per-token multiplier changing from one figure to another)
+and the sessions the feed lists as tradable. A project page prints one line, "Names Stock Tokens in
+code: …". A name in code is a reference: it shows neither a dependency nor use. It is context only: a Stock Token is never a project's token, usage, valuation or market, HEY stores no
+on-chain interaction between a project and a Stock Token, and nothing here changes a status, score or order.
+
 ## Plainer labels, fewer dead ends (2026-10-28)
 
 A market whose readings HEY cannot confirm now carries one label, "Readings not confirmed", on the card, in the API's

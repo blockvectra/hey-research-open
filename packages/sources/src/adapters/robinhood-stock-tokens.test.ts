@@ -5,6 +5,7 @@ import { readFixture, stubFetch, testContext } from '../testing';
 import {
   createRobinhoodStockAssetsAdapter,
   createRobinhoodStockPriceAdapter,
+  stockTokenDecimal,
   stockTokenPriceUsd,
 } from './robinhood-stock-tokens';
 
@@ -38,6 +39,61 @@ describe('Robinhood stock token assets adapter', () => {
     expect(bySymbol['CRM']).not.toHaveProperty('pendingMultiplier');
     expect(bySymbol['SPLT']).toMatchObject({ multiplier: 2, pendingMultiplier: 4 });
     expect(bySymbol['SPLT']).not.toHaveProperty('logoUrl');
+  });
+
+  it('keeps the issuer’s exact multipliers and never defaults an unread one (2026-10-29)', async () => {
+    const stub = stubFetch(assets());
+    const result = await adapter.fetch({ chainId: 4663 }, testContext({ fetchImpl: stub.fetchImpl }));
+    const bySymbol = Object.fromEntries((result.data ?? []).map((asset) => [asset.symbol, asset]));
+    expect(bySymbol['AAPL']).toMatchObject({ multiplierText: '1.000566080061092436' });
+    expect(bySymbol['AAPL']).not.toHaveProperty('pendingMultiplierText');
+    expect(bySymbol['SPLT']).toMatchObject({ multiplierText: '2.000000000000000000', pendingMultiplierText: '4.000000000000000000' });
+
+    expect(stockTokenDecimal('')).toBeUndefined();
+    expect(stockTokenDecimal('0.000000000000000000')).toBeUndefined();
+    expect(stockTokenDecimal('-1')).toBeUndefined();
+    expect(stockTokenDecimal('1e3')).toBeUndefined();
+    expect(stockTokenDecimal(' 1.5 ')).toBe('1.5');
+    expect(stockTokenDecimal(2)).toBe('2');
+
+    const missing = stubFetch({ status: 200, body: JSON.stringify({ assets: [{ tokenSymbol: 'NOPE', deployments: [{ contractAddress: '0x7777777777777777777777777777777777777777', chainId: 4663 }] }] }) });
+    const bare = await adapter.fetch({ chainId: 4663 }, testContext({ fetchImpl: missing.fetchImpl }));
+    // The price path still assumes one share per token; the stored figure stays unread.
+    expect(bare.data?.[0]).toMatchObject({ symbol: 'NOPE', multiplier: 1 });
+    expect(bare.data?.[0]).not.toHaveProperty('multiplierText');
+    expect(bare.data?.[0]).not.toHaveProperty('tradingCapabilities');
+  });
+
+  it('reads tradingCapabilities by session and lot, leaving out what the feed does not state (2026-10-29)', async () => {
+    const stub = stubFetch(assets());
+    const result = await adapter.fetch({ chainId: 4663 }, testContext({ fetchImpl: stub.fetchImpl }));
+    const bySymbol = Object.fromEntries((result.data ?? []).map((asset) => [asset.symbol, asset]));
+    expect(bySymbol['CRM']?.tradingCapabilities).toEqual({
+      market: { whole: 'TRADING_STATUS_TRADABLE', fractional: 'TRADING_STATUS_TRADABLE' },
+      extended: { whole: 'TRADING_STATUS_TRADABLE', fractional: 'TRADING_STATUS_TRADABLE' },
+      overnight: { whole: 'TRADING_STATUS_TRADABLE', fractional: 'TRADING_STATUS_TRADABLE' },
+    });
+    // SPLT's feed entry states no overnight session at all, and extended fractional as something other than tradable.
+    expect(bySymbol['SPLT']?.tradingCapabilities).toEqual({
+      market: { whole: 'TRADING_STATUS_TRADABLE', fractional: 'TRADING_STATUS_TRADABLE' },
+      extended: { whole: 'TRADING_STATUS_TRADABLE', fractional: 'TRADING_STATUS_UNTRADABLE' },
+    });
+
+    const odd = stubFetch({
+      status: 200,
+      body: JSON.stringify({
+        assets: [
+          {
+            tokenSymbol: 'ODD',
+            deployments: [{ contractAddress: '0x8888888888888888888888888888888888888888', chainId: 4663 }],
+            tradingCapabilities: { market: { whole: 'trading_status_tradable', fractional: '<script>' }, overnight: null, weekend: { whole: 'TRADING_STATUS_TRADABLE' } },
+          },
+        ],
+      }),
+    });
+    const read = await adapter.fetch({ chainId: 4663 }, testContext({ fetchImpl: odd.fetchImpl }));
+    // Upper-cased; a malformed status and an unknown session are dropped, never guessed.
+    expect(read.data?.[0]?.tradingCapabilities).toEqual({ market: { whole: 'TRADING_STATUS_TRADABLE' } });
   });
 
   it('drops assets that are not deployed on the requested chain', async () => {
