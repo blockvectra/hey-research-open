@@ -116,8 +116,17 @@ describe('AI provider configuration (2026-09-27)', () => {
     expect(result.ok).toBe(false);
     if (!result.ok) {
       expect(result.variables).toContain('AI_PROVIDER');
-      expect(result.issues.join('\n')).toMatch(/Only the Anthropic adapter is wired/);
+      expect(result.issues.join('\n')).toMatch(/Only the Anthropic and Raeto adapters are wired/);
     }
+  });
+
+  it('accepts Raeto and defaults its model to raeto/auto, keeping claude-sonnet-5 for Anthropic (2026-10-29)', () => {
+    const raeto = parseServerEnv({ ...minimalEnv, AI_PROVIDER: 'raeto', AI_API_KEY: 'test-key', AI_DAILY_BUDGET_USD: '5' });
+    expect(raeto.ai.provider).toBe('raeto');
+    expect(raeto.ai.model).toBe('raeto/auto');
+    expect(isAiEnabled(raeto)).toBe(true);
+    expect(parseServerEnv({ ...minimalEnv, AI_PROVIDER: 'anthropic' }).ai.model).toBe('claude-sonnet-5');
+    expect(parseServerEnv({ ...minimalEnv, AI_PROVIDER: 'raeto', AI_MODEL: 'openai/gpt-4o-mini' }).ai.model).toBe('openai/gpt-4o-mini');
   });
 
   it('reads per-model prices as JSON and refuses a malformed table', () => {

@@ -47,7 +47,7 @@ const numberWithDefault = (fallback: number) =>
     .pipe(z.number().finite());
 
 /** The model providers HEY can call (2026-09-27): `disabled`, or the one wired adapter. */
-export const AI_PROVIDERS = ['disabled', 'anthropic'] as const;
+export const AI_PROVIDERS = ['disabled', 'anthropic', 'raeto'] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 /** Resend issues API keys prefixed `re_`; anything else is a paste of the wrong secret. */
@@ -356,22 +356,26 @@ export const serverEnvSchema = z
 
     ai: z.object({
       /*
-       * One wired provider (2026-09-27). `openai` used to be accepted here and
-       * then did nothing: only the Anthropic adapter exists, so a deployment
-       * that set it believed it had a model layer and had none. A provider HEY
-       * cannot call is now a configuration error, said at boot.
+       * Wired providers only (2026-09-27). `openai` used to be accepted here and
+       * then did nothing: no adapter existed, so a deployment that set it
+       * believed it had a model layer and had none. A provider HEY cannot call
+       * is a configuration error, said at boot. Raeto joined Anthropic on
+       * 2026-10-29 (OpenAI-compatible, api.raeto.cc).
        */
       provider: optionalString.pipe(
         z
           .enum(AI_PROVIDERS, {
-            error: () => ({ message: `AI_PROVIDER must be one of ${AI_PROVIDERS.join(', ')}. Only the Anthropic adapter is wired; any other provider would silently do nothing (docs/AI_RESEARCH.md).` }),
+            error: () => ({ message: `AI_PROVIDER must be one of ${AI_PROVIDERS.join(', ')}. Only the Anthropic and Raeto adapters are wired; any other provider would silently do nothing (docs/AI_RESEARCH.md).` }),
           })
           .prefault('disabled'),
       ),
       apiKey: optionalString,
       dailyBudgetUsd: numberWithDefault(0).pipe(z.number().nonnegative()),
-      /** The model Ask HEY composes with when AI is on (2026-09-24). */
-      model: optionalString.pipe(z.string().prefault('claude-sonnet-5')),
+      /**
+       * The model Ask HEY composes with when AI is on (2026-09-24). Unset, it is the provider's own default
+       * (2026-10-29): `claude-sonnet-5` on Anthropic, `raeto/auto` on Raeto, which routes each request itself.
+       */
+      model: optionalString,
       /**
        * Per-model prices in USD per million tokens, overriding or extending the
        * built-in table (`ai-research/pricing.ts`), as JSON:
@@ -392,7 +396,8 @@ export const serverEnvSchema = z
             .record(z.string().min(1).max(80), z.object({ inputPerMTok: z.number().nonnegative().max(1000), outputPerMTok: z.number().nonnegative().max(1000) }).strict())
             .optional(),
         ),
-    }),
+    })
+      .transform((ai) => ({ ...ai, model: ai.model ?? (ai.provider === 'raeto' ? 'raeto/auto' : 'claude-sonnet-5') })),
 
     /**
      * Canonical `$HEY` token configuration (M13). The one place the token's

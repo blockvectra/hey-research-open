@@ -100,4 +100,5 @@ export * from './tar';
 export * from './adapters/osv';
 export * from './adapters/provider-host';
 export * from './adapters/anthropic-messages';
+export * from './adapters/raeto-chat';
 export * from './adapters/telegram-bot';
