@@ -1,4 +1,5 @@
 import type { HeyProjectSnapshot, HeySummaryLine } from '@hey-research-lab/sdk';
+import type { DiscoveryGapWithheldReason, StillBuildingWithheldReason } from '@hey/scoring/withheld-words';
 
 import { ageBucket, familyFreshness, SNAPSHOT_SOURCE_FAMILY, type AgentFreshnessEntry, type RefreshTier } from '../freshness';
 import type { AgentChange, AgentClaim, AgentFreshness, AgentResponseOf, AgentSourceType } from '../schema';
@@ -37,8 +38,12 @@ export type ResearchInput = {
   codeWeeks?: AgentCodeWeeks;
 };
 
-/** Why Still Building was not measured, in the contract's words (the API's `stillBuildingWithheld`). */
-const STILL_BUILDING_WITHHELD_TEXT: Readonly<Record<string, string>> = {
+/**
+ * Why Still Building was not measured, in the contract's words (the API's `stillBuildingWithheld`): a sentence clause
+ * for each of the scoring package's reasons, keyed by its list (2026-10-28 simplicity study, CON-9), so a reason added
+ * there without a clause here fails the type check. The short labels themselves are the scoring package's.
+ */
+const STILL_BUILDING_WITHHELD_TEXT: Readonly<Record<StillBuildingWithheldReason, string>> = {
   market_not_live: 'the token has no live market HEY tracks',
   token_not_the_projects: "the tracked token is not the project's own",
   market_too_thin: 'the market is too thin to hold a drawdown HEY measures',
@@ -61,7 +66,7 @@ const STILL_BUILDING_WITHHELD_TEXT: Readonly<Record<string, string>> = {
  * The scoring package's short labels ("Not measured — market too thin") as sentences; a code this build does
  * not know still reads "not measured", never a guess.
  */
-const DISCOVERY_GAP_WITHHELD_TEXT: Readonly<Record<string, string>> = {
+const DISCOVERY_GAP_WITHHELD_TEXT: Readonly<Record<DiscoveryGapWithheldReason | 'not_in_cohort', string>> = {
   no_token: 'the project has no tracked token, so there is no market attention to measure',
   market_not_live: 'the token has no live market HEY tracks',
   token_not_the_projects: "the tracked token is not tied to the project, so its market is not the project's attention",
@@ -253,7 +258,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
           reason: b.activityMeasured === true ? 'none_recorded' : 'activity_not_measured',
         },
     events30d === null
-      ? { id: 'build.meaningful_events_30d', dimension: 'build', statement: heyText('Meaningful building events in 30 days are not measured for this project; no count is published, because a zero would mean "not read".'), status: 'UNKNOWN', value: null, source: null, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], reason: 'activity_not_measured', explainUrl: explain('activity.status') }
+      ? { id: 'build.meaningful_events_30d', dimension: 'build', statement: heyText('Counted ships in 30 days are not measured for this project; no count is published, because a zero would mean "not read".'), status: 'UNKNOWN', value: null, source: null, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], reason: 'activity_not_measured', explainUrl: explain('activity.status') }
       : { id: 'build.meaningful_events_30d', dimension: 'build', statement: derivedText(`${countOf(events30d, WORD_MEANINGFUL_BUILDING_EVENT)} in the last 30 days.`), status: 'DERIVED', value: events30d, source: { name: 'hey', type: 'hey_rule' }, observedAt: scoreAt, occurredAt: null, precision: 'WINDOW', freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: windowEvidence, explainUrl: explain('activity.status'), evidenceKind: 'rule_output' },
     b.buildMomentum === undefined
       ? { id: 'build.momentum', dimension: 'build', statement: heyText('Build Momentum is not measured for this project.'), status: 'UNKNOWN', value: null, source: null, observedAt: scoreAt, occurredAt: null, precision: null, freshness: scoreFresh?.freshnessStatus ?? 'unknown', evidence: [], reason: 'not_measured', explainUrl: explain('build.momentum') }
@@ -269,7 +274,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
           dimension: 'build',
           statement: heyText(
             b.stillBuildingWithheld
-              ? `Still Building is not measured for this project: ${STILL_BUILDING_WITHHELD_TEXT[b.stillBuildingWithheld] ?? 'its market does not hold a drawdown HEY measures'}.`
+              ? `Still Building is not measured for this project: ${(STILL_BUILDING_WITHHELD_TEXT as Readonly<Record<string, string>>)[b.stillBuildingWithheld] ?? 'its market does not hold a drawdown HEY measures'}.`
               : 'Still Building is not measured for this project: HEY has not scored it.',
           ),
           status: 'UNKNOWN',
@@ -316,7 +321,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         ? {
             id: 'build.under_the_radar',
             dimension: 'build',
-            statement: heyText(`Under the Radar is not measured for this project: ${(withheld && DISCOVERY_GAP_WITHHELD_TEXT[withheld]) ?? 'its Discovery Gap is withheld'}.`),
+            statement: heyText(`Under the Radar is not measured for this project: ${(withheld && (DISCOVERY_GAP_WITHHELD_TEXT as Readonly<Record<string, string>>)[withheld]) ?? 'its Discovery Gap is withheld'}.`),
             status: 'UNKNOWN',
             value: null,
             source: null,
@@ -442,7 +447,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
   });
 
   const shipWords = b.lastShippedAt ? `, last meaningful ship ${b.lastShippedAt.slice(0, 10)}` : b.activityMeasured === true ? ', no meaningful ship recorded' : '';
-  const eventWords = events30d === null ? 'meaningful events in 30 days not measured' : `${countOf(events30d, WORD_MEANINGFUL_EVENT)} in 30 days`;
+  const eventWords = events30d === null ? 'counted ships in 30 days not measured' : `${countOf(events30d, WORD_MEANINGFUL_EVENT)} in 30 days`;
   // A mismatched token is named in the answer itself (2026-09-30, adversarial review), not only in a claim further down.
   const tokenWords =
     verification?.status === 'MISMATCH'

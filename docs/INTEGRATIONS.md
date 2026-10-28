@@ -174,7 +174,7 @@ that is a page, and it costs you nothing.
 - If HEY is down, say nothing rather than guessing. A bot that omits a line is fine; one that
   invents one is not.
 
-## The builder call: `GET /api/v1/builder?chain=4663&token=0x…` (2026-09-20)
+## The builder call: `GET /api/v1/builder?chain=4663&token=0x…`
 
 For a surface that already has the chart and wants the other half. Same two parameters as the card
 call, HEY's own tables only. One difference in validation (2026-09-26, corrected): a chain other
@@ -223,7 +223,7 @@ Five things worth knowing before you render it:
 to render. Name your integration with `x-hey-integration: my-bot/1.0.0` (or `?integration=`) and it
 becomes `project_link`'s `utm_source`, so HEY can report your click-through to you.
 
-## The card call: `GET /api/v1/scan?chain=4663&token=0x…` (2026-09-18)
+## The card call: `GET /api/v1/scan?chain=4663&token=0x…`
 
 The same answer as the one call above, in the shape a trading bot's card wants and with two more
 figures. Built for the Chit bot's line above its buy and sell buttons —
@@ -290,7 +290,7 @@ figures. Built for the Chit bot's line above its buy and sell buttons —
   call (`tokens=`); a batch of nothing else is free. The burn address (`0x…dead`) and any malformed
   token are still a 400.
 
-## The partner contract: what never changes (2026-09-26)
+## The partner contract: what never changes
 
 Every change to these three calls is **additive**. What is below keeps its meaning; a change of
 meaning would ship as a new versioned path, beside the old one for at least ninety days, with a

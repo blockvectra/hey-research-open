@@ -17,7 +17,7 @@ export type ResearchLevelWordsKey = 'INDEXED' | 'RESEARCHED' | 'VERIFIED_BUILDER
 export const RESEARCH_LEVEL_WORDS: Readonly<Record<ResearchLevelWordsKey, { label: string; help: string }>> = {
   INDEXED: { label: 'Indexed', help: 'Recorded on Robinhood Chain. Not researched yet.' },
   RESEARCHED: { label: 'Researched', help: 'HEY has enriched this project from public sources.' },
-  VERIFIED_BUILDER: { label: 'Verified Builder', help: 'HEY holds verified evidence of shipping.' },
+  VERIFIED_BUILDER: { label: 'Verified Builder', help: 'HEY holds evidence of shipping from the project’s own sources.' },
 };
 
 /**
@@ -68,12 +68,12 @@ export function researchLevelWordsFor(level: string | null | undefined, hasBuild
 export function buildNotReadWords(level: string | null | undefined): { answer: string; text: string; reason: 'indexed_only' | 'building_not_read' } {
   if (level === 'RESEARCHED' || level === 'VERIFIED_BUILDER') {
     return {
-      answer: 'Building not checked yet',
+      answer: 'Not measured — building not checked yet',
       text: 'HEY researched this project’s public profile and has not yet read its sources for ship events.',
       reason: 'building_not_read',
     };
   }
-  return { answer: 'Not researched yet', text: 'HEY indexed this record and has not read its sources.', reason: 'indexed_only' };
+  return { answer: 'Not measured — not researched yet', text: 'HEY indexed this record and has not read its sources.', reason: 'indexed_only' };
 }
 
 /**
@@ -88,8 +88,8 @@ export function buildNotReadWords(level: string | null | undefined): { answer: s
  * Undefined below VERIFIED_BUILDER: there is no badge to explain.
  */
 export const VERIFIED_BUILDER_SCOPE_WORDS = {
-  unclaimed: 'HEY verified shipping evidence from the project’s own public sources; ownership of this page is not claimed yet.',
-  claimed: 'HEY verified shipping evidence from the project’s own public sources; the owner proved control of the project separately.',
+  unclaimed: 'HEY checked shipping evidence from the project’s own public sources; ownership of this page is not claimed yet.',
+  claimed: 'HEY checked shipping evidence from the project’s own public sources; the owner proved control of the project separately.',
 } as const;
 
 export function verifiedBuilderScopeWords(input: { researchLevel: string | null | undefined; isClaimed: boolean }): string | undefined {

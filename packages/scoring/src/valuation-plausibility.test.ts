@@ -274,7 +274,7 @@ describe('valuationDisplay carries the gate: never printed, never a kind', () =>
     });
     expect(valuationDisplayLabel(display, 'card')).toBe('Valuation');
     expect(VALUATION_HIDDEN_WORDS[display.shown ? 'no_reading' : display.state]).toBe(
-      'Not plausible',
+      'Withheld — not plausible',
     );
     expect(valuationHiddenSentence(display)).toBe(
       valuationNotPlausibleSentence('valuation_over_liquidity'),

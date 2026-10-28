@@ -1,4 +1,6 @@
 import { DERIVED_TEXT_MAX, derivedText, isValuationNotPlausible, quoteExternal, quoteForTransport, recordTag, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
+import { TOKEN_MARKET_LABELS, tokenMarketStatusLabel } from '@hey/scoring/market-status-words';
+import { tokenVerificationWords } from '@hey/scoring/verification-words';
 import type {
   HeyAccelerating,
   HeyAskAnswer,
@@ -230,54 +232,24 @@ export function stillBuildingEvidence(project: Pick<HeyProject, 'stillBuildingEv
   if (!evidence) return undefined;
   const drawdown = `down ${Math.round(Math.abs(evidence.drawdownPercent))}% from the HEY-tracked high`;
   if (evidence.shipsSinceDecline === undefined) return drawdown;
-  return `${drawdown}, ${evidence.shipsSinceDecline} verified ship${evidence.shipsSinceDecline === 1 ? '' : 's'} since`;
+  return `${drawdown}, ${evidence.shipsSinceDecline} counted ship${evidence.shipsSinceDecline === 1 ? '' : 's'} since`;
 }
 
 /**
- * The site's words for a token's market state, lower-cased for a line
- * (2026-09-25). A copy of `tokenMarketLabel` in `@hey/ui`, which this
- * package cannot import: it is published on its own and depends on the SDK
- * alone. `LIQUIDITY_REMOVED` is "liquidity no longer detected" on the site —
- * an observation, not a verdict on why — and so it is here.
- */
-const TOKEN_MARKET_WORDS: Record<string, string> = {
-  ACTIVE_MARKET: 'active market',
-  LOW_LIQUIDITY: 'low liquidity',
-  NO_LIQUIDITY: 'no liquidity',
-  TRADING_INACTIVE: 'trading inactive',
-  LIQUIDITY_REMOVED: 'liquidity no longer detected',
-  MARKET_ABANDONED: 'market not detected',
-  INSUFFICIENT_DATA: 'market data insufficient',
-  TOKEN_NOT_LAUNCHED: 'no token',
-};
-
-/**
  * The market state in the API's own words (2026-10-16, parity audit P1): the
- * `label` the API sends (`tokenMarket.label`, `marketStatusLabel`), from the
- * one label rule every page reads. A launch pool that traded is "launch pool
- * only", never "active market"; a token that is not fungible and a reading
- * that is not current have their own words. An answer from a server that
- * predates the label falls back to the same rule over the reason code.
+ * `label` the API sends (`tokenMarket.label`, `marketStatusLabel`), lower-cased
+ * for a line. An answer from a server that predates the label falls back to the
+ * one label rule every page reads, the scoring package's
+ * `tokenMarketStatusLabel` (2026-10-28 simplicity study, CON-9: this file kept a
+ * literal copy of it). `LIQUIDITY_REMOVED` is "liquidity no longer detected" — an
+ * observation, not a verdict on why; a status this build does not know reads as
+ * its own words, never as another status.
  */
-/** A copy of `@hey/scoring`'s `UNCONFIRMED_MARKET_REASONS` (2026-10-28, CON-2): readings that exist but settle no status. */
-const UNCONFIRMED_MARKET_REASONS: ReadonlySet<string> = new Set([
-  'liquidity_in_another_pool',
-  'pool_readings_disagree',
-  'launch_pool_volume_unknown',
-  'readings_implausible',
-  'removal_unconfirmed',
-  'volume_unknown',
-  'liquidity_not_current',
-]);
-
 export function tokenMarketWords(status: string, reason?: string | null, label?: string | null): string {
   if (label) return label.toLowerCase();
-  if (reason === 'not_a_fungible_token') return 'not a fungible token';
-  if (reason === 'reading_not_current') return 'no current reading';
-  if (reason === 'liquidity_not_current') return 'readings not confirmed';
-  if (status === 'INSUFFICIENT_DATA' && UNCONFIRMED_MARKET_REASONS.has(reason ?? '')) return 'readings not confirmed';
-  if (status === 'ACTIVE_MARKET' && (reason ?? '').startsWith('launch_pool')) return 'launch pool only';
-  return TOKEN_MARKET_WORDS[status] ?? status.toLowerCase().replace(/_/g, ' ');
+  if (status === 'TOKEN_NOT_LAUNCHED') return 'no token';
+  if (!(status in TOKEN_MARKET_LABELS)) return status.toLowerCase().replace(/_/g, ' ');
+  return tokenMarketStatusLabel(status as keyof typeof TOKEN_MARKET_LABELS, reason).toLowerCase();
 }
 
 /**
@@ -492,7 +464,8 @@ export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
     `# ${quotedName(market.name, market.symbol)} — market, from HEY's own daily index`,
     `Contract ${market.token.contractAddress} on chain ${market.token.chainId}.`,
     `DERIVED market status: ${tokenMarketWords(market.marketStatus, market.marketStatusReason, market.marketStatusLabel)}${market.marketStatusReason ? ` (${market.marketStatusReason.replace(/_/g, ' ')})` : ''}. A reading of the market, not of the team.`,
-    `${market.verification === 'UNVERIFIED' ? 'UNKNOWN' : 'FACT'} token verification: ${market.verification.toLowerCase()}.`,
+    // The page's words for the check (R2, 2026-10-28), the field's value beside them.
+    `${market.verification === 'UNVERIFIED' ? 'UNKNOWN' : 'FACT'} token check: ${tokenVerificationWords(market.verification).label.toLowerCase()} (verification ${market.verification}).`,
   ];
   /*
    * Who deployed the contract, and when (2026-09-25). A fact about the
@@ -644,7 +617,7 @@ export function renderChain(chain: HeyChain): string {
    */
   for (const d of days.slice(0, CHAIN_ROWS)) {
     const building = [
-      d.ships === undefined ? undefined : `${d.ships} verified ships${d.buildersShipping === undefined ? '' : ` from ${d.buildersShipping} builders`}`,
+      d.ships === undefined ? undefined : `${d.ships} counted ships${d.buildersShipping === undefined ? '' : ` from ${d.buildersShipping} builders`}`,
       d.buildersVerified === undefined ? undefined : `${d.buildersVerified} newly verified builders`,
       d.projectsPublished === undefined ? undefined : `${d.projectsPublished} projects published`,
     ].filter((v): v is string => v !== undefined);
@@ -698,7 +671,7 @@ export function renderWeeklyReport(report: HeyWeeklyReport): string {
   const o = report.overview;
   const lines: string[] = [`# Robinhood Chain, ${report.week} (${report.window.start.slice(0, 10)} → ${report.window.end.slice(0, 10)}${report.final ? '' : ', in progress'})`, report.headline, ''];
   // Ships and pages are records; a status move, a research level, Still Building and Under the Radar are rules HEY applied (audit §45 #8).
-  lines.push(`FACT overview: ${o.ships} verified ships from ${o.projectsShipping} projects · ${o.published} pages published in total.`);
+  lines.push(`FACT overview: ${o.ships} counted ships from ${o.projectsShipping} projects · ${o.published} pages published in total.`);
   lines.push(`DERIVED overview: ${o.newBuilders} new verified builders · ${o.backToShipping} back to shipping · ${o.stillBuilding} Still Building · ${o.underTheRadar} Under the Radar · ${o.verifiedBuilders} verified builders in total.`);
   const c = report.chain;
   const chain = [c.dexTrades === undefined ? undefined : `${c.dexTrades.toLocaleString('en-US')} DEX trades`, c.dexVolumeWithheldDays ? `volume withheld (${c.dexVolumeWithheldDays} ${c.dexVolumeWithheldDays === 1 ? 'day' : 'days'} more than 10× the trailing median)` : c.dexVolumeUsd === undefined ? undefined : `${money(c.dexVolumeUsd)} volume (USDG/WETH/ETH pairs)`, c.launches === undefined ? undefined : `${c.launches.toLocaleString('en-US')} launches recorded`, c.projectsPublished === undefined ? undefined : `${c.projectsPublished} pages published`].filter((v): v is string => Boolean(v));
@@ -832,7 +805,7 @@ export function renderTokenLookup(lookup: HeyTokenLookup, now: Date): string {
     // Reason-neutral, with the reason HEY recorded (2026-10-22, INV-3): a contested or unreachable site did name it.
     lines.push(`- UNKNOWN whose token: HEY has not confirmed that the project stands behind this contract${p.tokenVerification.reason ? ` (${p.tokenVerification.reason})` : ''}.`);
   } else if (p.tokenVerification?.status === 'VERIFIED') {
-    lines.push('- FACT verified: the project names this contract itself.');
+    lines.push('- FACT the project names this contract itself.');
   }
   if (p.asOf) lines.push(`- Scored ${p.asOf.slice(0, 16).replace('T', ' ')} UTC.`);
   // No invitation from a token the project's own site disowns (F7): the project page is not this token's page.
@@ -862,7 +835,7 @@ export function renderSilentBuilders(page: HeySilentBuilders): string {
   if (page.items.length === 0) return `No project meets the bar right now.\nMethod: ${page.method}\n\n${page.disclaimer}`;
   const lines = page.items.map(
     (item) =>
-      `- DERIVED ${quotedName(item.name, item.symbol)} — FACT ${item.meaningfulShips30d} verified ships in 30 days${item.marketAttention ? `, market attention ${item.marketAttention.toLowerCase().replace('_', ' ')} (context)` : ''}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`,
+      `- DERIVED ${quotedName(item.name, item.symbol)} — FACT ${item.meaningfulShips30d} counted ships in 30 days${item.marketAttention ? `, market attention ${item.marketAttention.toLowerCase().replace('_', ' ')} (context)` : ''}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`,
   );
   return `Eligible under the Under the Radar rule (the gap itself not required) and below the 40th market-attention percentile:\n${lines.join('\n')}\n${shownOf(page.items.length, page.total, 'The API lists at most 100; the Radar page holds the rest.')}\nMethod: ${page.method}\nContinued building is not a buy signal.\n${TAG_LEGEND}\n\n${page.disclaimer}`;
 }
@@ -884,7 +857,7 @@ export function renderAccelerating(page: HeyAccelerating): string {
   // `previous: null` is "not watched long enough to compare", never "none" (2026-09-26, M2 G9).
   const lines = page.items.map(
     (item) =>
-      `- DERIVED ${quotedName(item.name, item.symbol)} — ${item.velocity.current} meaningful events in ${item.velocity.windowDays} days vs ${item.velocity.previous === null ? 'an earlier window HEY did not watch (unknown)' : `${item.velocity.previous} before`}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`,
+      `- DERIVED ${quotedName(item.name, item.symbol)} — ${item.velocity.current} counted ships in ${item.velocity.windowDays} days vs ${item.velocity.previous === null ? 'an earlier window HEY did not watch (unknown)' : `${item.velocity.previous} before`}${item.lastShipAt ? `, last ship ${day(item.lastShipAt)}` : ''} — ${item.url}`,
   );
   return `Shipping faster (showing ${page.items.length}; the API lists at most 100):\n${lines.join('\n')}${context ? `\n${context}` : ''}\nMethod: ${page.method}\n${TAG_LEGEND}\n\n${page.disclaimer}`;
 }

@@ -6,6 +6,7 @@
  */
 
 import { utcDaysAgo } from '@hey/scoring/calendar';
+import { shipVerificationWords } from '@hey/scoring/verification-words';
 import { valuationKindOf } from '@hey/scoring/valuation-kind';
 
 export function formatRelativeTime(date: Date, now: Date = new Date()): string {
@@ -339,18 +340,9 @@ export function formatProjectKind(kind: string): string {
   return KIND_LABELS[kind] ?? 'Uncategorised';
 }
 
-const VERIFICATION_LABELS: Record<string, string> = {
-  PUBLICLY_VERIFIED: 'Source verified',
-  ADMIN_VERIFIED: 'HEY verified',
-  SOURCE_LINKED: 'Source linked',
-  SELF_REPORTED: 'Self reported',
-  DISPUTED: 'Disputed',
-  RETRACTED: 'Retracted',
-};
-
-/** Self-reported and verified evidence must stay visibly distinct (CLAUDE.md rule 10). */
+/** Self-reported and verified evidence must stay visibly distinct (CLAUDE.md rule 10); the words are the scoring package's one table. */
 export function formatVerification(status: string): string {
-  return VERIFICATION_LABELS[status] ?? 'Unverified';
+  return shipVerificationWords(status);
 }
 
 /**

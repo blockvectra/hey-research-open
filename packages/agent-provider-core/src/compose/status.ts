@@ -1,4 +1,5 @@
 import type { HeyExplainedFact } from '@hey-research-lab/sdk';
+import { ACTIVITY_STATUS_WORDS, type ActivityStatusWordsKey } from '@hey/scoring/activity-words';
 
 import { ageBucket, familyFreshness, type RefreshTier } from '../freshness';
 import type { AgentClaim, AgentEvidenceRef, AgentResponseOf, AgentUnknown } from '../schema';
@@ -55,13 +56,21 @@ export const EXCLUDED_FROM_BUILDER_STATUS = [
   { item: 'market_integrity', statement: 'Market Integrity readings about the token market.' },
 ] as const;
 
-const STATUS_WORDS: Readonly<Record<string, string>> = {
-  SHIPPING: 'Shipping: a meaningful, corroborated building event within HEY’s shipping window.',
-  ACTIVE: 'Active: meaningful building events within HEY’s active window.',
-  QUIET: 'Quiet: the newest meaningful building event is older than the active window, on a source HEY can read.',
-  DORMANT: 'Dormant: nothing meaningful for longer than the quiet window, on a source HEY can read.',
-  RESUMED: 'Resumed: building activity again after a long gap.',
-  UNKNOWN: 'Unknown: HEY does not measure this project’s building. A gap in HEY’s sources, not a finding that nobody builds.',
+/*
+ * Each status's meaning for an agent, headed by the chip's own word (2026-10-28 simplicity study, CON-9): the head is the
+ * scoring package's one table, never a copy ("Resumed:" and "Unknown:" here, "Resumed building" on the page).
+ */
+const STATUS_MEANING: Readonly<Record<ActivityStatusWordsKey, string>> = {
+  SHIPPING: 'a meaningful, corroborated building event within HEY’s shipping window.',
+  ACTIVE: 'counted ships within HEY’s active window.',
+  QUIET: 'the newest counted ship is older than the active window, on a source HEY can read.',
+  DORMANT: 'nothing meaningful for longer than the quiet window, on a source HEY can read.',
+  RESUMED: 'building activity again after a long gap.',
+  UNKNOWN: 'HEY does not measure this project’s building. A gap in HEY’s sources, not a finding that nobody builds.',
+};
+const statusWords = (status: string): string => {
+  const key: ActivityStatusWordsKey = status in STATUS_MEANING ? (status as ActivityStatusWordsKey) : 'UNKNOWN';
+  return `${ACTIVITY_STATUS_WORDS[key].label}: ${STATUS_MEANING[key]}`;
 };
 
 const FRESH_TO_BUCKET = (fact: HeyExplainedFact, now: Date): AgentClaim['freshness'] => {
@@ -136,7 +145,7 @@ export function composeBuilderStatus(ctx: AgentComposeContext, input: BuilderSta
     dataEvidence: supportingEvidence,
     data: {
       status,
-      statusMeaning: heyText(STATUS_WORDS[status] ?? STATUS_WORDS.UNKNOWN!),
+      statusMeaning: heyText(statusWords(status)),
       state: activity.state,
       methodology: { ruleId: activity.canonicalRule.id, version, rule: heyText(activity.canonicalRule.text) },
       inputs: activity.inputs.slice(0, 24).map((entry) => ({

@@ -85,7 +85,7 @@ function Cell({ cell, testId }: { cell: AroundCell; testId: string }): JSX.Eleme
     return (
       <span className="text-hey-secondary" data-testid={testId} data-state={cell.withheld ? 'withheld' : 'not-measured'} title={cell.reason}>
         <span aria-hidden="true">{cell.withheld ? 'Withheld' : '—'}</span>
-        <span className="sr-only">{cell.withheld ? `Withheld: ${cell.reason}` : `Not measured: ${cell.reason}`}</span>
+        <span className="sr-only">{cell.withheld ? `Withheld — ${cell.reason}` : `Not measured — ${cell.reason}`}</span>
       </span>
     );
   }

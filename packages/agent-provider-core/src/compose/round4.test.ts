@@ -24,7 +24,7 @@ const fact = (over: Partial<HeyExplainedFact>): HeyExplainedFact =>
     value: 'SHIPPING',
     state: 'DERIVED',
     classification: 'SHIPPING',
-    canonicalRule: { id: 'activity.status', version: 'hbm-v19', text: 'From meaningful building events only.' },
+    canonicalRule: { id: 'activity.status', version: 'hbm-v19', text: 'From counted ships only.' },
     source: 'hey',
     observedAt: '2026-09-30T10:00:00.000Z',
     freshness: { state: 'fresh', staleAfterHours: 24 },

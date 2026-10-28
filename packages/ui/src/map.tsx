@@ -503,15 +503,24 @@ export function MapClusterList({
   ].filter((group) => group.items.length > 0);
 
   return (
-    <div className={cn('space-y-6', className)}>
-      {groups.map((group) => (
-        <section key={group.key}>
-          {/* h2: these sit directly under the page title on the phone view. */}
-          <h2 className="mb-2 text-[11px] font-medium uppercase tracking-wide text-hey-muted">
-            {group.name}
-            <span className="ml-2 text-hey-muted">{group.items.length}</span>
-          </h2>
-          <ul className="lg-card divide-y divide-hey-border overflow-hidden">
+    <div className={cn('space-y-3', className)}>
+      {/*
+       * One cluster open at a time on a phone (2026-10-28 simplicity study, DISC-13): the 240 rows stood open in their
+       * groups and made the page 17,621 px tall. The first cluster opens with the page; the rest are one press each.
+       */}
+      {groups.map((group, index) => (
+        <details key={group.key} open={index === 0} className="group/cluster" data-testid="map-cluster">
+          <summary className="hey-hit flex cursor-pointer list-none items-center justify-between gap-3 py-2 [&::-webkit-details-marker]:hidden">
+            {/* h2: these sit directly under the page title on the phone view. */}
+            <h2 className="text-[11px] font-medium uppercase tracking-wide text-hey-muted">
+              {group.name}
+              <span className="ml-2 text-hey-muted">{group.items.length.toLocaleString('en-US')}</span>
+            </h2>
+            <span aria-hidden className="text-hey-muted transition-transform group-open/cluster:rotate-180">
+              ▾
+            </span>
+          </summary>
+          <ul className="lg-card mt-1 divide-y divide-hey-border overflow-hidden">
             {group.items.map((node) => (
               <li key={node.slug}>
                 <a
@@ -532,7 +541,7 @@ export function MapClusterList({
               </li>
             ))}
           </ul>
-        </section>
+        </details>
       ))}
     </div>
   );

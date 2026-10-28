@@ -108,7 +108,7 @@ describe('shared wording', () => {
   });
 
   it('says the Still Building evidence as two facts and nothing that reads as a verdict', () => {
-    expect(stillBuildingEvidence({ stillBuildingEvidence: { drawdownPercent: 62.4, shipsSinceDecline: 5 } })).toBe('down 62% from the HEY-tracked high, 5 verified ships since');
+    expect(stillBuildingEvidence({ stillBuildingEvidence: { drawdownPercent: 62.4, shipsSinceDecline: 5 } })).toBe('down 62% from the HEY-tracked high, 5 counted ships since');
     expect(stillBuildingEvidence({ stillBuildingEvidence: { drawdownPercent: 55 } })).toBe('down 55% from the HEY-tracked high');
     expect(stillBuildingEvidence({})).toBeUndefined();
     expect(tokenMarketWords('LIQUIDITY_REMOVED')).toBe('liquidity no longer detected');
@@ -173,7 +173,7 @@ describe('find_projects', () => {
     expect(text).toContain('An argument the tool does not take is refused, naming the ones it takes; a value HEY cannot read is refused with the values it accepts.');
     expect(text).not.toContain('is ignored');
     expect(text).not.toContain('ignored rather than refused');
-    expect(text).toContain('STILL BUILDING (down 62% from the HEY-tracked high, 5 verified ships since)');
+    expect(text).toContain('STILL BUILDING (down 62% from the HEY-tracked high, 5 counted ships since)');
     expect(text).toContain(STILL_BUILDING_MEANING);
     expect(text).toMatch(TAGGED);
     expect(text).toContain('$208.6K FDV (dexscreener)');
@@ -197,7 +197,7 @@ describe('find_projects', () => {
 
   it('accelerating: DERIVED, both windows, and an unwatched window is unknown — never "none"', () => {
     const text = renderAccelerating(fx.accelerating);
-    expect(text).toContain('DERIVED «Faster» — 5 meaningful events in 30 days vs 1 before');
+    expect(text).toContain('DERIVED «Faster» — 5 counted ships in 30 days vs 1 before');
     expect(text).toContain('vs an earlier window HEY did not watch (unknown)');
     expect(text).not.toMatch(/\bnone\b/);
     expect(text).toContain('at most 100');
@@ -238,7 +238,7 @@ describe('lookup_token', () => {
     expect(text).toContain('FACT 8 ship records in the last 30 days');
     expect(text).toContain('DERIVED 4 meaningful ships in 30 days');
     expect(text).toContain('https://github.com/agentos/sdk/releases/tag/v0.4');
-    expect(text).toContain('FACT verified: the project names this contract itself.');
+    expect(text).toContain('FACT the project names this contract itself.');
   });
 
   it('names a published project carrying the address’s name or ticker on another contract, its name quoted (PB-22, 2026-10-18)', () => {
@@ -460,7 +460,7 @@ describe('get_project_snapshot', () => {
 
   it('opens on the Research Summary exactly as the API composed it: tags, reasons and evidence ids, never restated', () => {
     const summary = text.slice(text.indexOf('## Research summary'), text.indexOf('## Identity'));
-    expect(summary).toContain('- DERIVED Build: Shipping: 4 meaningful events in 30 days; latest ship yesterday. Evidence: ship:2ac87a66-0000-0000-0000-000000000001.');
+    expect(summary).toContain('- DERIVED Build: Shipping: 4 counted ships in 30 days; latest ship yesterday. Evidence: ship:2ac87a66-0000-0000-0000-000000000001.');
     // The summary restates the usage section of the same snapshot: the same calls, never a second reading.
     expect(summary).toContain(
       "- FACT Product usage: 4 of 4 watched contracts active · 1,842 calls in 7 days (532 calls to the contracts' own functions; 1,310 ERC-20 token transfers and approvals, which trading alone produces). Evidence: method:5b2d0000-0000-0000-0000-000000000001.",
@@ -674,7 +674,7 @@ describe('get_token_market', () => {
     expect(text).toContain('FACT now (dexscreener, yesterday): price $0.000208, FDV $208.6K');
     expect(renderTokenMarket({ ...fx.tokenMarket, current: { ...fx.tokenMarket.current!, valuationKind: undefined } }, NOW)).toContain('valuation $208.6K');
     expect(text).toContain('DERIVED market status: active market');
-    expect(text).toMatch(/FACT token verification: verified/);
+    expect(text).toMatch(/FACT token check: project names this contract \(verification VERIFIED\)/);
   });
 
   it('prints no unknown buy or sell count as zero (M2 G9)', () => {
@@ -898,10 +898,10 @@ describe('chain_overview', () => {
       ],
     };
     const text = renderChain(chain);
-    expect(text).toContain('- FACT 2026-10-17 (partial, still being indexed; volume left out until the day is complete): 29 verified ships from 27 builders, 3 newly verified builders; market context: 1,104,063 DEX trades');
+    expect(text).toContain('- FACT 2026-10-17 (partial, still being indexed; volume left out until the day is complete): 29 counted ships from 27 builders, 3 newly verified builders; market context: 1,104,063 DEX trades');
     expect(text).not.toContain('$2.19B');
-    expect(text).toContain('- FACT 2026-10-16: 41 verified ships from 30 builders, 4 newly verified builders; market context: 2,750,000 DEX trades, $1.81B volume');
-    for (const line of text.split('\n').filter((entry) => entry.startsWith('- FACT 2026'))) expect(line.indexOf('verified ships')).toBeLessThan(line.indexOf('DEX trades'));
+    expect(text).toContain('- FACT 2026-10-16: 41 counted ships from 30 builders, 4 newly verified builders; market context: 2,750,000 DEX trades, $1.81B volume');
+    for (const line of text.split('\n').filter((entry) => entry.startsWith('- FACT 2026'))) expect(line.indexOf('counted ships')).toBeLessThan(line.indexOf('DEX trades'));
   });
 
   it('this-week: the captured payload without an undefined, a valuation by kind, and Still Building’s meaning', () => {
@@ -919,7 +919,7 @@ describe('chain_overview', () => {
 
   it('weekly-report: tagged, with Still Building’s meaning', () => {
     const text = renderWeeklyReport(fx.weeklyReport);
-    expect(text).toContain('FACT overview: 9 verified ships');
+    expect(text).toContain('FACT overview: 9 counted ships');
     // Still Building, Under the Radar and status moves are rules HEY applied, as renderThisWeek says (audit §45 #8).
     expect(text).toMatch(/^DERIVED overview: .* Still Building · .* Under the Radar/m);
     expect(text).not.toMatch(/^FACT overview: .*(Still Building|Under the Radar|back to shipping)/m);

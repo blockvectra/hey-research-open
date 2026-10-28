@@ -12,7 +12,7 @@ import { peerContextLines } from './render-machine';
  */
 const dimension = (over: Partial<HeyPeerDimension>): HeyPeerDimension => ({
   metric: 'meaningful_events_30d',
-  label: 'Meaningful events (30 d)',
+  label: 'Counted ships (30 d)',
   unit: 'count',
   windowDays: 30,
   definition: 'x',
@@ -26,7 +26,7 @@ const dimension = (over: Partial<HeyPeerDimension>): HeyPeerDimension => ({
   percentile: null,
   percentileReason: 'cohort_below_percentile_minimum',
   comparison: 'above_median',
-  line: 'Meaningful events (30 d) 12 — above the median (8) of 9 researched DEX projects.',
+  line: 'Counted ships (30 d) 12 — above the median (8) of 9 researched DEX projects.',
   ...over,
 });
 

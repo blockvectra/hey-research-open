@@ -914,7 +914,7 @@ export type HeyProjectIntelligence = {
  * - `most-active`: shipping, active or resumed, by Build Momentum. Robinhood Chain builders only.
  * - `new-builders`: published on HEY in the last 7 days with a builder source HEY reads and at least one counted ship.
  *   **Changed 2026-10-17** (0.3.3): before, every page published in the window — now `new-on-hey`.
- * - `new-on-hey`: every project published on HEY in the last 7 days, builder or not (added 2026-10-17).
+ * - `new-on-hey`: every project published on HEY in the last 7 days, builder or not (added 2026-10-17); pages with a building record first (2026-10-28).
  * - `back-from-dormancy`: status RESUMED. Robinhood Chain builders only.
  * - `utility`: kind UTILITY, INFRASTRUCTURE, APPLICATION or RWA. `memes`: kind MEME.
  */

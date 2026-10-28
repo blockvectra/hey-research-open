@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { explorerTokenUrl } from './brand';
 import { isAddressShaped, shortenAddress } from './format';
 import { ProjectCard, type ProjectCardData, formatPercentChange, marketLensLine, officialXCardState, tradeContextLine } from './project-card';
+import { ContractAddress } from './token-identity';
 
 const ADDRESS = '0x82aE0000000000000000000000000000000091bF';
 
@@ -16,13 +17,17 @@ const tokenBacked: ProjectCardData = {
   activityStatus: 'SHIPPING',
   marketCapUsd: 1_240_000,
   token: { chainId: 4663, contractAddress: ADDRESS },
-  // A verified token: a default card prints a valuation for it whatever its market status (UI-7, 2026-10-24).
+  // A verified token on a market HEY measures: a default card prints its valuation (UI-7 2026-10-24, R5 2026-10-28).
   tokenVerification: 'VERIFIED',
+  tokenMarketStatus: 'ACTIVE_MARKET',
+  tokenMarketReason: 'liquidity_and_volume',
   launchedVia: { name: 'Pons', url: 'https://ponsfamily.com/launchpad/0x82ae' },
   officialX: { handle: 'agentos', url: 'https://x.com/agentos' },
 };
 
 const render = (project: ProjectCardData) => renderToStaticMarkup(createElement(ProjectCard, { project }));
+/** The Token Projects view (`marketLens`): the reader asked for market context, so the card names every market state. */
+const renderLens = (project: ProjectCardData) => renderToStaticMarkup(createElement(ProjectCard, { project, marketLens: true }));
 
 describe('shortenAddress', () => {
   it('keeps both ends and never the middle', () => {
@@ -33,9 +38,11 @@ describe('shortenAddress', () => {
 
 describe('an implausible valuation on a card (2026-10-17, audit FR-12)', () => {
   it('says it is withheld, in the gate’s own phrase, with the reason in its title, never a bare "Not plausible"', () => {
-    const html = render({ ...tokenBacked, tokenMarketStatus: 'ACTIVE_MARKET', tokenMarketReason: 'liquidity_and_volume', valuationImplausible: 'valuation_over_liquidity' });
+    // A default card prints no row and no placeholder (R5, 2026-10-28); the Token Projects view names the state.
+    expect(render({ ...tokenBacked, valuationImplausible: 'valuation_over_liquidity' })).not.toContain('data-testid="market-cap"');
+    const html = renderLens({ ...tokenBacked, tokenMarketStatus: 'ACTIVE_MARKET', tokenMarketReason: 'liquidity_and_volume', valuationImplausible: 'valuation_over_liquidity' });
     expect(html).toContain('data-valuation-state="not_plausible"');
-    expect(html).toContain('Withheld: not plausible from the readings HEY has');
+    expect(html).toContain('Withheld — not plausible from the readings HEY has');
     expect(html).not.toMatch(/>Not plausible</);
     expect(html).toContain('at least 10,000× the liquidity');
   });
@@ -77,12 +84,24 @@ describe('ProjectCard — token-backed', () => {
     expect(html).not.toContain('data-testid="description"');
   });
 
-  it('carries the full address for copying and links the explorer page for this contract', () => {
+  it('carries the full address for copying; the explorer link is the project page\'s (DISC-7, 2026-10-28)', () => {
     expect(html).toContain(`title="${ADDRESS}"`);
     expect(html).toContain(`data-address="${ADDRESS}"`);
     expect(html).toContain('data-chain-id="4663"');
-    expect(html).toContain(`href="${explorerTokenUrl(ADDRESS)}"`);
     expect(html).toContain('aria-label="Copy contract address"');
+    expect(html).not.toContain(`href="${explorerTokenUrl(ADDRESS)}"`);
+    // Elsewhere the contract keeps its explorer link.
+    expect(renderToStaticMarkup(createElement(ContractAddress, { address: ADDRESS, chainId: 4663 }))).toContain(`href="${explorerTokenUrl(ADDRESS)}"`);
+  });
+
+  it('is one link to the project and one button, copy the contract: the launch page and X are named, not linked (DISC-7, 2026-10-28)', () => {
+    const links = [...html.matchAll(/<a\b[^>]*href="([^"]*)"/g)].map((match) => match[1]);
+    expect(links).toEqual(['/project/agentos']);
+    expect([...html.matchAll(/<button\b/g)]).toHaveLength(1);
+    expect(html).toContain('>Pons<');
+    expect(html).toContain('@agentos');
+    // The copy button reaches 44px through its hit area: 28px drawn, 8px each way.
+    expect(html).toContain('before:-inset-y-2');
   });
 
   it('carries none of the excluded facts', () => {
@@ -94,8 +113,9 @@ describe('ProjectCard — token-backed', () => {
 
 describe('ProjectCard — fallbacks', () => {
   it('says market cap is unavailable rather than inventing one', () => {
-    const html = render({ ...tokenBacked, marketCapUsd: undefined });
-    expect(html).toContain('Unavailable');
+    expect(render({ ...tokenBacked, marketCapUsd: undefined })).not.toContain('data-testid="market-cap"');
+    const html = renderLens({ ...tokenBacked, marketCapUsd: undefined });
+    expect(html).toContain('Not read — no recent reading');
     expect(html).not.toContain('$1.2M');
   });
 
@@ -105,8 +125,9 @@ describe('ProjectCard — fallbacks', () => {
     expect(html).toContain('X account @agentos suspended, checked 2026-10-18.');
     expect(html).not.toContain('href="https://x.com/agentos"');
     expect(html).not.toContain('data-testid="official-x"');
-    // An active or unread account keeps its link.
-    expect(render(tokenBacked)).toContain('href="https://x.com/agentos"');
+    // An active or unread account is named; the project page links it (DISC-7, 2026-10-28).
+    expect(render(tokenBacked)).toContain('data-testid="official-x"');
+    expect(render(tokenBacked)).not.toContain('href="https://x.com/agentos"');
   });
 
   it('says a withheld X account in a few words on the card, the dated sentence kept for the page (2026-10-19)', () => {
@@ -159,7 +180,7 @@ describe('ProjectCard — fallbacks', () => {
     expect(html).toContain('Traded in the last 24 h · 1,204 on-chain events / 24 h');
     expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'launch_pool_no_trades' })).toBe('Launch pool, no trades in the last day');
     expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', onchainEvents24h: 1 })).toBe('No trades in 24 h · 1 on-chain event / 24 h');
-    expect(tradeContextLine({ ...tokenBacked })).toBeUndefined();
+    expect(tradeContextLine({ ...tokenBacked, tokenMarketStatus: undefined, tokenMarketReason: undefined })).toBeUndefined();
     // Not under a status HEY could read, and never on a tokenless card.
     expect(render({ ...tokenBacked, activityStatus: 'ACTIVE', tokenMarketStatus: 'ACTIVE_MARKET', onchainEvents24h: 5 })).not.toContain('card-context-line');
     expect(render({ ...tokenBacked, token: undefined, activityStatus: 'UNKNOWN', onchainEvents24h: 5 })).not.toContain('card-context-line');
@@ -184,7 +205,7 @@ describe('ProjectCard — fallbacks', () => {
     expect(formatPercentChange(undefined)).toBeUndefined();
   });
 
-  it('prints a launch pool\'s valuation beside "launch pool" and none of its liquidity (RT2-01, founder 2026-10-11)', () => {
+  it('prints a launch pool\'s valuation beside "launch pool" in the Token Projects view only, and none of its liquidity (RT2-01, founder 2026-10-11; R5 2026-10-28)', () => {
     const launchPool = {
       ...tokenBacked,
       tokenMarketStatus: 'ACTIVE_MARKET',
@@ -197,21 +218,23 @@ describe('ProjectCard — fallbacks', () => {
       priceChange24hPct: 38,
       launchStage: 'CURVE',
     } as ProjectCardData;
-    const html = render(launchPool);
+    // A launch pool is no measured market (hbm-v22): a default card prints no valuation row and no placeholder (R5).
+    expect(render(launchPool)).not.toContain('data-testid="market-cap"');
+    expect(render(launchPool)).not.toContain('$4.8M');
+    const html = renderLens(launchPool);
     expect(html).toContain('data-valuation-state="launch_pool_only"');
     // The page prints the figure beside the label, so the card does too (founder, 2026-10-11): named "Valuation", never a market cap.
     expect(html).toContain('$4.8M');
     expect(html).toContain('· launch pool');
     expect(html).not.toContain('Market cap');
     // With no figure HEY can show, the card still names the market.
-    expect(render({ ...launchPool, marketCapUsd: undefined } as ProjectCardData)).toContain('>Launch pool only<');
-    const lens = renderToStaticMarkup(createElement(ProjectCard, { project: launchPool, marketLens: true }));
-    expect(lens).not.toContain('$2.4M');
+    expect(renderLens({ ...launchPool, marketCapUsd: undefined } as ProjectCardData)).toContain('>Launch pool only<');
+    expect(html).not.toContain('$2.4M');
     // The pool's trades are measured and stay; its "liquidity" is the token's own supply and does not.
     expect(marketLensLine(launchPool)).toBe('Launch pool only · 24 h volume $3.1K · 12 buys · 9 sells · on the launch curve');
     expect(tradeContextLine(launchPool)).toBe('Launch pool only · traded in the last 24 h');
     // A measured active market keeps its figures.
-    const measured = { ...launchPool, tokenMarketReason: 'liquidity_and_volume' } as ProjectCardData;
+    const measured = { ...launchPool, tokenMarketReason: 'liquidity_and_volume', launchStage: 'DEX' } as ProjectCardData;
     expect(render(measured)).toContain('$4.8M');
     expect(marketLensLine(measured)).toContain('Liquidity $2.4M');
     expect(tradeContextLine(measured)).toBe('Traded in the last 24 h');
@@ -226,30 +249,48 @@ describe('ProjectCard — fallbacks', () => {
   it('prints no figure and no dead-market claim for readings HEY does not settle (2026-09-25)', () => {
     const implausible = { ...tokenBacked, tokenMarketStatus: 'INSUFFICIENT_DATA', tokenMarketReason: 'readings_implausible', volume24hUsd: 53 } as ProjectCardData;
     expect(marketLensLine(implausible)).toBe('Reported liquidity not confirmed');
-    const html = render(implausible);
-    expect(html).toContain('Unconfirmed');
-    expect(html).not.toContain('No active market');
+    expect(render(implausible)).not.toContain('data-testid="market-cap"');
+    const html = renderLens(implausible);
+    expect(html).toContain('data-valuation-state="unconfirmed"');
+    expect(html).not.toContain('data-valuation-state="no_active_market"');
     const disagree = { ...tokenBacked, tokenMarketStatus: 'INSUFFICIENT_DATA', tokenMarketReason: 'pool_readings_disagree' } as ProjectCardData;
     expect(marketLensLine(disagree)).toBe('Pool readings disagree');
-    expect(render(disagree)).toContain('Unconfirmed');
+    expect(renderLens(disagree)).toContain('data-valuation-state="unconfirmed"');
   });
 
-  it('a default card prints a valuation only for a verified token, or an active, uncontested market (2026-10-24 full audit UI-7)', () => {
+  it('a default card prints a valuation only on a market HEY measures, for a verified token or an uncontested ticker (UI-7 2026-10-24, R5 2026-10-28)', () => {
     const unverified = { ...tokenBacked, tokenVerification: 'UNVERIFIED', marketCapUsd: 17 } as ProjectCardData;
     // Cyberia on the homepage: "Valuation $17" on an unverified token with no active market.
     for (const status of [undefined, 'LOW_LIQUIDITY', 'TRADING_INACTIVE', 'INSUFFICIENT_DATA']) {
-      const html = render({ ...unverified, ...(status ? { tokenMarketStatus: status } : {}) });
+      const html = render({ ...unverified, tokenMarketStatus: status, tokenMarketReason: undefined } as ProjectCardData);
       expect(html).not.toContain('data-testid="market-cap"');
       expect(html).not.toContain('$17');
       // No placeholder in its place; the contract row still names the token.
       expect(html).toContain('data-testid="token-unverified"');
     }
-    expect(render({ ...unverified, tokenMarketStatus: 'ACTIVE_MARKET' })).toContain('data-testid="market-cap"');
-    expect(render({ ...unverified, tokenMarketStatus: 'ACTIVE_MARKET', tokenTickerContested: true })).not.toContain('data-testid="market-cap"');
-    // A verified token keeps its market row whatever the status says.
-    expect(render({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE' })).toContain('data-testid="market-cap"');
+    expect(render(unverified)).toContain('data-testid="market-cap"');
+    expect(render({ ...unverified, tokenTickerContested: true })).not.toContain('data-testid="market-cap"');
+    // R5 (DATA-6): a verified token on a market HEY does not measure prints no figure either — dikshit-hardik's
+    // "Valuation $24M" beside "No trades in 24 h", volt-inu's $12M on readings_stale.
+    for (const patch of [
+      { tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'no_volume_24h' },
+      { tokenMarketStatus: 'LOW_LIQUIDITY', tokenMarketReason: 'liquidity_below_threshold' },
+      { tokenMarketStatus: 'INSUFFICIENT_DATA', tokenMarketReason: 'readings_stale' },
+      { tokenMarketStatus: undefined, tokenMarketReason: undefined },
+      // A launch curve, and an active market whose 24 h volume is below $1,000 (hbm-v31): the gap's own test.
+      { launchStage: 'CURVE' },
+      { volume24hUsd: 162 },
+    ]) {
+      const html = render({ ...tokenBacked, marketCapUsd: 24_000_000, ...patch } as ProjectCardData);
+      expect(html).not.toContain('data-testid="market-cap"');
+      expect(html).not.toContain('$24M');
+      expect(html).not.toContain('data-valuation-state');
+    }
+    // A volume HEY does not hold is unknown, never thin; a measured $1,000 or more keeps the figure.
+    expect(render({ ...tokenBacked, volume24hUsd: 1_000 } as ProjectCardData)).toContain('data-testid="market-cap"');
     // The Token Projects view is where the reader asked for market context: the rule is the default card's.
-    expect(renderToStaticMarkup(createElement(ProjectCard, { project: { ...unverified, tokenMarketStatus: 'LOW_LIQUIDITY' }, marketLens: true }))).toContain('data-testid="market-cap"');
+    expect(renderLens({ ...unverified, tokenMarketStatus: 'LOW_LIQUIDITY' } as ProjectCardData)).toContain('data-testid="market-cap"');
+    expect(renderLens({ ...tokenBacked, tokenMarketStatus: 'TRADING_INACTIVE', tokenMarketReason: 'no_volume_24h' } as ProjectCardData)).toContain('$1.2M');
   });
 
   it('prints neither the ticker nor the valuation of a token the project’s own site disowns or contradicts (2026-10-24 full audit INV-1)', () => {
@@ -267,16 +308,16 @@ describe('ProjectCard — fallbacks', () => {
 
   it('qualifies a contract the project’s own site contradicts, as the page does (2026-09-28)', () => {
     // agentos on production: tokens.verification MISMATCH; the page said "Contract mismatch", the card nothing.
-    expect(render({ ...tokenBacked, tokenVerification: 'MISMATCH' })).toContain('Contract mismatch');
-    expect(render({ ...tokenBacked, tokenVerification: 'UNVERIFIED' })).not.toContain('Contract mismatch');
-    expect(render({ ...tokenBacked, tokenVerification: 'VERIFIED' })).not.toContain('Token verified');
+    expect(render({ ...tokenBacked, tokenVerification: 'MISMATCH' })).toContain('Project names another contract');
+    expect(render({ ...tokenBacked, tokenVerification: 'UNVERIFIED' })).not.toContain('Project names another contract');
+    expect(render({ ...tokenBacked, tokenVerification: 'VERIFIED' })).not.toContain('Project names this contract');
   });
 
   it('says quietly that a token is unverified, and nothing when verification is unknown (AOP-09, 2026-10-09)', () => {
     // Autonolas on production: an UNVERIFIED market-listing token whose card printed "Valuation $2.3K" with no mark.
     const unverified = render({ ...tokenBacked, tokenVerification: 'UNVERIFIED' });
     expect(unverified).toContain('data-testid="token-unverified"');
-    expect(unverified).toContain('>Token unverified<');
+    expect(unverified).toContain('>Not named by the project<');
     // Text, not the page's chip.
     expect(unverified).not.toContain('token-verification-chip');
     expect(render({ ...tokenBacked, tokenVerification: 'VERIFIED' })).not.toContain('token-unverified');
@@ -300,16 +341,18 @@ describe('ProjectCard — fallbacks', () => {
     const deadFdv = { ...deadCap, marketCapUsd: 24_000, fdvUsd: 24_000 } as ProjectCardData;
     const unread = { ...tokenBacked, marketCapUsd: undefined } as ProjectCardData;
     for (const project of [deadCap, deadFdv, unread]) {
-      const html = render(project);
+      // A default card prints no row at all (R5); the Token Projects view names the state under "Valuation".
+      expect(render(project)).not.toContain('data-testid="market-cap"');
+      const html = renderLens(project);
       expect(html).toContain('>Valuation<');
       expect(html).not.toContain('Market cap');
       expect(html).not.toContain('$22K');
       expect(html).not.toContain('$24K');
     }
-    expect(render(deadCap)).toContain('No active market');
-    expect(render(unread)).toContain('data-valuation-state="no_reading"');
+    expect(renderLens(deadCap)).toContain('data-valuation-state="no_active_market"');
+    expect(renderLens(unread)).toContain('data-valuation-state="no_reading"');
     // A launch pool with no trades is dead whatever status sits beside it (`marketIsLive`); the card's own list missed that.
-    expect(render({ ...deadFdv, tokenMarketStatus: 'LOW_LIQUIDITY' } as ProjectCardData)).toContain('No active market');
+    expect(renderLens({ ...deadFdv, tokenMarketStatus: 'LOW_LIQUIDITY' } as ProjectCardData)).toContain('data-valuation-state="no_active_market"');
   });
 });
 
@@ -340,7 +383,7 @@ describe('ProjectCard — with a ship (ships feed)', () => {
     expect(html).toContain('SDK release');
     expect(html).toContain('Agent SDK v0.4');
     expect(html).toContain('2d ago');
-    expect(html).toContain('Source verified');
+    expect(html).toContain('Source-backed');
 
     // Order: identity header, then the ship, then the footer (UI/UX audit U11).
     const identity = html.indexOf('$AOS');
@@ -371,9 +414,9 @@ describe('ProjectCard — with a ship (ships feed)', () => {
   it('keeps a self-reported claim visibly distinct from a verified one', () => {
     const verified = renderWithShip();
     const selfReported = renderWithShip({ verificationStatus: 'SELF_REPORTED' });
-    expect(selfReported).toContain('Self reported');
+    expect(selfReported).toContain('Self-reported');
     expect(selfReported).toContain('data-verification="SELF_REPORTED"');
-    expect(selfReported).not.toContain('Source verified');
+    expect(selfReported).not.toContain('Source-backed');
     expect(verified).toMatch(/data-testid="ship-verification" class="text-hey-secondary"/);
     expect(selfReported).toMatch(/data-testid="ship-verification" class="italic text-hey-muted"/);
   });

@@ -14,7 +14,9 @@ import type { ReactNode } from 'react';
 import {
   ACTIVITY_NOT_MEASURABLE,
   ACTIVITY_STATUS_WORDS,
+  activityChipWords,
   activityPresentation,
+  activityStatusLabel,
   NO_BUILDER_SIGNAL,
   unknownActivityReason,
   type ActivityStatusWordsKey,
@@ -32,6 +34,7 @@ import {
   type UnconfirmedMarketReason,
 } from '@hey/scoring/market-status-words';
 import { RESEARCH_LEVEL_WORDS, researchLevelWordsFor } from '@hey/scoring/research-level-words';
+import { TOKEN_VERIFICATION_WORDS, tokenVerificationLabelFor } from '@hey/scoring/verification-words';
 
 import type { TokenMarketStatusValue as StoredTokenMarketStatus } from '@hey/scoring';
 
@@ -145,7 +148,7 @@ export function ActivityChip({
   const { Icon } = presentation;
   const reason = unknownReason !== undefined ? unknownReason : noBuilderSource ? 'no_builder_signal' : null;
   const { label: statusLabel, help } = activityPresentation(status, reason);
-  const label = answer ?? statusLabel;
+  const { head, reason: reasonLine } = activityChipWords(answer ?? statusLabel);
 
   return (
     <span
@@ -159,16 +162,25 @@ export function ActivityChip({
       title={help}
       // The canonical value behind the words, so every surface can be checked against the API (2026-09-25).
       data-activity-status={status}
+      // The single-line words a text surface prints for the same facts ("Not measured — no builder source linked"), for parity checks.
+      data-activity-label={answer ?? statusLabel}
       {...(status === 'UNKNOWN' && reason ? { 'data-unknown-reason': reason } : {})}
     >
       <Icon aria-hidden="true" size={15} strokeWidth={1.9} />
-      {label}
+      {head}
+      {reasonLine ? (
+        <span className="font-normal opacity-80" data-testid="activity-chip-reason">
+          <span aria-hidden="true">· </span>
+          {reasonLine}
+        </span>
+      ) : null}
     </span>
   );
 }
 
+/** The plain status word (UNKNOWN is the chip's head, "Not measured"): the scoring package's `activityStatusLabel`. */
 export function activityLabel(status: ActivityStatusValue): string {
-  return (ACTIVITY_STATUS_WORDS[status] ?? ACTIVITY_STATUS_WORDS.UNKNOWN).label;
+  return activityStatusLabel(status);
 }
 
 export function activityHelp(status: ActivityStatusValue): string {
@@ -445,22 +457,26 @@ export function asTokenVerification(value: string | null | undefined): TokenVeri
   return typeof value === 'string' && (TOKEN_VERIFICATION_VALUES as readonly string[]).includes(value) ? (value as TokenVerificationValue) : null;
 }
 
+/* The words are the scoring package's one table (`TOKEN_VERIFICATION_WORDS`, 2026-10-28 simplicity study, CON-9); the tone is this file's. */
+const TOKEN_VERIFICATION_TONE: Record<TokenVerificationValue, MarketTone> = { VERIFIED: 'neutral', UNVERIFIED: 'muted', MISMATCH: 'neutral' };
 const TOKEN_VERIFICATION_PRESENTATION: Record<TokenVerificationValue, { label: string; help: string; tone: MarketTone }> = {
-  VERIFIED: { label: 'Token verified', help: 'The project itself ties this contract to the project: its site names the contract, or the owner proved control of the deployer.', tone: 'neutral' },
-  // Reason-neutral (2026-10-22, full audit INV-3): the chip's title sat beside the reason's own sentence, and for a site that
-  // names the contract (contested, disowned, unreachable) "nothing the project published" was false.
-  UNVERIFIED: { label: 'Token unverified', help: 'HEY has not confirmed that the project stands behind this contract. The page says why.', tone: 'muted' },
-  MISMATCH: { label: 'Contract mismatch', help: 'The project’s own site names a different contract than the one HEY tracks. Treat the tracked token with care.', tone: 'neutral' },
+  VERIFIED: { ...TOKEN_VERIFICATION_WORDS.VERIFIED, tone: TOKEN_VERIFICATION_TONE.VERIFIED },
+  UNVERIFIED: { ...TOKEN_VERIFICATION_WORDS.UNVERIFIED, tone: TOKEN_VERIFICATION_TONE.UNVERIFIED },
+  MISMATCH: { ...TOKEN_VERIFICATION_WORDS.MISMATCH, tone: TOKEN_VERIFICATION_TONE.MISMATCH },
 };
 
-export function TokenVerificationChip({ verification, className }: { verification: TokenVerificationValue; className?: string }) {
+/** With its reason, where the reason decides the words (`tokenVerificationLabelFor`, R2 2026-10-28). */
+export function TokenVerificationChip({ verification, reason, className }: { verification: TokenVerificationValue; reason?: string | null | undefined; className?: string }) {
   const presentation = TOKEN_VERIFICATION_PRESENTATION[verification] ?? TOKEN_VERIFICATION_PRESENTATION.UNVERIFIED;
   return (
     <span className={cn('inline-flex items-center gap-1.5 text-sm font-medium', TONE[presentation.tone], className)} title={presentation.help} data-testid="token-verification-chip">
-      {presentation.label}
+      {reason ? tokenVerificationLabelFor(verification, reason) : presentation.label}
     </span>
   );
 }
+
+/** The label for one token's check with its reason (R2, 2026-10-28): the scoring package's `tokenVerificationLabelFor`. */
+export { tokenVerificationLabelFor };
 
 export function tokenVerificationLabel(verification: TokenVerificationValue): string {
   return (TOKEN_VERIFICATION_PRESENTATION[verification] ?? TOKEN_VERIFICATION_PRESENTATION.UNVERIFIED).label;

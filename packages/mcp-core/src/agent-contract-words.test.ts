@@ -97,7 +97,7 @@ describe('counted words in the agent contract, swept with 0, 1 and 2', () => {
     expect(answer(1, [], 0)).toMatch(/^HEY’s ledger recorded no change for Robinhood Chain projects in the last day\./);
   });
 
-  it('research_project: meaningful events and the unknowns count', () => {
+  it('research_project: counted ships and the unknowns count', () => {
     const gapsOf = (n: number) => Array.from({ length: n }, (_, index) => ({ dimension: ['package', 'apiDocs'][index % 2]!, state: 'NO_SOURCE' as const, sentence: 'No source HEY found for it.', reason: 'none_found' }));
     for (const events of COUNTS) {
       for (const gaps of COUNTS) {
@@ -116,7 +116,7 @@ describe('counted words in the agent contract, swept with 0, 1 and 2', () => {
     }
   });
 
-  it('compare_builders: each project\'s meaningful events', () => {
+  it('compare_builders: each project\'s counted ships', () => {
     for (const events of COUNTS) {
       const compare = clone(fx.compare) as HeyCompare;
       compare.projects = compare.projects.map((row) => ({ ...row, velocity: { state: 'STEADY', current: events, previous: events } })) as HeyCompare['projects'];

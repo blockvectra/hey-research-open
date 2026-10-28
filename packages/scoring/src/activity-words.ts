@@ -20,8 +20,26 @@ export const ACTIVITY_STATUS_WORDS: Readonly<Record<ActivityStatusWordsKey, { la
   QUIET: { label: 'Quiet', help: 'No meaningful updates for over a month.' },
   DORMANT: { label: 'Dormant', help: 'No meaningful updates observed for a long time. Not the same as abandoned.' },
   RESUMED: { label: 'Resumed building', help: 'Started shipping again after a long gap.' },
-  UNKNOWN: { label: 'Activity unknown', help: 'Not enough public sources to judge activity yet.' },
+  UNKNOWN: { label: 'Not measured — activity unknown', help: 'Not enough public sources to judge activity yet.' },
 };
+
+/*
+ * One chip for UNKNOWN (2026-10-28 simplicity study, CON-8): six phrasings had grown for one state that is 62% of the
+ * catalogue — "Activity unknown", "No builder source linked", "Builder source held, not counted", "Activity not
+ * measurable", "Not researched yet", "Building not checked yet". Each is now a reason under one head, "Not measured",
+ * with the one separator (CON-10): a line of text prints "Not measured — no builder source linked", and the chip
+ * prints the head with the reason as its second line (`activityChipWords`). The reasons and their help are unchanged.
+ */
+export const ACTIVITY_NOT_MEASURED_HEAD = 'Not measured';
+const notMeasured = (reason: string): string => `${ACTIVITY_NOT_MEASURED_HEAD} — ${reason}`;
+
+/** A status label as the chip draws it: the head, and the reason a "Not measured" label carries, capitalised for its own line. */
+export function activityChipWords(label: string): { head: string; reason?: string } {
+  const prefix = `${ACTIVITY_NOT_MEASURED_HEAD} — `;
+  if (!label.startsWith(prefix)) return { head: label };
+  const reason = label.slice(prefix.length);
+  return { head: ACTIVITY_NOT_MEASURED_HEAD, reason: `${reason.charAt(0).toUpperCase()}${reason.slice(1)}` };
+}
 
 /**
  * UNKNOWN with nothing to read (2026-09-13). Most token projects HEY found
@@ -37,7 +55,7 @@ export const ACTIVITY_STATUS_WORDS: Readonly<Record<ActivityStatusWordsKey, { la
  * no such source is never DORMANT ("we looked and saw nothing").
  */
 export const NO_BUILDER_SIGNAL = {
-  label: 'No builder source linked',
+  label: notMeasured('no builder source linked'),
   help: 'HEY has no repository, changelog or feed linked for this project, so whether it is building is not measured. It does not mean nothing is being built. Trading is not building.',
 } as const;
 
@@ -51,7 +69,7 @@ export const NO_BUILDER_SIGNAL = {
  * whether it is shipping now — so the label says why.
  */
 export const ACTIVITY_NOT_MEASURABLE = {
-  label: 'Activity not measurable',
+  label: notMeasured('activity not measurable'),
   help: 'HEY has a ship on record but no repository, changelog or feed it can keep reading, so whether this project is building now cannot be judged. The last ship is the newest evidence HEY holds.',
 } as const;
 
@@ -62,7 +80,7 @@ export const ACTIVITY_NOT_MEASURABLE = {
  * What would make it count is written under the source itself (`sources/context-words.ts`).
  */
 export const BUILDER_SOURCE_HELD = {
-  label: 'Builder source held, not counted',
+  label: notMeasured('builder source held, not counted'),
   help: 'HEY holds a repository, changelog or feed for this project only as context: nothing yet ties it to the project, so whether it is building is not measured. Each source says what would make it count. It does not mean nothing is being built.',
 } as const;
 
@@ -110,8 +128,8 @@ export function activityPresentation(status: string, unknownReason?: UnknownActi
   return { label: words.label, help: words.help };
 }
 
-/** The plain status word, without a reason: for a status change ("Quiet → Shipping"), where the reason is not part of the claim. */
-export const activityStatusLabel = (status: string): string => (ACTIVITY_STATUS_WORDS[status as ActivityStatusWordsKey] ?? ACTIVITY_STATUS_WORDS.UNKNOWN).label;
+/** The plain status word, without a reason: for a status change ("Quiet → Shipping") or a facet, where the reason is not part of the claim — UNKNOWN is the chip's head, "Not measured". */
+export const activityStatusLabel = (status: string): string => activityChipWords((ACTIVITY_STATUS_WORDS[status as ActivityStatusWordsKey] ?? ACTIVITY_STATUS_WORDS.UNKNOWN).label).head;
 
 /** The words for one project's status, from the facts every surface holds. */
 export function projectActivityWords(project: {

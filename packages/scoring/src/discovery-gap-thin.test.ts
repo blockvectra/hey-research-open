@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { DISCOVERY_GAP } from './config';
-import { DISCOVERY_GAP_WITHHELD_REASONS, DISCOVERY_GAP_WITHHELD_WORDS, discoveryGapWithheldReason } from './discovery-gap';
+import { DISCOVERY_GAP_WITHHELD_REASONS, DISCOVERY_GAP_WITHHELD_WORDS, discoveryGapWithheldReason } from './withheld-words';
 import { discoveryGapMarketMeasurable, marketVolumeTooThin, TOKEN_MARKET_REASONS, type TokenMarketStatusValue } from './token-market';
 import { SCORING_VERSION, SCORING_VERSIONS } from './version';
 

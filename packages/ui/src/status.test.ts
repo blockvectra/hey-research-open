@@ -19,7 +19,7 @@ import {
  * Why an UNKNOWN is unknown (data-correctness pass, 2026-09-28).
  *
  * Regression: a Verified Builder with a ship two months old and no source HEY
- * reads printed "Activity unknown" under its badge. The chip now says what
+ * reads printed "Not measured — activity unknown" under its badge. The chip now says what
  * HEY can and cannot see, from the same three facts on every surface.
  */
 describe('unknownActivityReason', () => {
@@ -41,7 +41,7 @@ describe('unknownActivityReason', () => {
     expect(unknownActivityReason({ activityStatus: 'UNKNOWN', lastMeaningfulShipAt: shipped })).toBeNull();
   });
 
-  // 2026-10-28 simplicity study, DATA-10: a ship beside UNKNOWN is the scorer's no-coverage reading, never a bare "Activity unknown".
+  // 2026-10-28 simplicity study, DATA-10: a ship beside UNKNOWN is the scorer's no-coverage reading, never a bare "Not measured — activity unknown".
   it('says why beside a ship, whatever the source flag reads now', () => {
     expect(unknownActivityReason({ activityStatus: 'UNKNOWN', hasBuilderSource: true, lastMeaningfulShipAt: shipped })).toBe('no_readable_source');
   });
@@ -56,7 +56,8 @@ describe('activityPresentation', () => {
   it('names each reason once, and falls back on the status word', () => {
     expect(activityPresentation('UNKNOWN', 'no_builder_signal').label).toBe(NO_BUILDER_SIGNAL.label);
     expect(activityPresentation('UNKNOWN', 'no_readable_source').label).toBe(ACTIVITY_NOT_MEASURABLE.label);
-    expect(activityPresentation('UNKNOWN', null).label).toBe(activityLabel('UNKNOWN'));
+    expect(activityPresentation('UNKNOWN', null).label).toBe('Not measured — activity unknown');
+    expect(activityLabel('UNKNOWN')).toBe('Not measured');
     // A reason never relabels a decided status.
     expect(activityPresentation('SHIPPING', 'no_readable_source').label).toBe(activityLabel('SHIPPING'));
   });
@@ -66,7 +67,7 @@ describe('activityPresentation', () => {
     expect(html).toContain(ACTIVITY_NOT_MEASURABLE.label);
     expect(html).toContain('data-activity-status="UNKNOWN"');
     expect(html).toContain('data-unknown-reason="no_readable_source"');
-    expect(html).not.toContain('Activity unknown');
+    expect(html).not.toContain('Not measured — activity unknown');
   });
 
   it('still honours the older noBuilderSource flag', () => {

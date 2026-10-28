@@ -57,12 +57,18 @@ export function ContractAddress({
   address,
   chainId,
   explorerUrl,
+  explorer = true,
   className,
 }: {
   address: string;
   chainId: number;
   /** Override for tests or another chain; defaults to the brand explorer's token page. */
   explorerUrl?: string;
+  /**
+   * Whether to draw the open-in-explorer link (2026-10-28 simplicity study, DISC-7): a card is one link to the
+   * project, and the explorer is one press away on the project page; the copy button stays, an action of its own.
+   */
+  explorer?: boolean;
   className?: string;
 }) {
   const [copied, setCopied] = useState(false);
@@ -123,14 +129,13 @@ export function ContractAddress({
         data-outcome="contract"
         className={cn(
         /*
-         * 28px drawn, 40px to the thumb: the ring extends the target without
-         * moving the row. Vertically only — a 6px bleed on all four sides
-         * put the explorer's box 2px inside the copy button's drawn edge,
-         * and being later in the DOM it won, so pressing the right of the
+         * 28px drawn, 44px to the thumb (2026-10-28 simplicity study, DISC-7; 40px until then): the ring extends
+         * the target without moving the row. Vertically only — a bleed on all four sides put the explorer's box
+         * inside the copy button's drawn edge, and being later in the DOM it won, so pressing the right of the
          * copy icon opened the explorer instead (layout audit, 2026-09-22).
            */
           'relative inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[6px] text-hey-muted',
-          'before:absolute before:-inset-y-1.5 before:-inset-x-0.5 before:content-[""]',
+          'before:absolute before:-inset-y-2 before:-inset-x-0.5 before:content-[""]',
           'hover:bg-hey-subtle hover:text-hey-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hey-ink/30',
           copied && 'text-status-shipping',
         )}
@@ -141,6 +146,7 @@ export function ContractAddress({
           <Copy aria-hidden="true" size={14} strokeWidth={1.75} />
         )}
       </button>
+      {explorer ? (
       <a
         href={href}
         target="_blank"
@@ -154,6 +160,7 @@ export function ContractAddress({
       >
         <ExternalLink aria-hidden="true" size={14} strokeWidth={1.75} />
       </a>
+      ) : null}
       <span aria-live="polite" className="sr-only">
         {copied ? 'Copied full contract address' : ''}
       </span>

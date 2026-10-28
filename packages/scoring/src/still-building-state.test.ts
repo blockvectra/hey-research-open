@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { STILL_BUILDING_STATES, STILL_BUILDING_WITHHELD_REASONS, STILL_BUILDING_WITHHELD_WORDS, stillBuildingState, stillBuildingWithheldOf } from './discovery-gap';
+import { STILL_BUILDING_STATES, stillBuildingState, stillBuildingWithheldOf } from './discovery-gap';
+import { STILL_BUILDING_WITHHELD_REASONS, STILL_BUILDING_WITHHELD_WORDS } from './withheld-words';
 import { SCORING_VERSION } from './version';
 
 /**

@@ -247,10 +247,16 @@ The catalogue, with the same filters and order the browse pages use.
 | `shipping-now` | Activity status `SHIPPING`: a meaningful ship in the last 7 days. Robinhood Chain builders only |
 | `most-active` | Shipping, active or resumed, ordered by Build Momentum. Robinhood Chain builders only |
 | `new-builders` | Published on HEY in the last 7 days **with a builder source HEY reads and at least one counted ship**, newest first ship first |
-| `new-on-hey` | Every project published on HEY in the last 7 days, builder or not, newest first (added 2026-10-17) |
+| `new-on-hey` | Every project published on HEY in the last 7 days, builder or not: pages with a building record first, then newest first (added 2026-10-17; ordered 2026-10-28) |
 | `back-from-dormancy` | Activity status `RESUMED`: shipping again after a long gap. Robinhood Chain builders only |
 | `utility` | Kind `UTILITY`, `INFRASTRUCTURE`, `APPLICATION` or `RWA` |
 | `memes` | Kind `MEME` |
+
+**Thin pages last (2026-10-28).** A published page with no building record — activity status `UNKNOWN`, no counted
+ship ever and no official builder source — is ordered after the pages with one: inside the default order's tail of
+pages that never shipped, and first under `tab=new-on-hey`. A tie-break, never a filter: the page stays in the list,
+the totals and every `has=` narrowing. The market orders are unchanged. Recorded in the
+[API changelog](API_CHANGELOG.md#2026-10-28).
 
 **Changed 2026-10-17: `tab=new-builders` lists builders only.** Before 2026-10-17 it listed every
 project published on HEY in the last 7 days; of 192 rows, 171 read "Activity unknown" with no builder
@@ -1840,7 +1846,9 @@ link writes its applied filters into the URL: `tab`, `kindGroup`, `kind`, `statu
 window (`since`, `until`, `type` incl. `releases`, `has`, `q`, `sort`, `project`; additive since
 2026-10-16: `narrative`, a primary narrative's slug, and `view=feed`, which folds a repository's
 releases of one UTC day and a deploy run to one row as `/ships` does — absent or `view=records`,
-every ship record as before; `/ships`' own **Download CSV** link sets `view=feed`). Both: at most
+every ship record as before; since 2026-10-28 `view=counted` folds the same way over counted ships only, the list
+`/ships` opens on, and `/ships`' own **Download CSV** link sets `view=counted`, or `view=feed` under
+"Show everything HEY recorded"). Both: at most
 **1,000 rows** in the listing's own order (`x-hey-rows`, and `x-hey-truncated: true` when more
 matched), UTF-8 with a BOM, dates in UTC, every row stamped `as_of_utc`; an empty cell is not
 measured, never zero. An export costs 21 requests from the per-minute bucket (a 48-row page each),

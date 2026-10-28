@@ -55,7 +55,7 @@ describe('valuationDisplay', () => {
     // A dead status outranks an unsettled reason: HEY did record the market gone.
     expect(state({ valueUsd: 1, marketStatus: 'LIQUIDITY_REMOVED', marketReason: 'removal_unconfirmed' })).toBe('no_active_market');
     expect(state({ valueUsd: undefined, marketStatus: 'ACTIVE_MARKET' })).toBe('no_reading');
-    expect(VALUATION_HIDDEN_WORDS.no_reading).toBe('Unavailable');
+    expect(VALUATION_HIDDEN_WORDS.no_reading).toBe('Not read — no recent reading');
   });
 
   it('keeps the unsettled reasons inside the dead list, so neither rule can drift', () => {

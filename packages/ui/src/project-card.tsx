@@ -14,6 +14,7 @@ import {
   staleReadingAge,
   tickerLabel,
 } from './format';
+import { discoveryGapMarketMeasurable, marketVolumeTooThin } from '@hey/scoring/token-market';
 import { valuationDisplay, valuationDisplayLabel, valuationHiddenCardWords, valuationHiddenSentence } from '@hey/scoring/valuation-display';
 import { projectCategory } from './project-category';
 import { ProjectLogo } from './project-logo';
@@ -34,8 +35,13 @@ import { BrandNotice, type BrandNoticeData } from './brand-notice';
  *   One or two lines about what it is.
  *   ─────────────────────────────────────────
  *   Market cap                         $1.24M      ← market context
- *   0x82ae…91bf  [copy] [explorer]                 ← reference
- *   via Pons ↗                     @project ↗      ← origin
+ *   0x82ae…91bf  [copy]                            ← reference
+ *   via Pons                           @project    ← origin
+ *
+ * One link, one action (2026-10-28 simplicity study, DISC-7): the card is one link to the project — the name, whose
+ * stretched target covers the card — and one button, copy the contract, with a 44px target. The launch page, the
+ * explorer and the X account are named here as text and linked on the project page: a card carried seven tab stops
+ * (24 cards made 168 of Explore's 229 interactive elements) with targets of 20–28px. The facts are unchanged.
  *
  * The order is the reading order a first-time visitor needs: who it is, is it
  * building, what did it ship, what is it, what is the market, how do I check
@@ -64,20 +70,55 @@ export function cardTokenNotTheProjects(project: Pick<ProjectCardData, 'tokenVer
 }
 
 /**
- * Whether a card prints a valuation at all (2026-10-24 full audit UI-7, founder delegation; display only, never a
- * score or an order input). A default card — every card but the Token Projects view, where the reader asked for
- * market context — prints one only when the tracked token is VERIFIED, or its market is ACTIVE_MARKET and its
- * ticker is not contested; otherwise it prints no valuation row and no placeholder (the project page carries the
- * sentence). "Valuation $17" on a known project's lead card, beside a tiny "Token unverified", read as a bug.
- * A token that is not the project's (INV-1) prints none on any card.
+ * Whether a card prints a valuation at all (display only, never a score or an order input).
+ *
+ * 2026-10-24 full audit UI-7 (founder delegation): a default card — every card but the Token Projects view, where the
+ * reader asked for market context — printed one only when the tracked token is VERIFIED, or its market is
+ * ACTIVE_MARKET and its ticker is not contested. A token that is not the project's (INV-1) prints none on any card.
+ *
+ * 2026-10-28 simplicity study, ruling R5 (founder "semua R ya", DATA-6, DISC-15): a default card also prints one only
+ * on a market HEY measures — the Discovery Gap's own measured-market test (`discoveryGapMarketMeasurable`: an
+ * ACTIVE_MARKET that is more than a launch curve or a launch pool, hbm-v18/v22; `marketVolumeTooThin`: a measured 24 h
+ * volume of $1,000 or more, hbm-v31) — and only when the figure is shown (`valuationDisplay`). Otherwise no valuation
+ * row and no placeholder: the project page says why. "Valuation $24M" beside "No trades in 24 h" was the largest
+ * figure on a card whose own page declined to measure its market (172 cards on 2026-10-28).
  */
 export function cardShowsValuation(
-  project: Pick<ProjectCardData, 'tokenVerification' | 'tokenVerificationReason' | 'tokenMarketStatus' | 'tokenTickerContested'>,
+  project: Pick<
+    ProjectCardData,
+    | 'tokenVerification'
+    | 'tokenVerificationReason'
+    | 'tokenMarketStatus'
+    | 'tokenMarketReason'
+    | 'tokenTickerContested'
+    | 'launchStage'
+    | 'volume24hUsd'
+    | 'marketCapUsd'
+    | 'fdvUsd'
+    | 'valuationImplausible'
+  >,
   options: { marketLens?: boolean } = {},
 ): boolean {
   if (cardTokenNotTheProjects(project)) return false;
   if (options.marketLens) return true;
-  return project.tokenVerification === 'VERIFIED' || (project.tokenMarketStatus === 'ACTIVE_MARKET' && project.tokenTickerContested !== true);
+  if (!cardMarketMeasured(project)) return false;
+  if (project.tokenVerification !== 'VERIFIED' && project.tokenTickerContested === true) return false;
+  return valuationDisplay({
+    valueUsd: project.marketCapUsd,
+    fdvUsd: project.fdvUsd,
+    marketStatus: project.tokenMarketStatus,
+    marketReason: project.tokenMarketReason,
+    valuationImplausible: project.valuationImplausible,
+  }).shown;
+}
+
+/**
+ * Whether the card's tracked market is one HEY measures (R5, 2026-10-28): the Discovery Gap's test, read, never
+ * restated — `discoveryGapMarketMeasurable` on the status, launch stage and reason, and `marketVolumeTooThin` on the
+ * reading's 24 h volume (a volume HEY does not hold never trips it: unknown is not thin).
+ */
+export function cardMarketMeasured(project: Pick<ProjectCardData, 'tokenMarketStatus' | 'tokenMarketReason' | 'launchStage' | 'volume24hUsd'>): boolean {
+  return discoveryGapMarketMeasurable(project.tokenMarketStatus, project.launchStage, project.tokenMarketReason) && !marketVolumeTooThin(project.volume24hUsd);
 }
 
 /** What "Valuation" means on a card when the figure is a fully diluted valuation: the card's title and the glossary read it. */
@@ -375,9 +416,10 @@ export function ProjectCard({
             {LAUNCH_NOT_OBSERVED}
           </span>
         ) : project.launchedVia?.url ? (
-          <ExternalRef href={project.launchedVia.url} label={`Open ${project.launchedVia.name} launch page`}>
+          // Named, not linked (DISC-7): the launch page is one press away on the project page.
+          <span className="truncate text-hey-secondary" title={`Launched on ${project.launchedVia.name}`}>
             {project.launchedVia.name}
-          </ExternalRef>
+          </span>
         ) : launchNotObserved(project.launchedVia?.name) && project.marketVenue ? (
           // No launch record, but a pool: say where the token trades, never where it launched.
           <span className="truncate text-hey-secondary" title={`HEY did not observe the launch; the token trades on ${project.marketVenue}.`}>
@@ -396,14 +438,10 @@ export function ProjectCard({
           <span className="sr-only">{project.officialX.withheldLine}</span>
         </span>
       ) : project.officialX ? (
-        <ExternalRef
-          href={project.officialX.url}
-          label={`Open ${name} on X`}
-          className="shrink-0"
-          data-testid="official-x"
-        >
+        // The account HEY reads as the project's, named as text (DISC-7); the project page links it.
+        <span className="min-w-0 shrink-0 truncate text-hey-secondary" data-testid="official-x" title={`${name} on X`}>
           @{project.officialX.handle}
-        </ExternalRef>
+        </span>
       ) : null}
     </div>
   );
@@ -646,7 +684,7 @@ export function ProjectCard({
 
             {/* Reference: the contract — identity, never a ticker — with its lock and any contradiction beside it. */}
             <div className="-ml-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
-              <ContractAddress address={project.token!.contractAddress} chainId={project.token!.chainId} />
+              <ContractAddress address={project.token!.contractAddress} chainId={project.token!.chainId} explorer={false} />
               {lockChip ? <TokenLockChip lock={lockChip} /> : null}
               {/*
                 Token is not project (data-correctness pass, 2026-09-28): where
@@ -682,9 +720,9 @@ export function ProjectCard({
           <p className="flex min-w-0 items-baseline justify-between gap-3 text-[13.5px]" data-testid="no-token">
             <span className="shrink-0 text-hey-secondary" title="HEY tracks no token for this project.">No token tracked</span>
             {project.websiteUrl ? (
-              <ExternalRef href={project.websiteUrl} label={`Open ${name} website`} data-testid="website">
+              <span className="min-w-0 truncate text-hey-secondary" data-testid="website" title={project.websiteUrl}>
                 {hostOf(project.websiteUrl)}
-              </ExternalRef>
+              </span>
             ) : null}
           </p>
         )}

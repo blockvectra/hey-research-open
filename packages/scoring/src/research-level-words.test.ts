@@ -24,11 +24,11 @@ describe('research level words', () => {
   it('never says "not researched" for a level that is researched', () => {
     for (const level of ['RESEARCHED', 'VERIFIED_BUILDER']) {
       const words = buildNotReadWords(level);
-      expect(words.answer).toBe('Building not checked yet');
+      expect(words.answer).toBe('Not measured — building not checked yet');
       expect(`${words.answer} ${words.text}`).not.toMatch(/not researched|indexed this record/i);
       expect(words.reason).toBe('building_not_read');
     }
-    expect(buildNotReadWords('INDEXED')).toEqual({ answer: 'Not researched yet', text: 'HEY indexed this record and has not read its sources.', reason: 'indexed_only' });
+    expect(buildNotReadWords('INDEXED')).toEqual({ answer: 'Not measured — not researched yet', text: 'HEY indexed this record and has not read its sources.', reason: 'indexed_only' });
   });
 });
 

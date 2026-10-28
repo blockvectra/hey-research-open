@@ -1,4 +1,13 @@
-import { LIQUIDITY_NOT_CURRENT_REASON, NOT_FUNGIBLE_REASON, READING_NOT_CURRENT_REASON, type TOKEN_MARKET_REASONS, type TokenMarketStatusValue } from './token-market';
+import type { LIQUIDITY_NOT_CURRENT_REASON as LiquidityNotCurrent, NOT_FUNGIBLE_REASON as NotFungible, READING_NOT_CURRENT_REASON as ReadingNotCurrent, TOKEN_MARKET_REASONS, TokenMarketStatusValue } from './token-market';
+
+/*
+ * Types only from the classifier (2026-10-28 simplicity study, CON-9): this module imports nothing at run time, so the
+ * MCP and the agent contract read the market words themselves (`word-modules.test.ts`). The three reason codes the
+ * words name are typed by the classifier's own constants, so a code renamed there fails the type check here.
+ */
+const LIQUIDITY_NOT_CURRENT_REASON: typeof LiquidityNotCurrent = 'liquidity_not_current';
+const NOT_FUNGIBLE_REASON: typeof NotFungible = 'not_a_fungible_token';
+const READING_NOT_CURRENT_REASON: typeof ReadingNotCurrent = 'reading_not_current';
 
 /**
  * The token market statuses in words: one table for the card, the project
@@ -102,28 +111,59 @@ export type MarketFacts = {
 };
 
 /**
- * The market status in words that never contradict the figures beside them
- * (Terminal redesign, 2026-09-26, spec §6 C4). ONE rule for the Terminal
- * header, the Market tab and the Research Summary (review repair,
- * 2026-09-29: the summary said "Market data insufficient" beside a header and
- * a chart drawing 29 daily candles).
- *
- * `INSUFFICIENT_DATA` means HEY has not classified the market — not that it
- * holds no reading:
- *  - a specific reason (readings that disagree, a launch pool) says the
- *    readings are not confirmed;
- *  - with two priced daily closes the chart draws candles, so it is the
- *    classification that has not caught up ("Not classified yet");
- *  - with only a current reading, it is the daily history that is short;
- *  - with nothing at all, the plain label.
+ * The four heads every "we do not know" is said under (2026-10-28 simplicity study, CON-10), one separator, " — ":
+ *  - "Not measured — reason": a HEY rule did not measure it;
+ *  - "Not read — reason": HEY did not read the source;
+ *  - "Withheld — reason": HEY holds the figure and does not publish it;
+ *  - "Unknown": activity only.
+ * About 144 strings had grown under 18 openings ("Unavailable", "Not available", "Unconfirmed", "Not computed",
+ * "Not tracked", "Not classified yet", "Daily history too short" …) and three separators.
  */
-export function marketStatusWords(status: TokenMarketStatusValue, facts: MarketFacts): string {
-  if (facts.reason === NOT_FUNGIBLE_REASON || facts.reason === READING_NOT_CURRENT_REASON) return tokenMarketStatusLabel(status, facts.reason);
-  if (status === 'INSUFFICIENT_DATA' && !isUnconfirmedMarketReason(facts.reason)) {
-    if ((facts.pricedDays ?? 0) >= 2) return 'Not classified yet';
-    if (facts.hasCurrentReading) return 'Daily history too short; current reading available';
+export const UNKNOWN_HEADS = { notMeasured: 'Not measured', notRead: 'Not read', withheld: 'Withheld', unknown: 'Unknown' } as const;
+export type UnknownHead = (typeof UNKNOWN_HEADS)[keyof typeof UNKNOWN_HEADS];
+
+/** "Not measured — not classified yet": a head and its reason, with the one separator. */
+export const headed = (head: UnknownHead, reason: string): string => `${head} — ${reason}`;
+
+/** The market label where HEY holds closes but has not classified the market yet. */
+export const NOT_CLASSIFIED_YET_LABEL = headed(UNKNOWN_HEADS.notMeasured, 'not classified yet');
+/** The market label where HEY holds a current reading but too few daily closes to classify it. */
+export const DAILY_HISTORY_TOO_SHORT_LABEL = headed(UNKNOWN_HEADS.notMeasured, 'daily history too short');
+
+/**
+ * The market in words, once (2026-10-28 simplicity study, CON-2): the label and the sentence every market slot reads —
+ * the chip, the API's display label, the Research Summary, the explain engine, the Terminal header and Market tab.
+ * Other slots that would describe the market again (the valuation slot, the Discovery Gap's reason) point here with
+ * "see market" instead of restating it: on /project/budgetpuff one market read six ways.
+ *
+ * The label never contradicts the figures beside it (Terminal redesign, 2026-09-26, spec §6 C4). `INSUFFICIENT_DATA`
+ * means HEY has not classified the market — not that it holds no reading:
+ *  - a specific reason (readings that disagree, a launch pool) says the readings are not confirmed;
+ *  - with two priced daily closes the chart draws candles, so it is the classification that has not caught up
+ *    ("Not measured — not classified yet");
+ *  - with only a current reading, it is the daily history that is short ("Not measured — daily history too short");
+ *  - with nothing at all, the plain label.
+ * Without `facts` the label is the status and reason alone (`tokenMarketStatusLabel`). The sentence is the label and
+ * the classifier's reason as a clause ("Active market: the pool holds liquidity and the token traded in the last day.").
+ */
+export function marketWords(status: TokenMarketStatusValue, reason?: string | null, facts?: Omit<MarketFacts, 'reason'>): { label: string; sentence: string } {
+  const label = facts ? refinedMarketLabel(status, reason, facts) : tokenMarketStatusLabel(status, reason);
+  const clause = reason ? (TOKEN_MARKET_REASON_WORDS as Readonly<Record<string, string>>)[reason] : undefined;
+  return { label, sentence: clause ? `${label}: ${clause}.` : `${label}.` };
+}
+
+function refinedMarketLabel(status: TokenMarketStatusValue, reason: string | null | undefined, facts: Omit<MarketFacts, 'reason'>): string {
+  if (reason === NOT_FUNGIBLE_REASON || reason === READING_NOT_CURRENT_REASON) return tokenMarketStatusLabel(status, reason);
+  if (status === 'INSUFFICIENT_DATA' && !isUnconfirmedMarketReason(reason)) {
+    if ((facts.pricedDays ?? 0) >= 2) return NOT_CLASSIFIED_YET_LABEL;
+    if (facts.hasCurrentReading) return DAILY_HISTORY_TOO_SHORT_LABEL;
   }
-  return tokenMarketStatusLabel(status, facts.reason);
+  return tokenMarketStatusLabel(status, reason);
+}
+
+/** `marketWords`' label, from the facts with their reason: the Terminal's and the summary's call shape. */
+export function marketStatusWords(status: TokenMarketStatusValue, facts: MarketFacts): string {
+  return marketWords(status, facts.reason, facts).label;
 }
 
 /**
@@ -163,9 +203,7 @@ export const TOKEN_MARKET_REASON_WORDS: Readonly<Record<(typeof TOKEN_MARKET_REA
   liquidity_not_current: 'the token traded in the last day, but the newest reading of its pool’s liquidity is more than 7 days old',
 };
 
-/** "Active market: the pool holds liquidity and the token traded in the last day." One sentence per status and reason. */
+/** "Active market: the pool holds liquidity and the token traded in the last day." `marketWords`' sentence. */
 export function tokenMarketReasonSentence(status: TokenMarketStatusValue, reason: string | null | undefined): string {
-  const label = tokenMarketStatusLabel(status, reason);
-  const clause = reason ? (TOKEN_MARKET_REASON_WORDS as Readonly<Record<string, string>>)[reason] : undefined;
-  return clause ? `${label}: ${clause}.` : `${label}.`;
+  return marketWords(status, reason).sentence;
 }

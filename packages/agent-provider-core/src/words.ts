@@ -148,8 +148,8 @@ export function leadName(name: string | undefined, slug: string, looksLikeInstru
   return trimmed && PLAIN_NAME.test(trimmed) && !looksLikeInstruction(trimmed) ? trimmed : slug;
 }
 
-export const WORD_MEANINGFUL_EVENT = noun('meaningful event');
-export const WORD_MEANINGFUL_BUILDING_EVENT = noun('meaningful building event');
+export const WORD_MEANINGFUL_EVENT = noun('counted ship');
+export const WORD_MEANINGFUL_BUILDING_EVENT = noun('counted ship');
 export const WORD_CHANGE = noun('change');
 export const WORD_THING = noun('thing');
 

@@ -430,7 +430,7 @@ describe('research_answer: one call from any identifier, cited, lean (2026-10-14
   }
 
   it('the research answer opens in plain English from the Research Summary’s own words, then the machine words', () => {
-    expect(research.answer.text).toMatch(/^AgentOS is shipping consistently: 4 meaningful events in 30 days; latest ship yesterday\. agentos: activity status SHIPPING, last meaningful ship 2026-09-24; 9 meaningful events in 30 days\./);
+    expect(research.answer.text).toMatch(/^AgentOS is shipping consistently: 4 counted ships in 30 days; latest ship yesterday\. agentos: activity status SHIPPING, last meaningful ship 2026-09-24; 9 counted ships in 30 days\./);
     // The clean canonical page the snapshot names, never the answer's own URL, and never an attributed one.
     expect(research.citation?.text).toBe(`Source: HEY Research Lab, builder research for Robinhood Chain — ${fx.snapshot.links.page}, as of 2026-09-26, rules ${fx.snapshot.scoringVersion}`);
     expect(research.links.pageAttributed).toBeUndefined();

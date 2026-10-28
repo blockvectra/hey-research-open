@@ -211,7 +211,7 @@ describe('AG-02: a citation an agent can repeat, and a plain first sentence', ()
     // A reading the table does not know is kept as the summary wrote it: an unknown stays unknown.
     expect(buildAnswerLead('Chit', 'No builder source linked')).toBe('Chit: No builder source linked');
     expect(buildAnswerLead('Chit', 'Not researched yet')).toBe('Chit: Not researched yet');
-    expect(buildLineFigures('Shipping: 4 meaningful events in 30 days; latest ship 3 days ago.')).toBe('4 meaningful events in 30 days; latest ship 3 days ago.');
+    expect(buildLineFigures('Shipping: 4 counted ships in 30 days; latest ship 3 days ago.')).toBe('4 counted ships in 30 days; latest ship 3 days ago.');
     expect(buildLineFigures('No builder source linked: HEY holds no repository, changelog or feed it can read, so no count here is a measured zero.')).toBe('HEY holds no repository, changelog or feed it can read, so no count here is a measured zero.');
     // The name leads only when it can stand in HEY's own sentence; otherwise the slug.
     expect(leadName('Chit', 'chit', looksLikeInstruction)).toBe('Chit');

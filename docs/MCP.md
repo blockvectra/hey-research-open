@@ -193,7 +193,7 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
   cannot tell from a lookalike (`token_not_the_projects`) or when every builder source is
   unavailable (`builder_sources_unavailable`, hbm-v31).
 - `under-the-radar` — **eligible under HEY's Under the Radar rule** (status shipping, active
-  or resumed; Build Momentum at least 30; at least 2 meaningful events in the last 30 days, one
+  or resumed; Build Momentum at least 30; at least 2 counted ships in the last 30 days, one
   of them a ship rather than a commit summary; a fresh reading of an active market beyond
   a launch curve or a launch pool, trading $1,000+ a day, for the project's own token; market attention TYPICAL or lower
   (percentile below 60); never on activity HEY cannot read or a contested unverified ticker) **and a positive Discovery Gap**: the
@@ -214,7 +214,7 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
   `status: "RESUMED"` gives every resumed project.
 - `shipping-in-silence` — held Under the Radar (the rule above, its positive gap and every
   hold the `/radar` listing applies) **and** below the 40th market-attention percentile.
-- `accelerating` — more meaningful events in the last 30 days than in the 30 before.
+- `accelerating` — more counted ships in the last 30 days than in the 30 before.
 - `builder-radar` — the Builder Radar, with `radar` for its views, never ranked by price.
 
 The catalogue filters are exactly the parameters `/api/projects` reads (`kind`, `status`,
@@ -369,7 +369,7 @@ And never:
   claims, unknowns, links, citation; `detail: "full"` for the data, freshness and evidence lines; the
   JSON is always whole in `structuredContent` and at the resource link); the research answer's first
   sentence is plain English from the Research Summary's own `answer` and figures ("Chit is shipping
-  consistently: 4 meaningful events in 30 days; latest ship 3 days ago."), the machine words kept
+  consistently: 4 counted ships in 30 days; latest ship 3 days ago."), the machine words kept
   after it; the handshake's instructions are a trigger list (per thing a user types, the first call
   and its arguments); and `tools/list` leads with `research_answer`, then `find_projects`
   (`HEY_MCP_TOOL_LIST_ORDER`). The list measures 19,867 bytes of 20,000 on `/mcp` and 10,911 of 11,000 on `/mcp/research` (the `q` and `detail` arguments). A caller that

@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@hey/config": "workspace:*",
+    "@hey/scoring": "workspace:*",
     "@hey-research-lab/sdk": "workspace:*",
     "zod": "^4.6.7"
   },

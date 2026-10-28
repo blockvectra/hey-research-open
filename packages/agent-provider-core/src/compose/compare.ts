@@ -97,7 +97,7 @@ export function composeCompare(ctx: AgentComposeContext, input: CompareInput): A
         evidenceKind: project.activityStatus === 'UNKNOWN' ? 'not_held' : 'rule_output',
       },
       project.meaningfulEvents30d === null
-        ? { id: `compare.${project.slug}.meaningful_events_30d`, dimension: 'build', statement: derivedText(`${project.slug}: meaningful events in 30 days are not measured.`), status: 'UNKNOWN', value: null, source: null, observedAt, occurredAt: null, precision: 'WINDOW', freshness: fresh, evidence: [], explainUrl, reason: 'activity_not_measured' }
+        ? { id: `compare.${project.slug}.meaningful_events_30d`, dimension: 'build', statement: derivedText(`${project.slug}: counted ships in 30 days are not measured.`), status: 'UNKNOWN', value: null, source: null, observedAt, occurredAt: null, precision: 'WINDOW', freshness: fresh, evidence: [], explainUrl, reason: 'activity_not_measured' }
         : {
             id: `compare.${project.slug}.meaningful_events_30d`,
             dimension: 'build',

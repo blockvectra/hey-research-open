@@ -27,6 +27,7 @@ import type {
 } from '@hey-research-lab/sdk';
 
 import { looksLikeEvidenceId, quoteExternal, stillBuildingStateOf, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
+import { DISCOVERY_GAP_WITHHELD_WORDS, STILL_BUILDING_WITHHELD_WORDS as SCORING_STILL_BUILDING_WITHHELD_WORDS } from '@hey/scoring/withheld-words';
 
 import { activityTag, atPrecision, composedWords, derivedWords, liquidityWords, money, officialXWords, quotedName, recordTag, shownOf, STILL_BUILDING_MEANING, stillBuildingEvidence, summaryWords, TAG_LEGEND, tokenMarketWords, valuationWord } from './render';
 
@@ -44,41 +45,13 @@ import { activityTag, atPrecision, composedWords, derivedWords, liquidityWords, 
 const pretty = (value: string): string => value.toLowerCase().replace(/_/g, ' ');
 
 /**
- * Why a Discovery Gap is absent, in the scoring package's words (hbm-v18,
- * 2026-09-30). The MCP ships without `@hey/scoring`, so this is a literal;
- * `apps/web/src/app/mcp/definitions.test.ts` holds it to
- * `DISCOVERY_GAP_WITHHELD_WORDS`.
+ * Why a Discovery Gap is absent, and why Still Building was not measured, in the scoring package's words (hbm-v18,
+ * hbm-v19): its one table (`withheld-words.ts`), read directly since 2026-10-28 (simplicity study, CON-9) instead of a
+ * literal copy held equal by a parity test. Typed by the SDK's codes, so a code the API sends that the table lacks
+ * fails the type check.
  */
-export const GAP_WITHHELD_WORDS: Readonly<Record<HeyDiscoveryGapWithheld, string>> = {
-  no_token: 'Not measured — no tracked token',
-  market_not_live: 'Not measured — no live market',
-  token_not_the_projects: 'Not measured — the token is not tied to the project',
-  market_too_thin: 'Not measured — market too thin',
-  active_pool_not_read: 'Not measured — no reading of the pool that makes the market active',
-  no_market_reading: 'Not measured — no current market reading',
-  no_build_momentum: 'Not measured — no building recorded',
-  activity_unknown: 'Not measured — activity unknown',
-};
-
-/**
- * Why Still Building was not measured, in the scoring package's words
- * (hbm-v19, 2026-09-30): the Discovery Gap's words for the same market.
- * `apps/web/src/app/mcp/definitions.test.ts` holds it to
- * `STILL_BUILDING_WITHHELD_WORDS`.
- */
-export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<HeyStillBuildingWithheld, string>> = {
-  market_not_live: GAP_WITHHELD_WORDS.market_not_live,
-  token_not_the_projects: GAP_WITHHELD_WORDS.token_not_the_projects,
-  market_too_thin: GAP_WITHHELD_WORDS.market_too_thin,
-  valuation_not_plausible: 'Not measured — valuation not plausible',
-  no_token: GAP_WITHHELD_WORDS.no_token,
-  active_pool_not_read: GAP_WITHHELD_WORDS.active_pool_not_read,
-  no_market_reading: GAP_WITHHELD_WORDS.no_market_reading,
-  activity_unknown: 'Not measured — activity unknown',
-  not_scored: 'Not measured — not scored yet',
-  no_tracked_high: 'Not measured — no tracked high yet',
-  builder_sources_unavailable: 'Not measured — builder sources unavailable',
-};
+export const GAP_WITHHELD_WORDS: Readonly<Record<HeyDiscoveryGapWithheld, string>> = DISCOVERY_GAP_WITHHELD_WORDS;
+export const STILL_BUILDING_WITHHELD_WORDS: Readonly<Record<HeyStillBuildingWithheld, string>> = SCORING_STILL_BUILDING_WITHHELD_WORDS;
 
 /**
  * A withheld code in its words, lower-cased for a sentence (hbm-v21): a code
@@ -261,7 +234,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     lines.push(
       b.velocity.current === null
         ? `- UNKNOWN build velocity (${pretty(b.velocity.state)})`
-        : `- DERIVED build velocity: ${pretty(b.velocity.state)} — ${b.velocity.current} meaningful events in ${b.velocity.windowDays} days${b.velocity.previous === null ? ', no earlier window to compare' : ` against ${b.velocity.previous} before`}`,
+        : `- DERIVED build velocity: ${pretty(b.velocity.state)} — ${b.velocity.current} counted ships in ${b.velocity.windowDays} days${b.velocity.previous === null ? ', no earlier window to compare' : ` against ${b.velocity.previous} before`}`,
     );
   } else lines.push('- UNKNOWN build velocity');
   lines.push(b.cadence?.medianIntervalDays !== undefined ? `- DERIVED release cadence: a release day every ${b.cadence.medianIntervalDays} days (median)` : '- UNKNOWN release cadence: fewer than three release days');
@@ -351,7 +324,7 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   if (v.token) lines.push(`- ${v.token.status === 'UNVERIFIED' ? 'UNKNOWN' : 'FACT'} token verification: ${pretty(v.token.status)}${v.token.reason ? ` (${pretty(v.token.reason)})` : ''}`);
   lines.push(`- FACT ownership: ${v.ownerVerified ? 'claimed by a verified owner' : v.submitted ? 'self-reported at submission, not verified' : 'not claimed'}`);
   lines.push(`- FACT sources: ${v.sources.total} registered, ${v.sources.own} the project's own, ${v.sources.verified} verified, ${v.sources.contextOnly} context only (not this project's evidence)`);
-  lines.push(s.evidenceSummary.meaningfulEvents30d === null ? '- UNKNOWN meaningful events in 30 days: not measured' : `- DERIVED ${s.evidenceSummary.meaningfulEvents30d} meaningful events in 30 days`);
+  lines.push(s.evidenceSummary.meaningfulEvents30d === null ? '- UNKNOWN counted ships in 30 days: not measured' : `- DERIVED ${s.evidenceSummary.meaningfulEvents30d} counted ships in 30 days`);
 
   lines.push('', '## Locks and integrity');
   const lock = s.locks.tokenLock;

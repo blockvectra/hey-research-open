@@ -112,21 +112,25 @@ export function valuationDisplayLabel(display: ValuationDisplay, style: 'card' |
   return style === 'card' ? 'Valuation' : style === 'short' ? 'FDV' : 'Fully diluted valuation';
 }
 
-/** The word printed where no figure is: one vocabulary for every surface. */
+/**
+ * The word printed where no figure is: one vocabulary for every surface. Under the four heads (2026-10-28 simplicity
+ * study, CON-2, CON-10): a valuation the market's status withholds points at the market ("see market") instead of
+ * describing the market a second time beside its own label ("No active market", "Unconfirmed").
+ */
 export const VALUATION_HIDDEN_WORDS: Readonly<Record<ValuationHidden, string>> = {
-  no_active_market: 'No active market',
-  unconfirmed: 'Unconfirmed',
-  not_plausible: 'Not plausible',
-  no_reading: 'Unavailable',
+  no_active_market: 'Withheld — see market',
+  unconfirmed: 'Withheld — see market',
+  not_plausible: 'Withheld — not plausible',
+  no_reading: 'Not read — no recent reading',
 };
 
 /**
  * A card's words where an implausible valuation would be (2026-10-17, audit FR-12): "Valuation · Not plausible" on a
  * homepage card read as a verdict on the token, with its reason only in a tooltip no phone reaches. It is said as what
- * HEY did — withheld — in the gate's own phrase, the words the explain engine publishes ("Withheld: not plausible
+ * HEY did — withheld — in the gate's own phrase, the words the explain engine publishes ("Withheld — not plausible
  * from the readings HEY has"). Every other state keeps its word.
  */
-export const VALUATION_NOT_PLAUSIBLE_WITHHELD = `Withheld: ${VALUATION_NOT_PLAUSIBLE_WORDS.replace(/^Valuation /, '')}`;
+export const VALUATION_NOT_PLAUSIBLE_WITHHELD = `Withheld — ${VALUATION_NOT_PLAUSIBLE_WORDS.replace(/^Valuation /, '')}`;
 
 /** The word a card prints where no figure is. */
 export function valuationHiddenCardWords(state: ValuationHidden): string {

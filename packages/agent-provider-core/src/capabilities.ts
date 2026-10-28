@@ -104,7 +104,7 @@ export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabi
   compare_builders: {
     id: 'compare_builders',
     question: "How do these projects' building records compare over 30 days?",
-    returns: 'Two to four projects side by side on factual builder metrics (status, last meaningful ship, meaningful events this 30 days and the 30 before, release cadence, active weeks, Build Momentum, verification) with each one’s peer cohort; no winner, no order but the one asked. Fewer than two found is not_found (too_few_projects_found); a comparison with one missing says partial.',
+    returns: 'Two to four projects side by side on factual builder metrics (status, last meaningful ship, counted ships this 30 days and the 30 before, release cadence, active weeks, Build Momentum, verification) with each one’s peer cohort; no winner, no order but the one asked. Fewer than two found is not_found (too_few_projects_found); a comparison with one missing says partial.',
     params: [{ name: 'projects', required: true, description: 'Two to four project slugs, comma-separated.' }, CHAIN],
     canonicalReads: ['/api/compare', '/api/projects/{slug}/snapshot (peer context)'],
     a2aSkill: 'compare_projects',

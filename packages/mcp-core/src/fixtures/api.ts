@@ -134,7 +134,7 @@ export const snapshot: HeyProjectSnapshot = {
         dimension: 'build',
         label: 'Build',
         tag: 'DERIVED',
-        text: 'Shipping: 4 meaningful events in 30 days; latest ship yesterday.',
+        text: 'Shipping: 4 counted ships in 30 days; latest ship yesterday.',
         evidence: [{ id: 'ship:2ac87a66-0000-0000-0000-000000000001', label: 'GitHub release', url: 'https://github.com/agentos/sdk/releases/tag/v0.4', receiptUrl: `${BASE}/api/evidence/ship%3A2ac87a66-0000-0000-0000-000000000001` }],
         basis: 'evidence_record',
         // The build line's human answer (2026-10-01), as the snapshot sends it: the lead of the agent answer's first sentence (AG-02).

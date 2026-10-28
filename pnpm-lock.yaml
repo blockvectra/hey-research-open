@@ -84,6 +84,9 @@ importers:
       '@hey/config':
         specifier: workspace:*
         version: link:../config
+      '@hey/scoring':
+        specifier: workspace:*
+        version: link:../scoring
       zod:
         specifier: ^4.6.7
         version: 4.6.7
@@ -122,6 +125,9 @@ importers:
       '@hey/agent-provider-core':
         specifier: workspace:*
         version: link:../agent-provider-core
+      '@hey/scoring':
+        specifier: workspace:*
+        version: link:../scoring
       '@modelcontextprotocol/sdk':
         specifier: ^1.32.0
         version: 1.32.1(zod@4.6.7)

@@ -136,7 +136,7 @@ const peerContext: HeyPeerContext = {
   dimensions: [
     {
       metric: 'meaningful_events_30d',
-      label: 'Meaningful events (30 d)',
+      label: 'Counted ships (30 d)',
       unit: 'count',
       windowDays: 30,
       definition: 'x',
@@ -150,7 +150,7 @@ const peerContext: HeyPeerContext = {
       percentile: null,
       percentileReason: 'cohort_below_percentile_minimum',
       comparison: 'above_median',
-      line: `Meaningful events (30 d) 12 — above the median (8) of 9 ${NARRATIVE} projects.`,
+      line: `Counted ships (30 d) 12 — above the median (8) of 9 ${NARRATIVE} projects.`,
     },
   ],
   methodology: 'https://hey.test/methodology#peers',

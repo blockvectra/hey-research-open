@@ -34,8 +34,8 @@ const detail = (listed: boolean): HeyV4HookDetail => ({
   permissions: ['beforeSwap', 'afterSwap'],
   capabilities: 'Called before each swap and after each swap.',
   source: {
-    verifiedSource: { state: 'NOT_READ', verified: null, contractName: null, checkedAt: null, words: 'Not read: HEY has not read the explorer’s source record for this hook.' },
-    proxy: { state: 'NOT_READ', status: null, kind: null, clonedFrom: null, checkedAt: null, words: 'Not read: HEY’s contract watch has not checked this address for a proxy.' },
+    verifiedSource: { state: 'NOT_READ', verified: null, contractName: null, checkedAt: null, words: 'Not read — HEY has not read the explorer’s source record for this hook.' },
+    proxy: { state: 'NOT_READ', status: null, kind: null, clonedFrom: null, checkedAt: null, words: 'Not read — HEY’s contract watch has not checked this address for a proxy.' },
   },
   hooklist: { state: 'NOT_READ', words: 'HEY has not read Uniswap’s public hooklist yet, so it cannot say whether the list carries this hook.', readAt: null, listing: null },
   pools: {

@@ -9,11 +9,14 @@
     ".": "./src/index.ts",
     "./valuation-kind": "./src/valuation-kind.ts",
     "./valuation-display": "./src/valuation-display.ts",
+    "./token-market": "./src/token-market.ts",
     "./valuation-plausibility": "./src/valuation-plausibility.ts",
     "./calendar": "./src/calendar.ts",
     "./market-status-words": "./src/market-status-words.ts",
     "./activity-words": "./src/activity-words.ts",
-    "./research-level-words": "./src/research-level-words.ts"
+    "./research-level-words": "./src/research-level-words.ts",
+    "./withheld-words": "./src/withheld-words.ts",
+    "./verification-words": "./src/verification-words.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

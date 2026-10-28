@@ -20,12 +20,12 @@ describe('activity words: one table for the chip, the summary and the API (2026-
     expect(activityPresentation('UNKNOWN', 'no_builder_signal')).toEqual(NO_BUILDER_SIGNAL);
     expect(activityPresentation('UNKNOWN', null)).toEqual(ACTIVITY_STATUS_WORDS.UNKNOWN);
     expect(activityPresentation('NOT_A_STATUS')).toEqual(ACTIVITY_STATUS_WORDS.UNKNOWN);
-    expect(projectActivityWords({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastMeaningfulShipAt: '2026-08-16' }).label).toBe('Activity not measurable');
+    expect(projectActivityWords({ activityStatus: 'UNKNOWN', hasBuilderSource: false, lastMeaningfulShipAt: '2026-08-16' }).label).toBe('Not measured — activity not measurable');
   });
 
   it('keeps the plain status word for a status change, where the reason is not part of the claim', () => {
     expect(activityStatusLabel('RESUMED')).toBe('Resumed building');
-    expect(activityStatusLabel('UNKNOWN')).toBe('Activity unknown');
+    expect(activityStatusLabel('UNKNOWN')).toBe('Not measured');
   });
 
   it('never words a status as a verdict on the project', () => {
