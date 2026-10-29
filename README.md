@@ -512,6 +512,15 @@ a FACT either cites typed evidence ids or names a basis no evidence id can cite 
 reading, a usage reading, HEY's own registry record, a field of the canonical read, the change
 ledger or a coverage state. A FACT with neither is never published as a FACT.
 
+## Agents on Raeto (2026-10-29)
+
+A project whose AI agents run on [Raeto](https://raeto.cc) may turn on Raeto's public activity sharing. HEY then shows,
+on the project's page after the builder story, how many model calls its agents made in the last 7 days, by UTC day,
+with when HEY read it and a link to Raeto. It is matched to a project only through the project's own website or its
+confirmed official X account, never a name. It is activity, never spend: HEY reads no wallet, balance or spend figure.
+A project that stops sharing reads "no longer shared". It is context only, like product usage, and changes no status,
+score or order.
+
 ## Stock Tokens (2026-10-29)
 
 [heyresearch.xyz/stock-tokens](https://heyresearch.xyz/stock-tokens) lists Robinhood's Stock Tokens on Robinhood Chain

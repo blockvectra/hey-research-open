@@ -379,6 +379,24 @@ read API; names come from the token contracts.
 | What it may prove | Nothing about a project (tier CHAIN, context only): never identity, a ship, building, a score, an order, a change event or an alert |
 | Auth / cost | None / free; its own budget key `rpc-erc8004` |
 
+### Raeto public agent activity (`raeto_public_activity`, 2026-10-29)
+
+| | |
+| --- | --- |
+| Base URL | `https://api.raeto.cc/v1/public` (https://raeto.cc/developers#public-activity) |
+| Endpoints | `GET /projects` — the projects that turned sharing on (`id` `p_…`, `name`, `website`, `x`, `calls7d`, `url`); `GET /projects/<id>` — one shared project's `calls7d` and `days[{day, calls}]`, 404 when it is not shared. Raeto caches both 60 s |
+| Never read | `GET /v1/public/wallets/<address>/spend`, or any wallet, balance or spend figure; the project read's `agent_wallets` count is dropped in the adapter |
+| Kept | Per published project per UTC day: model calls, the Raeto id and HEY's read time (`raeto_activity_days`); the entry's state — shared, no longer shared, or a match held for a person — with Raeto's 7-day count (`raeto_activity_links`, migration 0310). No address column |
+| Match | Only on identity HEY holds: the entry's website host is the project's own site (official, non-context WEBSITE source; shared hosts, platforms and famous hosts refused), or its X is the project's confirmed official account (`xAccountConfirmedSql`). Never a name; a tie to several projects stores nothing and writes a `source_conflicts` row |
+| Shown | The project page only, after the builder story: "Agents running on Raeto: N model calls in the last 7 days (opt-in, read <time>)", a day series with its text equivalent, the Raeto link; "no longer shared" with old days kept when a project stops |
+| What it may prove | Nothing about building (tier DECLARED_LISTING, context only): never identity, corroboration, a ship, a score, an order, a change event, an alert, a webhook, Telegram or a dataset |
+| Auth / cost | None / free; its own budget key `raeto-public`, 400 a day (`SYNC_RAETO_ACTIVITY` every three hours: the list plus at most 40 project reads) |
+
+Adapter: `packages/sources/src/adapters/raeto-public-activity.ts` (fixtures `raeto-public-projects-empty.json`,
+`raeto-public-projects.json`, `raeto-public-project-activity.json`, `raeto-public-project-not-shared.json`); module
+`packages/domain/src/raeto-activity`; job `apps/worker/src/jobs/raeto-activity.ts`. Raeto's chat completions, which
+HEY's own AI layer runs on, are a separate adapter (`raeto-chat.ts`) and reach nothing here.
+
 ## Tier B — Public market aggregators (Robinhood Chain queries only)
 
 ### DEX Screener

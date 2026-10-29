@@ -67,12 +67,18 @@ export function ProjectLogo({
   logoUrl,
   size = 40,
   className,
+  tone = 'palette',
 }: {
   name: string;
   slug: string;
   logoUrl?: string | null;
   size?: number;
   className?: string;
+  /**
+   * `neutral` draws the monogram in the page's own ink on its subtle well (V2 phase 3): at a large size the palette's
+   * saturated tile became the loudest colour on the page — a placeholder outshining the project's facts.
+   */
+  tone?: 'palette' | 'neutral';
 }) {
   const shared = 'shrink-0 overflow-hidden rounded-[6px]';
   const drawable = isDrawableLogo(logoUrl) ? logoUrl : undefined;
@@ -83,7 +89,7 @@ export function ProjectLogo({
       className={cn(
         shared,
         'inline-flex items-center justify-center font-semibold tracking-tight',
-        MONOGRAM_PALETTE[paletteIndex(slug)],
+        tone === 'neutral' ? 'border border-hey-border bg-hey-subtle text-hey-ink' : MONOGRAM_PALETTE[paletteIndex(slug)],
         !drawable && className,
       )}
       style={{ width: size, height: size, fontSize: Math.round(size * 0.36) }}

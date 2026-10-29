@@ -218,6 +218,7 @@ export function StillBuildingBadge({ className }: { className?: string }) {
         'inline-flex items-center gap-1.5 rounded-full border border-gold-300 bg-gold-soft px-2.5 py-1 text-xs font-medium text-gold-dark',
         className,
       )}
+      data-badge="still-building"
       title={STILL_BUILDING_HELP}
     >
       <Hammer aria-hidden="true" size={14} strokeWidth={1.9} />
@@ -269,6 +270,7 @@ export function ResearchLevelBadge({
         presentation.className,
         className,
       )}
+      data-badge={level.toLowerCase()}
       title={presentation.help}
     >
       {presentation.label}

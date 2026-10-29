@@ -101,4 +101,5 @@ export * from './adapters/osv';
 export * from './adapters/provider-host';
 export * from './adapters/anthropic-messages';
 export * from './adapters/raeto-chat';
+export * from './adapters/raeto-public-activity';
 export * from './adapters/telegram-bot';

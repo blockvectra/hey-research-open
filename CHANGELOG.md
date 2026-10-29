@@ -6,6 +6,7 @@ record.
 
 ## 2026-10-29
 
+- **Agents on Raeto (2026-10-29).** A project whose AI agents run on Raeto may opt in, on Raeto, to show their model calls; its HEY page then shows the last 7 days' count and a day series after the builder story, dated, with the Raeto link. Activity, never spend or wallets; matched only on the project's own site or confirmed X, never a name. Context only; it changes no status, score or order.
 - **Stock Tokens (2026-10-29).** A new page, `/stock-tokens`, lists Robinhood's Stock Tokens by ticker with the published projects whose own repository names each in code, a corporate action Robinhood's feed announced (dated) and the trading sessions the feed lists. Context only; it changes no status, score or order.
 
 ## 2026-10-28

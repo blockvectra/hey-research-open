@@ -19,7 +19,7 @@ import { valuationDisplay, valuationDisplayLabel, valuationHiddenCardWords, valu
 import { projectCategory } from './project-category';
 import { ProjectLogo } from './project-logo';
 import { cardShipPhrase, displayShipTitle } from './ship-phrase';
-import { ActivityChip, activityPresentation, type ActivityStatusValue, isLaunchPoolOnlyMarket, LAUNCH_POOL_ONLY_PRESENTATION, unknownActivityReason, StillBuildingBadge, TokenVerificationChip, tokenVerificationHelp, tokenVerificationLabel } from './status';
+import { ActivityChip, activityPresentation, type ActivityStatusValue, isLaunchPoolOnlyMarket, LAUNCH_POOL_ONLY_PRESENTATION, unknownActivityReason, StillBuildingBadge, TokenVerificationChip, tokenMarketLabel, tokenVerificationHelp, tokenVerificationLabel, tokenVerificationLabelFor } from './status';
 import { ContractAddress, ExternalRef } from './token-identity';
 import { cardTokenLock, TokenLockChip, type TokenLockFacts } from './token-lock';
 import { BrandNotice, type BrandNoticeData } from './brand-notice';
@@ -207,6 +207,33 @@ export type ProjectCardData = {
 };
 
 /**
+ * What a card hands its Preview control (V2 phase 2, `docs/V2_PLAN.md` §4.2): the facts the card itself printed, in
+ * the card's own words, so the preview drawer opens on exactly what the reader just read and never composes a second
+ * version of it. Plain strings and an ISO date only: it crosses to a client component. Development, the token market
+ * and the token check stay three separate fields, as on the card and the project page.
+ */
+export type CardPreviewFacts = {
+  slug: string;
+  name: string;
+  ticker?: string;
+  logoUrl?: string | null;
+  narrative?: string;
+  description?: string;
+  activityStatus: ActivityStatusValue;
+  unknownReason?: ReturnType<typeof unknownActivityReason>;
+  /** The latest meaningful ship as the card phrased it; `what` is absent when only its date is known. */
+  latest?: { id?: string; what?: string; when: string; at: string };
+  /** The market as the card may print it: a valuation only where `cardShowsValuation` holds, else the status in words. */
+  market: { label: string; value?: string; note?: string };
+  /** The token check in the R2 words; absent for a project with no tracked token or an unread check. */
+  verification?: { value: string; label: string };
+  token?: { chainId: number; contractAddress: string };
+  launchedVia?: string;
+  officialX?: string;
+  disclosure?: string;
+};
+
+/**
  * One ship event, shown inside the card as its "Latest ship" (ships feed,
  * 2026-09-03). The card's eight facts do not change; the ship is the reason
  * this card is on the page, so it sits right under the identity.
@@ -269,6 +296,7 @@ export function ProjectCard({
   marketLens = false,
   disclosure,
   terms,
+  preview,
   className,
 }: {
   project: ProjectCardData;
@@ -305,6 +333,12 @@ export function ProjectCard({
     status?: (chip: ReactNode, status: ActivityStatusValue) => ReactNode;
     valuation?: (label: ReactNode, kind: 'marketCap' | 'fdv' | undefined) => ReactNode;
   };
+  /**
+   * The explicit Preview control (V2 phase 2): drawn at the card's top right, above the name's stretched target, only
+   * where the surface mounts a preview drawer. The card hands it the facts it printed (`CardPreviewFacts`). Absent,
+   * the card is unchanged: one link and one action (DISC-7).
+   */
+  preview?: (facts: CardPreviewFacts) => ReactNode;
   className?: string;
 }) {
   const marketSource = formatMarketSource(project.marketCapSource);
@@ -446,6 +480,49 @@ export function ProjectCard({
     </div>
   );
 
+  const previewControl = preview
+    ? preview({
+        slug: project.slug,
+        name,
+        ...(project.symbol && !cardTokenNotTheProjects(project) ? { ticker: tickerLabel(project.symbol) } : {}),
+        ...(project.logoUrl ? { logoUrl: project.logoUrl } : {}),
+        ...(narrative ? { narrative: narrative.name } : {}),
+        ...(description ? { description } : {}),
+        activityStatus: project.activityStatus,
+        ...(unknownActivityReason(project) ? { unknownReason: unknownActivityReason(project) } : {}),
+        ...(latest && latestPhrase
+          ? { latest: { id: latest.id, what: latestPhrase.what, when: latestPhrase.when, at: latest.publishedAt.toISOString() } }
+          : lastShipAt
+            ? { latest: { when: `Shipped ${formatRelativeTime(lastShipAt, now)}`, at: lastShipAt.toISOString() } }
+            : {}),
+        market: !hasToken
+          ? { label: 'No token tracked' }
+          : showValuation && valuation.shown
+            ? {
+                label: launchPoolOnly ? 'Valuation' : valuationDisplayLabel(valuation, 'card'),
+                value: formatUsdCompact(valuation.usd) ?? '',
+                ...(launchPoolOnly ? { note: `launch pool${staleAge ? ` · ${staleAge} old` : ''}` } : staleAge ? { note: `${staleAge} old` } : {}),
+              }
+            : project.tokenMarketStatus
+              ? { label: launchPoolOnly ? LAUNCH_POOL_ONLY_PRESENTATION.label : tokenMarketLabel(project.tokenMarketStatus as Parameters<typeof tokenMarketLabel>[0], project.tokenMarketReason) }
+              : { label: 'Market not read' },
+        ...(hasToken && project.tokenVerification
+          ? {
+              verification: {
+                value: project.tokenVerification,
+                label: project.tokenVerificationReason
+                  ? tokenVerificationLabelFor(project.tokenVerification as Parameters<typeof tokenVerificationLabelFor>[0], project.tokenVerificationReason)
+                  : tokenVerificationLabel(project.tokenVerification as Parameters<typeof tokenVerificationLabel>[0]),
+              },
+            }
+          : {}),
+        ...(project.token ? { token: project.token } : {}),
+        ...(launchUnobserved ? { launchedVia: LAUNCH_NOT_OBSERVED } : project.launchedVia?.name && !launchNotObserved(project.launchedVia.name) ? { launchedVia: project.launchedVia.name } : project.marketVenue ? { launchedVia: project.marketVenue === 'DEX' ? 'DEX' : `DEX (${project.marketVenue})` } : {}),
+        ...(project.officialX ? { officialX: project.officialX.withheldLine ? officialXCardState(project.officialX) : `@${project.officialX.handle}` } : {}),
+        ...(disclosure ? { disclosure } : {}),
+      })
+    : null;
+
   return (
     <article
       data-testid="project-card"
@@ -480,7 +557,7 @@ export function ProjectCard({
           className="rounded-[10px] ring-1 ring-inset ring-hey-border"
         />
         <div className="min-w-0 flex-1 pt-0.5">
-          <h3 className="text-[16.5px] font-semibold leading-[1.25] tracking-[-0.01em] text-hey-ink">
+          <h3 className={cn('text-[16.5px] font-semibold leading-[1.25] tracking-[-0.01em] text-hey-ink', previewControl && !project.brandNotice ? 'pr-9 sm:pr-24' : undefined)}>
             {/*
              * The whole card is the target; the link stays the accessible one.
              * Two lines, not one: a name is the identity, and a single
@@ -505,6 +582,15 @@ export function ProjectCard({
             </p>
           ) : null}
         </div>
+        {/*
+         * Above the name's stretched target (z-10), so it is its own control, never nested in the link. Placed against
+         * the card (the stretched link's own box, so the whole card stays the link) over the name's first line only —
+         * the name keeps room for it and the ticker line below keeps the full width. Under a brand notice it stays in
+         * the identity row instead, so it never sits on the notice.
+         */}
+        {previewControl ? (
+          <div className={project.brandNotice ? 'relative z-10 -mr-1.5 -mt-1 shrink-0' : 'absolute right-2.5 top-3 z-10 sm:right-3.5 sm:top-4'}>{previewControl}</div>
+        ) : null}
       </div>
 
       {/*
@@ -747,7 +833,7 @@ export function CardGrid({ children, className }: { children: ReactNode; classNa
   return (
     <div
       className={cn(
-        'grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr))]',
+        'grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(min(100%,320px),1fr))]',
         className,
       )}
     >

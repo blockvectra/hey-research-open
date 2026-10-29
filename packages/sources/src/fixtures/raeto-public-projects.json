@@ -1,0 +1,39 @@
+{
+  "object": "list",
+  "count": 4,
+  "updated": "2026-10-29T08:00:00Z",
+  "note": "Only projects that turned on public activity sharing are listed. Activity is model calls; no spend or wallet data.",
+  "data": [
+    {
+      "id": "p_8f3k2m",
+      "name": "Orbit Agents",
+      "website": "https://orbitagents.xyz",
+      "x": "https://x.com/OrbitAgents",
+      "calls7d": 1284,
+      "url": "https://raeto.cc/p/p_8f3k2m"
+    },
+    {
+      "id": "p_q7w1zz",
+      "name": "Lumen",
+      "website": "lumen-labs.io",
+      "x": "@LumenLabs",
+      "calls7d": 0,
+      "url": "https://raeto.cc/p/p_q7w1zz"
+    },
+    {
+      "id": "p_nosite",
+      "name": "No Site",
+      "website": null,
+      "x": "nositeagent",
+      "url": "https://elsewhere.example/p/p_nosite"
+    },
+    {
+      "id": "../etc/passwd",
+      "name": "Not an id",
+      "website": "https://bad.example",
+      "x": null,
+      "calls7d": 3,
+      "url": "https://raeto.cc/p/bad"
+    }
+  ]
+}

@@ -218,7 +218,7 @@ export function BuildVsMarketChart({
         </svg>
       </div>
 
-      <figcaption className="mt-3 text-[13px] text-hey-secondary">
+      <figcaption className="mt-3 max-w-[75ch] text-[13px] text-hey-secondary">
         <span className="flex items-center gap-2 text-hey-ink" data-testid="build-vs-market-radar-key">
           <svg viewBox="0 0 16 16" className="h-4 w-4 shrink-0" aria-hidden="true">
             <circle cx="8" cy="8" r="6" fill="none" stroke="var(--color-hey-accent)" strokeWidth="2" />
