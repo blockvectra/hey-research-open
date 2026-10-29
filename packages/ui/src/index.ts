@@ -48,3 +48,5 @@ export * from './around-event';
 export * from './around-event-beacon';
 export * from './project-category';
 export * from './brand-notice';
+export * from './ship-weeks';
+export * from './project-list';

@@ -704,7 +704,7 @@ function methodWords(m: HeyContract['activity']['methods']): string {
   const b = m.buckets;
   const share = (n: number) => (m.calls ? `${Math.round((n / m.calls) * 100)}%` : '0%');
   const extras = [
-    m.namedFromAbi ? `${m.namedFromAbi} of the named calls were named by the contract's own verified ABI.` : undefined,
+    m.namedFromAbi ? `${m.namedFromAbi} of the named calls were named by the contract's own published ABI.` : undefined,
     m.undecodedWithCandidates
       ? `${m.undecodedWithCandidates} undecoded selector${m.undecodedWithCandidates === 1 ? ' has' : 's have'} a signature candidate — a database's guess, never a name, and not counted as named.`
       : undefined,

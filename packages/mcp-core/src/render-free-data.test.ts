@@ -157,7 +157,7 @@ describe('get_contract: verified source, Sourcify, clones and method counts (202
 
   it('counts ABI-named calls, candidate selectors labelled as candidates, and the creation call apart — never a name', () => {
     const text = renderContract(fx.contract);
-    expect(text).toContain("90 of the named calls were named by the contract's own verified ABI.");
+    expect(text).toContain("90 of the named calls were named by the contract's own published ABI.");
     expect(text).toContain("1 undecoded selector has a signature candidate — a database's guess, never a name, and not counted as named.");
     expect(text).toContain('1 call to its creation code (the deployment, not a method) counted apart.');
     expect(text).not.toMatch(NO_GARBAGE);

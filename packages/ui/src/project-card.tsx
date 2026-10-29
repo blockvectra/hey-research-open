@@ -288,6 +288,97 @@ export function officialXCardState(officialX: Pick<NonNullable<ProjectCardData['
   return 'X held';
 }
 
+/**
+ * The card's identity line, in its parts (V2 builder list, 2026-10-29): the ticker only when the token is the
+ * project's (`cardTokenNotTheProjects`), the narrative, and the kind where the narrative does not already name it.
+ * One rule for the card and the list row, so both print the same identity.
+ */
+export function cardIdentity(project: ProjectCardData): { name: string; ticker?: string; narrative?: string; kind?: string } {
+  const notTheProjects = cardTokenNotTheProjects(project);
+  const name = projectDisplayName({ name: project.name, slug: project.slug, symbol: notTheProjects ? undefined : project.symbol });
+  const category = projectCategory(project);
+  const narrative = category.narrative;
+  const showKind = category.kindLabel !== undefined || (project.projectKind === 'OTHER' && !project.symbol && !narrative);
+  return {
+    name,
+    ...(project.symbol && !notTheProjects ? { ticker: tickerLabel(project.symbol) } : {}),
+    ...(narrative ? { narrative: narrative.name } : {}),
+    ...(showKind ? { kind: formatProjectKind(project.projectKind) } : {}),
+  };
+}
+
+/**
+ * The facts a card prints, in the card's own words (`CardPreviewFacts`): what the Preview drawer opens on, and since
+ * the V2 builder list (2026-10-29) what a list row prints in its cells — development, the latest ship, the token check
+ * and the market, each from the same rule as the card (`cardShowsValuation` for a valuation, R5). One builder, so the
+ * row, the card and the drawer can never phrase one fact two ways.
+ */
+export function cardPreviewFacts(
+  project: ProjectCardData,
+  options: { now?: Date; marketLens?: boolean; disclosure?: string; /** A ship card names its ship, not the latest one. */ shipCard?: boolean } = {},
+): CardPreviewFacts {
+  const { now, marketLens = false, disclosure, shipCard = false } = options;
+  const identity = cardIdentity(project);
+  const valuation = valuationDisplay({
+    valueUsd: project.marketCapUsd,
+    fdvUsd: project.fdvUsd,
+    marketStatus: project.tokenMarketStatus,
+    marketReason: project.tokenMarketReason,
+    valuationImplausible: project.valuationImplausible,
+  });
+  const launchPoolOnly = isLaunchPoolOnlyMarket(project.tokenMarketStatus, project.tokenMarketReason);
+  const staleAge = valuation.shown ? staleReadingAge(project.marketCapObservedAt, now) : undefined;
+  const hasToken = Boolean(project.token);
+  const showValuation = cardShowsValuation(project, { marketLens });
+  const description = oneLineDescription(project.shortDescription, 220);
+  const latest = shipCard ? undefined : project.latestShip;
+  const latestPhrase = latest
+    ? cardShipPhrase(latest, { ...(now ? { now } : {}), statusLabel: activityPresentation(project.activityStatus, unknownActivityReason(project)).label })
+    : undefined;
+  const lastShipAt = latest?.publishedAt ?? project.lastMeaningfulShipAt;
+  const launchUnobserved = launchNotObserved(project.launchedVia?.name) && !project.marketVenue;
+  return {
+    slug: project.slug,
+    name: identity.name,
+    ...(identity.ticker ? { ticker: identity.ticker } : {}),
+    ...(project.logoUrl ? { logoUrl: project.logoUrl } : {}),
+    ...(identity.narrative ? { narrative: identity.narrative } : {}),
+    ...(description ? { description } : {}),
+    activityStatus: project.activityStatus,
+    ...(unknownActivityReason(project) ? { unknownReason: unknownActivityReason(project) } : {}),
+    ...(latest && latestPhrase
+      ? { latest: { id: latest.id, what: latestPhrase.what, when: latestPhrase.when, at: latest.publishedAt.toISOString() } }
+      : lastShipAt
+        ? { latest: { when: `Shipped ${formatRelativeTime(lastShipAt, now)}`, at: lastShipAt.toISOString() } }
+        : {}),
+    market: !hasToken
+      ? { label: 'No token tracked' }
+      : showValuation && valuation.shown
+        ? {
+            label: launchPoolOnly ? 'Valuation' : valuationDisplayLabel(valuation, 'card'),
+            value: formatUsdCompact(valuation.usd) ?? '',
+            ...(launchPoolOnly ? { note: `launch pool${staleAge ? ` · ${staleAge} old` : ''}` } : staleAge ? { note: `${staleAge} old` } : {}),
+          }
+        : project.tokenMarketStatus
+          ? { label: launchPoolOnly ? LAUNCH_POOL_ONLY_PRESENTATION.label : tokenMarketLabel(project.tokenMarketStatus as Parameters<typeof tokenMarketLabel>[0], project.tokenMarketReason) }
+          : { label: 'Market not read' },
+    ...(hasToken && project.tokenVerification
+      ? {
+          verification: {
+            value: project.tokenVerification,
+            label: project.tokenVerificationReason
+              ? tokenVerificationLabelFor(project.tokenVerification as Parameters<typeof tokenVerificationLabelFor>[0], project.tokenVerificationReason)
+              : tokenVerificationLabel(project.tokenVerification as Parameters<typeof tokenVerificationLabel>[0]),
+          },
+        }
+      : {}),
+    ...(project.token ? { token: project.token } : {}),
+    ...(launchUnobserved ? { launchedVia: LAUNCH_NOT_OBSERVED } : project.launchedVia?.name && !launchNotObserved(project.launchedVia.name) ? { launchedVia: project.launchedVia.name } : project.marketVenue ? { launchedVia: project.marketVenue === 'DEX' ? 'DEX' : `DEX (${project.marketVenue})` } : {}),
+    ...(project.officialX ? { officialX: project.officialX.withheldLine ? officialXCardState(project.officialX) : `@${project.officialX.handle}` } : {}),
+    ...(disclosure ? { disclosure } : {}),
+  };
+}
+
 export function ProjectCard({
   project,
   ship,
@@ -480,48 +571,7 @@ export function ProjectCard({
     </div>
   );
 
-  const previewControl = preview
-    ? preview({
-        slug: project.slug,
-        name,
-        ...(project.symbol && !cardTokenNotTheProjects(project) ? { ticker: tickerLabel(project.symbol) } : {}),
-        ...(project.logoUrl ? { logoUrl: project.logoUrl } : {}),
-        ...(narrative ? { narrative: narrative.name } : {}),
-        ...(description ? { description } : {}),
-        activityStatus: project.activityStatus,
-        ...(unknownActivityReason(project) ? { unknownReason: unknownActivityReason(project) } : {}),
-        ...(latest && latestPhrase
-          ? { latest: { id: latest.id, what: latestPhrase.what, when: latestPhrase.when, at: latest.publishedAt.toISOString() } }
-          : lastShipAt
-            ? { latest: { when: `Shipped ${formatRelativeTime(lastShipAt, now)}`, at: lastShipAt.toISOString() } }
-            : {}),
-        market: !hasToken
-          ? { label: 'No token tracked' }
-          : showValuation && valuation.shown
-            ? {
-                label: launchPoolOnly ? 'Valuation' : valuationDisplayLabel(valuation, 'card'),
-                value: formatUsdCompact(valuation.usd) ?? '',
-                ...(launchPoolOnly ? { note: `launch pool${staleAge ? ` · ${staleAge} old` : ''}` } : staleAge ? { note: `${staleAge} old` } : {}),
-              }
-            : project.tokenMarketStatus
-              ? { label: launchPoolOnly ? LAUNCH_POOL_ONLY_PRESENTATION.label : tokenMarketLabel(project.tokenMarketStatus as Parameters<typeof tokenMarketLabel>[0], project.tokenMarketReason) }
-              : { label: 'Market not read' },
-        ...(hasToken && project.tokenVerification
-          ? {
-              verification: {
-                value: project.tokenVerification,
-                label: project.tokenVerificationReason
-                  ? tokenVerificationLabelFor(project.tokenVerification as Parameters<typeof tokenVerificationLabelFor>[0], project.tokenVerificationReason)
-                  : tokenVerificationLabel(project.tokenVerification as Parameters<typeof tokenVerificationLabel>[0]),
-              },
-            }
-          : {}),
-        ...(project.token ? { token: project.token } : {}),
-        ...(launchUnobserved ? { launchedVia: LAUNCH_NOT_OBSERVED } : project.launchedVia?.name && !launchNotObserved(project.launchedVia.name) ? { launchedVia: project.launchedVia.name } : project.marketVenue ? { launchedVia: project.marketVenue === 'DEX' ? 'DEX' : `DEX (${project.marketVenue})` } : {}),
-        ...(project.officialX ? { officialX: project.officialX.withheldLine ? officialXCardState(project.officialX) : `@${project.officialX.handle}` } : {}),
-        ...(disclosure ? { disclosure } : {}),
-      })
-    : null;
+  const previewControl = preview ? preview(cardPreviewFacts(project, { ...(now ? { now } : {}), marketLens, shipCard: Boolean(ship), ...(disclosure ? { disclosure } : {}) })) : null;
 
   return (
     <article
