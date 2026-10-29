@@ -348,6 +348,11 @@ export type ScanOptions = {
    * whole history without paying for tens of thousands of launch logs.
    */
   lifecycleOnly?: boolean;
+  /**
+   * Ask only for the launch event, in its 2M-block windows, never the lifecycle OR list (2026-10-30): the Pons launch
+   * census reads every launch of the factory's history, and the lifecycle is the hourly scan's and its backfill's.
+   */
+  launchesOnly?: boolean;
 };
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -367,6 +372,7 @@ export async function scanFactory(
 
   const lifecycleTopics = factory.lifecycleTopics ?? [];
   if (options.lifecycleOnly && lifecycleTopics.length === 0) throw new Error(`${factory.id} has no lifecycle topics to read`);
+  if (options.lifecycleOnly && options.launchesOnly) throw new Error('a scan reads launches only or the lifecycle only, not both');
   const lifecycleFrom = factory.lifecycleStartBlock ?? 0;
   const launchTopic = factory.eventTopic0.toLowerCase();
   /*
@@ -378,7 +384,7 @@ export async function scanFactory(
    * the launches before it keep their 2M windows.
    */
   const windowPlan = (at: number): { topic0: string | string[]; cap: number; end: number } => {
-    if (lifecycleTopics.length === 0) return { topic0: factory.eventTopic0, cap: MAX_CHUNK, end: Number.POSITIVE_INFINITY };
+    if (lifecycleTopics.length === 0 || options.launchesOnly) return { topic0: factory.eventTopic0, cap: MAX_CHUNK, end: Number.POSITIVE_INFINITY };
     if (options.lifecycleOnly) return { topic0: [...lifecycleTopics], cap: OR_TOPIC_MAX_BLOCK_RANGE - 1, end: Number.POSITIVE_INFINITY };
     if (at < lifecycleFrom) return { topic0: factory.eventTopic0, cap: MAX_CHUNK, end: lifecycleFrom - 1 };
     return { topic0: [factory.eventTopic0, ...lifecycleTopics], cap: OR_TOPIC_MAX_BLOCK_RANGE - 1, end: Number.POSITIVE_INFINITY };

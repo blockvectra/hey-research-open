@@ -37,6 +37,8 @@ export type MarketChangeProps = {
   windowLabel?: string | undefined;
   /** Type step for the figure. Default 'ui'. */
   size?: MarketChangeSize | undefined;
+  /** A move at or past this many per cent prints ">1,000%" (`describeMarketChange`); absent, every figure prints as measured. */
+  ceiling?: number | undefined;
   className?: string | undefined;
 };
 
@@ -93,7 +95,8 @@ export type MarketChangeText = {
 export function describeMarketChange(
   pct: number | undefined,
   window: string,
-  options: { stale?: { age: string } | undefined; decimals?: number } = {},
+  /** `ceiling` (UI audit 2026-10-30): a move at or past it prints ">1,000%" and is spoken "more than 1,000 percent"; the figure is unchanged. */
+  options: { stale?: { age: string } | undefined; decimals?: number; ceiling?: number | undefined } = {},
 ): MarketChangeText {
   const decimals = options.decimals ?? 1;
   const direction = changeDirection(pct, decimals);
@@ -107,6 +110,14 @@ export function describeMarketChange(
   }
   if (direction === 'flat') {
     return { direction, text: `${(0).toFixed(decimals)}%`, spoken: `unchanged ${marketWindowPhrase(window)}${age}` };
+  }
+  const ceiling = options.ceiling;
+  if (ceiling !== undefined && Math.abs(pct) >= ceiling) {
+    const words = `more than ${ceiling.toLocaleString('en-US')}`;
+    const shown = `>${ceiling.toLocaleString('en-US')}`;
+    return direction === 'up'
+      ? { direction, text: `▲ +${shown}%`, spoken: `up ${words} percent ${marketWindowPhrase(window)}${age}` }
+      : { direction, text: `▼ ${MINUS}${shown}%`, spoken: `down ${words} percent ${marketWindowPhrase(window)}${age}` };
   }
   const value = magnitude(Math.abs(pct), decimals);
   return direction === 'up'
@@ -134,9 +145,10 @@ export function MarketChange({
   showWindow = true,
   windowLabel,
   size = 'ui',
+  ceiling,
   className,
 }: MarketChangeProps): JSX.Element {
-  const { direction, text, spoken } = describeMarketChange(pct, window, { stale });
+  const { direction, text, spoken } = describeMarketChange(pct, window, { stale, ceiling });
   const isStale = stale !== undefined && direction !== 'unknown';
   return (
     <span

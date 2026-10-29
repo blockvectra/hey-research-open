@@ -201,7 +201,8 @@ export type ProjectCardData = {
    * scorer counts as building, newest first — what the card's one evidence
    * line names. Always corroborated, so it needs no verification word.
    */
-  latestShip?: { id: string; title: string; eventType: string; publishedAt: Date };
+  /** `repository`: a code week's `owner/repo` (additive, 2026-10-30), so a list of code weeks names what differs. */
+  latestShip?: { id: string; title: string; eventType: string; publishedAt: Date; repository?: string };
   stillBuilding?: boolean;
   researchLevel?: 'INDEXED' | 'RESEARCHED' | 'VERIFIED_BUILDER';
 };

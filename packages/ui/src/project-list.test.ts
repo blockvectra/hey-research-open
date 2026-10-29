@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import { cardPreviewFacts, ProjectCard, type ProjectCardData } from './project-card';
-import { PROJECT_LIST_COLUMNS, ProjectList, ProjectListRow } from './project-list';
+import { codeWeekShipWhat, PROJECT_LIST_COLUMNS, ProjectList, ProjectListRow, SHIP_WEEKS_KEY } from './project-list';
 import { shipWeekHeights, shipWeeksSentence, ShipWeeksChart, type ShipWeekSeriesData } from './ship-weeks';
 
 /*
@@ -132,7 +132,49 @@ describe('a builder list row', () => {
   });
 });
 
+describe('a list’s repeated words (UI audit, 2026-10-30)', () => {
+  it('draws no status pill, and no Status column, in a list that holds one status', () => {
+    const html = renderToStaticMarkup(
+      createElement(ProjectList, { caption: 'Projects', hideStatus: true, children: createElement(ProjectListRow, { project: measured, now: NOW, hideStatus: true }) }),
+    );
+    expect(html).not.toContain('v2-cell-status');
+    expect(html).not.toMatch(/<th[^>]*>Status<\/th>/);
+    // The row still says which status it holds, for a reader of the markup and the specs.
+    expect(html).toContain('data-activity-status="SHIPPING"');
+    // Every other column keeps its width class: the widths are set by name, never by position.
+    expect(html).toContain('class="v2-col-weeks"');
+    expect(row(measured)).toContain('class="v2-col-status"');
+  });
+
+  it('names a code week by its repository, the owner kept in the title', () => {
+    const codeWeek: ProjectCardData = {
+      ...measured,
+      latestShip: { id: 'ship-2', title: 'Code changes, week of 2026-10-26 – 2026-11-01', eventType: 'CODE_ACTIVITY', publishedAt: new Date('2026-10-28T12:00:00Z'), repository: 'organikcncpt/qpull' },
+    };
+    const html = row(codeWeek);
+    expect(html).toContain('>Code changes in qpull<');
+    expect(html).toContain('title="Code changes in organikcncpt/qpull"');
+    expect(codeWeekShipWhat('Code changes', { ...codeWeek.latestShip!, repository: undefined })).toEqual({ what: 'Code changes' });
+    expect(codeWeekShipWhat('Release v0.4', measured.latestShip)).toEqual({ what: 'Release v0.4' });
+  });
+
+  it('gives HEY’s own disclosure its own wrapping line and the brand notice its own line under the name', () => {
+    const html = row({ ...measured, brandNotice: { kind: 'robinhood_brand', title: 'No known affiliation with Robinhood', detail: 'x' } }, { disclosure: 'HEY’s own project — researched by the same rules' });
+    expect(html).toMatch(/class="v2-row-note" data-testid="heys-own-token"/);
+    // Outside the name's block (the identity row closes before it), so it is never squeezed beside the name.
+    expect(html).toMatch(/<\/span><\/span><p role="note" data-testid="brand-notice"[^>]*class="[^"]*v2-row-brand/);
+  });
+});
+
 describe('the 8-week chart', () => {
+  it('marks the week still running, and the key says so and that bars compare one project only', () => {
+    const html = renderToStaticMarkup(createElement(ShipWeeksChart, { series: weeks([0, 1, 0, 2, 0, 0, 0, 1]) }));
+    expect(html.match(/data-current="true"/g)).toHaveLength(1);
+    expect(html.lastIndexOf('data-week=')).toBeLessThan(html.indexOf('data-current="true"'));
+    expect(SHIP_WEEKS_KEY).toContain('Bars compare weeks within one project only; the last bar is this week so far');
+    expect(row(measured)).toContain(SHIP_WEEKS_KEY);
+  });
+
   it('keeps a week not observed apart from a measured zero, in the marks and in the words', () => {
     const series = weeks([null, null, 0, 1, 0, 0, 2, 0]);
     const html = renderToStaticMarkup(createElement(ShipWeeksChart, { series }));

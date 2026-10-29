@@ -26,8 +26,9 @@ import { valuationDisplay } from '@hey/scoring/valuation-display';
  * The rows arrive ordered (the listing's activity order); nothing here sorts, and the 8-week chart is context beside a
  * row, never an order (product rules 2, 3, 6). The project's name is the row's one link, stretched over the row; the
  * Preview button sits above it, so nothing interactive nests. From a narrow container up the row folds (`v2.css`,
- * container queries): on a phone a compact block — the name and status, the latest ship, then the chart, the check and
- * the valuation folded under the name — with no sideways scroll.
+ * container queries): on a phone a compact block — the name, then the status beside the latest ship, then the chart,
+ * the check and the valuation folded under the name — with no sideways scroll. A list that holds one status
+ * (`hideStatus`) draws no pill that would repeat the list's own name on every row.
  */
 export type ProjectListRowProps = {
   project: ProjectCardData;
@@ -38,12 +39,56 @@ export type ProjectListRowProps = {
   disclosure?: string;
   /** The Preview control, drawn only where the surface mounts the drawer; handed the facts the row printed. */
   preview?: (facts: CardPreviewFacts) => ReactNode;
+  /**
+   * The list already holds one activity status (Explore's Shipping list, a status filter): the row draws no status
+   * pill, which would say the list's own name on every row (UI audit, 2026-10-30). `ProjectList` drops the column.
+   */
+  hideStatus?: boolean;
 };
 
 /** The column headers, in order; the phone layout keeps them for assistive tech only. */
 export const PROJECT_LIST_COLUMNS = ['Project', 'Status', 'Latest ship', '8 weeks', 'Token check', 'Valuation', 'Preview'] as const;
 
-export function ProjectList({ children, caption, className, withPreview = true }: { children: ReactNode; caption: string; className?: string; withPreview?: boolean }) {
+/** Each column's class: the widths are set by name, so a list without its Status column keeps every other width. */
+const COLUMN_CLASS: Record<(typeof PROJECT_LIST_COLUMNS)[number], string> = {
+  Project: 'v2-col-project',
+  Status: 'v2-col-status',
+  'Latest ship': 'v2-col-ship',
+  '8 weeks': 'v2-col-weeks',
+  'Token check': 'v2-col-check',
+  Valuation: 'v2-col-value',
+  Preview: 'v2-col-preview',
+};
+
+/** The key under the list: what the bars count, what they compare, and the week still running. */
+export const SHIP_WEEKS_KEY =
+  '8 weeks: counted ships per UTC week, oldest first. Bars compare weeks within one project only; the last bar is this week so far, drawn lighter. A dotted week is one HEY had not read yet, never a zero; a flat tick is a week read with no counted ship.';
+
+/**
+ * A code week's line names its repository (UI audit, 2026-10-30): every running code week reads "Code changes", so a
+ * list of them said one thing a row. The repository's name is what differs; its owner stays in the hover title.
+ */
+export function codeWeekShipWhat(what: string, latestShip: ProjectCardData['latestShip']): { what: string; title?: string } {
+  const repository = latestShip?.eventType === 'CODE_ACTIVITY' ? latestShip.repository : undefined;
+  if (!repository || what !== 'Code changes') return { what };
+  const name = repository.split('/').pop() || repository;
+  return { what: `Code changes in ${name}`, title: `Code changes in ${repository}` };
+}
+
+export function ProjectList({
+  children,
+  caption,
+  className,
+  withPreview = true,
+  hideStatus = false,
+}: {
+  children: ReactNode;
+  caption: string;
+  className?: string;
+  withPreview?: boolean;
+  /** The list holds one status: no Status column (each row is drawn with `hideStatus` too). */
+  hideStatus?: boolean;
+}) {
   return (
     <div className={cn('v2-list-wrap', className)}>
       {/*
@@ -54,8 +99,8 @@ export function ProjectList({ children, caption, className, withPreview = true }
         <caption className="sr-only">{caption}</caption>
         <thead className="v2-list-head" role="rowgroup">
           <tr role="row">
-            {PROJECT_LIST_COLUMNS.filter((column) => withPreview || column !== 'Preview').map((column) => (
-              <th key={column} scope="col" role="columnheader" className={column === 'Valuation' ? 'v2-col-value' : column === 'Preview' ? 'v2-col-preview' : undefined}>
+            {PROJECT_LIST_COLUMNS.filter((column) => (withPreview || column !== 'Preview') && (!hideStatus || column !== 'Status')).map((column) => (
+              <th key={column} scope="col" role="columnheader" className={COLUMN_CLASS[column]}>
                 {column === 'Preview' ? <span className="sr-only">Preview</span> : column === '8 weeks' ? <span title="Counted ships per week, the last 8 weeks">8 weeks</span> : column}
               </th>
             ))}
@@ -65,7 +110,7 @@ export function ProjectList({ children, caption, className, withPreview = true }
       </table>
       {/* The chart's key, once a list, in words: what a dotted week and a flat tick mean. */}
       <p className="v2-list-key" data-testid="ship-weeks-key">
-        8 weeks: counted ships per UTC week, oldest first. A dotted week is one HEY had not read yet, never a zero; a flat tick is a week read with no counted ship.
+        {SHIP_WEEKS_KEY}
       </p>
     </div>
   );
@@ -77,7 +122,7 @@ const VERIFICATION_TONE: Record<string, string> = {
   MISMATCH: 'font-medium text-hey-warning',
 };
 
-export function ProjectListRow({ project, weeks, now, disclosure, preview }: ProjectListRowProps) {
+export function ProjectListRow({ project, weeks, now, disclosure, preview, hideStatus = false }: ProjectListRowProps) {
   const facts = cardPreviewFacts(project, { ...(now ? { now } : {}), ...(disclosure ? { disclosure } : {}) });
   const identity = cardIdentity(project);
   const subline = [identity.narrative, identity.kind].filter(Boolean).join(' · ');
@@ -94,6 +139,7 @@ export function ProjectListRow({ project, weeks, now, disclosure, preview }: Pro
     : undefined;
   const isFdv = valuationKind?.shown === true && valuationKind.kind === 'fdv';
   const previewControl = preview ? preview(facts) : null;
+  const shipWhat = facts.latest?.what ? codeWeekShipWhat(facts.latest.what, project.latestShip) : undefined;
   return (
     <tr
       role="row"
@@ -123,26 +169,30 @@ export function ProjectListRow({ project, weeks, now, disclosure, preview }: Pro
                 {subline}
               </span>
             ) : null}
-            {project.brandNotice ? <BrandNotice notice={project.brandNotice} className="mt-1 px-2 py-0.5 text-[12px]" /> : null}
+            {/* HEY's own project, said in full: it wraps to two lines rather than cut to "researched by the same r…". */}
             {disclosure ? (
-              <span className="v2-row-sub" data-testid="heys-own-token">
+              <span className="v2-row-note" data-testid="heys-own-token">
                 {disclosure}
               </span>
             ) : null}
           </span>
         </span>
+        {/* Its own line at the name's edge, never squeezed beside the name into a narrow box. */}
+        {project.brandNotice ? <BrandNotice notice={project.brandNotice} className="v2-row-brand px-2 py-0.5 text-[12px]" /> : null}
       </th>
 
-      <td role="cell" className="v2-cell-status">
-        <ActivityChip status={project.activityStatus} variant="surface" unknownReason={facts.unknownReason ?? null} />
-      </td>
+      {hideStatus ? null : (
+        <td role="cell" className="v2-cell-status">
+          <ActivityChip status={project.activityStatus} variant="surface" unknownReason={facts.unknownReason ?? null} />
+        </td>
+      )}
 
       <td role="cell" className="v2-cell-ship" data-testid="row-latest-ship">
         {facts.latest ? (
           <>
-            {facts.latest.what ? (
-              <span className="v2-row-ship-title" title={facts.latest.what} {...(facts.latest.id ? { 'data-ship-id': facts.latest.id } : {})}>
-                {emailSafe(facts.latest.what)}
+            {shipWhat ? (
+              <span className="v2-row-ship-title" title={shipWhat.title ?? shipWhat.what} {...(facts.latest.id ? { 'data-ship-id': facts.latest.id } : {})}>
+                {emailSafe(shipWhat.what)}
               </span>
             ) : null}
             <time dateTime={facts.latest.at} className="v2-row-ship-age" data-testid="row-last-ship">

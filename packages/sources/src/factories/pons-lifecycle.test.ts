@@ -147,6 +147,19 @@ describe('the Pons V2 launch scan reads the lifecycle in the same request', () =
     expect(result.lifecycle).toHaveLength(3);
   });
 
+  it('asks only for the launch topic in 2M-block windows when the launch census says so (2026-10-30)', async () => {
+    const start = factory.lifecycleStartBlock!;
+    const stub = stubFetch([empty, empty]);
+    await scanFactory(factory, { rpcUrl: 'https://rpc.example', fromBlock: start - 1_000_000, toBlock: start + 1_500_000, sleep: noSleep, launchesOnly: true }, testContext({ fetchImpl: stub.fetchImpl }));
+    expect(windows(stub.requests)).toEqual([
+      { from: start - 1_000_000, to: start + 1_000_000, orList: false },
+      { from: start + 1_000_001, to: start + 1_500_000, orList: false },
+    ]);
+    const body = JSON.parse(String(stub.requests[0]!.init?.body)) as { params: { topics: unknown[] }[] };
+    expect(body.params[0]!.topics).toEqual([factory.eventTopic0]);
+    await expect(scanFactory(factory, { rpcUrl: 'https://rpc.example', fromBlock: 0, toBlock: 10, lifecycleOnly: true, launchesOnly: true }, testContext())).rejects.toThrow(/not both/);
+  });
+
   it('never reads a lifecycle for a factory that has none (Pons V1 graduates into Uniswap v3)', async () => {
     expect(factoryById('PONS_V1')?.lifecycleTopics).toBeUndefined();
     await expect(scanFactory(factoryById('PONS_V1')!, { rpcUrl: 'https://rpc.example', fromBlock: 0, toBlock: 10, lifecycleOnly: true }, testContext())).rejects.toThrow(/no lifecycle topics/);

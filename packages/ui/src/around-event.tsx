@@ -1,4 +1,4 @@
-import type { JSX } from 'react';
+import { Fragment, type JSX } from 'react';
 
 import { cn } from './cn';
 import { MarketChange } from './market-change';
@@ -80,6 +80,24 @@ export type AroundPanel = {
   caveat: string;
 };
 
+/**
+ * Past this a per-cent figure reads as noise ("+12328.6%" on a usage row that rose from a handful of calls), so it is
+ * printed ">1,000%" with its sign and arrow (UI audit 2026-10-30). Display only; the figure and the API are unchanged.
+ */
+export const AROUND_PCT_CEILING = 1000;
+
+/** A per-cent figure as the rows print it: one decimal, or ">1,000%" past the ceiling. */
+export function aroundPctText(pct: number): string {
+  const sign = pct >= 0 ? '+' : '−';
+  if (Math.abs(pct) >= AROUND_PCT_CEILING) return `${sign}>${AROUND_PCT_CEILING.toLocaleString('en-US')}%`;
+  return `${sign}${Math.abs(Math.round(pct * 10) / 10).toFixed(1)}%`;
+}
+
+/** A measured move: `MarketChange`, which prints ">1,000%" past the ceiling with the same arrow, sign and market colour. */
+function AroundMove({ pct, window }: { pct: number; window: string }): JSX.Element {
+  return <MarketChange pct={pct} window={window} showWindow={false} size="meta" ceiling={AROUND_PCT_CEILING} />;
+}
+
 function Cell({ cell, testId }: { cell: AroundCell; testId: string }): JSX.Element {
   if (cell.kind === 'missing') {
     return (
@@ -92,7 +110,7 @@ function Cell({ cell, testId }: { cell: AroundCell; testId: string }): JSX.Eleme
   return (
     <span className="grid justify-items-end gap-0" data-testid={testId} data-state={cell.partial ? 'partial' : 'measured'}>
       {cell.kind === 'move' ? (
-        <MarketChange pct={cell.pct} window={cell.window ?? '7D'} showWindow={false} size="meta" />
+        <AroundMove pct={cell.pct} window={cell.window ?? '7D'} />
       ) : (
         <span className="font-medium tabular-nums text-hey-ink">{cell.text}</span>
       )}
@@ -129,25 +147,13 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
         </thead>
         <tbody className="align-top">
           {panel.rows.map((row) => (
-            <tr key={row.key} className="border-t border-hey-border" data-testid="around-event-row" data-field={row.key}>
+            <Fragment key={row.key}>
+            <tr className="border-t border-hey-border" data-testid="around-event-row" data-field={row.key}>
               <th scope="row" className="py-1.5 pr-2 text-left font-normal text-hey-secondary">
                 {row.label}
                 {row.basisLabel ? (
                   <span className="mt-0.5 block text-t-micro text-hey-muted" data-testid="around-event-basis-label">
                     {row.basisLabel}
-                  </span>
-                ) : null}
-                {row.around ? (
-                  <span className="mt-0.5 flex flex-wrap items-baseline gap-x-1 text-t-micro text-hey-muted" data-testid="around-event-day">
-                    <span>{panel.headings.around}:</span>
-                    {row.around.kind === 'move' ? (
-                      <MarketChange pct={row.around.pct} window={row.around.window ?? '1D'} showWindow={false} size="meta" />
-                    ) : row.around.kind === 'value' ? (
-                      <span>{row.around.text}</span>
-                    ) : (
-                      <span title={row.around.reason}>—</span>
-                    )}
-                    {row.around.kind !== 'missing' && row.around.dates ? <span data-testid="around-event-day-dates">· {row.around.dates}</span> : null}
                   </span>
                 ) : null}
               </th>
@@ -160,9 +166,9 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
                 {row.change ? (
                   <span className="mt-0.5 flex justify-end gap-1 text-t-micro text-hey-muted" data-testid="around-event-change">
                     {row.change.market ? (
-                      <MarketChange pct={row.change.pct} window="vs before" showWindow={false} size="meta" />
+                      <MarketChange pct={row.change.pct} window="vs before" showWindow={false} size="meta" ceiling={AROUND_PCT_CEILING} />
                     ) : (
-                      <span className="tabular-nums text-hey-secondary">{row.change.pct >= 0 ? '+' : '−'}{Math.abs(Math.round(row.change.pct * 10) / 10).toFixed(1)}%</span>
+                      <span className="tabular-nums text-hey-secondary">{aroundPctText(row.change.pct)}</span>
                     )}
                     <span className="hidden sm:inline">vs before</span>
                     <span className="sr-only sm:hidden">against before</span>
@@ -171,6 +177,35 @@ export function AroundEventRows({ panel, className }: { panel: AroundPanel; clas
               </td>
               ) : null}
             </tr>
+            {/*
+             * The event's own move on a row of its own (UI audit 2026-10-30): inside the label cell, "Around this event:
+             * ▼ −76.2% · 27 Sep–4 Oct closes" was squeezed into the measure column's 38%.
+             */}
+            {row.around ? (
+              <tr data-testid="around-event-day" data-field={`${row.key}-around`}>
+                <th scope="row" className="pb-1.5 pl-3 pr-2 text-left align-top text-t-micro font-normal text-hey-muted">
+                  {panel.headings.around}
+                  {row.around.kind !== 'missing' && row.around.dates ? (
+                    <span className="block" data-testid="around-event-day-dates">
+                      {row.around.dates}
+                    </span>
+                  ) : null}
+                </th>
+                <td colSpan={showAfter ? 2 : 1} className="pb-1.5 text-right">
+                  {row.around.kind === 'move' ? (
+                    <AroundMove pct={row.around.pct} window={row.around.window ?? '1D'} />
+                  ) : row.around.kind === 'value' ? (
+                    <span className="tabular-nums text-hey-ink">{row.around.text}</span>
+                  ) : (
+                    <span className="text-hey-secondary" title={row.around.reason}>
+                      <span aria-hidden="true">—</span>
+                      <span className="sr-only">Not measured — {row.around.reason}</span>
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ) : null}
+            </Fragment>
           ))}
         </tbody>
       </table>

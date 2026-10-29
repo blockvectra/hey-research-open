@@ -11,6 +11,8 @@ import { cn } from './cn';
  *  - not observed (the week ended before HEY first read the project): no bar and no tick, only a dotted baseline —
  *    never drawn as 0 (free-data rule 11, machine-layer rule 9).
  *
+ * The last week is the one still running, so its mark is drawn lighter (`data-current`): this week so far.
+ *
  * The bars are one labelled image whose label is the whole series in words, and the total stands beside it as text,
  * so no figure lives behind a hover.
  */
@@ -56,6 +58,8 @@ export function ShipWeeksChart({ series, className }: { series: ShipWeekSeriesDa
               className="v2-weeks-week"
               data-week={entry.week}
               data-ships={entry.ships === null ? 'not-observed' : String(entry.ships)}
+              // The last week is still running (`ShipWeekSeries.weeks`): drawn lighter, so a short bar reads as "so far".
+              {...(index === series.weeks.length - 1 ? { 'data-current': 'true' } : {})}
             >
               {height === null ? null : height === 0 ? <span className="v2-weeks-zero" /> : <span className="v2-weeks-bar" style={{ height: `${Math.round(height * 100)}%` }} />}
             </span>

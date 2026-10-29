@@ -134,3 +134,16 @@ describe('marketWindowPhrase', () => {
     expect(describeMarketChange(-8.4, '1D').spoken).toBe('down 8.4 percent over the day');
   });
 });
+
+/* UI audit 2026-10-30: "+12328.6%" beside a ship. A move past a caller's ceiling reads ">1,000%", arrow, sign and colour kept. */
+describe('a ceiling on the printed figure', () => {
+  it('prints and speaks a move at or past the ceiling as more than it, and leaves smaller moves and the default alone', () => {
+    expect(describeMarketChange(12_328.6, '7D', { ceiling: 1000 })).toEqual({ direction: 'up', text: '▲ +>1,000%', spoken: 'up more than 1,000 percent over 7 days' });
+    expect(describeMarketChange(-1000, '7D', { ceiling: 1000 }).text).toBe('▼ −>1,000%');
+    expect(describeMarketChange(999.4, '7D', { ceiling: 1000 }).text).toBe('▲ +999%');
+    expect(describeMarketChange(12_328.6, '7D').text).toBe('▲ +12,329%');
+    const html = render({ pct: 12_328.6, window: '7D', ceiling: 1000 });
+    expect(html).toContain('data-direction="up"');
+    expect(html).toContain('▲ +&gt;1,000%');
+  });
+});

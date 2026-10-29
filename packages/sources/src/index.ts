@@ -24,6 +24,7 @@ export * from './adapters/dexscreener-tokens';
 export * from './adapters/dexscreener-token-pairs';
 export * from './adapters/erc20';
 export * from './adapters/multicall';
+export * from './adapters/pons-launch-records';
 export * from './adapters/uniswap-trading';
 export * from './adapters/hoodfun-curve';
 export * from './adapters/feed';

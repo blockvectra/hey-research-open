@@ -569,8 +569,8 @@ many of a published project's ships HEY counts as building in a window — by th
 only ships HEY first recorded inside the window — with each ship's evidence id and receipt page, signed as EIP-712 typed
 data for the open-source `ShipEscrow` contract, which pays a builder only when HEY attests the project shipped after the
 bounty opened. HEY signs only for a payout address its evidence already ties to the project: the signer of a verified
-wallet-signature claim made for its tracked token, or that token's recorded deployer, while the token stands as the
-project's own. Each kind of ship counts at most once per day HEY first recorded it, and only ships HEY first recorded
+wallet-signature claim made for its tracked token (never one proved only as the fee recipient a Pons launch names), or
+that token's recorded deployer, while the token stands as the project's own. Each kind of ship counts at most once per day HEY first recorded it, and only ships HEY first recorded
 before the window closed. The signature says what HEY counted,
 never that a project is good or worth funding; it changes nothing on HEY. Details in
 [docs/PUBLIC_API.md](docs/PUBLIC_API.md).
@@ -731,7 +731,8 @@ each revision in ledger order, so a mirror receives the corrected content.
 ## For builders
 
 `/builders/guide` is the one-screen checklist: get researched, get linked, read as shipping,
-become a Verified Builder, claim (GitHub or a wallet), keep the page accurate, show the badge.
+become a Verified Builder, claim (GitHub, or a wallet: the token's launcher, owner or creator, or the fee recipient its
+Pons launch names), keep the page accurate, show the badge.
 A contract your site links on the explorer becomes a declared contract HEY watches once the
 chain confirms it holds code; a verified owner can add product contracts the same way. Every
 surface prints one status label, and a share leads with the strongest true fact.
