@@ -4,6 +4,10 @@ What changed, and when, for anyone reading the code or building on the API. Date
 change reached production. Older entries are condensed; the private repository keeps the full
 record.
 
+## 2026-10-30
+
+- **A list/card toggle for builder lists (2026-10-30).** Explore's Builders view and a narrative page's list stay a list by default; two icon buttons at the end of the order row switch them to the card grid. The choice is kept in the URL (`?view=cards`) and in the reader's browser, the projects keep the list's order in both views, and a valuation on a card still shows only on a market HEY measures. The Token projects view stays cards only.
+
 ## 2026-10-29
 
 - **Agents on Raeto (2026-10-29).** A project whose AI agents run on Raeto may opt in, on Raeto, to show their model calls; its HEY page then shows the last 7 days' count and a day series after the builder story, dated, with the Raeto link. Activity, never spend or wallets; matched only on the project's own site or confirmed X, never a name. Context only; it changes no status, score or order.
