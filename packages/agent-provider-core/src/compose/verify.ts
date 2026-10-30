@@ -1,4 +1,5 @@
 import type { HeyContract, HeyTokenLookup } from '@hey-research-lab/sdk';
+import { tokenVerificationWords } from '@hey/scoring/verification-words';
 
 import { familyFreshness } from '../freshness';
 import type { AgentClaim, AgentEvidenceRef, AgentResponseOf, AgentUnknown, AgentVerifyData } from '../schema';
@@ -66,7 +67,7 @@ const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   site_names_contract: 'The project’s own website names this contract.',
   deploy_record_in_own_repo: 'A deploy record in the project’s own official repository names this contract on this chain.',
   site_names_another_contract: 'The project’s own website names a different contract than this one.',
-  owner_has_not_published_contract: 'The verified owner has not published this contract on the project’s site or signed for it.',
+  owner_has_not_published_contract: 'The owner who proved control has not published this contract on the project’s site or signed for it.',
   self_reported: 'The contract was named in the project’s submission; its site or an on-chain signature has not confirmed it.',
   launchpad_record: 'HEY knows the contract from a launchpad record; the project has not been seen naming it.',
   launchpad_record_site_silent: 'HEY knows the contract from a launchpad record, and the site that record named does not name it.',
@@ -75,10 +76,10 @@ const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   not_checked: 'HEY has not yet checked whether the project names this contract.',
   // 2026-10-12 (audits INV-1, DI-2, DI-8).
   site_disclaims_contract: 'The project’s own site names this contract and says it is not the project’s token.',
-  site_names_contract_contested: 'The project’s own site names this contract, and another published page of the same name and ticker has a site naming a different one; neither naming verifies.',
+  site_names_contract_contested: 'The project’s own site names this contract, and another published page of the same name and ticker has a site naming a different one; neither naming ties it to the project.',
   site_off_page_names_contract: 'A site other than the project’s own declared website names this contract.',
   // 2026-10-12 (audit DQ-1).
-  site_unreachable: 'The project’s own site named this contract when HEY read it, and has not answered HEY’s reads since; that naming no longer verifies it.',
+  site_unreachable: 'The project’s own site named this contract when HEY read it, and has not answered HEY’s reads since; that naming no longer ties it to the project.',
 };
 
 const ROLE_WORDS: Readonly<Record<'token' | 'declared' | 'followup', string>> = {
@@ -226,7 +227,8 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
         ? // Every reason, so the answer says why (benchmark 2026-09-30): the first alone read "HEY records this contract as the project's tracked token", which sounds like a match.
           derivedText(`CONTRACT_MISMATCH: ${reasons.map((reason) => reason.text).join(' ')}`)
         : verdict === 'UNVERIFIED'
-          ? derivedText(`UNVERIFIED: HEY records ${address} under "${recorded?.slug}", and the project has not been seen naming it.`)
+          ? // The verdict leads (machine rule 10; the benchmark reads it), then the page's label for it (R2, 2026-10-31 audit L7-3).
+            derivedText(`UNVERIFIED (${tokenVerificationWords('UNVERIFIED').label.toLowerCase()}): HEY records ${address} under "${recorded?.slug}", and the project has not been seen naming it.`)
           : reasonCode === 'issuer_token'
             ? derivedText(`UNKNOWN (issuer_token): ${reasons[0]?.text ?? ''} It is never any project's token.`)
             : derivedText(`UNKNOWN: ${reasons[0]?.text ?? 'HEY cannot attribute this contract.'} Missing attribution is not evidence against it.`);

@@ -26,8 +26,9 @@ import type {
   HeyStillBuildingWithheld,
 } from '@hey-research-lab/sdk';
 
-import { looksLikeEvidenceId, quoteExternal, stillBuildingStateOf, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
+import { evidenceBackingWords, looksLikeEvidenceId, quoteExternal, stillBuildingStateOf, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
 import { DISCOVERY_GAP_WITHHELD_WORDS, STILL_BUILDING_WITHHELD_WORDS as SCORING_STILL_BUILDING_WITHHELD_WORDS } from '@hey/scoring/withheld-words';
+import { tokenVerificationLabelFor } from '@hey/scoring/verification-words';
 
 import { activityTag, atPrecision, composedWords, derivedWords, liquidityWords, money, officialXWords, quotedName, recordTag, shownOf, STILL_BUILDING_MEANING, stillBuildingEvidence, summaryWords, TAG_LEGEND, tokenMarketWords, valuationWord } from './render';
 
@@ -43,6 +44,8 @@ import { activityTag, atPrecision, composedWords, derivedWords, liquidityWords, 
  */
 
 const pretty = (value: string): string => value.toLowerCase().replace(/_/g, ' ');
+/** "Checked by HEY" → "checked by HEY": the word's own case after the first letter. */
+const lowerFirst = (value: string): string => (value ? value[0]!.toLowerCase() + value.slice(1) : value);
 
 /**
  * Why a Discovery Gap is absent, and why Still Building was not measured, in the scoring package's words (hbm-v18,
@@ -88,7 +91,8 @@ export const DIMENSION_WORDS: Record<HeyCoverageDimension, string> = {
   marketHistory: 'market history',
   contractDeployment: 'contract deployment',
   contractActivity: 'contract activity',
-  contractSource: 'verified source',
+  // The coverage row's own words (gaps.ts `DIMENSION_LABELS`, 2026-10-31 audit L1-3): "verified" only in "Verified Builder".
+  contractSource: 'published source code',
   contractInterface: 'contract interface',
   distribution: 'supply distribution',
   locks: 'locks',
@@ -134,11 +138,11 @@ export const REASON_WORDS: Readonly<Record<string, string>> = {
   site_disallows_reading: "the site's robots.txt asks HEY not to read it",
   no_official_site: 'no corroborated official site',
   site_not_corroborated: "the site is not corroborated as the project's own",
-  source_verified_template_token: 'verified source is a launchpad template, not project-authored code',
-  source_verified_explorer_matched: 'verified by a bytecode match to source published for another contract',
+  source_verified_template_token: 'the published source is a launchpad template, not project-authored code',
+  source_verified_explorer_matched: 'matched by bytecode to source published for another contract',
   source_verified_project_authored: 'source published for this address',
   source_verified_project_authored_other_contract: 'the token is not project-authored, but another watched contract of the project has source published for its own address',
-  source_verified_authorship_unconfirmed: 'verified; how the explorer came to hold the source is not read yet',
+  source_verified_authorship_unconfirmed: 'source published; how the explorer came to hold it is not read yet',
   changes_since_first_read_template_interface: "a template's interface, counted from HEY's first read",
 };
 
@@ -319,11 +323,16 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
   lines.push('', '## Peer context (one dimension at a time, never a score)');
   lines.push(...peerContextLines(s.peerContext, { buildMomentum: s.build.buildMomentum }));
 
-  lines.push('', '## Verification and sources');
+  /*
+   * R2's words (2026-10-31 audit L7-3; founder ruling R2): the token check as the page labels it, with the stored value
+   * beside it (machine rule 10); an owner "proved control"; a source HEY checked is "checked by HEY". Never "verified"
+   * outside "Verified Builder".
+   */
+  lines.push('', '## Token check, ownership and sources');
   const v = s.verification;
-  if (v.token) lines.push(`- ${v.token.status === 'UNVERIFIED' ? 'UNKNOWN' : 'FACT'} token verification: ${pretty(v.token.status)}${v.token.reason ? ` (${pretty(v.token.reason)})` : ''}`);
-  lines.push(`- FACT ownership: ${v.ownerVerified ? 'claimed by a verified owner' : v.submitted ? 'self-reported at submission, not verified' : 'not claimed'}`);
-  lines.push(`- FACT sources: ${v.sources.total} registered, ${v.sources.own} the project's own, ${v.sources.verified} verified, ${v.sources.contextOnly} context only (not this project's evidence)`);
+  if (v.token) lines.push(`- ${v.token.status === 'UNVERIFIED' ? 'UNKNOWN' : 'FACT'} token check: ${tokenVerificationLabelFor(v.token.status, v.token.reason).toLowerCase()} (verification ${v.token.status}${v.token.reason ? `, reason ${v.token.reason}` : ''})`);
+  lines.push(`- FACT ownership: ${v.ownerVerified ? 'an owner proved control' : v.submitted ? 'self-reported at submission; no owner has proved control' : 'not claimed'}`);
+  lines.push(`- FACT sources: ${v.sources.total} registered, ${v.sources.own} the project's own, ${v.sources.verified} checked by HEY, ${v.sources.contextOnly} context only (not this project's evidence)`);
   lines.push(s.evidenceSummary.meaningfulEvents30d === null ? '- UNKNOWN counted ships in 30 days: not measured' : `- DERIVED ${s.evidenceSummary.meaningfulEvents30d} counted ships in 30 days`);
 
   lines.push('', '## Locks and integrity');
@@ -565,7 +574,7 @@ export function renderEvidence(r: HeyEvidenceReceipt): string {
   // A lock already in the locker when HEY began keeping first sightings has no first-seen time (2026-10-16): say so, never date it by a re-read.
   const firstKnew = r.detectedAt ? `HEY first knew ${r.detectedAt.slice(0, 16).replace('T', ' ')} UTC` : 'UNKNOWN when HEY first knew: it predates HEY\'s first sightings';
   lines.push(`When: ${atPrecision(r.publishedAt, r.precision, r.detectedAt ?? undefined)} (${r.precision}); ${firstKnew}; recorded ${r.recordedAt.slice(0, 10)}.`);
-  lines.push(`Source: ${r.sourceType}${r.sourceUrl ? ` — ${r.sourceUrl}` : ' (no public URL; HEY\'s own observation)'}${r.verification ? `; backing: ${pretty(r.verification)}` : ''}${r.countsAsBuilding ? '; counts toward activity status' : ''}.`);
+  lines.push(`Source: ${r.sourceType}${r.sourceUrl ? ` — ${r.sourceUrl}` : ' (no public URL; HEY\'s own observation)'}${r.verification ? `; backing: ${lowerFirst(evidenceBackingWords(r.verification, r.claimType))}` : ''}${r.countsAsBuilding ? '; counts toward activity status' : ''}.`);
   // How the ship counted (2026-10-18, product-depth PD-7): alone, or once with its deploy run, release day or code week; the receipt's own words.
   if (r.countedAsSentence) lines.push(r.countedAsSentence);
   if (r.sources && r.sources.length > 0) lines.push('', 'Evidence rows:', ...r.sources.map((row) => `- ${row.sourceType}: ${row.sourceUrl} (observed ${row.observedAt.slice(0, 10)})`));

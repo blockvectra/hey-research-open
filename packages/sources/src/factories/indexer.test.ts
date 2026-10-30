@@ -123,6 +123,48 @@ describe('scanFactory', () => {
     expect(result.lastIndexedBlock).toBe(3_000_000);
   });
 
+  it('says the window it would ask next, starts from one it is given, and halves below the default floor when asked (2026-10-31, audit L6-2)', async () => {
+    const windowsOf = (stub: ReturnType<typeof stubFetch>) =>
+      stub.requests.map((request) => {
+        const body = JSON.parse(String(request.init?.body)) as { params: { fromBlock: string; toBlock: string }[] };
+        return [Number.parseInt(body.params[0]!.fromBlock, 16), Number.parseInt(body.params[0]!.toBlock, 16)];
+      });
+    // Two requests, both too dense: nothing read, and the window it got down to comes back.
+    const dense = stubFetch([rpcError('query returned more than 10000 results'), rpcError('query returned more than 10000 results')]);
+    const first = await scanFactory(factory, { rpcUrl: 'https://rpc.example', fromBlock: 47_000_024, toBlock: 101_000_000, maxRequests: 2, sleep: noSleep }, testContext({ fetchImpl: dense.fetchImpl }));
+    expect(windowsOf(dense)).toEqual([
+      [47_000_024, 49_000_024],
+      [47_000_024, 48_000_024],
+    ]);
+    expect(first).toMatchObject({ lastIndexedBlock: 47_000_023, stopReason: 'request_cap', nextChunk: 500_000, unresolvedWindows: [] });
+
+    // Handed that window, the next call asks it first, and reads on.
+    const resumed = stubFetch([logs([]), rpcError('query returned more than 10000 results')]);
+    const second = await scanFactory(
+      factory,
+      { rpcUrl: 'https://rpc.example', fromBlock: 47_000_024, toBlock: 101_000_000, maxRequests: 2, initialChunk: first.nextChunk!, sleep: noSleep },
+      testContext({ fetchImpl: resumed.fetchImpl }),
+    );
+    expect(windowsOf(resumed)).toEqual([
+      [47_000_024, 47_500_024],
+      [47_500_025, 48_500_025],
+    ]);
+    expect(second).toMatchObject({ lastIndexedBlock: 47_500_024, nextChunk: 500_000 });
+
+    // With a floor of one block, a dense window halves past the default 25,000-block floor instead of becoming a gap.
+    const narrow = stubFetch([rpcError('query returned more than 10000 results'), logs([])]);
+    const third = await scanFactory(
+      factory,
+      { rpcUrl: 'https://rpc.example', fromBlock: 100, toBlock: 1_000_000, maxRequests: 2, initialChunk: 20_000, minChunk: 1, sleep: noSleep },
+      testContext({ fetchImpl: narrow.fetchImpl }),
+    );
+    expect(windowsOf(narrow)).toEqual([
+      [100, 20_100],
+      [100, 10_100],
+    ]);
+    expect(third).toMatchObject({ lastIndexedBlock: 10_100, unresolvedWindows: [] });
+  });
+
   it('backs off exponentially on a rate limit without shrinking the window or losing coverage', async () => {
     const slept: number[] = [];
     const stub = stubFetch([{ status: 429 }, { status: 429 }, rpcError('429 Too Many Requests'), logs([])]);

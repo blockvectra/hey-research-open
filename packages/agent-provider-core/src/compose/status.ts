@@ -6,6 +6,7 @@ import type { AgentClaim, AgentEvidenceRef, AgentResponseOf, AgentUnknown } from
 import { derivedText, externalText, heyText } from '../text';
 import { stillBuildingStateOfClassification } from '../disclosures';
 import { envelope, evidenceRef, looksLikeEvidenceId, type AgentComposeContext } from './common';
+import { STILL_BUILDING_MEANING_SENTENCE } from '../words';
 
 /**
  * builder_status (2026-09-30): "is this project still building, and why
@@ -165,7 +166,8 @@ export function composeBuilderStatus(ctx: AgentComposeContext, input: BuilderSta
         state: stillBuilding.state,
         classification: stillBuilding.classification,
         stillBuildingState: stillBuildingStateOfClassification(stillBuilding.classification),
-        meaning: heyText('Still Building: verified activity continuing through a market drawdown HEY tracked; a record of what happened, not a prediction and not a buy signal.'),
+        // The page's words, never "verified activity" (2026-10-31 audit L7-3).
+        meaning: heyText(STILL_BUILDING_MEANING_SENTENCE),
         explainUrl: `${api}?fact=still_building`,
       },
       reason: derivedText(activity.reason),

@@ -36,7 +36,7 @@ export type GapFacts = {
 
 /** An UNVERIFIED token's reason in one sentence; the gap list and the `contract.token_verification` claim read it (INV-2/INV-3). */
 export const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
-  owner_has_not_published_contract: 'The verified owner has not published the token contract on the project’s own site or signed for it.',
+  owner_has_not_published_contract: 'The owner who proved control has not published the token contract on the project’s own site or signed for it.',
   self_reported: 'The token was named in the project’s submission; the project’s own site or an on-chain signature has not confirmed it.',
   launchpad_record: 'HEY knows the token from a launchpad record; the project has not been seen naming it.',
   launchpad_record_site_silent: 'HEY knows the token from a launchpad record, and the site that record named does not name it.',
@@ -45,10 +45,10 @@ export const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   not_checked: 'HEY has not yet checked whether the project names the token contract.',
   // 2026-10-12 (audits INV-1, DI-2, DI-8).
   site_disclaims_contract: 'The project’s own site names the token contract and says it is not the project’s token.',
-  site_names_contract_contested: 'The project’s own site names the token contract, and another published page of the same name and ticker has a site naming a different one; neither naming verifies.',
+  site_names_contract_contested: 'The project’s own site names the token contract, and another published page of the same name and ticker has a site naming a different one; neither naming ties it to the project.',
   site_off_page_names_contract: 'A site other than the project’s own declared website names the token contract.',
   // 2026-10-12 (audit DQ-1).
-  site_unreachable: 'The project’s own site named the token contract when HEY read it, and has not answered HEY’s reads since; that naming no longer verifies the token.',
+  site_unreachable: 'The project’s own site named the token contract when HEY read it, and has not answered HEY’s reads since; that naming no longer ties the token to the project.',
 };
 
 /**

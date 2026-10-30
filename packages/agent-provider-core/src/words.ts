@@ -1,3 +1,5 @@
+import { SHIP_VERIFICATION_WORDS, shipVerificationWords, tokenVerificationWords } from '@hey/scoring/verification-words';
+
 /**
  * Counted words in HEY-authored answer text (2026-09-30).
  *
@@ -51,8 +53,9 @@ export const CHANGE_TYPE_NOUNS: Readonly<Record<string, CountNoun>> = {
   'token.launch_stage_changed': noun('launch stage change'),
   'token.verification_changed': noun('token verification change'),
   'research.published': noun('research publication'),
-  'research.builder_verified': noun('builder verification'),
-  'research.owner_verified': noun('owner verification'),
+  // "Verified" only in "Verified Builder" (2026-10-31 audit L7-3; founder ruling R2): an owner "proved control".
+  'research.builder_verified': noun('new Verified Builder'),
+  'research.owner_verified': noun('owner proof of control', 'owner proofs of control'),
   'research.source_added': noun('source added', 'sources added'),
   'research.source_unavailable': noun('source unavailable', 'sources unavailable'),
   'research.source_restored': noun('source restored', 'sources restored'),
@@ -67,6 +70,62 @@ export const CHANGE_TYPE_NOUNS: Readonly<Record<string, CountNoun>> = {
 export function changeTypeNoun(type: string): CountNoun {
   return CHANGE_TYPE_NOUNS[type] ?? noun(`${type} event`);
 }
+
+/**
+ * What Still Building means, in the page's own words (`BADGE_LIST_NOTE`; 2026-10-31 audit L7-3, founder ruling R2):
+ * every agent answer said "verified activity", the word a reader meets only in "Verified Builder". One sentence for
+ * `research_project` and `builder_status`.
+ */
+export const STILL_BUILDING_MEANING_SENTENCE =
+  'Still Building: counted ships during a market drawdown HEY itself tracked; a record of what happened, not a prediction and not a buy signal.';
+
+/* ------------------------------------------------- an evidence receipt's backing */
+
+/**
+ * How a receipt's record is backed, in R2's words (2026-10-31 audit L7-2; founder ruling R2, 2026-10-28): a public
+ * reader meets "verified" only in "Verified Builder". The evidence page printed "Publicly verified", "Admin verified"
+ * and "Source linked" for every receipt outside the build domain, and get_evidence "backing: publicly verified", by
+ * lower-casing the stored value. A ship's value reads through `@hey/scoring`'s one table ("Source-backed", "Checked by
+ * HEY", "Self-reported" — self-reported stays visibly distinct, product rule 10); a source row's confidence through the
+ * source ladder's labels (`SOURCE_ROLE_LABELS` in `@hey/domain`, held equal by a web test); an owner's claim is "Owner
+ * proved control". The stored values and the API's `verification` field are unchanged (machine rule 10).
+ */
+export const SOURCE_CONFIDENCE_BACKING_WORDS: Readonly<Record<string, string>> = {
+  VERIFIED: 'Checked by HEY',
+  AUTHORITATIVE_LINK: 'Official',
+  DISCOVERED: 'Not tied yet',
+  DISPUTED: 'Disputed',
+  RETRACTED: 'Retracted',
+};
+
+export const OWNER_PROVED_CONTROL = 'Owner proved control';
+
+const plainWords = (value: string): string => {
+  const text = value.replace(/[_.]+/g, ' ').trim().toLowerCase();
+  return text ? text[0]!.toUpperCase() + text.slice(1) : text;
+};
+
+export function evidenceBackingWords(verification: string, claimType: string): string {
+  if (verification in SHIP_VERIFICATION_WORDS) return shipVerificationWords(verification);
+  if (claimType === 'owner_verified') return verification === 'VERIFIED' ? OWNER_PROVED_CONTROL : plainWords(verification);
+  if (claimType.startsWith('source.')) return SOURCE_CONFIDENCE_BACKING_WORDS[verification] ?? plainWords(verification);
+  if (verification === 'VERIFIED') return SOURCE_CONFIDENCE_BACKING_WORDS.VERIFIED!;
+  // A signal a review confirmed, and any later value: plain words, never more than the value says.
+  return plainWords(verification);
+}
+
+/**
+ * What a receipt records, where its claim type would print "verified" (2026-10-31 audit L7-2): the Verified Builder
+ * event, an owner's proof, the token check and the explorer's source state. Every other claim type keeps its own words.
+ */
+export const EVIDENCE_CLAIM_TYPE_WORDS: Readonly<Record<string, string>> = {
+  builder_verified: 'Became a Verified Builder',
+  owner_verified: OWNER_PROVED_CONTROL,
+  token_verified: tokenVerificationWords('VERIFIED').label,
+  // The explorer's own state for a contract's source (`abi` receipts): published, or no longer published.
+  VERIFIED: 'Source published on the explorer',
+  UNVERIFIED: 'Source no longer published on the explorer',
+};
 
 /* ------------------------------------------------------------ the citation */
 

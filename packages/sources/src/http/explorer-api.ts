@@ -87,10 +87,13 @@ export function explorerChainApiUrl(api: ExplorerApi, path: string, query: Recor
   return `${BLOCKSCOUT_PRO_API_BASE_URL}/${api.chainId}${path.startsWith('/') ? path : `/${path}`}?${params.toString()}`;
 }
 
-/** The URL with the key replaced, for evidence rows, logs and errors. */
+/**
+ * The URL with the key replaced, for evidence rows, logs and errors. `api_key` too (2026-10-31, audit L3-1): the
+ * spelling Etherscan-style APIs also accept, so a key passed under it is never echoed either.
+ */
 export function redactApiKey(url: string | undefined): string | undefined {
   if (!url) return url;
-  return url.replace(/([?&]apikey=)[^&#]*/gi, '$1REDACTED');
+  return url.replace(/([?&]api_?key=)[^&#\s]*/gi, '$1REDACTED');
 }
 
 /** Apply the redaction to a source result's echoed URL, whatever else it carries. */

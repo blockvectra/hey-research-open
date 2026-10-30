@@ -4,7 +4,7 @@ import type { DiscoveryGapWithheldReason, StillBuildingWithheldReason } from '@h
 import { ageBucket, familyFreshness, SNAPSHOT_SOURCE_FAMILY, type AgentFreshnessEntry, type RefreshTier } from '../freshness';
 import type { AgentChange, AgentClaim, AgentFreshness, AgentResponseOf, AgentSourceType } from '../schema';
 import { derivedText, externalText, heyText, looksLikeInstruction } from '../text';
-import { buildAnswerLead, buildLineFigures, countOf, leadName, tokenNotTheProjectsWords, valuationWithheldSentence, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
+import { buildAnswerLead, buildLineFigures, countOf, leadName, STILL_BUILDING_MEANING_SENTENCE, tokenNotTheProjectsWords, valuationWithheldSentence, WORD_MEANINGFUL_BUILDING_EVENT, WORD_MEANINGFUL_EVENT, WORD_THING } from '../words';
 import { stillBuildingStateOf } from '../disclosures';
 import type { AgentEvidenceKind } from '../evidence-kinds';
 import { agentChange, envelope, evidenceRef, isContextChange, looksLikeEvidenceId, projectApi, type AgentCodeWeeks, type AgentComposeContext } from './common';
@@ -80,7 +80,8 @@ const DISCOVERY_GAP_WITHHELD_TEXT: Readonly<Record<DiscoveryGapWithheldReason | 
 
 const UNDER_THE_RADAR_MEANING = "Under the Radar: building ahead of market attention under HEY's rule; a record of building beside attention, not a valuation, not a prediction and not a buy signal.";
 
-const STILL_BUILDING_MEANING = 'Still Building: verified activity continuing through a market drawdown HEY tracked; a record of what happened, not a prediction and not a buy signal.';
+// "Verified" only in "Verified Builder" (2026-10-31 audit L7-3): the page's words, one sentence (`words.ts`).
+const STILL_BUILDING_MEANING = STILL_BUILDING_MEANING_SENTENCE;
 
 /** What each Research Summary line rests on when it cites no record (round 4): its reading, its coverage state, or the snapshot read. */
 const LINE_KIND: Readonly<Partial<Record<HeySummaryLine['dimension'], AgentEvidenceKind>>> = {

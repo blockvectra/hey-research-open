@@ -68,7 +68,8 @@ export const DO_NOT_CONCLUDE: Readonly<Record<AgentUnknownCategory, string>> = {
   NOT_MEASURED: 'HEY has not measured this. Do not read it as zero, as absent or as negative evidence about the project.',
   INSUFFICIENT_EVIDENCE: 'HEY has read too little of this to say. Do not treat a partial figure as the whole, or the gap as a finding.',
   STALE: 'HEY’s newest reading is older than its freshness limit. Do not treat it as current.',
-  NOT_VERIFIED: 'HEY has not verified this link. Do not treat it as the project’s own, and do not treat it as false either.',
+  // The category stays NOT_VERIFIED (machine rule 10); its sentence says "tied", never "verified" (R2, 2026-10-31 audit L7-3).
+  NOT_VERIFIED: 'HEY holds nothing yet that ties this link to the project. Do not treat it as the project’s own, and do not treat it as false either.',
   UNKNOWN: 'HEY cannot say. A missing value is not negative evidence.',
 };
 

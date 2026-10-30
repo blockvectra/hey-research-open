@@ -179,6 +179,12 @@ export type ScanResult = {
   stopReason?: 'request_cap' | 'rate_limited' | 'provider_error';
   /** Failed requests that were not rate limits (gateway errors, resets, malformed answers). */
   errors: number;
+  /**
+   * The window the scan would ask next (2026-10-31, audit L6-2): narrower than it started when the node called a
+   * window too dense, wider again after a window it answered. A caller that reads a few requests at a time passes it
+   * back as `initialChunk`, so a dense stretch is halved across calls instead of from a fresh 2M-block window each time.
+   */
+  nextChunk?: number;
 };
 
 const logSchema = z.object({
@@ -353,6 +359,14 @@ export type ScanOptions = {
    * census reads every launch of the factory's history, and the lifecycle is the hourly scan's and its backfill's.
    */
   launchesOnly?: boolean;
+  /**
+   * The window to ask first (default the 2M-block maximum), and the narrowest a dense window halves to before it is
+   * recorded as an unread window (default 25,000 blocks) (2026-10-31, audit L6-2). The Pons launch census reads two
+   * requests a step: from a fresh 2M-block window, a stretch dense enough to need three halvings was never read at all
+   * (stuck at block 47,000,023), so it carries `nextChunk` from step to step and halves down to a single block.
+   */
+  initialChunk?: number;
+  minChunk?: number;
 };
 
 const defaultSleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -391,7 +405,8 @@ export async function scanFactory(
   };
 
   let from = options.fromBlock;
-  let chunk = MAX_CHUNK;
+  const minChunk = Math.max(1, Math.floor(options.minChunk ?? MIN_CHUNK));
+  let chunk = Math.min(MAX_CHUNK, Math.max(1, Math.floor(options.initialChunk ?? MAX_CHUNK)));
   let requests = 0;
   let rateLimitHits = 0;
   let lastIndexedBlock = options.fromBlock > 0 ? options.fromBlock - 1 : 0;
@@ -505,14 +520,14 @@ export async function scanFactory(
         continue;
       }
       // A timeout means the window was too dense, not that it was empty.
-      if (span > MIN_CHUNK) {
-        chunk = Math.floor(span / 2);
+      if (span > minChunk) {
+        chunk = Math.max(1, Math.floor(span / 2));
         continue;
       }
       unresolvedWindows.push({ from, to });
       from = to + 1;
       lastIndexedBlock = to;
-      chunk = MIN_CHUNK * 4;
+      chunk = minChunk * 4;
       continue;
     }
 
@@ -581,5 +596,6 @@ export async function scanFactory(
     ...(from <= options.toBlock && stopReason ? { stopReason } : {}),
     errors,
     ...(lastError ? { lastError } : {}),
+    nextChunk: chunk,
   };
 }

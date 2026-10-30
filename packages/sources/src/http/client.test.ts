@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
 import { stubFetch, testContext } from '../testing';
-import { backoffDelayMs, httpRequest, MAX_RESPONSE_BYTES } from './client';
+import { backoffDelayMs, httpRequest, MAX_RESPONSE_BYTES, urlForMessage, withoutUrlQueries } from './client';
 
 const ok = (body: string, headers: Record<string, string> = {}) => ({ status: 200, body, headers });
 
@@ -311,5 +311,57 @@ describe('SSRF protection by resolution (submitted URLs)', () => {
     );
     expect(outcome.kind).toBe('ok');
     expect(looked).toBe(false);
+  });
+});
+
+/*
+ * No query string in an error (2026-10-31, audit L3-1): the keyed explorer's URL carries `apikey=`, and a request's
+ * error message reached a claimant's refusal and the append-only audit log.
+ */
+describe('error messages never carry a query string', () => {
+  const KEYED = 'https://api.blockscout.com/v2/api?module=contract&action=getcontractcreation&chain_id=4663&apikey=proapi_s3cr3t';
+
+  const failure = async (stub: ReturnType<typeof stubFetch>, url = KEYED): Promise<Error> => {
+    try {
+      await httpRequest({ url, conditional: false }, testContext({ fetchImpl: stub.fetchImpl }));
+    } catch (error) {
+      return error as Error;
+    }
+    throw new Error('expected the request to fail');
+  };
+
+  it('names the URL without its query on a refusal, a 5xx, a timeout and a network failure', async () => {
+    const cases = [
+      stubFetch({ status: 429, headers: { 'retry-after': '30' } }),
+      stubFetch({ status: 401 }),
+      stubFetch([{ status: 503 }, { status: 503 }]),
+      stubFetch({ throws: Object.assign(new Error('aborted'), { name: 'TimeoutError' }) }),
+      stubFetch({ throws: new TypeError(`fetch failed for ${KEYED}`) }),
+    ];
+    for (const stub of cases) {
+      const error = await failure(stub);
+      expect(error.message).not.toContain('apikey=');
+      expect(error.message).not.toContain('proapi_s3cr3t');
+      expect(error.message).not.toContain('?');
+    }
+    expect((await failure(stubFetch({ status: 429 }))).message).toBe('https://api.blockscout.com/v2/api responded 429');
+    expect((await failure(stubFetch({ throws: Object.assign(new Error('aborted'), { name: 'TimeoutError' }) }))).message).toBe(
+      'request to https://api.blockscout.com/v2/api timed out',
+    );
+  });
+
+  it('cuts userinfo, query and fragment, keeps scheme, host, port and path', () => {
+    expect(urlForMessage('https://user:pw@rpc.example.com:8443/v1/x?api_key=k&token=t#frag')).toBe('https://rpc.example.com:8443/v1/x');
+    expect(urlForMessage('not a url')).toBe('an unparseable URL');
+    expect(withoutUrlQueries(`Failed to parse URL from ${KEYED} and https://h.example/a?key=z`)).toBe(
+      'Failed to parse URL from https://api.blockscout.com/v2/api and https://h.example/a',
+    );
+  });
+
+  it('never echoes a redirect target it could not use', async () => {
+    const stub = stubFetch({ status: 302, headers: { location: 'http://[bad?X-Amz-Signature=sig' } });
+    const error = await failure(stub, 'https://api.example.com/x?apikey=k1');
+    expect(error.message).not.toContain('X-Amz-Signature');
+    expect(error.message).not.toContain('apikey');
   });
 });

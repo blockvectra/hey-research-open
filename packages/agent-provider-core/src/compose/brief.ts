@@ -35,7 +35,8 @@ export const CHAIN_BRIEF_CHANGES = 10;
 /** What each count means, in the rollup's own rules (`weekly.ts`), so a reader can tell two near names apart (AG-9). */
 export const CHAIN_BRIEF_METHODS = {
   statusRecoveries: 'Projects whose activity status HEY read moving from Quiet or Dormant to Shipping, Active or Resumed in the window, on HEY’s own readings; not the narrower Back from dormancy listing (RESUMED after 60+ days without activity).',
-  stillBuilding: 'Projects HEY holds Still Building today: verified activity continuing through a market drawdown HEY tracked, measured only on an active market; a record, not a buy signal.',
+  // The page's words, never "verified activity" (2026-10-31 audit L7-3; founder ruling R2).
+  stillBuilding: 'Projects HEY holds Still Building today: counted ships during a market drawdown HEY itself tracked, measured only on an active market; a record, not a buy signal.',
   underTheRadar: 'Projects HEY holds Under the Radar today: building ahead of market attention by HEY’s rule (a positive Discovery Gap on an active market, attention at most typical). Strict by design, so a small count is the rule’s, not the chain’s.',
   newlyVerified: 'Projects HEY recorded as Verified Builders in the window.',
 } as const;

@@ -1071,7 +1071,8 @@ GET /api/v1/proof-of-ship/attestation?slug=loom&builder=0x…&since=1790812800&e
   opened never counts for it, and since the 2026-10-24 full audit neither does one HEY first read after `until` — work
   pushed during the escrow's claim grace and dated back by a commit's author date or a feed's own date is not work
   before the deadline; there is no ingestion allowance), and a code week (`CODE_ACTIVITY`, keyed on its last commit's
-  UTC ISO week) counts only when that whole week starts at or after `since`.
+  UTC ISO week) counts only when that whole week lies inside the window: it starts at or after `since` and has ended by
+  `until` (2026-10-31: a week still running could be counted and then move past `until` as later commits landed).
 - **One a day of each kind (2026-10-24 full audit):** at most one counted ship of each kind per UTC day of HEY's first
   record — a GitHub release (any repository), a contract deployment or upgrade, a code week, and every other counted
   entry (a feed, changelog or site entry, a moderator-verified update) — the first one HEY recorded standing for it.

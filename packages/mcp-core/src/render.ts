@@ -29,7 +29,7 @@ import type {
  * discipline the pages do. Four rules decide everything here:
  *
  *  1. **Say what the claim is.** "Still Building" is a specific, narrow claim —
- *     verified activity through a market drawdown HEY tracked — and an agent
+ *     counted ships during a market drawdown HEY itself tracked — and an agent
  *     that reads it as "this will go up" has been misled by the rendering, not
  *     by the reader. So the phrase never appears without its meaning.
  *  2. **Never invent a figure.** A project with no market reading gets no
@@ -45,8 +45,9 @@ import type {
  *
  * Pure functions over the API's own shapes: unit-tested without a network.
  */
+/** The page's own words (`BADGE_LIST_NOTE`, 2026-10-31 audit L7-3): "verified" only in "Verified Builder" (R2). */
 export const STILL_BUILDING_MEANING =
-  'Still Building = verified activity continuing through a market drawdown HEY tracked. It is a record of what happened, not a prediction and not a buy signal.';
+  'Still Building = counted ships during a market drawdown HEY itself tracked. It is a record of what happened, not a prediction and not a buy signal.';
 
 /** Printed once per answer that carries tags, so a model reads them the way HEY means them. */
 export const TAG_LEGEND =
@@ -224,7 +225,7 @@ const STAGE_WORDS: Record<'CURVE' | 'GRADUATED' | 'DEX', string> = {
 
 /**
  * The evidence behind Still Building, as a clause (round-7 audit 2026-09-18):
- * "down 62% from the HEY-tracked high, 5 verified ships since". Two facts and
+ * "down 62% from the HEY-tracked high, 5 counted ships since". Two facts and
  * no verdict, so the claim never travels as a bare badge.
  */
 export function stillBuildingEvidence(project: Pick<HeyProject, 'stillBuildingEvidence'>): string | undefined {
@@ -422,7 +423,7 @@ export function renderProjects(page: HeyPage<HeyProject>, now?: Date): string {
         ? `\n${coverage.volume24h} of ${coverage.base} matching projects have a 24h volume reading; the rest follow in activity order.`
         : sort === 'marketCap'
           ? `\n${coverage.marketCap} of ${coverage.base} matching projects have a valuation reading; the rest follow in activity order.`
-          : `\nOf ${coverage.base} matching projects: ${coverage.activeMarket} traded in the last day, ${coverage.liveMarket} whose market is not gone, ${coverage.verifiedToken} with a verified token, ${coverage.marketCap} with a valuation reading.`
+          : `\nOf ${coverage.base} matching projects: ${coverage.activeMarket} traded in the last day, ${coverage.liveMarket} whose market is not gone, ${coverage.verifiedToken} whose project names the token's contract, ${coverage.marketCap} with a valuation reading.`
     : '';
 
   return `${shown}${denominator}\n${queryEcho(page.query)}\nActivity is DERIVED from recorded ships (UNKNOWN where HEY holds no builder source or has not researched the record); market figures are FACT readings with their provider, context only.\n\n${lines.join('\n')}${stillBuilding}\n\n${page.disclaimer}`;
@@ -651,7 +652,7 @@ function onchainWords(b: HeyBuildersPage['items'][number]): string {
 
 /** The Builder Radar as prose, with the method stated. */
 export function renderBuilders(page: HeyBuildersPage, now: Date): string {
-  const lines: string[] = [`# Builder Radar — ${page.ranked} projects ranked${page.day ? ` for ${page.day}` : ''}`, page.method, 'Each rank is DERIVED: a rule over verified development, on-chain use and research standing. Market cap, price and volume take no part in it.', ''];
+  const lines: string[] = [`# Builder Radar — ${page.ranked} projects ranked${page.day ? ` for ${page.day}` : ''}`, page.method, 'Each rank is DERIVED: a rule over counted development, on-chain use and research standing. Market cap, price and volume take no part in it.', ''];
   if (page.items.length === 0) lines.push('No builders match this view.');
   for (const b of page.items) {
     const move = b.rank7d === undefined ? 'new' : b.rank7d === b.rank ? 'unchanged' : `${b.rank7d > b.rank ? '▲' : '▼'} ${Math.abs(b.rank7d - b.rank)} in 7d`;
@@ -672,14 +673,14 @@ export function renderWeeklyReport(report: HeyWeeklyReport): string {
   const lines: string[] = [`# Robinhood Chain, ${report.week} (${report.window.start.slice(0, 10)} → ${report.window.end.slice(0, 10)}${report.final ? '' : ', in progress'})`, report.headline, ''];
   // Ships and pages are records; a status move, a research level, Still Building and Under the Radar are rules HEY applied (audit §45 #8).
   lines.push(`FACT overview: ${o.ships} counted ships from ${o.projectsShipping} projects · ${o.published} pages published in total.`);
-  lines.push(`DERIVED overview: ${o.newBuilders} new verified builders · ${o.backToShipping} back to shipping · ${o.stillBuilding} Still Building · ${o.underTheRadar} Under the Radar · ${o.verifiedBuilders} verified builders in total.`);
+  lines.push(`DERIVED overview: ${o.newBuilders} new Verified Builders · ${o.backToShipping} back to shipping · ${o.stillBuilding} Still Building · ${o.underTheRadar} Under the Radar · ${o.verifiedBuilders} Verified Builders in total.`);
   const c = report.chain;
   const chain = [c.dexTrades === undefined ? undefined : `${c.dexTrades.toLocaleString('en-US')} DEX trades`, c.dexVolumeWithheldDays ? `volume withheld (${c.dexVolumeWithheldDays} ${c.dexVolumeWithheldDays === 1 ? 'day' : 'days'} more than 10× the trailing median)` : c.dexVolumeUsd === undefined ? undefined : `${money(c.dexVolumeUsd)} volume (USDG/WETH/ETH pairs)`, c.launches === undefined ? undefined : `${c.launches.toLocaleString('en-US')} launches recorded`, c.projectsPublished === undefined ? undefined : `${c.projectsPublished} pages published`].filter((v): v is string => Boolean(v));
   if (chain.length > 0) lines.push(`FACT chain (${c.days} days): ${chain.join(' · ')}.`);
   if (report.shipped.length > 0) lines.push('', 'Most active builders:', ...report.shipped.map((g) => `- ${quotedName(g.name)}: ${g.ships} ${g.ships === 1 ? 'ship' : 'ships'} · ${sourceWords(g.latest, 'release_title')}`));
   if (report.movers.length > 0) lines.push('', 'Biggest movers (Builder Radar, 7 days; DERIVED ranks):', ...report.movers.map((m) => `- ${quotedName(m.name)}: #${m.rank7d} → #${m.rank} (▲ ${m.gained})`));
   if (report.topBuilders.length > 0) lines.push('', 'Top builders (DERIVED ranks):', ...report.topBuilders.map((b) => `- #${b.rank} ${quotedName(b.name)} (overall ${Math.round(b.overall)})`));
-  if (report.newBuilders.length > 0) lines.push('', `New verified builders: ${report.newBuilders.map((b) => quotedName(b.name)).join(', ')}.`);
+  if (report.newBuilders.length > 0) lines.push('', `New Verified Builders: ${report.newBuilders.map((b) => quotedName(b.name)).join(', ')}.`);
   if (report.backToShipping.length > 0) lines.push(`Back to shipping: ${report.backToShipping.map((b) => quotedName(b.name)).join(', ')}.`);
   if (report.signals.length > 0) lines.push('', 'Signals of the week:', ...report.signals.map((s) => `- ${quotedName(s.name)}: ${s.label} — ${composedWords(s.title, 'signal_title')}`));
   if (o.stillBuilding > 0) lines.push('', STILL_BUILDING_MEANING);
@@ -721,7 +722,8 @@ export function renderThisWeek(week: HeyThisWeek): string {
     'What shipped (releases and launches first, then newest)',
     week.shipped.items.map((i) => `- ${one(i.project)} — ${i.ships} ${i.ships === 1 ? 'ship' : 'ships'}${i.latest ? `; latest: ${sourceWords(i.latest.title, 'release_title')}${i.latest.sourceUrl ? ` (${i.latest.sourceUrl})` : ''}` : ''}`),
   );
-  section('New builders', week.newBuilders.items.map((i) => `- ${one(i.project)} — verified ${i.verifiedAt.slice(0, 10)}`));
+  // R2 (2026-10-31 audit L7-3): the date it became a Verified Builder, never "verified <date>".
+  section('New Verified Builders', week.newBuilders.items.map((i) => `- ${one(i.project)} — Verified Builder since ${i.verifiedAt.slice(0, 10)}`));
   section('Back to shipping', week.backToShipping.items.map((i) => `- ${one(i.project)} — ${i.from.toLowerCase()} → ${i.to.toLowerCase()} on ${i.changedAt.slice(0, 10)}`));
   section('Still Building', week.stillBuilding.items.map((p) => `- ${one(p)}`));
   if (week.underTheRadar) section('Under the Radar', week.underTheRadar.items.map((p) => `- ${one(p)}`));
@@ -887,7 +889,7 @@ export function renderMarketIntegrity(page: HeyMarketIntegrity): string {
     ...(m.collapseDay ? [`DERIVED liquidity under a tenth of that level since ${m.collapseDay} (two consecutive daily readings)`] : []),
     // Its basis named (2026-10-16, audit #124): get_token_market's "last decoded on-chain trade" counts decoded trades only, so the two days may differ.
     ...(m.lastTradeDay ? [`FACT last trading day in HEY's daily index (decoded trades, or a provider's 24h volume where none were decoded) ${m.lastTradeDay}`] : []),
-    m.migrationDetected && m.migration ? `DERIVED liquidity appears to have moved (${m.migration.kind.toLowerCase()}, ${m.migration.confidence} confidence)` : m.collapse === 'COLLAPSE' || m.collapse === 'SEVERE' ? 'DERIVED no verified replacement pool for the same token found' : '',
+    m.migrationDetected && m.migration ? `DERIVED liquidity appears to have moved (${m.migration.kind.toLowerCase()}, ${m.migration.confidence} confidence)` : m.collapse === 'COLLAPSE' || m.collapse === 'SEVERE' ? 'DERIVED no confirmed replacement pool for the same token found' : '',
     ...(m.sourcesDisagree ? ['UNKNOWN two market sources disagree; HEY holds this for review'] : []),
     ...(m.exitPattern && m.exitPattern.level !== 'NONE' ? [`DERIVED potential exit pattern (an evidence classification, not a finding about intent): ${m.exitPattern.reasons.join(' ')}`] : []),
     ...page.conflicts.map((conflict) => `DERIVED signal conflict: ${conflict.text}`),
@@ -1069,7 +1071,7 @@ export function renderCompare(page: HeyCompare): string {
         ? `DERIVED velocity: ${project.velocity.state.toLowerCase()} (${project.velocity.current}${project.velocity.previous === null ? '' : ` vs ${project.velocity.previous}`})`
         : 'UNKNOWN velocity',
       project.cadence?.medianIntervalDays !== undefined ? `DERIVED release cadence: every ${project.cadence.medianIntervalDays} days` : 'UNKNOWN release cadence',
-      `FACT verified builder: ${project.verifiedBuilder ? 'yes' : 'no'}; sources ${project.sources.verified} verified of ${project.sources.total}`,
+      `FACT Verified Builder: ${project.verifiedBuilder ? 'yes' : 'no'}; sources ${project.sources.verified} checked by HEY of ${project.sources.total}`,
       // By the kind the API sends, not by comparing figures (2026-09-25); an unknown kind is a valuation (2026-09-26).
       project.marketCapUsd === undefined
         ? project.valuationWithheld

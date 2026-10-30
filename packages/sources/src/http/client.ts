@@ -93,6 +93,29 @@ const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
 
 const isRedirect = (status: number): boolean => REDIRECT_STATUSES.has(status);
 
+/**
+ * A URL as an error message names it: scheme, host and path, never the query, the fragment or the userinfo
+ * (2026-10-31, audit L3-1). The keyed explorer carries HEY's key as `apikey=` in its query, and a request's error
+ * message reached a claimant's refusal and the append-only `project.claim.failed` row. `SourceError` redacts what it
+ * is handed as well; this keeps the query out of the text in the first place, whatever a provider calls its key.
+ * A key a provider takes as a path segment is still the constructor's to redact.
+ */
+export function urlForMessage(url: string): string {
+  try {
+    const parsed = new URL(url);
+    return `${parsed.protocol}//${parsed.host}${parsed.pathname}`;
+  } catch {
+    return 'an unparseable URL';
+  }
+}
+
+const URL_IN_TEXT = /\b[a-z][a-z0-9+.-]*:\/\/[^\s"'<>]+/gi;
+
+/** A runtime's own error text with every URL in it cut to {@link urlForMessage} (undici names the URL it could not parse). */
+export function withoutUrlQueries(text: string): string {
+  return text.replace(URL_IN_TEXT, (url) => urlForMessage(url));
+}
+
 const jitter = (value: number): number => value / 2 + Math.random() * (value / 2);
 
 const defaultSleep = (ms: number): Promise<void> =>
@@ -238,14 +261,14 @@ async function attemptOnce(
        * website or source URL names a port, so nothing real is refused.
        */
       if (new URL(currentUrl).port !== '') {
-        throw new SourceError('BLOCKED_URL', `${currentUrl} names a port other than the scheme's own`);
+        throw new SourceError('BLOCKED_URL', `${urlForMessage(currentUrl)} names a port other than the scheme's own`);
       }
       let resolved: Awaited<ReturnType<typeof assertResolvesPublic>>;
       try {
         // Inside the request's deadline (2026-09-27, audit G S7).
         resolved = await assertResolvesPublic(currentUrl, ctx.lookupImpl ?? systemLookup, signal, ownOriginAddresses());
       } catch (error) {
-        if (isAbort(error)) throw new SourceError('TIMEOUT', `resolving ${currentUrl} timed out`);
+        if (isAbort(error)) throw new SourceError('TIMEOUT', `resolving ${urlForMessage(currentUrl)} timed out`);
         throw error;
       }
       // A name that does not resolve is a dead site, not HEY's guard refusing it (DQ-4, 2026-10-12).
@@ -268,11 +291,11 @@ async function attemptOnce(
       await dispatcher?.destroy().catch(() => undefined);
       if (error instanceof SourceError) throw error;
       if (isAbort(error)) {
-        throw new SourceError('TIMEOUT', `request to ${currentUrl} timed out`);
+        throw new SourceError('TIMEOUT', `request to ${urlForMessage(currentUrl)} timed out`);
       }
       throw new SourceError(
         'NETWORK',
-        error instanceof Error ? error.message : `network failure for ${currentUrl}`,
+        error instanceof Error ? withoutUrlQueries(error.message) : `network failure for ${urlForMessage(currentUrl)}`,
       );
     }
 
@@ -294,7 +317,8 @@ async function attemptOnce(
     try {
       nextUrl = new URL(location, currentUrl).toString();
     } catch {
-      throw new SourceError('INVALID_RESPONSE', `unusable redirect target: ${location}`);
+      // The raw Location is a stranger's text and may carry a signed query (2026-10-31, audit L3-1): named, not echoed.
+      throw new SourceError('INVALID_RESPONSE', `unusable redirect target from ${urlForMessage(currentUrl)}`);
     }
 
     // Every hop is re-validated, not just the URL the caller supplied.
@@ -328,7 +352,7 @@ async function attemptOnce(
      */
     const downgrade = new URL(currentUrl).protocol === 'https:' && new URL(nextUrl).protocol === 'http:';
     if (downgrade && Object.keys(headers).some((name) => SECRET_HEADERS.has(name.toLowerCase()))) {
-      throw new SourceError('BLOCKED_URL', `redirect from ${currentUrl} downgrades to http while carrying credentials`);
+      throw new SourceError('BLOCKED_URL', `redirect from ${urlForMessage(currentUrl)} downgrades to http while carrying credentials`);
     }
     currentUrl = nextUrl;
   }
@@ -358,7 +382,7 @@ async function attemptOnce(
     const retryAfterMs = parseRetryAfterMs(response.headers.get('retry-after'));
     throw new SourceError(
       code,
-      `${currentUrl} responded ${response.status}`,
+      `${urlForMessage(currentUrl)} responded ${response.status}`,
       response.status,
       retryAfterMs === undefined ? undefined : Math.ceil(retryAfterMs / 1000),
       { ...(retryAfterMs === undefined ? {} : { retryAfterMs }), ...(quota ? { quota } : {}) },
@@ -387,7 +411,7 @@ async function attemptOnce(
   try {
     responseBody = await readBodyCapped(response, request.maxBytes ?? MAX_RESPONSE_BYTES, request.bodyEncoding ?? 'utf8');
   } catch (error) {
-    if (isAbort(error)) throw new SourceError('TIMEOUT', `reading ${currentUrl} timed out`);
+    if (isAbort(error)) throw new SourceError('TIMEOUT', `reading ${urlForMessage(currentUrl)} timed out`);
     throw error;
   } finally {
     // Read to the end or given up on: either way the connection is finished with.
@@ -451,7 +475,7 @@ export async function httpRequest(request: HttpRequest, ctx: SourceContext): Pro
       const sourceError =
         error instanceof SourceError
           ? error
-          : new SourceError('NETWORK', error instanceof Error ? error.message : 'unknown failure');
+          : new SourceError('NETWORK', error instanceof Error ? withoutUrlQueries(error.message) : 'unknown failure');
       sourceError.attempts = attempt;
       lastError = sourceError;
 

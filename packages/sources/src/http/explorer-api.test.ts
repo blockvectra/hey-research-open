@@ -25,6 +25,9 @@ describe('explorer api addressing', () => {
   it('never lets the key out in an echoed URL or message', () => {
     expect(redactApiKey('https://api.blockscout.com/api/v2/x?chain_id=4663&apikey=proapi_secret&y=1')).toBe('https://api.blockscout.com/api/v2/x?chain_id=4663&apikey=REDACTED&y=1');
     expect(redactApiKey(undefined)).toBeUndefined();
+    // Both spellings, and a URL inside a sentence (2026-10-31, audit L3-1).
+    expect(redactApiKey('https://h/x?api_key=k1&page=2 responded 429')).toBe('https://h/x?api_key=REDACTED&page=2 responded 429');
+    expect(redactApiKey('https://h/x?APIKEY=k2 responded 401')).toBe('https://h/x?APIKEY=REDACTED responded 401');
     expect(redactResultUrl({ status: 'error', sourceUrl: 'https://h/?apikey=k', errorMessage: 'failed https://h/?apikey=k' })).toEqual({ status: 'error', sourceUrl: 'https://h/?apikey=REDACTED', errorMessage: 'failed https://h/?apikey=REDACTED' });
   });
 });

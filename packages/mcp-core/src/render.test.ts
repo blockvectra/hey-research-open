@@ -638,7 +638,24 @@ describe('get_evidence', () => {
     const text = renderEvidence(fx.evidence);
     expect(text).toContain('FACT GITHUB_RELEASE (build): «Released v0.4»');
     expect(text).toContain('When: 2026-09-24 10:00 UTC (EXACT); HEY first knew 2026-09-24 11:00 UTC');
-    expect(text).toContain('https://github.com/agentos/sdk/releases/tag/v0.4; backing: publicly verified; counts toward activity status');
+    // R2's words (2026-10-31 audit L7-2): "Source-backed", never "publicly verified"; the stored value stays on the API.
+    expect(text).toContain('https://github.com/agentos/sdk/releases/tag/v0.4; backing: source-backed; counts toward activity status');
+  });
+
+  it('words every backing in R2’s vocabulary, whatever the domain (2026-10-31 audit L7-2)', () => {
+    const live = fx.evidence as Extract<typeof fx.evidence, { withdrawn: false }>;
+    const backing = (verification: string, claimType: string, domain: typeof live.domain = 'contract') =>
+      /; backing: ([^;.]+)/.exec(renderEvidence({ ...live, domain, claimType, verification }))?.[1];
+    expect(backing('PUBLICLY_VERIFIED', 'CONTRACT_DEPLOY_FOLLOWUP')).toBe('source-backed');
+    expect(backing('SOURCE_LINKED', 'CONTRACT_DEPLOY_FOLLOWUP')).toBe('source-backed');
+    expect(backing('ADMIN_VERIFIED', 'CONTRACT_UPGRADE')).toBe('checked by HEY');
+    expect(backing('SELF_REPORTED', 'FEATURE_RELEASE', 'build')).toBe('self-reported');
+    expect(backing('VERIFIED', 'owner_verified', 'research')).toBe('owner proved control');
+    expect(backing('VERIFIED', 'source.github_repo', 'research')).toBe('checked by HEY');
+    expect(backing('DISCOVERED', 'source.website', 'research')).toBe('not tied yet');
+    for (const verification of ['PUBLICLY_VERIFIED', 'ADMIN_VERIFIED', 'SOURCE_LINKED', 'SELF_REPORTED', 'VERIFIED']) {
+      expect(backing(verification, 'CONTRACT_DEPLOY_FOLLOWUP'), verification).not.toMatch(/verified|linked/i);
+    }
   });
 
   it('says how a ship counted, in the receipt\'s own sentence, and says nothing when the receipt carries none (product-depth PD-7)', () => {
@@ -954,7 +971,7 @@ describe('market_integrity (gated)', () => {
   it('puts the builder first with a DERIVED tag, tags every line, and never says rug, scam or safe', () => {
     const out = renderMarketIntegrity(fx.marketIntegrity);
     expect(out.split('\n')[2]).toMatch(/^DERIVED builder activity: shipping/);
-    expect(out).toContain('DERIVED no verified replacement pool');
+    expect(out).toContain('DERIVED no confirmed replacement pool');
     expect(out).toContain('not whether development has stopped');
     expect(out.toLowerCase()).not.toMatch(/\brug|scam|\bsafe\b/);
   });
@@ -969,5 +986,57 @@ describe('market_integrity (gated)', () => {
     const older = renderMarketIntegrity(integrity);
     expect(older).not.toContain('token market now');
     expect(older).toContain('DERIVED token market at the integrity evaluation (2026-10-17 12:58 UTC): active market');
+  });
+});
+
+/**
+ * R2 (2026-10-28, founder "semua R ya"; 2026-10-31 audit L7-2, L7-3): a reader meets "verified" only in "Verified
+ * Builder" — "the MCP's prose follow". Every sentence HEY writes here is read with the stored enums (VERIFIED,
+ * UNVERIFIED, PUBLICLY_VERIFIED …, machine rule 10) and "Verified Builder" set aside. The API's own `disclaimer` and
+ * a project's quoted text are not HEY's prose here and are left out.
+ */
+describe('MCP prose says "verified" only in "Verified Builder" (R2)', () => {
+  const R2 = /\b(un)?verified\b|\bverifies\b/i;
+  const heyProse = (text: string, ...leaveOut: string[]) =>
+    leaveOut
+      .reduce((rest, out) => rest.split(out).join(''), text)
+      .split('\n')
+      // Machine keys stay (machine rule 10): stored enums, snake-case claim types and field paths.
+      .map((line) => line.replace(/Verified Builders?/g, '').replace(/\b[A-Z][A-Z_]{3,}\b/g, '').replace(/\b[a-z]+(?:_[a-z]+)+\b/g, ''));
+
+  it('the Still Building meaning is the page’s', () => {
+    expect(STILL_BUILDING_MEANING).toContain('counted ships during a market drawdown HEY itself tracked');
+    expect(STILL_BUILDING_MEANING).not.toMatch(R2);
+  });
+
+  it('get_project_snapshot: the token check, ownership and sources', () => {
+    for (const verification of [
+      fx.snapshot.verification,
+      { ...fx.snapshot.verification, token: { status: 'UNVERIFIED', reason: 'self_reported' }, ownerVerified: false, submitted: true },
+      { ...fx.snapshot.verification, token: { status: 'MISMATCH', reason: 'site_names_another_contract' }, ownerVerified: true },
+    ] as const) {
+      const text = renderSnapshot({ ...fx.snapshot, verification: verification as typeof fx.snapshot.verification }, NOW);
+      const block = text.slice(text.indexOf('## Token check, ownership and sources'), text.indexOf('## Locks and integrity'));
+      expect(block).toContain('## Token check, ownership and sources');
+      for (const line of heyProse(block)) expect(line, line).not.toMatch(R2);
+    }
+    const unverified = renderSnapshot({ ...fx.snapshot, verification: { ...fx.snapshot.verification, token: { status: 'UNVERIFIED', reason: 'self_reported' }, ownerVerified: false, submitted: true } }, NOW);
+    expect(unverified).toContain('- UNKNOWN token check: not named by the project (verification UNVERIFIED, reason self_reported)');
+    expect(unverified).toContain('- FACT ownership: self-reported at submission; no owner has proved control');
+    expect(unverified).toContain('2 checked by HEY');
+  });
+
+  it('chain_overview this-week, the weekly report and compare', () => {
+    const week = JSON.parse(readFileSync(new URL('./fixtures/this-week.json', import.meta.url), 'utf8')) as HeyThisWeek;
+    const texts = [
+      // The API's own summary sentence (`weeklySummaryLine`, R2 since 2026-10-30) is its text, not this renderer's; the fixture predates it.
+      [renderThisWeek(week), week.disclaimer, week.summary],
+      [renderWeeklyReport(fx.weeklyReport), fx.weeklyReport.headline],
+      [renderCompare(fx.compare), fx.compare.disclaimer],
+    ] as const;
+    for (const [text, ...apiText] of texts) {
+      for (const line of heyProse(text, ...apiText)) expect(line, line).not.toMatch(R2);
+    }
+    if (week.newBuilders.items.length > 0) expect(renderThisWeek(week)).toMatch(/— Verified Builder since \d{4}-\d{2}-\d{2}/);
   });
 });
