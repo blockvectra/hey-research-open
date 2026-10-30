@@ -618,7 +618,7 @@ export function renderChain(chain: HeyChain): string {
   for (const d of days.slice(0, CHAIN_ROWS)) {
     const building = [
       d.ships === undefined ? undefined : `${d.ships} counted ships${d.buildersShipping === undefined ? '' : ` from ${d.buildersShipping} builders`}`,
-      d.buildersVerified === undefined ? undefined : `${d.buildersVerified} newly verified builders`,
+      d.buildersVerified === undefined ? undefined : `${d.buildersVerified} new Verified Builders`,
       d.projectsPublished === undefined ? undefined : `${d.projectsPublished} projects published`,
     ].filter((v): v is string => v !== undefined);
     const market = [
@@ -705,7 +705,7 @@ export function renderThisWeek(week: HeyThisWeek): string {
     `Counted over the ${w.days} days to ${w.until.slice(0, 10)}, from HEY's own tables.`,
     '',
     `FACT ships: ${week.shipped.ships.toLocaleString('en-US')} from ${week.shipped.projects.toLocaleString('en-US')} ${week.shipped.projects === 1 ? 'project' : 'projects'}.`,
-    `DERIVED newly verified builders: ${week.newBuilders.total.toLocaleString('en-US')}.`,
+    `DERIVED new Verified Builders: ${week.newBuilders.total.toLocaleString('en-US')}.`,
     `DERIVED back to shipping: ${week.backToShipping.total.toLocaleString('en-US')}.`,
     `DERIVED Still Building: ${week.stillBuilding.total.toLocaleString('en-US')}.`,
     ...(week.underTheRadar ? [`DERIVED Under the Radar: ${week.underTheRadar.total.toLocaleString('en-US')}.`] : []),

@@ -38,24 +38,14 @@ export type TokenLockFacts = {
 /** The locker's own mark, in `apps/web/public` at its hashed path (2026-10-17). */
 const HOODLOCK_MARK = BRAND_MARKS.hoodlock;
 
-const DAY = /^\d{4}-\d{2}-\d{2}$/;
-
-const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const;
-
 /**
- * `2027-09-09` -> `9 Sep 2027`. Plain words over jargon (CLAUDE.md UI rule 11).
- *
- * Spelled out rather than handed to `toLocaleDateString`, which returns
- * "9 Sept 2027" on this Node and "9 Sep 2027" in some browsers depending on
- * the ICU build. A month name that differs between the server render and the
- * client is a hydration mismatch, and this file is not the place to add one.
+ * A lock date as the day it is, `2027-09-09` (2026-10-30): the format every other date on a project page, the change
+ * ledger's unlock events included, already prints. It said `9 Sep 2027` until then, so one lock block read
+ * "Next unlock 30 Oct 2026" beside "reached its unlock date 2026-10-20". A day is never handed to `toLocaleDateString`,
+ * whose month names differ between the server's ICU build and the browser's and would mismatch the hydration.
  */
 export function lockUntilLabel(until: string): string {
-  if (!DAY.test(until)) return until;
-  const [year, month, day] = until.split('-').map(Number) as [number, number, number];
-  const name = MONTHS[month - 1];
-  if (!name) return until;
-  return `${day} ${name} ${year}`;
+  return until;
 }
 
 /**

@@ -882,7 +882,7 @@ describe('chain_overview', () => {
   it('days: bounded, newest first, shown of total and where the rest are', () => {
     const text = renderChain(fx.chain);
     expect(text).toContain('Showing 31 of 40. Newest first; the older days are in GET /api/chain?days=40.');
-    expect(text).toContain('2 newly verified builders');
+    expect(text).toContain('2 new Verified Builders');
     expect(text).toContain('nobody is named');
     expect(text).toMatch(TAGGED);
     // The API's disclaimer travels with the overview (audit §45 #9).
@@ -898,9 +898,9 @@ describe('chain_overview', () => {
       ],
     };
     const text = renderChain(chain);
-    expect(text).toContain('- FACT 2026-10-17 (partial, still being indexed; volume left out until the day is complete): 29 counted ships from 27 builders, 3 newly verified builders; market context: 1,104,063 DEX trades');
+    expect(text).toContain('- FACT 2026-10-17 (partial, still being indexed; volume left out until the day is complete): 29 counted ships from 27 builders, 3 new Verified Builders; market context: 1,104,063 DEX trades');
     expect(text).not.toContain('$2.19B');
-    expect(text).toContain('- FACT 2026-10-16: 41 counted ships from 30 builders, 4 newly verified builders; market context: 2,750,000 DEX trades, $1.81B volume');
+    expect(text).toContain('- FACT 2026-10-16: 41 counted ships from 30 builders, 4 new Verified Builders; market context: 2,750,000 DEX trades, $1.81B volume');
     for (const line of text.split('\n').filter((entry) => entry.startsWith('- FACT 2026'))) expect(line.indexOf('counted ships')).toBeLessThan(line.indexOf('DEX trades'));
   });
 

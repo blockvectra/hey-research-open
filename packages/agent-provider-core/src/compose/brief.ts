@@ -8,7 +8,7 @@ import { agentChange, envelope, looksLikeEvidenceId, type AgentCodeWeeks, type A
 
 /**
  * chain_brief (2026-10-18, persona audit PB-26 / AG-6): "what is happening on Robinhood Chain?" in one call — the
- * week `/api/this-week` already composes (ships and the projects behind them, builders newly verified, status
+ * week `/api/this-week` already composes (ships and the projects behind them, new Verified Builders, status
  * recoveries, Still Building and Under the Radar held today) and the newest changes that count as building, with
  * what each code week shipped. An agent stitched four to six endpoints for it, or landed on market rows.
  *
@@ -42,7 +42,7 @@ export const CHAIN_BRIEF_METHODS = {
 
 const WORD_SHIP = noun('ship');
 const WORD_PROJECT = noun('project');
-const WORD_BUILDER = noun('builder');
+const WORD_NEW_VERIFIED_BUILDER = noun('new Verified Builder');
 
 export function composeChainBrief(ctx: AgentComposeContext, input: ChainBriefInput): AgentResponseOf<'chain_brief'> {
   const isEvidenceId = input.isEvidenceId ?? looksLikeEvidenceId;
@@ -66,7 +66,7 @@ export function composeChainBrief(ctx: AgentComposeContext, input: ChainBriefInp
   });
   const claims: AgentClaim[] = [
     count('week.ships', 'build', week.shipped.ships, `${countOf(week.shipped.ships, WORD_SHIP)} from ${countOf(week.shipped.projects, WORD_PROJECT)} in the ${week.window.label} (${week.shipped.rule.counts}).`, 'FACT'),
-    count('week.newly_verified_builders', 'build', week.newBuilders.total, `${countOf(week.newBuilders.total, WORD_BUILDER)} newly verified. ${CHAIN_BRIEF_METHODS.newlyVerified}`, 'FACT'),
+    count('week.newly_verified_builders', 'build', week.newBuilders.total, `${countOf(week.newBuilders.total, WORD_NEW_VERIFIED_BUILDER)}. ${CHAIN_BRIEF_METHODS.newlyVerified}`, 'FACT'),
     count('week.status_recoveries', 'build', week.backToShipping.total, `${countOf(week.backToShipping.total, noun('status recovery', 'status recoveries'))} of ${week.backToShipping.comparable} projects HEY read more than once in the window. ${CHAIN_BRIEF_METHODS.statusRecoveries}`, 'DERIVED'),
     count('week.still_building', 'build', week.stillBuilding.total, `${countOf(week.stillBuilding.total, WORD_PROJECT)} Still Building. ${CHAIN_BRIEF_METHODS.stillBuilding}`, 'DERIVED'),
     count('week.under_the_radar', 'build', week.underTheRadar.total, `${countOf(week.underTheRadar.total, WORD_PROJECT)} Under the Radar. ${CHAIN_BRIEF_METHODS.underTheRadar}`, 'DERIVED'),
@@ -74,7 +74,7 @@ export function composeChainBrief(ctx: AgentComposeContext, input: ChainBriefInp
   ];
   const ran = input.ledger.projectorRanAt !== null;
   const answer = derivedText(
-    `On Robinhood Chain in the ${week.window.label}: ${countOf(week.shipped.ships, WORD_SHIP)} from ${countOf(week.shipped.projects, WORD_PROJECT)}, ${countOf(week.newBuilders.total, WORD_BUILDER)} newly verified, ${countOf(week.backToShipping.total, noun('status recovery', 'status recoveries'))}. HEY holds ${week.stillBuilding.total} Still Building and ${week.underTheRadar.total} Under the Radar today (strict by design). ${ran ? `${countOf(input.buildingTotal, WORD_CHANGE)} that count as building; the newest ${items.length} are listed.` : 'The change ledger has not run here, so which changes count as building is unknown, not none.'}`,
+    `On Robinhood Chain in the ${week.window.label}: ${countOf(week.shipped.ships, WORD_SHIP)} from ${countOf(week.shipped.projects, WORD_PROJECT)}, ${countOf(week.newBuilders.total, WORD_NEW_VERIFIED_BUILDER)}, ${countOf(week.backToShipping.total, noun('status recovery', 'status recoveries'))}. HEY holds ${week.stillBuilding.total} Still Building and ${week.underTheRadar.total} Under the Radar today (strict by design). ${ran ? `${countOf(input.buildingTotal, WORD_CHANGE)} that count as building; the newest ${items.length} are listed.` : 'The change ledger has not run here, so which changes count as building is unknown, not none.'}`,
   );
   return envelope(ctx, {
     capability: 'chain_brief',

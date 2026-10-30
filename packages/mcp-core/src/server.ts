@@ -444,7 +444,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
         '- names a Robinhood Chain project, a $TICKER or a 0x contract → {"capability":"research_project","q":"<name or $TICKER>"} (or "address":"<0x…>", or "project":"<slug>"; exactly one);',
         '- asks whether something is still being built, or why HEY says so → {"capability":"builder_status","q":"<name>"};',
         '- asks what changed today or this week, on the chain or one project → {"capability":"what_changed","days":7,"building":"only"} (days 1 for today; add "project":"<slug>"; without building, market readings are counted too, after the building);',
-        '- asks what is happening on Robinhood Chain, or wants the week in one answer → {"capability":"chain_brief"} (ships, newly verified builders, status recoveries, Still Building and Under the Radar held, the newest building changes);',
+        '- asks what is happening on Robinhood Chain, or wants the week in one answer → {"capability":"chain_brief"} (ships, new Verified Builders, status recoveries, Still Building and Under the Radar held, the newest building changes);',
         '- asks who made a contract, or whether it belongs to a project → {"capability":"verify_project","address":"<0x…>"};',
         '- asks what HEY does not know about a project → {"capability":"unknowns","q":"<name>"};',
         '- asks to compare builders → {"capability":"compare_builders","projects":["<slug>","<slug>"]} (no winner).',

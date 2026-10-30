@@ -127,7 +127,7 @@ export const AGENT_CAPABILITY_INFO: Readonly<Record<AgentCapability, AgentCapabi
   chain_brief: {
     id: 'chain_brief',
     question: 'What is happening on Robinhood Chain this week?',
-    returns: 'The rolling week as /api/this-week counts it — ships and the projects behind them, builders newly verified, status recoveries, Still Building and Under the Radar held today, each with its method — and the newest changes that count as building in the same window (what each code week shipped), with the true total and where to read on.',
+    returns: 'The rolling week as /api/this-week counts it — ships and the projects behind them, new Verified Builders, status recoveries, Still Building and Under the Radar held today, each with its method — and the newest changes that count as building in the same window (what each code week shipped), with the true total and where to read on.',
     params: [CHAIN],
     canonicalReads: ['/api/this-week', '/api/changes'],
     a2aSkill: 'what_changed',

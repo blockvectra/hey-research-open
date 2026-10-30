@@ -498,7 +498,7 @@ describe('token lock', () => {
   it('names the locker and the share, and never the word liquidity', () => {
     const html = render({ ...tokenBacked, tokenLock: { supplyPct: 2.53, until: '2027-09-09', pairLocked: false } });
     expect(html).toContain('2.53% HoodLock');
-    expect(html).toContain('9 Sep 2027');
+    expect(html).toContain('2027-09-09');
     /*
      * `apps/web/e2e/cards.spec.ts` asserts a card never contains the word
      * "liquidity". The lock copy says "pair" for the same reason, and this
