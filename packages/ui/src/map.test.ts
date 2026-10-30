@@ -8,13 +8,15 @@ import { layoutMapNodes, mapHueFor, mapLabelBox, mapNodeTooltip, mapNodeValuatio
  * The layout is deterministic and runs on the server, so it can be checked
  * directly rather than through a rendered snapshot.
  */
-const node = (slug: string, narrativeSlug: string | null, marketCapUsd: number): MapNodeData => ({
+const node = (slug: string, narrativeSlug: string | null, size: number): MapNodeData => ({
   slug,
   name: slug,
   narrativeSlug,
   narrative: narrativeSlug,
   activityStatus: 'ACTIVE',
-  marketCapUsd,
+  // The layout tests need varied circles: the figure is both the valuation shown and the ships the circle is sized by.
+  marketCapUsd: size,
+  countedShips: size,
 });
 
 const distance = (a: { x: number; y: number }, b: { x: number; y: number }) =>
@@ -111,21 +113,20 @@ describe('layoutMapNodes', () => {
     }
   });
 
-  it('sizes circles by market cap, so a bigger cap is never a smaller circle', () => {
-    const placed = layoutMapNodes([node('small', null, 1_000), node('big', null, 10_000_000)], []);
-
-    const small = placed.find((item) => item.slug === 'small');
-    const big = placed.find((item) => item.slug === 'big');
-    expect(big?.r ?? 0).toBeGreaterThan(small?.r ?? 0);
-  });
-
-  it('never sizes a launch pool as a market, and labels its figure as the card does (2026-10-16)', () => {
-    const pool: MapNodeData = { ...node('pool', null, 10_000_000), launchPool: true, valuationKind: 'fdv' };
-    const placed = layoutMapNodes([node('small', null, 1_000), pool, node('none', null, 0)], []);
+  it('sizes circles by counted ships, never by the market (founder, 2026-10-30)', () => {
+    const busy: MapNodeData = { ...node('busy', null, 0), countedShips: 24, marketCapUsd: 1_000 };
+    const rich: MapNodeData = { ...node('rich', null, 0), countedShips: 1, marketCapUsd: 50_000_000 };
+    const idle: MapNodeData = { ...node('idle', null, 0), countedShips: 0, marketCapUsd: 900_000_000 };
+    const placed = layoutMapNodes([busy, rich, idle], []);
 
     const r = (slug: string) => placed.find((item) => item.slug === slug)?.r ?? 0;
-    expect(r('pool')).toBe(r('none'));
-    expect(r('small')).toBeGreaterThan(r('pool'));
+    expect(r('busy')).toBeGreaterThan(r('rich'));
+    expect(r('rich')).toBeGreaterThan(r('idle'));
+    expect(mapNodeTooltip(busy, new Date())).toContain('24 counted ships in 8 weeks');
+  });
+
+  it('labels a launch pool’s figure as the card does (2026-10-16)', () => {
+    const pool: MapNodeData = { ...node('pool', null, 10_000_000), launchPool: true, valuationKind: 'fdv' };
     expect(mapNodeValuation(pool)).toBe('$10M · launch pool');
     expect(mapNodeTooltip(pool, new Date())).toContain('Valuation $10M · launch pool');
     expect(mapNodeTooltip(pool, new Date())).not.toContain('Fully diluted valuation');

@@ -12,12 +12,9 @@ import { activityLabel, statusColorVar, type ActivityStatusValue } from './statu
  *
  * The visual grammar carries the product's argument:
  *
- *   size   market cap      — a big project is a big circle
+ *   size   counted ships   — the last 8 weeks of building (founder, 2026-10-30; it was market cap)
  *   colour narrative       — neighbours share a hue
- *   ring   activity status — a dormant giant is large but faded, and a small
- *                            active project is vivid
- *
- * Size is not activity.
+ *   ring   activity status — the state today, so a project that shipped a lot and went quiet is large but faded
  */
 export type MapNodeData = {
   slug: string;
@@ -34,6 +31,8 @@ export type MapNodeData = {
   /** The figure is a launch pool's own supply at its last price (2026-10-16): labelled, never sized as a market. */
   launchPool?: boolean;
   lastShipAt?: Date | null;
+  /** Counted ships over the last 8 weeks: what the circle is sized by (founder, 2026-10-30). */
+  countedShips?: number | null;
 };
 
 export type MapEdgeData = { from: string; to: string; kind: string };
@@ -89,19 +88,19 @@ export const mapHueFor = (narrativeSlug: string | null | undefined, order: reado
  * linear scale would render every small project as an invisible dot.
  */
 /**
- * The figure a circle is sized by (2026-10-16, audit #1): a launch pool's
- * "valuation" is the token's own supply at its last price, not a market, so
- * it draws at the smallest size, like a project with no market.
+ * The figure a circle is sized by (founder, 2026-10-30): counted ships over the last 8 weeks, so the largest circles are
+ * the most building, never the largest markets (UI rule 5). It was the valuation; the valuation stays in the tooltip and
+ * the list as context.
  */
-const sizingValue = (node: MapNodeData): number => (node.launchPool ? 0 : (node.marketCapUsd ?? 0));
+const sizingValue = (node: MapNodeData): number => Math.max(0, node.countedShips ?? 0);
 
 /** The valuation as the list prints it: "$29K · launch pool" for a launch pool, as the card does. */
 export const mapNodeValuation = (node: MapNodeData): string | undefined =>
   node.marketCapUsd ? `${formatUsdCompact(node.marketCapUsd)}${node.launchPool ? ' · launch pool' : ''}` : undefined;
 
-const radiusFor = (marketCapUsd: number | null | undefined, max: number): number => {
-  if (!marketCapUsd || marketCapUsd <= 0 || max <= 0) return MIN_R;
-  const ratio = Math.log10(1 + marketCapUsd) / Math.log10(1 + max);
+const radiusFor = (value: number | null | undefined, max: number): number => {
+  if (!value || value <= 0 || max <= 0) return MIN_R;
+  const ratio = Math.log10(1 + value) / Math.log10(1 + max);
   return MIN_R + (MAX_R - MIN_R) * Math.max(0, Math.min(1, ratio));
 };
 
@@ -179,7 +178,7 @@ export function layoutMapNodes(
   nodes: readonly MapNodeData[],
   legendOrder: string[],
 ): PlacedMapNode[] {
-  const maxCap = nodes.reduce((max, node) => Math.max(max, sizingValue(node)), 0);
+  const maxShips = nodes.reduce((max, node) => Math.max(max, sizingValue(node)), 0);
   // Dense maps use smaller circles, so a crowded chain stays readable.
   const scale = nodes.length > 40 ? 0.72 : nodes.length > 20 ? 0.85 : 1;
 
@@ -200,7 +199,7 @@ export function layoutMapNodes(
     const members = (groups.get(key) ?? [])
       .slice()
       .sort((a, b) => sizingValue(b) - sizingValue(a))
-      .map((node) => ({ node, r: radiusFor(sizingValue(node), maxCap) * scale }));
+      .map((node) => ({ node, r: radiusFor(sizingValue(node), maxShips) * scale }));
     return {
       key,
       members,
@@ -291,6 +290,7 @@ export const mapNodeTooltip = (node: MapNodeData, now: Date): string => {
     activityLabel(node.activityStatus),
   ];
   if (typeof node.hbm === 'number') lines.push(`Build momentum ${node.hbm}`);
+  if (typeof node.countedShips === 'number') lines.push(`${node.countedShips} counted ${node.countedShips === 1 ? 'ship' : 'ships'} in 8 weeks`);
   // A launch pool is "Valuation … · launch pool", never a market cap (the card's words, 2026-10-16).
   if (node.marketCapUsd) lines.push(`${node.launchPool ? 'Valuation' : valuationKindLabel(node.valuationKind)} ${mapNodeValuation(node)}`);
   if (node.lastShipAt) lines.push(`Last ship ${formatRelativeTime(node.lastShipAt, now)}`);
