@@ -169,7 +169,8 @@ export function ActivityChip({
       <Icon aria-hidden="true" size={15} strokeWidth={1.9} />
       {head}
       {reasonLine ? (
-        <span className="font-normal opacity-80" data-testid="activity-chip-reason">
+        // Weight sets the reason apart, never opacity (2026-10-30 phase 6): the status colours hold 4.5:1 only at full strength.
+        <span className="font-normal" data-testid="activity-chip-reason">
           <span aria-hidden="true">· </span>
           {reasonLine}
         </span>

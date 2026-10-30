@@ -173,7 +173,8 @@ export function DrawdownChart({
 
   return (
     <figure className={className}>
-      <div className="overflow-x-auto">
+      {/* A scroller a keyboard can reach (2026-10-30 phase 6; axe scrollable-region-focusable): below 420 px it scrolls. */}
+      <div className="overflow-x-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hey-ink/30" tabIndex={0} role="region" aria-label={`${measure} chart, scrolls sideways on a narrow screen`}>
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="h-auto w-full min-w-[420px]"

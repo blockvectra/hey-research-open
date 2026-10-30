@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { layoutMapNodes, mapHueFor, mapLabelBox, mapNodeTooltip, mapNodeValuation, UNCLASSIFIED_HUE, type MapNodeData } from './map';
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+
+import { layoutMapNodes, MAP_VIEWBOX, MapClusterList, mapHueFor, mapLabelBox, mapNodeShips, mapNodeTooltip, UNCLASSIFIED_HUE, type MapNodeData } from './map';
 
 /**
  * Map layout invariants (UI/UX V2 section 28).
@@ -14,8 +17,7 @@ const node = (slug: string, narrativeSlug: string | null, size: number): MapNode
   narrativeSlug,
   narrative: narrativeSlug,
   activityStatus: 'ACTIVE',
-  // The layout tests need varied circles: the figure is both the valuation shown and the ships the circle is sized by.
-  marketCapUsd: size,
+  // The layout tests need varied circles: the figure is the ships the circle is sized by.
   countedShips: size,
 });
 
@@ -114,9 +116,12 @@ describe('layoutMapNodes', () => {
   });
 
   it('sizes circles by counted ships, never by the market (founder, 2026-10-30)', () => {
-    const busy: MapNodeData = { ...node('busy', null, 0), countedShips: 24, marketCapUsd: 1_000 };
-    const rich: MapNodeData = { ...node('rich', null, 0), countedShips: 1, marketCapUsd: 50_000_000 };
-    const idle: MapNodeData = { ...node('idle', null, 0), countedShips: 0, marketCapUsd: 900_000_000 };
+    // A valuation the domain still reads rides along and sizes nothing.
+    const read = (slug: string, countedShips: number, marketCapUsd: number): MapNodeData =>
+      Object.assign({ ...node(slug, null, 0), countedShips }, { marketCapUsd });
+    const busy = read('busy', 24, 1_000);
+    const rich = read('rich', 1, 50_000_000);
+    const idle = read('idle', 0, 900_000_000);
     const placed = layoutMapNodes([busy, rich, idle], []);
 
     const r = (slug: string) => placed.find((item) => item.slug === slug)?.r ?? 0;
@@ -125,12 +130,38 @@ describe('layoutMapNodes', () => {
     expect(mapNodeTooltip(busy, new Date())).toContain('24 counted ships in 8 weeks');
   });
 
-  it('labels a launch pool’s figure as the card does (2026-10-16)', () => {
-    const pool: MapNodeData = { ...node('pool', null, 10_000_000), launchPool: true, valuationKind: 'fdv' };
-    expect(mapNodeValuation(pool)).toBe('$10M · launch pool');
-    expect(mapNodeTooltip(pool, new Date())).toContain('Valuation $10M · launch pool');
-    expect(mapNodeTooltip(pool, new Date())).not.toContain('Fully diluted valuation');
-    expect(mapNodeValuation(node('bare', null, 0))).toBeUndefined();
+  /*
+   * No valuation on the map (2026-10-30, V2 phase 6): the tooltip and the phone list printed a bare figure, "—" where
+   * there was none, ungated by UI rule 3's R5. Both now say the ships the circle is sized by, and nothing when unread.
+   */
+  it('prints the ships a circle is sized by, never a valuation or a placeholder', () => {
+    const pool = Object.assign({ ...node('pool', null, 3) }, { marketCapUsd: 10_000_000, launchPool: true, valuationKind: 'fdv' });
+    expect(mapNodeShips(pool)).toBe('3 counted ships in 8 weeks');
+    expect(mapNodeShips({ ...node('one', null, 1) })).toBe('1 counted ship in 8 weeks');
+    expect(mapNodeTooltip(pool, new Date())).not.toMatch(/valuation|launch pool|\$10M/i);
+    const { countedShips: _unread, ...unread } = node('unread', null, 0);
+    expect(mapNodeShips(unread)).toBeUndefined();
+
+    const html = renderToStaticMarkup(createElement(MapClusterList, { nodes: [pool, unread], legend: [] }));
+    expect(html).toContain('3 counted ships in 8 weeks');
+    expect(html).not.toMatch(/\$10M|launch pool|—/);
+  });
+});
+
+/** The pad around the canvas (2026-10-30, V2 phase 6): a name at the canvas edge was cut ("Executability Ren…"). */
+describe('map canvas', () => {
+  it('draws every label inside the SVG', () => {
+    const nodes = Array.from({ length: 120 }, (_, index) =>
+      node(`a-long-project-name-${index}`, index % 4 === 0 ? null : `n${index % 6}`, (index % 30) + 1),
+    );
+    const placed = layoutMapNodes(nodes, ['n1', 'n2', 'n3', 'n4', 'n5']);
+    for (const item of placed) {
+      const box = mapLabelBox(item);
+      expect(box.x).toBeGreaterThanOrEqual(MAP_VIEWBOX.x);
+      expect(box.x + box.w).toBeLessThanOrEqual(MAP_VIEWBOX.x + MAP_VIEWBOX.w);
+      expect(box.y + box.h).toBeLessThanOrEqual(MAP_VIEWBOX.y + MAP_VIEWBOX.h);
+      expect(item.y - item.r - 3).toBeGreaterThanOrEqual(MAP_VIEWBOX.y);
+    }
   });
 });
 

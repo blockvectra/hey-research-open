@@ -56,13 +56,17 @@ describe('the Pulse chart tooltip', () => {
   });
 });
 
+/**
+ * The map prints no valuation at all since 2026-10-30 (V2 phase 6): its figure was ungated by UI rule 3's R5, and the
+ * page says the market takes no part in the picture. Its tooltip names the ships the circle is sized by instead.
+ */
 describe('the map tooltip', () => {
-  it('names the measure', () => {
-    const node = { slug: 'vex', name: 'ProjectVex', activityStatus: 'ACTIVE' as const, marketCapUsd: 3_400_000 };
-    expect(mapNodeTooltip({ ...node, valuationKind: 'fdv' }, NOW)).toContain('Fully diluted valuation $3.4M');
-    expect(mapNodeTooltip({ ...node, valuationKind: 'marketCap' }, NOW)).toContain('Market cap $3.4M');
-    expect(mapNodeTooltip(node, NOW)).toContain('Valuation $3.4M');
-    expect(mapNodeTooltip({ ...node, valuationKind: 'fdv' }, NOW)).not.toContain('Market cap');
+  it('names no valuation, of any kind, whatever the node was read with', () => {
+    const node = { slug: 'vex', name: 'ProjectVex', activityStatus: 'ACTIVE' as const, countedShips: 3 };
+    const read = { ...node, marketCapUsd: 3_400_000, valuationKind: 'fdv' };
+    const text = mapNodeTooltip(read, NOW);
+    expect(text).toContain('3 counted ships in 8 weeks');
+    expect(text).not.toMatch(/valuation|market cap|\$3\.4M/i);
   });
 });
 

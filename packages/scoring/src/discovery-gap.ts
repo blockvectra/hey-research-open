@@ -254,7 +254,7 @@ export function evaluateStillBuilding(input: StillBuildingInput): StillBuildingR
     return {
       eligible: false,
       shipsSinceDecline: 0,
-      reason: `Fewer than ${STILL_BUILDING.minMeaningfulEvents30d} verified updates in the last 30 days.`,
+      reason: `Fewer than ${STILL_BUILDING.minMeaningfulEvents30d} counted ships in the last 30 days.`,
     };
   }
 
@@ -263,7 +263,7 @@ export function evaluateStillBuilding(input: StillBuildingInput): StillBuildingR
     return {
       eligible: false,
       shipsSinceDecline: 0,
-      reason: 'No verified update beyond commit activity in the last 30 days.',
+      reason: 'No counted ship beyond commit activity in the last 30 days.',
     };
   }
 
@@ -341,7 +341,8 @@ export function evaluateStillBuilding(input: StillBuildingInput): StillBuildingR
     eligible: true,
     declinePercent,
     shipsSinceDecline,
-    // Deliberately factual: an observation about the past, not a forecast.
-    reason: `Down ${declinePercent}% from the HEY-tracked high, with ${shipsSinceDecline} verified ${shipsSinceDecline === 1 ? 'update' : 'updates'} since.`,
+    // Deliberately factual: an observation about the past, not a forecast. "Source-backed", never "verified" (2026-10-30,
+    // V2 phase 6, R2): a reader meets that word only in "Verified Builder"; the methodology page says the same.
+    reason: `Down ${declinePercent}% from the HEY-tracked high, with ${shipsSinceDecline} counted ${shipsSinceDecline === 1 ? 'ship' : 'ships'} since.`,
   };
 }

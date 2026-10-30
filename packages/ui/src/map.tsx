@@ -1,5 +1,7 @@
 import { cn } from './cn';
-import { formatRelativeTime, formatUsdCompact, valuationKindLabel } from './format';
+import { ChevronDown } from 'lucide-react';
+
+import { formatRelativeTime } from './format';
 import { activityLabel, statusColorVar, type ActivityStatusValue } from './status';
 
 /**
@@ -15,6 +17,10 @@ import { activityLabel, statusColorVar, type ActivityStatusValue } from './statu
  *   size   counted ships   — the last 8 weeks of building (founder, 2026-10-30; it was market cap)
  *   colour narrative       — neighbours share a hue
  *   ring   activity status — the state today, so a project that shipped a lot and went quiet is large but faded
+ *
+ * No valuation anywhere on the map (2026-10-30, V2 phase 6): the tooltip and the phone list printed a bare figure beside
+ * every project, ungated by UI rule 3's R5 (`cardShowsValuation`, `cardTokenNotTheProjects`) and with an em dash where
+ * there was none, on a page that says the market takes no part in the picture. Each says the ships the circle is sized by.
  */
 export type MapNodeData = {
   slug: string;
@@ -25,11 +31,6 @@ export type MapNodeData = {
   activityStatus: ActivityStatusValue;
   hbm?: number | null;
   stillBuilding?: boolean;
-  marketCapUsd?: number | null;
-  /** Which measure `marketCapUsd` is (2026-09-25): an FDV is never called a market cap. */
-  valuationKind?: 'marketCap' | 'fdv' | null;
-  /** The figure is a launch pool's own supply at its last price (2026-10-16): labelled, never sized as a market. */
-  launchPool?: boolean;
   lastShipAt?: Date | null;
   /** Counted ships over the last 8 weeks: what the circle is sized by (founder, 2026-10-30). */
   countedShips?: number | null;
@@ -39,6 +40,17 @@ export type MapEdgeData = { from: string; to: string; kind: string };
 
 const WIDTH = 960;
 const HEIGHT = 640;
+/**
+ * Room around the layout canvas (2026-10-30, V2 phase 6): a node is placed up to `MARGIN` (26) from the edge, but its
+ * name (up to ~101 units wide, centred on it; its foot 18 under a circle of up to 34) reaches about 25 past it, so a
+ * name at the edge was cut ("Executability Ren…" lost its end). The drawing is the canvas plus this pad on every side;
+ * the hit circle's floor grows with it, so a node is no smaller on screen than before.
+ */
+const CANVAS_PAD = 28;
+/** The smallest hit circle's radius: 12 on the 960-unit canvas, 13 on the padded 1,016 so it still draws 24+ px wide. */
+const MIN_HIT_R = 13;
+/** The SVG's drawn area: the layout canvas and its pad. Exported so a test holds every label inside it. */
+export const MAP_VIEWBOX = { x: -CANVAS_PAD, y: -CANVAS_PAD, w: WIDTH + 2 * CANVAS_PAD, h: HEIGHT + 2 * CANVAS_PAD } as const;
 const MIN_R = 7;
 const MAX_R = 34;
 
@@ -84,19 +96,23 @@ export const mapHueFor = (narrativeSlug: string | null | undefined, order: reado
 };
 
 /**
- * Radius is log-scaled: market caps span several orders of magnitude, and a
- * linear scale would render every small project as an invisible dot.
+ * Radius is log-scaled: ship counts span from one to hundreds, and a linear
+ * scale would render every small project as an invisible dot.
  */
 /**
  * The figure a circle is sized by (founder, 2026-10-30): counted ships over the last 8 weeks, so the largest circles are
- * the most building, never the largest markets (UI rule 5). It was the valuation; the valuation stays in the tooltip and
- * the list as context.
+ * the most building, never the largest markets (UI rule 5).
  */
 const sizingValue = (node: MapNodeData): number => Math.max(0, node.countedShips ?? 0);
 
-/** The valuation as the list prints it: "$29K · launch pool" for a launch pool, as the card does. */
-export const mapNodeValuation = (node: MapNodeData): string | undefined =>
-  node.marketCapUsd ? `${formatUsdCompact(node.marketCapUsd)}${node.launchPool ? ' · launch pool' : ''}` : undefined;
+/**
+ * The ships a circle is sized by, in words: "24 counted ships in 8 weeks" (2026-10-30, V2 phase 6), the line the
+ * tooltip and the phone list print where the valuation stood. Absent when the node carries no count — never 0 for unread.
+ */
+export const mapNodeShips = (node: MapNodeData): string | undefined =>
+  typeof node.countedShips === 'number'
+    ? `${node.countedShips} counted ${node.countedShips === 1 ? 'ship' : 'ships'} in 8 weeks`
+    : undefined;
 
 const radiusFor = (value: number | null | undefined, max: number): number => {
   if (!value || value <= 0 || max <= 0) return MIN_R;
@@ -290,9 +306,8 @@ export const mapNodeTooltip = (node: MapNodeData, now: Date): string => {
     activityLabel(node.activityStatus),
   ];
   if (typeof node.hbm === 'number') lines.push(`Build momentum ${node.hbm}`);
-  if (typeof node.countedShips === 'number') lines.push(`${node.countedShips} counted ${node.countedShips === 1 ? 'ship' : 'ships'} in 8 weeks`);
-  // A launch pool is "Valuation … · launch pool", never a market cap (the card's words, 2026-10-16).
-  if (node.marketCapUsd) lines.push(`${node.launchPool ? 'Valuation' : valuationKindLabel(node.valuationKind)} ${mapNodeValuation(node)}`);
+  const ships = mapNodeShips(node);
+  if (ships) lines.push(ships);
   if (node.lastShipAt) lines.push(`Last ship ${formatRelativeTime(node.lastShipAt, now)}`);
   if (node.stillBuilding) lines.push('Still Building');
   return lines.join('\n');
@@ -317,9 +332,10 @@ export function EcosystemMapChart({
 
   return (
     <svg
-      viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+      viewBox={`${MAP_VIEWBOX.x} ${MAP_VIEWBOX.y} ${MAP_VIEWBOX.w} ${MAP_VIEWBOX.h}`}
       className={cn('h-auto w-full', className)}
-      role="img"
+      // A group, not an image (2026-10-30 phase 6; axe nested-interactive): every circle is a link a keyboard reaches.
+      role="group"
       aria-label={`Ecosystem map of ${placed.length} projects`}
     >
       {/*
@@ -334,7 +350,7 @@ export function EcosystemMapChart({
           <path d="M32 0H0V32" fill="none" className="stroke-hey-border" strokeOpacity={0.6} strokeWidth="1" />
         </pattern>
       </defs>
-      <rect width={WIDTH} height={HEIGHT} rx={12} fill="url(#hey-map-grid)" />
+      <rect x={MAP_VIEWBOX.x} y={MAP_VIEWBOX.y} width={MAP_VIEWBOX.w} height={MAP_VIEWBOX.h} rx={12} fill="url(#hey-map-grid)" />
 
       {edges.map((edge) => {
         const from = byslug.get(edge.from);
@@ -359,9 +375,10 @@ export function EcosystemMapChart({
           <title>{mapNodeTooltip(node, now)}</title>
           {/*
             The target, drawn by nothing (2026-10-20, every-page pass): a small project is a 14px circle, and the map is
-            also the tablet's view, so each node takes at least a 24-unit circle to tap. Transparent, under the marks.
+            also the tablet's view, so each node takes at least a 26-unit circle to tap
+            (24 before the 2026-10-30 pad). Transparent, under the marks.
           */}
-          <circle cx={node.x} cy={node.y} r={Math.max(node.r + 5, 12)} fill="transparent" data-map-hit="" />
+          <circle cx={node.x} cy={node.y} r={Math.max(node.r + 5, MIN_HIT_R)} fill="transparent" data-map-hit="" />
           {node.hue === UNCLASSIFIED_HUE ? (
             // No narrative: an outline, never a narrative's colour. The transparent fill keeps the whole circle a link.
             <circle
@@ -516,9 +533,8 @@ export function MapClusterList({
               {group.name}
               <span className="ml-2 text-hey-muted">{group.items.length.toLocaleString('en-US')}</span>
             </h2>
-            <span aria-hidden className="text-hey-muted transition-transform group-open/cluster:rotate-180">
-              ▾
-            </span>
+            {/* One icon set (2026-10-30, V2 phase 6): a lucide chevron, never a Unicode glyph. */}
+            <ChevronDown aria-hidden className="h-4 w-4 shrink-0 text-hey-muted transition-transform group-open/cluster:rotate-180" />
           </summary>
           <ul className="lg-card mt-1 divide-y divide-hey-border overflow-hidden">
             {group.items.map((node) => (
@@ -534,9 +550,10 @@ export function MapClusterList({
                       {node.lastShipAt ? ` · ${formatRelativeTime(node.lastShipAt, now)}` : ''}
                     </span>
                   </span>
-                  <span className="shrink-0 text-xs text-hey-muted">
-                    {mapNodeValuation(node) ?? '—'}
-                  </span>
+                  {/* The ships the circle is sized by, never a valuation and never a placeholder (2026-10-30, V2 phase 6). */}
+                  {mapNodeShips(node) ? (
+                    <span className="shrink-0 text-xs text-hey-muted">{mapNodeShips(node)}</span>
+                  ) : null}
                 </a>
               </li>
             ))}

@@ -145,7 +145,7 @@ describe('still building', () => {
     expect(result.declinePercent).toBe(76);
     expect(result.shipsSinceDecline).toBe(3);
     // A proper plural, never "update(s)" (full audit, 2026-10-03).
-    expect(result.reason).toBe('Down 76% from the HEY-tracked high, with 3 verified updates since.');
+    expect(result.reason).toBe('Down 76% from the HEY-tracked high, with 3 counted ships since.');
   });
 
   it('states the decline factually and never predicts recovery', () => {
@@ -227,7 +227,7 @@ describe('still building', () => {
     it('refuses a drawdown whose only updates are weeks of commits', () => {
       const result = evaluateStillBuilding({ ...base, events: [code(2), code(9), code(16)] });
       expect(result.eligible).toBe(false);
-      expect(result.reason).toBe('No verified update beyond commit activity in the last 30 days.');
+      expect(result.reason).toBe('No counted ship beyond commit activity in the last 30 days.');
     });
 
     it('keeps the badge when one of the updates is a release', () => {
