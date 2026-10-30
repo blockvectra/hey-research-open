@@ -56,6 +56,7 @@
     "prettier",
     "typescript",
     "typescript-eslint",
+    "vite",
     "vitest"
   ],
   "dbTypesFrom": "packages/db/src/schema/enums.ts",
