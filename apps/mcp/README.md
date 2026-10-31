@@ -110,7 +110,7 @@ tool names is a contract's deployer: `get_token_market` names it beside one
 token's supply-concentration summary (shares only), and `get_contract` names it
 with how many other tracked projects' tokens the same account deployed — a
 count, never a profile, called a launch service only on HEY's own
-shared-deployer rule. *Still Building* is a narrow claim — verified activity continuing
+shared-deployer rule. *Still Building* is a narrow claim — counted building continuing
 through a market drawdown HEY tracked — and the server never states it without
 its meaning.
 

@@ -23,7 +23,7 @@ export function renderV4Hook(h: HeyV4HookDetail): string {
   }
   lines.push(`DERIVED: HEY’s reading of its creation — ${h.creation.words}.`);
   lines.push(`FACT: callbacks its address declares — ${h.permissions.length > 0 ? h.permissions.join(', ') : 'none'}. ${h.capabilities} (What the PoolManager calls, never what the code does or whether it is safe.)`);
-  lines.push(`${h.source.verifiedSource.state === 'MEASURED' || h.source.verifiedSource.state === 'NO_SOURCE' ? 'FACT' : 'UNKNOWN'}: verified source — ${h.source.verifiedSource.words}`);
+  lines.push(`${h.source.verifiedSource.state === 'MEASURED' || h.source.verifiedSource.state === 'NO_SOURCE' ? 'FACT' : 'UNKNOWN'}: published source code — ${h.source.verifiedSource.words}`);
   lines.push(`${h.source.proxy.state === 'MEASURED' ? 'FACT' : 'UNKNOWN'}: proxy — ${h.source.proxy.words}`);
   if (h.hooklist.state === 'LISTED' && h.hooklist.listing) {
     lines.push(`FACT: Uniswap’s hooklist lists it as ${quoteExternal(h.hooklist.listing.name, 'hooklist')} — a third-party listing, context only, never a tie.`);

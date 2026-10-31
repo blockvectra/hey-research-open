@@ -1,5 +1,5 @@
 import type { HeyContract, HeyTokenLookup } from '@hey-research-lab/sdk';
-import { tokenVerificationWords } from '@hey/scoring/verification-words';
+import { tokenVerificationLabelFor } from '@hey/scoring/verification-words';
 
 import { familyFreshness } from '../freshness';
 import type { AgentClaim, AgentEvidenceRef, AgentResponseOf, AgentUnknown, AgentVerifyData } from '../schema';
@@ -82,6 +82,16 @@ const TOKEN_REASON_WORDS: Readonly<Record<string, string>> = {
   site_unreachable: 'The project’s own site named this contract when HEY read it, and has not answered HEY’s reads since; that naming no longer ties it to the project.',
 };
 
+/**
+ * Why the project's building is not read as this token's although the verdict is UNVERIFIED (2026-10-31, audit L7-1):
+ * the token lookup's `activityAppliesToToken` is the one predicate (`activityAppliesToToken` in @hey/domain), and for
+ * an UNVERIFIED token it is false in two cases — the site disowns the contract (`TOKEN_REASON_WORDS` already says so)
+ * and hbm-v30's contested ticker, worded as the explain engine's `token_not_the_projects` sentence is, in R2's words.
+ * A further case added to that predicate needs its words here.
+ */
+const TICKER_CONTESTED_WORDS = 'Another published project’s token carries the same ticker and the project does not name this one, so HEY cannot tell it from a lookalike.';
+const NOT_THE_TOKENS_WORDS = 'HEY does not read the project’s building as this token’s.';
+
 const ROLE_WORDS: Readonly<Record<'token' | 'declared' | 'followup', string>> = {
   token: 'HEY records this contract as the project’s tracked token.',
   declared: 'HEY records this contract because a source on the project’s record points to it; the project has not been seen naming it as its own.',
@@ -102,6 +112,13 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
   let verdict: Verdict;
   let reasonCode: string;
   let tokenVerification: AgentVerifyData['tokenVerification'] = null;
+  /*
+   * Whether the building applies, read from the lookup's own field where the contract is the tracked token (2026-10-31,
+   * audit L7-1): derived from the verdict alone, a contested-ticker or site-disowned token read "applies: yes" while
+   * the page, the scorer and research_project said it is not the project's (cyberia, $CYBER). An answer without the
+   * field (an older API) keeps the verdict's reading.
+   */
+  let lookupSaysNotTheTokens = false;
 
   if (asked && !asked.found) {
     verdict = 'UNKNOWN';
@@ -137,6 +154,11 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
     reasonCode = status === 'MISMATCH' ? 'site_names_another_contract' : `token_${reason ?? 'not_checked'}`;
     reasons.push(heyText(ROLE_WORDS.token));
     reasons.push(heyText(TOKEN_REASON_WORDS[reason ?? 'not_checked'] ?? 'HEY has not seen the project name this contract.'));
+    lookupSaysNotTheTokens = lookupProject.activityAppliesToToken === false;
+    if (lookupSaysNotTheTokens && status === 'UNVERIFIED') {
+      if (reason !== 'site_disclaims_contract') reasons.push(heyText(TICKER_CONTESTED_WORDS));
+      reasons.push(heyText(NOT_THE_TOKENS_WORDS));
+    }
   } else {
     verdict = 'UNVERIFIED';
     reasonCode = recorded.role === 'followup' ? 'deployed_by_token_deployer' : 'recorded_as_project_source';
@@ -227,8 +249,14 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
         ? // Every reason, so the answer says why (benchmark 2026-09-30): the first alone read "HEY records this contract as the project's tracked token", which sounds like a match.
           derivedText(`CONTRACT_MISMATCH: ${reasons.map((reason) => reason.text).join(' ')}`)
         : verdict === 'UNVERIFIED'
-          ? // The verdict leads (machine rule 10; the benchmark reads it), then the page's label for it (R2, 2026-10-31 audit L7-3).
-            derivedText(`UNVERIFIED (${tokenVerificationWords('UNVERIFIED').label.toLowerCase()}): HEY records ${address} under "${recorded?.slug}", and the project has not been seen naming it.`)
+          ? // The verdict leads (machine rule 10; the benchmark reads it), then the page's label for it (R2, 2026-10-31 audit L7-3),
+            // read with its reason ("not confirmed by the project" where the site names and disowns it), and, when the
+            // lookup says the building is not this token's, the reason it gives (L7-1).
+            derivedText(
+              `UNVERIFIED (${tokenVerificationLabelFor('UNVERIFIED', tokenVerification?.reason).toLowerCase()}): HEY records ${address} under "${recorded?.slug}"${
+                lookupSaysNotTheTokens ? `. ${reasons.slice(1).map((reason) => reason.text).join(' ')}` : ', and the project has not been seen naming it.'
+              }`,
+            )
           : reasonCode === 'issuer_token'
             ? derivedText(`UNKNOWN (issuer_token): ${reasons[0]?.text ?? ''} It is never any project's token.`)
             : derivedText(`UNKNOWN: ${reasons[0]?.text ?? 'HEY cannot attribute this contract.'} Missing attribution is not evidence against it.`);
@@ -252,7 +280,7 @@ export function composeVerify(ctx: AgentComposeContext, input: VerifyInput): Age
       recordedProject: recorded,
       askedProject: asked ? { slug: asked.slug, found: asked.found, url: asked.url } : null,
       tokenVerification,
-      activityAppliesToContract: verdict === 'UNKNOWN' ? null : verdict !== 'CONTRACT_MISMATCH',
+      activityAppliesToContract: verdict === 'UNKNOWN' ? null : verdict !== 'CONTRACT_MISMATCH' && !lookupSaysNotTheTokens,
       contractUrl: `${ctx.baseUrl}/api/contracts/${input.chainId}/${address}`,
       scanUrl: input.token.scanUrl,
     },

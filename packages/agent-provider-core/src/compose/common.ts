@@ -413,7 +413,7 @@ export function ambiguousRefusal<C extends AgentCapability>(ctx: AgentComposeCon
     ...(candidate.catalogStatus ? { catalogStatus: candidate.catalogStatus } : {}),
   }));
   const count = Math.max(total?.count ?? listed.length, listed.length);
-  const of = count > listed.length ? ` (the first ${listed.length} of ${total?.atLeast ? 'at least ' : ''}${count}, verified builders and active builders first)` : '';
+  const of = count > listed.length ? ` (the first ${listed.length} of ${total?.atLeast ? 'at least ' : ''}${count}, Verified Builders and active builders first)` : '';
   /*
    * Worded by count (2026-10-16, audit finding 114): a single prefix match read "More than one published project
    * matches … courier-world". One candidate is the closest match, not a crowd; the code stays `ambiguous`, since HEY

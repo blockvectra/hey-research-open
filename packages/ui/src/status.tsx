@@ -207,10 +207,11 @@ export const STILL_BUILDING_HELP = 'Kept shipping while its token’s valuation 
  * What Under the Radar means, in one sentence: the glossary, the homepage's list link and Explore's empty state and
  * list note read it (2026-10-28 simplicity study, CON-7). The glossary said it "is not a claim that attention is low in
  * itself" while hbm-v30 holds it only at TYPICAL attention or lower, and the other copies left out the attention,
- * fresh-reading and $1,000-volume rules (hbm-v30, hbm-v31).
+ * fresh-reading and $1,000-volume rules (hbm-v30, hbm-v31). "Counted building", never "Verified building" (2026-10-31,
+ * audit L7-3; founder ruling R2): a reader meets "verified" only in "Verified Builder".
  */
 export const UNDER_THE_RADAR_HELP =
-  'Verified building, with at least two meaningful ships in 30 days, while the token’s market attention is typical or lower and trails that building, relative to the other projects HEY measures (a Discovery Gap above zero). Measured only on an active market HEY read in the last day, with at least $1,000 of 24-hour volume; never a launch pool. Not a list of cheap tokens, and not a buy signal.';
+  'Counted building, with at least two meaningful ships in 30 days, while the token’s market attention is typical or lower and trails that building, relative to the other projects HEY measures (a Discovery Gap above zero). Measured only on an active market HEY read in the last day, with at least $1,000 of 24-hour volume; never a launch pool. Not a list of cheap tokens, and not a buy signal.';
 
 export function StillBuildingBadge({ className }: { className?: string }) {
   return (

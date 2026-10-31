@@ -68,7 +68,7 @@ describe('renderV4Hook', () => {
     const text = renderV4Hook(detail(true));
     expect(text).toContain('Answer: HEY ties this hook to «Hook Lister» (hook-lister) — Listed by the project: Listed by the project as its own contract');
     expect(text).toContain('UNKNOWN: routing allowlist — ');
-    expect(text).toContain('UNKNOWN: verified source — Not read');
+    expect(text).toContain('UNKNOWN: published source code — Not read');
     expect(text).toContain('2026-W40 2, 2026-W41 1 (so far)');
     expect(text).not.toMatch(/\baudited\b|endorse|\bsafe to\b/i);
   });

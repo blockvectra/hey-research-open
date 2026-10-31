@@ -8,7 +8,7 @@ import { HeyClient } from '@hey-research-lab/sdk';
 
 import * as fx from './fixtures/api';
 import { renderChangesParts } from './render';
-import { MAX_OUTPUT_BYTES, UNDER_THE_RADAR_RULE, argumentAliasesOf, capOutput, createHeyMcpServer, marketIntegrityFromEnv, type HeyMcpCallEvent, type HeyMcpOptions } from './server';
+import { MAX_OUTPUT_BYTES, SURFACE_HELP, UNDER_THE_RADAR_RULE, argumentAliasesOf, capOutput, createHeyMcpServer, marketIntegrityFromEnv, type HeyMcpCallEvent, type HeyMcpOptions } from './server';
 import { AGENT_CAPABILITIES } from '@hey/agent-provider-core';
 
 import { HEY_MCP_GATED_TOOLS, HEY_MCP_TOOL_LIST_BUDGET, HEY_MCP_TOOLS } from './tools';
@@ -113,11 +113,14 @@ describe('the HEY MCP server', () => {
     expect(find.description).not.toMatch(/under-the-radar: a positive Discovery Gap/);
     // Since hbm-v30 the rule bounds attention (TYPICAL or lower) and names the gap's two withholds (2026-10-19).
     expect(UNDER_THE_RADAR_RULE).toContain('market attention TYPICAL or lower (percentile below 60)');
-    expect(UNDER_THE_RADAR_RULE).toContain('never on activity HEY cannot read or a contested unverified ticker');
+    // In R2's words since 2026-10-31 (audit L7-3): "verified" only in "Verified Builder".
+    expect(UNDER_THE_RADAR_RULE).toContain("never on activity HEY cannot read or a ticker another project's token carries, on a token the project has not named");
+    expect(SURFACE_HELP.replace(/Verified Builders?/g, '')).not.toMatch(/\b(un)?verified\b/i);
     expect(find.description).toContain('market attention TYPICAL or lower');
     expect(find.description).not.toContain('does not bound attention');
     expect(find.description).toContain('shipping-in-silence: held Under the Radar AND below the 40th market-attention percentile');
-    expect(find.description).toContain('back-from-dormancy: status RESUMED, narrowed to verified builders');
+    expect(find.description).toContain('back-from-dormancy: status RESUMED, narrowed to Verified Builders');
+    expect(find.description).toContain('still-building: counted ships during a market drawdown HEY itself tracked.');
     expect(find.description?.toLowerCase()).not.toContain('little market attention');
   });
 

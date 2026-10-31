@@ -126,8 +126,8 @@ see **Folded tools** below; they still answer.
 | `explain_fact` | "Why does HEY show this valuation / status / momentum?" — the rule, the source, the inputs, the lineage and the evidence ids. `fact=build.change` (2026-10-20) explains one change — the latest builder change, or `event=<ledger id>` from `get_changes`: its stage, who reported it, whether a release and a deployment are linked by an exact reference, activity on a contract tied to it, and what HEY does not know; the snapshot's summary prints the same line under Latest change, tagged DERIVED. | — |
 | `get_evidence` | "What backs this?" — one typed evidence id as a receipt, including `method:` and, since 2026-09-27, `sourcechange:` (a material change to what the official site declares), and since 2026-09-28 `security:` (one audit, bounty program or published security contact — evidence, never a verdict). | — |
 | `get_token_market` | "Does this token still trade? What did HEY check on the contract?" — HEY's daily index, lifecycle, pools, a supply-concentration summary (shares only), contract checks; `include: ["moves"]` adds each valuation move with what shipped before it. | `events_before_market_change` |
-| `get_contract` | "What is this contract?" — creation, deployer, verified source, proxy kind and implementation history, interface counts and changes, activity and calls per method (counts by bucket, names withheld); by address, or every contract of a project. Since 2026-09-27: how the explorer verified the source, whose code it is (a DERIVED line: template, bytecode match, or published for the address), Sourcify's answer (not read is never "unverified"), the contract a minimal clone copies, calls the verified ABI names, undecoded selectors with a signature candidate (a guess, never a name) and creation calls counted apart. | — |
-| `get_v4_hook` | "Who built this Uniswap v4 hook?" (2026-10-11) — `GET /api/v4-hooks/{address}` through the SDK: the answer, the project HEY ties it to and the basis (named only while HEY lists the hook; never a creator account), its creation state, declared callbacks (never what the code does or whether it is safe), verified source and proxy as HEY's contract read holds them, Uniswap's hooklist as context, pools on tracked tokens by ISO week (by when HEY recorded them; context, never an order), the deployment it counts through, and every unknown as UNKNOWN with its reason. On both profiles; the full list's byte budget is 20,000 since this tool. | — |
+| `get_contract` | "What is this contract?" — creation, deployer, published source code, proxy kind and implementation history, interface counts and changes, activity and calls per method (counts by bucket, names withheld); by address, or every contract of a project. Since 2026-09-27: how the explorer verified the source, whose code it is (a DERIVED line: template, bytecode match, or published for the address), Sourcify's answer (not read is never "unverified"), the contract a minimal clone copies, calls the verified ABI names, undecoded selectors with a signature candidate (a guess, never a name) and creation calls counted apart. | — |
+| `get_v4_hook` | "Who built this Uniswap v4 hook?" (2026-10-11) — `GET /api/v4-hooks/{address}` through the SDK: the answer, the project HEY ties it to and the basis (named only while HEY lists the hook; never a creator account), its creation state, declared callbacks (never what the code does or whether it is safe), published source code and proxy as HEY's contract read holds them, Uniswap's hooklist as context, pools on tracked tokens by ISO week (by when HEY recorded them; context, never an order), the deployment it counts through, and every unknown as UNKNOWN with its reason. On both profiles; the full list's byte budget is 20,000 since this tool. | — |
 | `project_diff` | "What changed for X between two dates?" — then and now from persisted points, the changes recorded between. | — |
 | `ask_hey` | A free-text question about one project (English or Malay), answered only from HEY's record. Since 2026-09-27 also the free-data questions: its public API, code hosts (GitLab answered honestly), functions that became active, what DefiLlama tracks, packages, advisories, docs changes and HEY's gaps — each line citing its evidence receipt where it restates a ledger event. | — |
 | `chain_overview` | "How active is Robinhood Chain?" — day by day, this week's rollup, an archived weekly report, scheduled HoodLock unlocks, or Build Momentum beside market attention. | `chain_activity`, `this_week`, `weekly_report`, `upcoming_unlocks` |
@@ -183,8 +183,8 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
 
 ### `find_projects` surfaces, one definition each
 
-- `building-with-token` — verified shipping, active or resumed, with a token whose market is live.
-- `still-building` — verified activity continuing through a market drawdown HEY tracked, on an
+- `building-with-token` — status shipping, active or resumed, with a token whose market is live.
+- `still-building` — counted ships during a market drawdown HEY itself tracked, on an
   active market that is more than a launch curve or a launch pool; on a thinner one Still Building is not
   measured (`stillBuildingWithheld: "market_too_thin"`, hbm-v19), and since hbm-v31 nor on an
   active market whose reading carries under $1,000 of 24-hour volume. With no tracked token, no
@@ -196,7 +196,7 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
   or resumed; Build Momentum at least 30; at least 2 counted ships in the last 30 days, one
   of them a ship rather than a commit summary; a fresh reading of an active market beyond
   a launch curve or a launch pool, trading $1,000+ a day, for the project's own token; market attention TYPICAL or lower
-  (percentile below 60); never on activity HEY cannot read or a contested unverified ticker) **and a positive Discovery Gap**: the
+  (percentile below 60); never on activity HEY cannot read or a ticker another project's token carries, on a token the project has not named) **and a positive Discovery Gap**: the
   market-attention percentile is below the build percentile. A token whose market is not
   active has no Discovery Gap at all (`discoveryGapWithheld: "market_too_thin"`, hbm-v18). A
   market active only because another pool of the token holds the liquidity is measured on that
@@ -210,7 +210,7 @@ Every tool returns `structuredContent` beside its text, and declares an `outputS
 - `shipping-now` (status SHIPPING), `most-active` (shipping, active or resumed, by Build Momentum),
   `new-builders` (recorded in the last 7 days, with a builder source HEY reads and at least one counted ship),
   `new-on-hey` (every page recorded in the last 7 days), `utility`, `memes`.
-- `back-from-dormancy` — status RESUMED, **narrowed to verified builders native to the chain**;
+- `back-from-dormancy` — status RESUMED, **narrowed to Verified Builders native to the chain**;
   `status: "RESUMED"` gives every resumed project.
 - `shipping-in-silence` — held Under the Radar (the rule above, its positive gap and every
   hold the `/radar` listing applies) **and** below the 40th market-attention percentile.
@@ -308,8 +308,8 @@ And never:
 - **ranks by price, values a token, or recommends anything** — the tests fail if a
   description picks up *undervalued*, *price target* or *predict*;
 - **states a cause** — a change beside a market move is a sequence;
-- **prints "Still Building" without its meaning** — *verified activity continuing through a
-  market drawdown HEY tracked; a record of what happened, not a prediction and not a buy
+- **prints "Still Building" without its meaning** — *counted ships during a market drawdown HEY
+  itself tracked; a record of what happened, not a prediction and not a buy
   signal*;
 - **turns unknown into zero** — a missing figure is absent or UNKNOWN, never 0, "none" or a dash;
 - **names an account** other than a contract's deployer, and never a partnership from a call.

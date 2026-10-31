@@ -247,7 +247,7 @@ lists what a subscription may ask for.
 
 HEY records public building activity. It is not investment advice, it does not
 predict or rank by price, and it holds no wallet data. *Still Building* is a
-narrow claim — verified activity through a market drawdown HEY tracked — and
+narrow claim — counted building through a market drawdown HEY tracked — and
 never a buy signal.
 
 ## Licence

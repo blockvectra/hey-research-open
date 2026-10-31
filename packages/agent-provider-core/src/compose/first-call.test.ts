@@ -117,7 +117,7 @@ describe('AG-01: one call from any identifier', () => {
     expect(agentIntelligenceResponseSchema.safeParse(ambiguous).success).toBe(true);
     expect(ambiguous.error?.candidatesTotal).toEqual({ count: 11, atLeast: false });
     expect(ambiguous.error?.candidates?.[0]).toMatchObject({ slug: 'usdx-labs', activityStatus: 'SHIPPING', catalogStatus: 'VERIFIED_BUILDER', symbol: { contentOrigin: 'external_source' } });
-    expect(ambiguous.answer.text).toBe('More than one published project matches that name or ticker: usdx-labs, usdx-meme (the first 2 of 11, verified builders and active builders first). HEY does not guess: send one of them as project, or the contract as address.');
+    expect(ambiguous.answer.text).toBe('More than one published project matches that name or ticker: usdx-labs, usdx-meme (the first 2 of 11, Verified Builders and active builders first). HEY does not guess: send one of them as project, or the contract as address.');
     const text = renderAgentResponseText(ambiguous, { detail: 'summary' });
     expect(text).toContain('Candidates (2 of 11; send one as project):');
     expect(text).toMatch(/- usdx-labs: «USDX Labs» .*\(«USDX».*\) · status SHIPPING · VERIFIED_BUILDER · https:\/\/hey\.test\/project\/usdx-labs/);

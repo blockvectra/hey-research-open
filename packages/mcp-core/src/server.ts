@@ -129,14 +129,16 @@ const VIEWS = ['shipping-in-silence', 'accelerating', 'builder-radar'] as const;
  * Under the Radar as the surface decides it (audit §45 #25): the scoring
  * rule's eligibility (`isUnderTheRadarEligible`, `UNDER_THE_RADAR` in
  * `@hey/scoring`), its attention cap (`UNDER_THE_RADAR.maxMarketAttention`,
- * hbm-v30) and the gap's two withholds (`activity_unknown`, a contested
- * unverified ticker), plus a positive Discovery Gap — a positive gap alone is
- * not enough, and explain_fact calls that one POSITIVE. The same sentence is in
- * llms.txt and docs/MCP.md; `apps/web/src/app/mcp/definitions.test.ts` holds
- * all three to the scoring constants.
+ * hbm-v30) and the gap's two withholds (`activity_unknown`, and a ticker
+ * another project's token carries on a token the project has not named), plus
+ * a positive Discovery Gap — a positive gap alone is not enough, and
+ * explain_fact calls that one POSITIVE. The same sentence is in llms.txt and
+ * docs/MCP.md; `apps/web/src/app/mcp/definitions.test.ts` holds all three to
+ * the scoring constants. In R2's words since 2026-10-31 (audit L7-3): it said
+ * "a contested unverified ticker".
  */
 export const UNDER_THE_RADAR_RULE =
-  "status shipping, active or resumed; Build Momentum at least 30; at least 2 counted ships in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of an active market beyond a launch curve or a launch pool, trading $1,000+ a day, for the project's own token; market attention TYPICAL or lower (percentile below 60); never on activity HEY cannot read or a contested unverified ticker";
+  "status shipping, active or resumed; Build Momentum at least 30; at least 2 counted ships in the last 30 days, one of them a ship rather than a commit summary; a fresh reading of an active market beyond a launch curve or a launch pool, trading $1,000+ a day, for the project's own token; market attention TYPICAL or lower (percentile below 60); never on activity HEY cannot read or a ticker another project's token carries, on a token the project has not named";
 
 /**
  * One definition per surface (2026-09-26, M2 G1/G2), in the domain's words.
@@ -145,17 +147,19 @@ export const UNDER_THE_RADAR_RULE =
  * RESUMED project; `shipping-in-silence` takes the eligibility, not the gap.
  */
 export const SURFACE_HELP = [
-  'building-with-token: verified shipping, active or resumed, with a token whose market is live.',
-  'still-building: verified activity continuing through a market drawdown HEY tracked.',
+  // The page's words, "verified" only in "Verified Builder" (2026-10-31, audit L7-3; founder ruling R2). The R2 phrase made
+  // the Under the Radar rule longer, so a few words here went to keep the tool list inside its byte budget.
+  'building-with-token: shipping, active or resumed, with a token whose market is live.',
+  'still-building: counted ships during a market drawdown HEY itself tracked.',
   `under-the-radar: eligible under HEY's Under the Radar rule (${UNDER_THE_RADAR_RULE}) and a positive Discovery Gap — market-attention percentile below the build percentile; a positive gap alone is not enough.`,
   'shipping-now: status SHIPPING. most-active: shipping, active or resumed, by Build Momentum.',
   'new-builders: new in 7 days, with a builder source and a counted ship; new-on-hey: any page new in 7 days.',
-  'back-from-dormancy: status RESUMED, narrowed to verified builders native to the chain (status=RESUMED gives every resumed project).',
+  'back-from-dormancy: status RESUMED, narrowed to Verified Builders native to the chain (status=RESUMED gives all of them).',
   'utility, memes: by kind.',
   'shipping-in-silence: held Under the Radar AND below the 40th market-attention percentile.',
   'accelerating: more counted ships in 30 days than in the 30 before.',
-  'builder-radar: the Builder Radar, ranked by verified development, on-chain use and research, never price.',
-  'shipping-in-silence and accelerating take no other argument (at most 100 rows); builder-radar takes query, radar, limit and offset.',
+  'builder-radar: the Builder Radar, by counted development, on-chain use and research, never price.',
+  'shipping-in-silence and accelerating take no other argument (at most 100 rows); builder-radar: query, radar, limit, offset.',
 ].join(' ');
 
 const KINDS = ['UTILITY', 'MEME', 'HYBRID', 'INFRASTRUCTURE', 'RWA', 'APPLICATION', 'OTHER'] as const;
@@ -829,7 +833,7 @@ export function createHeyMcpServer(client: HeyClient, now?: () => Date, options:
       'get_contract',
       {
         ...describe('get_contract', [
-          'Who made this Robinhood Chain contract, and is it a known project\'s? Project, creation, deployer (the only account named, with a count of other tracked projects\' tokens it deployed), verified source and whose code it is (template, bytecode match or its own),',
+          'Who made this Robinhood Chain contract, and is it a known project\'s? Project, creation, deployer (the only account named, with a count of other tracked projects\' tokens it deployed), published source code and whose code it is (template, bytecode match or its own),',
           'Sourcify\'s answer, proxy and implementation history, interface changes, 7 days of calls per method (counts, names withheld; a selector\'s signature candidate — a guess, never a name).',
           'Address (chainId default 4663) or slug for all of a project\'s. An unread proxy is "not read", never "not a proxy". Not a safety verdict.',
         ]),

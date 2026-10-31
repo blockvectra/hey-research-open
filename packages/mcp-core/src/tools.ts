@@ -152,7 +152,7 @@ export const HEY_MCP_TOOLS = [
   {
     name: 'get_contract',
     title: 'Who made this contract',
-    summary: 'Who made this contract, and is it a known project’s? A contract as a research entity — creation, deployer, verified source, proxy and implementation history, interface counts and changes, activity, and for a Uniswap v4 hook HEY stores its callbacks and attribution — by address or for every contract of a project.',
+    summary: 'Who made this contract, and is it a known project’s? A contract as a research entity — creation, deployer, published source code, proxy and implementation history, interface counts and changes, activity, and for a Uniswap v4 hook HEY stores its callbacks and attribution — by address or for every contract of a project.',
     routes: ['/api/contracts/{chainId}/{address}', '/api/projects/{slug}/contracts'],
     replaces: [],
     profiles: ['full', 'research'],

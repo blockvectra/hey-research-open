@@ -622,8 +622,8 @@ function contractLines(c: Omit<HeyContract, 'disclaimer'>): string[] {
   const src = c.verifiedSource;
   lines.push(
     src.state === 'MEASURED'
-      ? `- FACT verified source: ${src.verified ? 'yes' : 'no'}${src.compiler ? `; compiler ${quoteExternal(src.compiler, 'contract_explorer')}` : ''}${src.contractName ? `; name ${quoteExternal(src.contractName, 'contract_explorer')}` : ''}${src.checkedAt ? ` (checked ${src.checkedAt.slice(0, 10)})` : ''}${src.method ? `; ${VERIFICATION_METHOD_WORDS[src.method]}${src.match ? ` (${src.match.toLowerCase()} match)` : ''}` : ''}`
-      : `- UNKNOWN verified source: ${pretty(src.state)}`,
+      ? `- FACT published source code: ${src.verified ? 'yes' : 'no'}${src.compiler ? `; compiler ${quoteExternal(src.compiler, 'contract_explorer')}` : ''}${src.contractName ? `; name ${quoteExternal(src.contractName, 'contract_explorer')}` : ''}${src.checkedAt ? ` (checked ${src.checkedAt.slice(0, 10)})` : ''}${src.method ? `; ${VERIFICATION_METHOD_WORDS[src.method]}${src.match ? ` (${src.match.toLowerCase()} match)` : ''}` : ''}`
+      : `- UNKNOWN published source code: ${pretty(src.state)}`,
   );
   if (src.authorship) lines.push(`- DERIVED whose code: ${AUTHORSHIP_WORDS[src.authorship.kind]} (${pretty(src.authorship.reason)})`);
   lines.push(sourcifyWords(src.sourcify));
@@ -690,7 +690,7 @@ const AUTHORSHIP_WORDS: Record<NonNullable<HeyContract['verifiedSource']['author
    * Verified, and HEY read the verified source, but not yet how the explorer verified it (2026-10-16, audit #123):
    * "the explorer's record has not been read" sat beside "verified source: yes; compiler …; name …" in one answer.
    */
-  UNCONFIRMED: 'not yet known — HEY read the verified source but not yet how the explorer verified it (published for this address, or matched to identical bytecode published elsewhere)',
+  UNCONFIRMED: 'not yet known — HEY read the published source code but not yet how the explorer verified it (published for this address, or matched to identical bytecode published elsewhere)',
 };
 
 /** Sourcify's answer: NOT_READ is never "not verified". */
@@ -698,7 +698,7 @@ function sourcifyWords(v: HeyContract['verifiedSource']['sourcify']): string {
   if (v.state === 'NOT_READ') return '- UNKNOWN Sourcify: not read (HEY asks only for watched contracts the explorer calls unverified, and proxies) — not "unverified"';
   if (v.state === 'ERROR') return '- UNKNOWN Sourcify: the last read failed';
   const when = v.checkedAt ? ` (checked ${v.checkedAt.slice(0, 10)})` : '';
-  return v.status === 'MATCH' ? `- FACT Sourcify holds verified source for it${v.match ? ` (${pretty(v.match)})` : ''}${when}` : `- FACT Sourcify holds no source for it${when}`;
+  return v.status === 'MATCH' ? `- FACT Sourcify holds the source code for it${v.match ? ` (${pretty(v.match)})` : ''}${when}` : `- FACT Sourcify holds no source for it${when}`;
 }
 
 /**

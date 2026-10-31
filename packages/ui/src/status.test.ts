@@ -9,11 +9,26 @@ import {
   activityPresentation,
   NO_BUILDER_SIGNAL,
   showsNoBuilderSignal,
+  STILL_BUILDING_HELP,
   TokenMarketChip,
   tokenMarketLabel,
   TokenVerificationChip,
+  UNDER_THE_RADAR_HELP,
   unknownActivityReason,
 } from './status';
+
+/**
+ * The two strict lists' one-sentence meanings say "verified" only in "Verified Builder" (2026-10-31, audit L7-3;
+ * founder ruling R2): Under the Radar's opened on "Verified building".
+ */
+describe('the strict lists in words', () => {
+  it('never says verified outside "Verified Builder"', () => {
+    for (const help of [UNDER_THE_RADAR_HELP, STILL_BUILDING_HELP]) {
+      expect(help.replace(/Verified Builders?/g, '')).not.toMatch(/\b(un)?verified\b/i);
+    }
+    expect(UNDER_THE_RADAR_HELP).toMatch(/^Counted building, with at least two meaningful ships in 30 days/);
+  });
+});
 
 /**
  * Why an UNKNOWN is unknown (data-correctness pass, 2026-09-28).

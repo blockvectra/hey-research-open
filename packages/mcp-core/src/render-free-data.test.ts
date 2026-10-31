@@ -140,7 +140,7 @@ describe('get_contract: verified source, Sourcify, clones and method counts (202
   it('never says the explorer was not read beside a verified source it read (2026-10-16, audit #123)', () => {
     const contract = { ...fx.contract, verifiedSource: { ...fx.contract.verifiedSource, authorship: { kind: 'UNCONFIRMED' as const, reason: 'verification_method_not_read' } } };
     const text = renderContract(contract);
-    expect(text).toContain('- DERIVED whose code: not yet known — HEY read the verified source but not yet how the explorer verified it');
+    expect(text).toContain('- DERIVED whose code: not yet known — HEY read the published source code but not yet how the explorer verified it');
     expect(text).not.toContain('has not been read');
   });
 

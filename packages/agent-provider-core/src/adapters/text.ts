@@ -1,3 +1,5 @@
+import { tokenVerificationLabelFor } from '@hey/scoring/verification-words';
+
 import type { AgentChange, AgentClaim, AgentIntelligenceResponse, AgentResearchData, AgentUnknown } from '../schema';
 import { quoteForTransport, QUOTED_TEXT_LEGEND, type AgentText } from '../text';
 import { tokenNotTheProjectsWords } from '../words';
@@ -46,8 +48,15 @@ function codeWords(change: AgentChange): string {
 function changeLine(change: AgentChange): string {
   const when = change.occurredAt ? `${day(change.occurredAt)} (${change.precision})` : `HEY saw it ${day(change.detectedAt)} (${change.precision})`;
   const evidence = change.evidence.length > 0 ? ` · evidence ${change.evidence.map((ref) => ref.id).join(', ')}` : '';
-  const verification = change.verification === 'SELF_REPORTED' ? ' · self-reported by the project, not verified' : change.verification === 'DISPUTED' ? ' · disputed' : '';
+  // R2 (2026-10-31): "verified" only in "Verified Builder"; self-reported stays visibly distinct (product rule 10).
+  const verification = change.verification === 'SELF_REPORTED' ? ' · self-reported by the project, not checked by HEY' : change.verification === 'DISPUTED' ? ' · disputed' : '';
   return `- ${when} ${change.status} ${change.type} — ${change.project.slug}: ${q(change.summary)}${codeWords(change)}${change.countsAsBuilding ? ' · counts as building' : ''}${verification}${evidence}`;
+}
+
+/** A token check in the page's words, its stored value bracketed: "token check Not named by the project [UNVERIFIED] (self_reported)". */
+function tokenCheckWords(verification: string | null | undefined, reason: string | null | undefined): string {
+  if (!verification) return 'token check not known';
+  return `token check ${tokenVerificationLabelFor(verification, reason)} [${verification}]${reason ? ` (${reason})` : ''}`;
 }
 
 /** Under the Radar beside Still Building (PA-6): its state, the gap or why it is withheld; nothing when the answer does not carry it. */
@@ -79,7 +88,8 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
       const lines = [
         `Identity: ${d.identity.slug} — ${q(d.identity.name)}${d.identity.symbol ? ` (${q(d.identity.symbol)})` : ''}; kind ${d.identity.projectKind}; research level ${d.identity.researchLevel}; first recorded by HEY ${day(d.identity.firstRecordedByHeyAt)}.`,
         `Builder state: ${d.builderState.activityStatus}; last meaningful ship ${d.builderState.lastMeaningfulShipAt ? day(d.builderState.lastMeaningfulShipAt) : 'none recorded or not measured'}; counted ships in 30 days ${d.builderState.meaningfulEvents30d ?? 'not measured'}; Build Momentum ${d.builderState.buildMomentum ?? 'not measured'}; Still Building ${d.builderState.stillBuildingState ?? (d.builderState.stillBuilding ? 'HELD' : 'no')}${underTheRadarWords(d.builderState)}${d.builderState.scoringVersion ? ` (${d.builderState.scoringVersion})` : ''}.`,
-        `Contract identity: ${d.contractIdentity.token ? `token ${d.contractIdentity.token.address} on chain ${d.contractIdentity.token.chainId}, verification ${d.contractIdentity.token.verification ?? 'unknown'}${d.contractIdentity.token.verificationReason ? ` (${d.contractIdentity.token.verificationReason})` : ''}` : 'no token'}; owner verified ${d.contractIdentity.ownerVerified ? 'yes' : 'no'}.`,
+        // The page's words for the token check and the owner (R2, 2026-10-31); the stored value stays, bracketed (machine rule 10).
+        `Contract identity: ${d.contractIdentity.token ? `token ${d.contractIdentity.token.address} on chain ${d.contractIdentity.token.chainId}, ${tokenCheckWords(d.contractIdentity.token.verification, d.contractIdentity.token.verificationReason)}` : 'no token'}; owner proved control ${d.contractIdentity.ownerVerified ? 'yes' : 'no'}.`,
       ];
       if (d.latestMeaningfulChange) lines.push('Latest meaningful change:', changeLine(d.latestMeaningfulChange));
       if (d.recentChanges.items.length > 0) lines.push(`Recent changes (${d.recentChanges.items.length} shown; more at ${d.recentChanges.url}):`, ...d.recentChanges.items.map(changeLine));
@@ -130,7 +140,7 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
       const d = response.data;
       return [
         `Window: ${d.windowDays} days; order as requested; comparison ${d.completeness ?? 'complete'}; same peer cohort: ${d.sameCohort === null ? 'unknown' : d.sameCohort ? 'yes' : 'no'}.`,
-        ...d.projects.map((p) => `- ${p.slug}: ${p.activityStatus}; last meaningful ship ${p.lastMeaningfulShipAt ? day(p.lastMeaningfulShipAt) : 'none recorded'}; counted ships 30d ${p.meaningfulEvents30d ?? 'not measured'}${p.meaningfulEventsPrevious30d === null ? '' : ` (${p.meaningfulEventsPrevious30d} the 30 before)`}; release cadence ${p.releaseCadence?.medianIntervalDays ?? 'not measured'}${p.releaseCadence?.medianIntervalDays ? ' days' : ''}; active weeks ${p.activeWeeks?.weeks == null ? 'not measured' : `${p.activeWeeks.weeks} of ${p.activeWeeks.windowWeeks}`}; Build Momentum ${p.buildMomentum ?? 'not measured'}; verified builder ${p.verifiedBuilder ? 'yes' : 'no'}; peer cohort ${p.peer?.cohort ?? 'none'}.`),
+        ...d.projects.map((p) => `- ${p.slug}: ${p.activityStatus}; last meaningful ship ${p.lastMeaningfulShipAt ? day(p.lastMeaningfulShipAt) : 'none recorded'}; counted ships 30d ${p.meaningfulEvents30d ?? 'not measured'}${p.meaningfulEventsPrevious30d === null ? '' : ` (${p.meaningfulEventsPrevious30d} the 30 before)`}; release cadence ${p.releaseCadence?.medianIntervalDays ?? 'not measured'}${p.releaseCadence?.medianIntervalDays ? ' days' : ''}; active weeks ${p.activeWeeks?.weeks == null ? 'not measured' : `${p.activeWeeks.weeks} of ${p.activeWeeks.windowWeeks}`}; Build Momentum ${p.buildMomentum ?? 'not measured'}; Verified Builder ${p.verifiedBuilder ? 'yes' : 'no'}; peer cohort ${p.peer?.cohort ?? 'none'}.`),
         ...(d.missing.length > 0 ? [`Not found: ${d.missing.join(', ')}.`] : []),
         q(d.method),
         `Not compared: ${d.excludedContext.map((entry) => entry.item).join(', ')}.`,
@@ -140,7 +150,7 @@ function dataLines(response: AgentIntelligenceResponse, detail: AgentTextDetail)
       const d = response.data;
       return [
         `Window: ${d.window.label} (${day(d.window.from)} to ${day(d.window.to)}).`,
-        `Shipped: ${d.shipped.ships} ships from ${d.shipped.projects} projects (${d.shipped.rule.id}). Newly verified builders: ${d.newlyVerifiedBuilders.total}. Status recoveries: ${d.statusRecoveries.total} of ${d.statusRecoveries.comparable} projects read more than once.`,
+        `Shipped: ${d.shipped.ships} ships from ${d.shipped.projects} projects (${d.shipped.rule.id}). New Verified Builders: ${d.newlyVerifiedBuilders.total}. Status recoveries: ${d.statusRecoveries.total} of ${d.statusRecoveries.comparable} projects read more than once.`,
         `Held today: Still Building ${d.stillBuilding.total}; Under the Radar ${d.underTheRadar.total} (strict by design).`,
         `Building changes: showing ${d.building.shown} of ${d.building.total}, newest first; read further at ${d.building.more}`,
         ...d.building.items.map(changeLine),
