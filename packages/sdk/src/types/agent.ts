@@ -163,7 +163,8 @@ export type HeyAgentResearchData = {
   latestMeaningfulChangeReason?: 'not_in_recent_changes' | 'none_recorded' | 'changes_unavailable';
   recentChanges: { available: boolean; reason?: string; items: HeyAgentChange[]; url: string };
   contractIdentity: {
-    token: { chainId: number; address: string; verification: string | null; verificationReason: string | null } | null;
+    /** `tickerContested` (2026-10-31, additive): UNVERIFIED and another published project's token carries its ticker, so HEY does not read the project's building as this token's. Present only when true. */
+    token: { chainId: number; address: string; verification: string | null; verificationReason: string | null; tickerContested?: true } | null;
     ownerVerified: boolean;
     contractsUrl: string;
   };

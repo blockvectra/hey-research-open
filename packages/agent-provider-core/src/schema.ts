@@ -271,7 +271,8 @@ const researchData = z
       .strict(),
     contractIdentity: z
       .object({
-        token: z.object({ chainId: z.number().int(), address, verification: code.nullable(), verificationReason: code.nullable() }).strict().nullable(),
+        /** `tickerContested` (2026-10-31, additive): the snapshot's `verification.token.tickerContested`, present only when true. */
+        token: z.object({ chainId: z.number().int(), address, verification: code.nullable(), verificationReason: code.nullable(), tickerContested: z.literal(true).optional() }).strict().nullable(),
         ownerVerified: z.boolean(),
         contractsUrl: url,
       })

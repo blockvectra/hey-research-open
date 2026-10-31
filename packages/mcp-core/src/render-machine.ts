@@ -26,7 +26,7 @@ import type {
   HeyStillBuildingWithheld,
 } from '@hey-research-lab/sdk';
 
-import { evidenceBackingWords, looksLikeEvidenceId, quoteExternal, stillBuildingStateOf, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
+import { evidenceBackingWords, looksLikeEvidenceId, quoteExternal, stillBuildingStateOf, summaryIsSourceText, tokenNotTheProjectsWords, valuationWithheldClause } from '@hey/agent-provider-core';
 import { DISCOVERY_GAP_WITHHELD_WORDS, STILL_BUILDING_WITHHELD_WORDS as SCORING_STILL_BUILDING_WITHHELD_WORDS } from '@hey/scoring/withheld-words';
 import { tokenVerificationLabelFor } from '@hey/scoring/verification-words';
 
@@ -69,12 +69,11 @@ function withheldWords(words: Readonly<Record<string, string>>, code: string, ma
 
 /**
  * Why a tracked token is not the project's (2026-10-24 full audit INV-1), from the snapshot's own token verification,
- * in the partner line's words; undefined when the project's building applies to the token.
+ * in the partner line's words; undefined when the project's building applies to the token. The agent contract's
+ * `tokenNotTheProjectsWords`, so a contested unverified ticker (`tickerContested`, 2026-10-31 audit L7-1) reads the same.
  */
-function tokenNotTheProjects(token: { status: string; reason?: string } | undefined): string | undefined {
-  if (token?.status === 'MISMATCH') return 'the project’s own site names another contract';
-  if (token?.reason === 'site_disclaims_contract') return 'the project’s own site says this token is not its own';
-  return undefined;
+function tokenNotTheProjects(token: { status: string; reason?: string; tickerContested?: true } | undefined): string | undefined {
+  return tokenNotTheProjectsWords(token?.status, token?.reason, { tickerContested: token?.tickerContested });
 }
 
 /** A coverage state as the tag an agent should read it with: measured is a fact about HEY's record, anything else is a gap. */
@@ -305,11 +304,13 @@ export function renderSnapshot(s: HeyProjectSnapshot, now?: Date): string {
     const readAt = new Date(o.observedAt);
     const old = !Number.isNaN(readAt.getTime()) && (now ?? new Date()).getTime() - readAt.getTime() > 36 * 3_600_000;
     const day = o.eventsDay ?? o.observedAt.slice(0, 10);
+    // Read before its UTC day closed (2026-10-31, audit L7-10): the 24 hours to the read, never that day's count.
+    const window = o.partialDay ? `in the 24 hours to ${o.partialDay.readAt.slice(0, 16).replace('T', ' ')} UTC` : undefined;
     const events = old
-      ? `- FACT ${o.events24h} contract events on ${day}, the newest day HEY read${o.events7d === undefined ? '' : `; ${o.events7d} over the ${o.daysMeasured} days HEY could read`} — the days since are unknown, not zero`
+      ? `- FACT ${o.events24h} contract events ${window ? `${window}, the newest HEY read` : `on ${day}, the newest day HEY read`}${o.events7d === undefined ? '' : `; ${o.events7d} over the ${o.daysMeasured} days HEY could read`} — the days since are unknown, not zero`
       : partial
-        ? `- FACT ${o.events24h} contract events on the newest day HEY could read${o.events7d === undefined ? '' : `, ${o.events7d} over the ${o.daysMeasured} days HEY could read`} (${o.daysCovered - o.daysMeasured} of ${o.daysCovered} days unreadable: unknown, not zero)`
-        : `- FACT ${o.events24h} contract events in 24 h${o.events7d === undefined ? '' : `, ${o.events7d} over ${o.daysCovered} days`}`;
+        ? `- FACT ${o.events24h} contract events ${window ?? 'on the newest day HEY could read'}${o.events7d === undefined ? '' : `, ${o.events7d} over the ${o.daysMeasured} days HEY could read`} (${o.daysCovered - o.daysMeasured} of ${o.daysCovered} days unreadable: unknown, not zero)`
+        : `- FACT ${o.events24h} contract events ${window ?? 'in 24 h'}${o.events7d === undefined ? '' : `, ${o.events7d} over ${o.daysCovered} days`}`;
     lines.push(
       o.events24h === undefined
         ? `- UNKNOWN contract events: HEY could not index them (${o.daysMeasured} of ${o.daysCovered} days readable)${o.calls24h === undefined ? '' : `; FACT ${o.calls24h} calls in 24 h`}`

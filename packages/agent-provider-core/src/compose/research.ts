@@ -384,7 +384,7 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
 
   const market = snapshot.market;
   // A token the project's own site disowns or contradicts (2026-10-24 full audit INV-1): its figure and ticker are never the project's.
-  const notTheProjects = tokenNotTheProjectsWords(verification?.status, verification?.reason);
+  const notTheProjects = tokenNotTheProjectsWords(verification?.status, verification?.reason, { tickerContested: verification?.tickerContested });
   if (market) {
     const cap = market.marketCap;
     const marketFresh = freshness.find((entry) => entry.family === 'market');
@@ -537,7 +537,16 @@ export function composeResearch(ctx: AgentComposeContext, input: ResearchInput):
         : {}),
       recentChanges: { available: snapshot.latestChanges.available, ...(snapshot.latestChanges.available ? {} : { reason: snapshot.latestChanges.reason }), items: changes, url: snapshot.latestChanges.url },
       contractIdentity: {
-        token: token ? { chainId: token.chainId, address: token.contractAddress.toLowerCase(), verification: verification?.status ?? null, verificationReason: verification?.reason ?? null } : null,
+        token: token
+          ? {
+              chainId: token.chainId,
+              address: token.contractAddress.toLowerCase(),
+              verification: verification?.status ?? null,
+              verificationReason: verification?.reason ?? null,
+              // The snapshot's contested-ticker fact (2026-10-31, audit L7-1, additive): present only when true.
+              ...(verification?.tickerContested ? { tickerContested: true as const } : {}),
+            }
+          : null,
         ownerVerified: snapshot.verification.ownerVerified,
         contractsUrl: snapshot.contracts.url,
       },

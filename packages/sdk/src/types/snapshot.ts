@@ -601,6 +601,11 @@ export type HeyProjectSnapshot = {
     events24h?: number;
     /** The UTC day `events24h` counts (2026-10-22, additive): the newest day HEY read, never a rolling 24 hours. */
     eventsDay?: string;
+    /**
+     * Present when `events24h` was read before `eventsDay` closed (2026-10-31, audit L7-10, additive): it counts the 24
+     * hours to `readAt`, not that UTC day. A measured count all the same, never unknown. Absent when it counts a whole day.
+     */
+    partialDay?: { readAt: string };
     events7d?: number;
     calls24h?: number;
     daysCovered: number;
@@ -619,7 +624,8 @@ export type HeyProjectSnapshot = {
   peerContext?: HeyPeerContext;
   contracts: { url: string };
   verification: {
-    token?: { status: string; reason?: string; verifiedAt?: string };
+    /** `tickerContested` (2026-10-31, additive): UNVERIFIED and another published project's token carries its ticker, so HEY does not read the project's building as this token's. Present only when true. */
+    token?: { status: string; reason?: string; verifiedAt?: string; tickerContested?: true };
     ownerVerified: boolean;
     submitted: boolean;
     sources: { total: number; own: number; verified: number; contextOnly: number };

@@ -441,6 +441,11 @@ export type HeyProjectDetail = HeyProject & {
     events24h?: number;
     /** The UTC day `events24h` counts (2026-10-22, additive): the newest day HEY read, never a rolling 24 hours. */
     eventsDay?: string;
+    /**
+     * Present when `events24h` was read before `eventsDay` closed (2026-10-31, audit L7-10, additive): it counts the 24
+     * hours to `readAt`, not that UTC day. A measured count all the same, never unknown. Absent when it counts a whole day.
+     */
+    partialDay?: { readAt: string };
     events7d?: number;
     /** Days HEY holds a row for. */
     daysCovered: number;

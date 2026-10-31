@@ -263,11 +263,15 @@ export function valuationWithheldSentence(code: string): string {
 
 /**
  * Why a tracked token is not the project's, in the partner line's and the Telegram card's words (2026-10-24 full
- * audit INV-1): MISMATCH, or an UNVERIFIED token the project's own site names and disowns (`site_disclaims_contract`).
- * Undefined when the project's building applies to the token. The domain's twin is `tokenNotTheProjectsWords`.
+ * audit INV-1): MISMATCH, or an UNVERIFIED token the project's own site names and disowns (`site_disclaims_contract`),
+ * or (2026-10-31, audit L7-1) an UNVERIFIED token whose ticker another published project's token carries, which the
+ * snapshot marks `verification.token.tickerContested`. Undefined when the project's building applies to the token. The
+ * domain's twin is `tokenNotTheProjectsWords`, word for word.
  */
-export function tokenNotTheProjectsWords(verification: string | null | undefined, reason: string | null | undefined): string | undefined {
+export function tokenNotTheProjectsWords(verification: string | null | undefined, reason: string | null | undefined, facts: { tickerContested?: boolean | undefined } = {}): string | undefined {
   if (verification === 'MISMATCH') return 'the project’s own site names another contract';
   if (reason === 'site_disclaims_contract') return 'the project’s own site says this token is not its own';
+  if (verification === 'UNVERIFIED' && facts.tickerContested === true)
+    return 'the project does not name this token and another published project’s token carries the same ticker, so HEY cannot tell it from a lookalike';
   return undefined;
 }

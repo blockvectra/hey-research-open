@@ -410,6 +410,10 @@ describe('get_project_snapshot', () => {
     const stale = renderSnapshot({ ...fx.snapshot, onchain: { events24h: 0, eventsDay: '2026-09-22', events7d: 0, daysCovered: 1, daysMeasured: 1, observedAt: '2026-09-23T01:19:50.000Z' } }, NOW);
     expect(stale).toContain('- FACT 0 contract events on 2026-09-22, the newest day HEY read; 0 over the 1 days HEY could read — the days since are unknown, not zero');
     expect(stale).not.toContain('in 24 h');
+    // 2026-10-31 audit L7-10: a count read before its UTC day closed is the 24 hours to the read, never that day's.
+    const early = renderSnapshot({ ...fx.snapshot, onchain: { events24h: 0, eventsDay: '2026-09-25', partialDay: { readAt: '2026-09-25T00:23:00.000Z' }, events7d: 0, daysCovered: 7, daysMeasured: 7, observedAt: '2026-09-25T00:23:00.000Z' } }, NOW);
+    expect(early).toContain('- FACT 0 contract events in the 24 hours to 2026-09-25 00:23 UTC, 0 over 7 days');
+    expect(early).not.toContain('contract events on 2026-09-25');
   });
 
   it('prints the latest changes at their precision, with ids, and where the rest are', () => {
