@@ -514,6 +514,8 @@ export type HeyTokenMarket = {
   /** `marketStatus` in HEY's own words (2026-10-16, additive): "Launch pool only", "Not a fungible token", "No current reading" where the reason says so. */
   marketStatusLabel: string;
   verification: string;
+  /** Why `verification` reads as it does (`site_disclaims_contract`, `site_names_contract` …), when HEY recorded one (2026-11-01, additive). */
+  verificationReason?: string;
   /**
    * The contract's own provenance, read from the chain: who deployed it, in
    * which transaction, and when. `deployerShared` is true when that deployer

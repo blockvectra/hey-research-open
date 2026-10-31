@@ -127,6 +127,22 @@ describe('find_projects', () => {
     expect(projectLine(project({ marketCap: { usd: 24_000, source: 'coingecko', kind: 'fdv' } }), NOW)).toContain('$24.0K FDV (coingecko)');
   });
 
+  it('drops the ticker and names the valuation as the tracked token’s when the project’s site disowns or contradicts it (2026-11-01)', () => {
+    const disowned = projectLine(
+      project({ name: 'Nautilo', symbol: 'NAUT', marketCap: { usd: 259_700, source: 'dexscreener', kind: 'fdv' }, tokenVerification: { status: 'UNVERIFIED', reason: 'site_disclaims_contract' } }),
+      NOW,
+    );
+    expect(disowned).not.toContain('NAUT');
+    expect(disowned).toContain("DERIVED the tracked token's FDV $259.7K (dexscreener), not the project's valuation: the project’s own site says this token is not its own");
+    const mismatch = projectLine(project({ symbol: 'SYN', marketCap: { usd: 158_600, source: 'dexscreener', kind: 'fdv' }, tokenVerification: { status: 'MISMATCH' } }), NOW);
+    expect(mismatch).not.toContain('SYN');
+    expect(mismatch).toContain('not the project\'s valuation: the project’s own site names another contract');
+    // A token the project names keeps both.
+    const own = projectLine(project({ symbol: 'AOS', marketCap: { usd: 24_000, source: 'coingecko', kind: 'fdv' }, tokenVerification: { status: 'VERIFIED' } }), NOW);
+    expect(own).toContain('AOS');
+    expect(own).toContain('$24.0K FDV (coingecko)');
+  });
+
   it('states an official X account HEY last read as suspended or gone, and says nothing of an active or unread one (2026-10-18)', () => {
     const gone = projectLine(project({ officialX: officialX({ handle: 'goneproject', url: 'https://x.com/goneproject', status: 'SUSPENDED', checkedAt: '2026-10-18T02:21:00.000Z' }) }), NOW);
     expect(gone).toContain('X account @goneproject suspended (checked 2026-10-18)');
@@ -696,6 +712,13 @@ describe('get_token_market', () => {
     expect(renderTokenMarket({ ...fx.tokenMarket, current: { ...fx.tokenMarket.current!, valuationKind: undefined } }, NOW)).toContain('valuation $208.6K');
     expect(text).toContain('DERIVED market status: active market');
     expect(text).toMatch(/FACT token check: project names this contract \(verification VERIFIED\)/);
+  });
+
+  it('reads a token the project’s own site disowns as not the project’s, with the reason’s words and no ticker (2026-11-01)', () => {
+    const disowned = renderTokenMarket({ ...fx.tokenMarket, symbol: 'NAUT', verification: 'UNVERIFIED', verificationReason: 'site_disclaims_contract' }, NOW);
+    expect(disowned.split('\n')[0]).not.toContain('NAUT');
+    expect(disowned).toContain('UNKNOWN token check: not confirmed by the project (verification UNVERIFIED).');
+    expect(disowned).toContain("DERIVED not the project's token: the project’s own site says this token is not its own.");
   });
 
   it('prints no unknown buy or sell count as zero (M2 G9)', () => {

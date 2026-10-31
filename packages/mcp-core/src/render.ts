@@ -1,6 +1,6 @@
-import { DERIVED_TEXT_MAX, derivedText, isValuationNotPlausible, quoteExternal, quoteForTransport, recordTag, summaryIsSourceText, valuationWithheldClause } from '@hey/agent-provider-core';
+import { DERIVED_TEXT_MAX, derivedText, isValuationNotPlausible, quoteExternal, quoteForTransport, recordTag, summaryIsSourceText, tokenNotTheProjectsWords, valuationWithheldClause } from '@hey/agent-provider-core';
 import { TOKEN_MARKET_LABELS, tokenMarketStatusLabel } from '@hey/scoring/market-status-words';
-import { tokenVerificationWords } from '@hey/scoring/verification-words';
+import { tokenVerificationLabelFor } from '@hey/scoring/verification-words';
 import type {
   HeyAccelerating,
   HeyAskAnswer,
@@ -302,7 +302,13 @@ export function officialXWords(officialX: NonNullable<HeyProject['officialX']>):
 
 /** One project on one line: identity, what HEY claims, and the context behind it. */
 export function projectLine(project: HeyProject, now?: Date): string {
-  const parts = [quotedName(project.name, project.symbol)];
+  /*
+   * A token the project's own site disowns or contradicts is not the project's (UI rule 3, INV-1): the listing line
+   * drops its ticker and names its valuation as the tracked token's, never the project's, in the snapshot's own words
+   * (2026-11-01, overnight audit: `find_projects nautilo` printed «Nautilo» and its FDV as a FACT reading).
+   */
+  const notTheProjects = tokenNotTheProjectsWords(project.tokenVerification?.status, project.tokenVerification?.reason);
+  const parts = [quotedName(project.name, notTheProjects ? undefined : project.symbol)];
 
   // What HEY is actually claiming about activity comes before anything else.
   parts.push(
@@ -329,7 +335,9 @@ export function projectLine(project: HeyProject, now?: Date): string {
   // The market's state before its figures: it is why a dead market prints no valuation (2026-09-25).
   if (project.tokenMarket) parts.push(`market: ${tokenMarketWords(project.tokenMarket.status, project.tokenMarket.reason, project.tokenMarket.label)}`);
   // Context, and only ever with the provider that reported it; an unknown kind is a valuation, never a market cap.
-  if (project.marketCap) parts.push(`${money(project.marketCap.usd)} ${valuationWord(project.marketCap.kind)} (${project.marketCap.source})`);
+  if (project.marketCap && notTheProjects)
+    parts.push(`DERIVED the tracked token's ${valuationWord(project.marketCap.kind)} ${money(project.marketCap.usd)} (${project.marketCap.source}), not the project's valuation: ${notTheProjects}`);
+  else if (project.marketCap) parts.push(`${money(project.marketCap.usd)} ${valuationWord(project.marketCap.kind)} (${project.marketCap.source})`);
   // Never a figure the reading cannot support (round 4, 2026-09-30): the gate's words, not a number.
   else if (project.valuationWithheld && isValuationNotPlausible(project.valuationWithheld)) parts.push(`valuation not plausible from HEY's readings (${project.valuationWithheld})`);
   if (project.liquidity) parts.push(liquidityWords(project.liquidity, now));
@@ -461,13 +469,17 @@ function tradedWords(d: HeyTokenMarket['days'][number]): string | undefined {
 
 /** One token's market in depth, as prose an agent can quote with its sources. */
 export function renderTokenMarket(market: HeyTokenMarket, now: Date): string {
+  // A token the project's own site disowns or contradicts (UI rule 3, INV-1; 2026-11-01 overnight audit P2-1): no ticker,
+  // the check in R2's words with the reason, and its valuation named as the tracked token's, never the project's.
+  const notTheProjects = tokenNotTheProjectsWords(market.verification, market.verificationReason);
   const lines: string[] = [
-    `# ${quotedName(market.name, market.symbol)} — market, from HEY's own daily index`,
+    `# ${quotedName(market.name, notTheProjects ? undefined : market.symbol)} — market, from HEY's own daily index`,
     `Contract ${market.token.contractAddress} on chain ${market.token.chainId}.`,
     `DERIVED market status: ${tokenMarketWords(market.marketStatus, market.marketStatusReason, market.marketStatusLabel)}${market.marketStatusReason ? ` (${market.marketStatusReason.replace(/_/g, ' ')})` : ''}. A reading of the market, not of the team.`,
     // The page's words for the check (R2, 2026-10-28), the field's value beside them.
-    `${market.verification === 'UNVERIFIED' ? 'UNKNOWN' : 'FACT'} token check: ${tokenVerificationWords(market.verification).label.toLowerCase()} (verification ${market.verification}).`,
+    `${market.verification === 'UNVERIFIED' ? 'UNKNOWN' : 'FACT'} token check: ${tokenVerificationLabelFor(market.verification, market.verificationReason ?? null).toLowerCase()} (verification ${market.verification}).`,
   ];
+  if (notTheProjects) lines.push(`DERIVED not the project's token: ${notTheProjects}. Every figure below is the tracked token's, never the project's valuation.`);
   /*
    * Who deployed the contract, and when (2026-09-25). A fact about the
    * contract read from the chain; a shared deployer is a launch service, and
