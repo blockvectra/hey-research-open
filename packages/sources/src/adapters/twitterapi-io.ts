@@ -57,6 +57,8 @@ export type XAccountReading =
       verifiedType?: string;
       /** The links on the profile: the bio's and the profile website's expanded URLs, http(s) only. */
       profileUrls: string[];
+      /** The account's own profile picture at 400×400 (`xProfileImageUrl`); absent for X's default picture or none. */
+      profileImageUrl?: string;
     }
   | { kind: 'SUSPENDED' | 'UNAVAILABLE'; reason?: string }
   | { kind: 'NOT_FOUND' };
@@ -104,6 +106,7 @@ const userData = z
     createdAt: z.string().max(64).nullish(),
     isBlueVerified: z.boolean().nullish(),
     verifiedType: z.string().max(40).nullish(),
+    profilePicture: z.string().max(1_000).nullish(),
     unavailable: z.boolean().nullish(),
     unavailableReason: z.string().max(500).nullish(),
     message: z.string().max(2_000).nullish(),
@@ -258,6 +261,7 @@ function readingOfUser(data: z.infer<typeof userData>): XAccountReading | { erro
   const displayName = boundedText(data.name, 100);
   const createdAt = parseDate(data.createdAt);
   const verifiedType = boundedText(data.verifiedType, 40);
+  const profileImageUrl = xProfileImageUrl(data.profilePicture);
   return {
     kind: 'ACTIVE',
     userId: idOf(data.id),
@@ -267,7 +271,30 @@ function readingOfUser(data: z.infer<typeof userData>): XAccountReading | { erro
     ...(typeof data.isBlueVerified === 'boolean' ? { isBlueVerified: data.isBlueVerified } : {}),
     ...(verifiedType ? { verifiedType } : {}),
     profileUrls: uniqueUrls([...expanded, data.url], MAX_PROFILE_URLS),
+    ...(profileImageUrl ? { profileImageUrl } : {}),
   };
+}
+
+/**
+ * An account's own profile picture, as HEY stores it (2026-10-31, founder: a confirmed account's X picture is the
+ * project's logo): https on pbs.twimg.com under /profile_images/ only — never X's default picture, which lives on
+ * abs.twimg.com, nor a post's media — with X's size suffix moved to 400×400 (`_normal`, `_bigger`, `_mini`,
+ * `_200x200`), the largest square X serves. Undefined for anything else.
+ */
+export function xProfileImageUrl(raw: string | null | undefined): string | undefined {
+  const value = raw?.trim();
+  if (!value || value.length > 600) return undefined;
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== 'https:' || url.hostname !== 'pbs.twimg.com' || !url.pathname.startsWith('/profile_images/') || url.username || url.password) return undefined;
+  url.search = '';
+  url.hash = '';
+  url.pathname = url.pathname.replace(/_(normal|bigger|mini|200x200|400x400)(\.[a-z0-9]+)$/i, '_400x400$2');
+  return url.toString();
 }
 
 function normalizeUserInfo(raw: RawUserInfo, asked: string): XAccountReading | { error: string } {

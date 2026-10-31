@@ -10,6 +10,7 @@ import {
   TWITTERAPI_IO_POST_CREDITS,
   TWITTERAPI_IO_PROFILE_CREDITS,
   X_POST_TEXT_MAX,
+  xProfileImageUrl,
 } from './twitterapi-io';
 
 /**
@@ -41,6 +42,8 @@ describe('twitterapi.io profile read', () => {
       verifiedType: 'Business',
       // The profile website and the bio's link, expanded; the t.co short link is never a destination.
       profileUrls: ['https://www.agentos.example/', 'https://docs.agentos.example/'],
+      // The account's own picture (2026-10-31): the logo of a project whose account HEY confirmed; never the banner.
+      profileImageUrl: 'https://pbs.twimg.com/profile_images/1/a.jpg',
     });
     // Popularity is not research: no follower, following or engagement count leaves the adapter.
     expect(JSON.stringify(result.data)).not.toMatch(/follow|favourite|statuses|media|12873/i);
@@ -127,6 +130,23 @@ describe('twitterapi.io profile read', () => {
     const result = await adapter.fetch({ apiKey: KEY, userName: 'agentos_hq' }, testContext({ fetchImpl: stubFetch({ status: 429, body: '', headers: { 'retry-after': '30' } }).fetchImpl }));
     expect(result.status).toBe('rate_limited');
     expect(result.meteredUnits).toBe(TWITTERAPI_IO_PROFILE_CREDITS);
+  });
+});
+
+describe('an account’s own profile picture (2026-10-31)', () => {
+  it('keeps pbs.twimg.com profile images only, at 400×400', () => {
+    expect(xProfileImageUrl('https://pbs.twimg.com/profile_images/2115270562654441472/Fercs4z__normal.png')).toBe('https://pbs.twimg.com/profile_images/2115270562654441472/Fercs4z__400x400.png');
+    expect(xProfileImageUrl('https://pbs.twimg.com/profile_images/1/a_bigger.jpg?x=1')).toBe('https://pbs.twimg.com/profile_images/1/a_400x400.jpg');
+    expect(xProfileImageUrl('https://pbs.twimg.com/profile_images/1/a.jpg')).toBe('https://pbs.twimg.com/profile_images/1/a.jpg');
+  });
+
+  it('refuses X’s default picture, a post’s media, a banner and anything not https', () => {
+    expect(xProfileImageUrl('https://abs.twimg.com/sticky/default_profile_images/default_profile_normal.png')).toBeUndefined();
+    expect(xProfileImageUrl('https://pbs.twimg.com/media/GabcDEF.jpg')).toBeUndefined();
+    expect(xProfileImageUrl('https://pbs.twimg.com/profile_banners/1/a')).toBeUndefined();
+    expect(xProfileImageUrl('http://pbs.twimg.com/profile_images/1/a.jpg')).toBeUndefined();
+    expect(xProfileImageUrl('https://pbs.twimg.com.evil.example/profile_images/1/a.jpg')).toBeUndefined();
+    expect(xProfileImageUrl(null)).toBeUndefined();
   });
 });
 
