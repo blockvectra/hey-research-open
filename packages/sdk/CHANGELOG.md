@@ -6,6 +6,10 @@ All notable changes to `@hey-research-lab/sdk` are recorded here. The format fol
 
 ## Unreleased
 
+### Added (2026-11-02)
+
+- `HeySearchSuggestion` project rows carry optional `slug` and `logoUrl`, as `/api/search/suggest` now sends them.
+
 ### Changed (2026-10-25)
 
 - A request whose path holds a `.` or `..` segment (or either spelt with `%2e`) is refused with a `bad_request`

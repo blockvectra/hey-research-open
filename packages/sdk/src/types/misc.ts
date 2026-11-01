@@ -604,8 +604,9 @@ export type HeySearchSuggestion =
    * `emptyNamesake` (additive, 2026-10-01): a page with no token, ship or builder signal recorded that shares its name with a fuller suggestion; listed after the other projects.
    * `sameNameDifferentContract` (additive, 2026-10-03): another project suggestion shares this one's name or ticker on a different contract.
    * `status` (additive, 2026-10-10): the project card's status words ("Shipping · Verified Builder", "Not researched yet"); display only, the order is unchanged.
+   * `slug` and `logoUrl` (additive, 2026-11-02): the project's exact HEY slug and its logo when it has one.
    */
-  | { type: 'project'; name: string; symbol?: string; contract?: string; target: string; emptyNamesake?: true; sameNameDifferentContract?: true; status?: string }
+  | { type: 'project'; name: string; symbol?: string; contract?: string; target: string; emptyNamesake?: true; sameNameDifferentContract?: true; status?: string; slug?: string; logoUrl?: string }
   /**
    * `brandNotice` (additive, 2026-10-02): "Not affiliated with Robinhood" — the record's name or ticker borrows
    * a Robinhood stock token's ticker (`stock_ticker`) or Robinhood's brand (`robinhood_brand`,

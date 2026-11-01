@@ -1114,6 +1114,48 @@ GET /api/v1/proof-of-ship/attestation?slug=loom&builder=0x…&since=1790812800&e
   funds and earns nothing from a bounty, stores nothing about the payout address, and the attestation changes nothing
   on HEY — no status, score, badge or order.
 
+## `GET /api/v1/proof-of-ship/tie?slug=` (2026-11-02)
+
+The payout addresses HEY would sign an attestation for, for one published project, right now — so a funder fills in
+a bounty's `builder` with an address the escrow can pay, instead of pasting one HEY can never sign for (a bounty with
+an untied payout address can only be refunded after its deadline). Additive; the same public access rule as the
+attestation; in the `partner_cards` route group.
+
+```http
+GET /api/v1/proof-of-ship/tie?slug=predict-fwa
+```
+
+```json
+{
+  "slug": "predict-fwa",
+  "currentSlug": "predict-fwa",
+  "payable": true,
+  "ties": [
+    { "kind": "wallet_claim", "address": "0x…" },
+    { "kind": "token_deployer", "address": "0x…" }
+  ]
+}
+```
+
+- **The same rule, not a second one:** HEY puts each candidate — the deployer recorded for the project's tracked
+  token, and the signer of each verified wallet-signature claim on the project — through the attestation's own tie
+  (above, "Whom HEY signs for"), and lists only what it ties, with the `kind` the attestation would answer in
+  `builderTie`. Every listed `address` is accepted as `builder` by `/api/v1/proof-of-ship/attestation` for the same
+  slug at the same moment; an address not listed answers `403 builder_not_tied` there. Addresses are checksummed, as
+  the attestation's `attestation.builder`, sorted by address.
+- **None:** `payable: false`, `ties: []` and `reason`, the first condition that failed: `no_token` (the page tracks no
+  token), `token_not_verified`, `issuer_token`, `site_disclaims_contract`, `site_names_another_contract`, `contested`
+  (the token is not held as the project's own, by the attestation's reader), or `no_tie` (no candidate ties — a claim
+  for another token, a claim proved only as a Pons fee recipient, a launch service, or a deployer HEY has not measured
+  as no serial launcher). Unknown is never a tie.
+- **The slug:** read exactly as the attestation reads it — the lower-case HEY slug as given (anything else is
+  `400 invalid_parameter`), an old slug that redirects to a published page answers with `currentSlug`, and a slug that
+  is one page's current slug while its redirect names another, or no published page's, is `404 not_found`.
+- **While paused:** the route signs nothing, so it answers while the operator has paused attestations and adds
+  `attestationsPaused: true`; the attestation itself answers `503 paused` until they resume.
+- **What it is not:** `cache-control: public, max-age=60`; no provider call; nothing stored. An address here is one
+  project's payout tie, never a profile, never compared across projects, never ranked, and it decides nothing on HEY.
+
 ## Partner additive fields (2026-09-26)
 
 Additive only. No existing field changes meaning: `ships_30d`, `releases_30d`, `commits_30d` and
