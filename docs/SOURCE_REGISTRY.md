@@ -379,6 +379,19 @@ read API; names come from the token contracts.
 | What it may prove | Nothing about a project (tier CHAIN, context only): never identity, a ship, building, a score, an order, a change event or an alert |
 | Auth / cost | None / free; its own budget key `rpc-erc8004` |
 
+### ERC-8004 Reputation Registry (`erc8004_reputation`, 2026-11-02)
+
+| | |
+| --- | --- |
+| Source | The canonical Reputation Registry (`0x8004BAa17C55a88189AE136b182e5fdA19dE9b63`, the same address on Robinhood Chain 4663, Ethereum 1 and Base 8453): its `NewFeedback(uint256 indexed agentId, address indexed clientAddress, uint64 feedbackIndex, int128 value, uint8 valueDecimals, string indexed indexedTag1, string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash)` and `FeedbackRevoked(uint256 indexed agentId, address indexed clientAddress, uint64 indexed feedbackIndex)` logs for HEY's own agent id on each chain (8783, 56081, 1148006) only, one event per `eth_getLogs` (`SYNC_ERC8004_FEEDBACK`, daily, from the block HEY registered on each chain, resuming after the last block read) |
+| Nodes | Robinhood Chain: the worker's own RPC (nine-million-block windows). Ethereum: `rpc.mevblocker.io` (10,000-block windows; `ethereum-rpc.publicnode.com` refuses logs older than about 10,000 blocks). Base: `base-rpc.publicnode.com` (50,000-block windows). A window a node calls too large is halved; history a node no longer serves stops the chain's read, never skips it |
+| Kept | Per chain and UTC day: new feedback, revocations, both running totals, the day's feedback by value bucket (`value / 10^valueDecimals`: below 0, 0–20, 20–40, 40–60, 60–80, 80–100, above 100) and the block read through (`erc8004_feedback_days`, migration 0315, basis `reconstructed_from_chain`). **No client address, agent id, tag, endpoint, feedback URI or hash, or transaction** |
+| Shown | `/developers/agents/stats` and `/api/agent/stats` (`erc8004Feedback`): per chain totals, last 7 and 30 days, value buckets, the block read through; a chain not read is `null` with `not_read`, never 0. `/developers/agents` says how to give HEY feedback |
+| What it may prove | Nothing about a project or HEY (tier CHAIN, context only): feedback is what other agents chose to submit, never a rating of HEY or a trust score, never identity, a ship, building, a score, an order, a change event, an alert, a webhook or Telegram |
+| Auth / cost | None / free; one budget key a chain: `rpc-erc8004-feedback`, `ethereum-rpc-erc8004-feedback`, `base-rpc-erc8004-feedback` (120 a day each) |
+
+Adapter: `packages/sources/src/adapters/erc8004-reputation.ts` (fixtures `rpc-erc8004-new-feedback.json`, `rpc-erc8004-feedback-revoked.json`, encoded from the registry's ABI).
+
 ### Raeto public agent activity (`raeto_public_activity`, 2026-10-29)
 
 | | |
