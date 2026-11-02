@@ -270,6 +270,47 @@ export const serverEnvSchema = z
     }),
 
     /*
+     * HEY as an ERC-8004 validator (2026-11-02, founder approval; CLAUDE.md growth rule 10, amended). HEY answers
+     * `hey-ship-claim` validation requests on Robinhood Chain and Base from its counted ships. Off by default:
+     *
+     *  - HEY_ERC8004_VALIDATOR_ADDRESS: the validator's public address (both chains). With it the worker reads the
+     *    requests naming it and /developers/agents prints it; without it nothing is read.
+     *  - HEY_ERC8004_VALIDATOR_ENABLED: exactly "true" lets the worker send responses (a kill switch that leaves the key).
+     *  - HEY_ERC8004_VALIDATOR_KEY: the validator's private key, 0x and 64 hex characters. Worker only. Secret: never
+     *    logged, never returned, never in a fixture; a malformed value is refused at boot without quoting it. The worker
+     *    refuses to send unless the address it derives equals HEY_ERC8004_VALIDATOR_ADDRESS.
+     *  - HEY_ERC8004_VALIDATOR_DAILY_RESPONSES: responses a chain may send in one UTC day (default 10, 0 sends none).
+     *  - HEY_ERC8004_VALIDATOR_MAX_GAS_GWEI_ROBINHOOD / _BASE: the highest maxFeePerGas HEY pays, in gwei (default 0.2
+     *    each; about ten times what both chains charged on 2026-11-02). Above it the run declines and carries the rest.
+     */
+    erc8004Validator: z.object({
+      enabled: optionalString.transform((value) => value === 'true').pipe(z.boolean()),
+      key: optionalString.pipe(
+        z
+          .string()
+          .regex(/^0x[0-9a-fA-F]{64}$/, 'HEY_ERC8004_VALIDATOR_KEY must be 0x followed by 64 hex characters')
+          .optional(),
+      ),
+      address: optionalString
+        .transform((value) => value?.toLowerCase())
+        .pipe(
+          z
+            .string()
+            .regex(/^0x(?!0{40}$)[0-9a-f]{40}$/, 'HEY_ERC8004_VALIDATOR_ADDRESS must be 0x followed by 40 hex characters (not the zero address)')
+            .optional(),
+        ),
+      dailyResponses: optionalString
+        .transform((value) => (value === undefined ? 10 : Number(value)))
+        .pipe(z.number().int('HEY_ERC8004_VALIDATOR_DAILY_RESPONSES is a whole number').min(0).max(500)),
+      maxGasGweiRobinhood: optionalString
+        .transform((value) => (value === undefined ? 0.2 : Number(value)))
+        .pipe(z.number().finite().positive('HEY_ERC8004_VALIDATOR_MAX_GAS_GWEI_ROBINHOOD is a positive number of gwei').max(1000)),
+      maxGasGweiBase: optionalString
+        .transform((value) => (value === undefined ? 0.2 : Number(value)))
+        .pipe(z.number().finite().positive('HEY_ERC8004_VALIDATOR_MAX_GAS_GWEI_BASE is a positive number of gwei').max(1000)),
+    }),
+
+    /*
      * twitterapi.io (2026-10-18, founder: "ok buat"; CLAUDE.md cost rule 7, amended): a metered,
      * pay-per-use read of projects' OFFICIAL X accounts — their state and their newest own posts, as
      * identity context and discovery leads. Off unless both are set:
@@ -914,6 +955,14 @@ function shapeEnv(raw: RawEnv) {
       attesterKey: raw.HEY_SHIP_ATTESTER_KEY,
       escrowAddresses: raw.HEY_SHIP_ESCROW_ADDRESSES,
     },
+    erc8004Validator: {
+      enabled: raw.HEY_ERC8004_VALIDATOR_ENABLED,
+      key: raw.HEY_ERC8004_VALIDATOR_KEY,
+      address: raw.HEY_ERC8004_VALIDATOR_ADDRESS,
+      dailyResponses: raw.HEY_ERC8004_VALIDATOR_DAILY_RESPONSES,
+      maxGasGweiRobinhood: raw.HEY_ERC8004_VALIDATOR_MAX_GAS_GWEI_ROBINHOOD,
+      maxGasGweiBase: raw.HEY_ERC8004_VALIDATOR_MAX_GAS_GWEI_BASE,
+    },
     twitterapiIo: {
       enabled: raw.TWITTERAPI_IO_ENABLED,
       apiKey: raw.TWITTERAPI_IO_KEY,
@@ -1055,6 +1104,12 @@ export const ENV_KEY_BY_PATH: Record<string, string> = {
   'uniswap.apiKey': 'UNISWAP_API_KEY',
   'proofOfShip.attesterKey': 'HEY_SHIP_ATTESTER_KEY',
   'proofOfShip.escrowAddresses': 'HEY_SHIP_ESCROW_ADDRESSES',
+  'erc8004Validator.enabled': 'HEY_ERC8004_VALIDATOR_ENABLED',
+  'erc8004Validator.key': 'HEY_ERC8004_VALIDATOR_KEY',
+  'erc8004Validator.address': 'HEY_ERC8004_VALIDATOR_ADDRESS',
+  'erc8004Validator.dailyResponses': 'HEY_ERC8004_VALIDATOR_DAILY_RESPONSES',
+  'erc8004Validator.maxGasGweiRobinhood': 'HEY_ERC8004_VALIDATOR_MAX_GAS_GWEI_ROBINHOOD',
+  'erc8004Validator.maxGasGweiBase': 'HEY_ERC8004_VALIDATOR_MAX_GAS_GWEI_BASE',
   'twitterapiIo.enabled': 'TWITTERAPI_IO_ENABLED',
   'twitterapiIo.apiKey': 'TWITTERAPI_IO_KEY',
   'twitterapiIo.dailyCredits': 'TWITTERAPI_IO_DAILY_CREDITS',

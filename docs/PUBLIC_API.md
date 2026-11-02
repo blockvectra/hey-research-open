@@ -1156,6 +1156,59 @@ GET /api/v1/proof-of-ship/tie?slug=predict-fwa
 - **What it is not:** `cache-control: public, max-age=60`; no provider call; nothing stored. An address here is one
   project's payout tie, never a profile, never compared across projects, never ranked, and it decides nothing on HEY.
 
+## `GET /api/v1/proof-of-ship/ships?slug=&since=&until=` (2026-11-02)
+
+The same count the attestation signs, unsigned and with no payout address: the ships HEY counts as building for one
+published project in one closed window. It is the `responseURI` of HEY's ERC-8004 validation responses (below), so
+anyone can read what a response restated. Additive; the same public access rule as the attestation; in the
+`partner_cards` route group.
+
+```http
+GET /api/v1/proof-of-ship/ships?slug=predict-fwa&since=1793491200&until=1794096000
+```
+
+```json
+{
+  "slug": "predict-fwa",
+  "currentSlug": "predict-fwa",
+  "since": 1793491200,
+  "until": 1794096000,
+  "ships": 2,
+  "evidenceIds": ["ship:…", "ship:…"],
+  "evidenceUrls": ["https://heyresearch.xyz/evidence/ship:…", "…"],
+  "evidenceHash": "0x…",
+  "definition": "These are the ships HEY counts as building for this project in the window — …"
+}
+```
+
+- **Counted:** exactly `countedShipsInWindow`, the attestation's rule (`definition` states it). `evidenceHash` is
+  keccak256 of the sorted evidence ids joined by commas — the attestation's `evidence` field, and the `responseHash` of
+  a validation response.
+- **Only a closed window:** `until` not after now and at most 400 days after `since` (`400 invalid_parameter`
+  otherwise): a running window's count still moves. The slug is read as the attestation reads it (`404 not_found`).
+- **What it is not:** `cache-control: public, max-age=300`; no provider call; nothing stored or signed; it decides
+  nothing on HEY.
+
+## HEY as an ERC-8004 validator (2026-11-02)
+
+HEY answers ERC-8004 validation requests on Robinhood Chain (4663) and Base (8453) for one claim only: that a project
+HEY publishes shipped between two times. The Validation Registry is `0x8004Cc8439f36fd5F9F049D9fF86523Df6dAAB58` on
+both (and on Ethereum, where HEY reads requests and never answers). HEY's validator address is printed on
+`/developers/agents` once it is configured.
+
+- **The request:** `validationRequest(HEY's validator, <your agentId>, requestURI, requestHash)` from the agent's owner or
+  operator, with `requestURI = "hey-ship-claim:1:<slug>:<since>:<until>"` — the lower-case HEY slug, unix seconds with no
+  leading zero, at most 400 days apart, the end already past — and `requestHash = keccak256(<requestURI's UTF-8 bytes>)`.
+- **The response:** 100 when HEY counts at least one ship in the window, 0 when HEY measured the window and counted none;
+  `responseURI` is `/api/v1/proof-of-ship/ships?slug=&since=&until=` for the same window, `responseHash` its
+  `evidenceHash`, tag `hey-ship-claim:1`. HEY reads requests hourly and answers within a daily limit per chain.
+- **No response at all, never 0:** a URI in any other form (HEY never fetches a URL a request names), a hash that is not
+  the URI's, an oversized URI, a window empty, reversed, longer than 400 days, not yet ended or begun before HEY first
+  recorded the project, a slug no published page answers to, a request on Ethereum.
+- **What a response is not:** it restates counted ships and endorses nothing — not the asking agent, not that the agent
+  built the project, not the project. HEY keeps nothing about who asked. Counts are in `/api/agent/stats`
+  (`erc8004Validations`).
+
 ## Partner additive fields (2026-09-26)
 
 Additive only. No existing field changes meaning: `ships_30d`, `releases_30d`, `commits_30d` and

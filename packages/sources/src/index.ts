@@ -56,6 +56,7 @@ export * from './adapters/erc20-supply';
 export * from './adapters/rpc-logs';
 export * from './adapters/erc8004-registry';
 export * from './adapters/erc8004-reputation';
+export * from './adapters/erc8004-validation';
 export * from './adapters/twitterapi-io';
 export * from './adapters/twitterapi-io-research';
 export * from './adapters/hoodlock';
