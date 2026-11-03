@@ -223,6 +223,15 @@ Five things worth knowing before you render it:
 to render. Name your integration with `x-hey-integration: my-bot/1.0.0` (or `?integration=`) and it
 becomes `project_link`'s `utm_source`, so HEY can report your click-through to you.
 
+### Linked example: a chain read and builder context
+
+The [BlockVectra quickstart](https://github.com/blockvectra/agent-quickstart#add-builder-context-with-hey)
+shows a keyless Robinhood Chain head read followed by a separate builder-card request, tagged
+`x-hey-integration: blockvectra-partner-example/0.1.0`. It explains how to keep HEY's `as_of`
+separate from the RPC read time, carry `project_link`, and handle `404` / `not_found` with
+`scan_url` without treating it as a failed chain read. Project-only and unmeasured activity
+stay separate from token activity.
+
 ## The card call: `GET /api/v1/scan?chain=4663&token=0x…`
 
 The same answer as the one call above, in the shape a trading bot's card wants and with two more
