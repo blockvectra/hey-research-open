@@ -1186,6 +1186,12 @@ GET /api/v1/proof-of-ship/ships?slug=predict-fwa&since=1793491200&until=17940960
   a validation response.
 - **Only a closed window:** `until` not after now and at most 400 days after `since` (`400 invalid_parameter`
   otherwise): a running window's count still moves. The slug is read as the attestation reads it (`404 not_found`).
+- **Not measured, never 0 (2026-11-03):** a window HEY cannot measure answers 200 with `ships`, `evidenceIds`,
+  `evidenceUrls` and `evidenceHash` all `null`, a `reason` and a one-sentence `reasonText`:
+  `window_before_hey_read` — the window began before HEY first recorded the project, whatever it counts; or
+  `activity_not_measured` — HEY counted no ship in it and does not measure the project's building (activity unknown, no
+  builder source it reads, or every one unavailable). A window holding a counted ship is never withheld by the second.
+  The validator gives no response for exactly these windows. Before 2026-11-03 both answered `ships: 0`.
 - **What it is not:** `cache-control: public, max-age=300`; no provider call; nothing stored or signed; it decides
   nothing on HEY.
 
@@ -1196,6 +1202,13 @@ HEY publishes shipped between two times. The Validation Registry is `0x8004Cc843
 both (and on Ethereum, where HEY reads requests and never answers). HEY's validator address is printed on
 `/developers/agents` once it is configured.
 
+- **The asking agent must be tied to the project (2026-11-03):** HEY answers only when the agent's owner in the ERC-8004
+  Identity Registry on the request's chain (`ownerOf(agentId)`), or the wallet the agent declared there
+  (`getAgentWallet(agentId)`), is one of the project's Proof of Ship payout ties — the signer of a verified
+  wallet-signature claim for its tracked token, or that token's recorded deployer
+  (`/api/v1/proof-of-ship/tie?slug=` lists them). The agent is read from the registry's own record of the request when
+  HEY decides, and nothing about it is stored. An untied agent's request is declined (`agent_not_tied`) at no cost to
+  the day's limit, and a request HEY decided to answer goes ahead of new ones.
 - **The request:** `validationRequest(HEY's validator, <your agentId>, requestURI, requestHash)` from the agent's owner or
   operator, with `requestURI = "hey-ship-claim:1:<slug>:<since>:<until>"` — the lower-case HEY slug, unix seconds with no
   leading zero, at most 400 days apart, the end already past — and `requestHash = keccak256(<requestURI's UTF-8 bytes>)`.
@@ -1204,7 +1217,11 @@ both (and on Ethereum, where HEY reads requests and never answers). HEY's valida
   `evidenceHash`, tag `hey-ship-claim:1`. HEY reads requests hourly and answers within a daily limit per chain.
 - **No response at all, never 0:** a URI in any other form (HEY never fetches a URL a request names), a hash that is not
   the URI's, an oversized URI, a window empty, reversed, longer than 400 days, not yet ended or begun before HEY first
-  recorded the project, a slug no published page answers to, a request on Ethereum.
+  recorded the project, a slug no published page answers to, an agent HEY cannot tie to the project (`agent_not_tied`),
+  a window in which HEY counted nothing for a project whose building it does not measure (`activity_not_measured`), a
+  request on Ethereum. A node error is never a "no": the request is read again on a later run. On Base HEY cross-checks
+  two independent public nodes (the chain id, the registry's record, the agent and the request's log) before it sends,
+  and caps each response's gas units as well as its gas price.
 - **What a response is not:** it restates counted ships and endorses nothing — not the asking agent, not that the agent
   built the project, not the project. HEY keeps nothing about who asked. Counts are in `/api/agent/stats`
   (`erc8004Validations`).
